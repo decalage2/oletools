@@ -19,6 +19,7 @@ Tools in oletools:
 -  **xxxswf2**: a script to detect, extract and analyze Flash objects
    (SWF) that may be embedded in files such as MS Office documents (e.g.
    Word, Excel), which is especially useful for malware analysis.
+-  and a few others (coming soon)
 
 News
 ----
@@ -48,16 +49,22 @@ olebrowse project website:
 xxxswf2:
 --------
 
-xxxswf2 is a script to detect, extract and analyze Flash objects (SWF)
-that may be embedded in files such as MS Office documents (e.g. Word,
-Excel), which is especially useful for malware analysis. xxxswf2 is an
-improved version of xxxswf.py published by Alexander Hanel on
+xxxswf2 is a script to detect, extract and analyze Flash objects (SWF
+files) that may be embedded in files such as MS Office documents (e.g.
+Word, Excel), which is especially useful for malware analysis.
+
+xxxswf2 is an improved version of xxxswf.py published by Alexander Hanel
+on
 `http://hooked-on-mnemonics.blogspot.nl/2011/12/xxxswfpy.html <http://hooked-on-mnemonics.blogspot.nl/2011/12/xxxswfpy.html>`_
+
 Compared to xxxswf, it can extract streams from MS Office documents by
 parsing their OLE structure properly, which is necessary when streams
 are fragmented. Stream fragmentation is a known obfuscation technique,
 as explained on
 `http://www.breakingpointsystems.com/resources/blog/evasion-with-ole2-fragmentation/ <http://www.breakingpointsystems.com/resources/blog/evasion-with-ole2-fragmentation/>`_
+
+For this, simply add the -o option to work on OLE streams rather than
+raw files.
 
 ::
 
@@ -80,6 +87,22 @@ as explained on
                             Will recursively scan a directory for files that
                             contain SWFs. Must provide path in quotes
       -c, --compress        Compresses the SWF using Zlib
+
+Example - detecting and extracting a SWF file from a Word document on
+Windows:
+
+::
+
+    C:\oletools>xxxswf2.py -o word_flash.doc
+    OLE stream: 'Contents'
+    [SUMMARY] 1 SWF(s) in MD5:993664cc86f60d52d671b6610813cfd1:Contents
+            [ADDR] SWF 1 at 0x8  - FWS Header
+
+    C:\oletools>xxxswf2.py -xo word_flash.doc
+    OLE stream: 'Contents'
+    [SUMMARY] 1 SWF(s) in MD5:993664cc86f60d52d671b6610813cfd1:Contents
+            [ADDR] SWF 1 at 0x8  - FWS Header
+                    [FILE] Carved SWF MD5: 2498e9c0701dc0e461ab4358f9102bc5.swf
 
 xxxswf2 project website:
 `http://www.decalage.info/python/xxxswf2 <http://www.decalage.info/python/xxxswf2>`_
@@ -105,8 +128,12 @@ problem.
 License
 -------
 
-Copyright (c) 2012, Philippe Lagadec (http://www.decalage.info) All
-rights reserved.
+This license applies to the oletools package, apart from the thirdparty
+folder which contains third-party files published with their own
+license.
+
+The oletools package is copyright (c) 2012, Philippe Lagadec
+(http://www.decalage.info) All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
