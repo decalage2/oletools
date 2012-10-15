@@ -43,7 +43,7 @@ __version__ = '0.01'
 # TODO:
 # - menu option to open another file
 # - menu option to display properties
-# - menu option to run xxxswf2, oleid, oleyara, olecarve, etc
+# - menu option to run other oletools, external tools such as OfficeCat?
 # - for a stream, display info: size, path, etc
 # - stream info: magic, entropy, ... ?
 
