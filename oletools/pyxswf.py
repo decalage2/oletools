@@ -1,20 +1,20 @@
 #!/usr/bin/env python
 """
-xxxswf2.py - Philippe Lagadec 2012-09-17
+pyxswf.py - Philippe Lagadec 2012-09-17
 
-xxxswf2 is a script to detect, extract and analyze Flash objects (SWF) that may
+pyxswf is a script to detect, extract and analyze Flash objects (SWF) that may
 be embedded in files such as MS Office documents (e.g. Word, Excel),
 which is especially useful for malware analysis.
-xxxswf2 is an improved version of xxxswf.py published by Alexander Hanel on
+pyxswf is an improved version of xxxswf.py published by Alexander Hanel on
 http://hooked-on-mnemonics.blogspot.nl/2011/12/xxxswfpy.html
 Compared to xxxswf, it can extract streams from MS Office documents by parsing
 their OLE structure properly, which is necessary when streams are fragmented.
 Stream fragmentation is a known obfuscation technique, as explained on
 http://www.breakingpointsystems.com/resources/blog/evasion-with-ole2-fragmentation/
 
-xxxswf2 project website: http://www.decalage.info/python/xxxswf2
+pyxswf project website: http://www.decalage.info/python/pyxswf
 
-xxxswf2 is copyright (c) 2012, Philippe Lagadec (http://www.decalage.info)
+pyxswf is copyright (c) 2012, Philippe Lagadec (http://www.decalage.info)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,

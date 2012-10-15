@@ -16,7 +16,7 @@ Tools in oletools:
 
 -  **olebrowse**: A simple GUI to browse OLE files (e.g. MS Word, Excel,
    Powerpoint documents), to view and extract individual data streams.
--  **xxxswf2**: a script to detect, extract and analyze Flash objects
+-  **pyxswf**: a script to detect, extract and analyze Flash objects
    (SWF) that may be embedded in files such as MS Office documents (e.g.
    Word, Excel), which is especially useful for malware analysis.
 -  and a few others (coming soon)
@@ -24,7 +24,7 @@ Tools in oletools:
 News
 ----
 
--  2012-10-09: Initial version of olebrowse and xxxswf2
+-  2012-10-09: Initial version of olebrowse and pyxswf
 -  see changelog in source code for more info.
 
 Download:
@@ -43,17 +43,23 @@ documents), to view and extract individual data streams.
 
     Usage: olebrowse.py [file]
 
+If you provide a file it will be opened, else a dialog will allow you to
+browse folders to open a file. Then if it is a valid OLE file, the list
+of data streams will be displayed. You can select a stream, and then
+either view its content in a builtin hexadecimal viewer, or save it to a
+file for further analysis.
+
 olebrowse project website:
 `http://www.decalage.info/python/olebrowse <http://www.decalage.info/python/olebrowse>`_
 
-xxxswf2:
---------
+pyxswf:
+-------
 
-xxxswf2 is a script to detect, extract and analyze Flash objects (SWF
+pyxswf is a script to detect, extract and analyze Flash objects (SWF
 files) that may be embedded in files such as MS Office documents (e.g.
 Word, Excel), which is especially useful for malware analysis.
 
-xxxswf2 is an improved version of xxxswf.py published by Alexander Hanel
+pyxswf is an improved version of xxxswf.py published by Alexander Hanel
 on
 `http://hooked-on-mnemonics.blogspot.nl/2011/12/xxxswfpy.html <http://hooked-on-mnemonics.blogspot.nl/2011/12/xxxswfpy.html>`_
 
@@ -68,7 +74,7 @@ raw files.
 
 ::
 
-    Usage: xxxswf2.py [options] <file.bad>
+    Usage: pyxswf.py [options] <file.bad>
 
     Options:
       -o, --ole             Parse an OLE file (e.g. Word, Excel) to look for SWF
@@ -93,19 +99,19 @@ Windows:
 
 ::
 
-    C:\oletools>xxxswf2.py -o word_flash.doc
+    C:\oletools>pyxswf.py -o word_flash.doc
     OLE stream: 'Contents'
     [SUMMARY] 1 SWF(s) in MD5:993664cc86f60d52d671b6610813cfd1:Contents
             [ADDR] SWF 1 at 0x8  - FWS Header
 
-    C:\oletools>xxxswf2.py -xo word_flash.doc
+    C:\oletools>pyxswf.py -xo word_flash.doc
     OLE stream: 'Contents'
     [SUMMARY] 1 SWF(s) in MD5:993664cc86f60d52d671b6610813cfd1:Contents
             [ADDR] SWF 1 at 0x8  - FWS Header
                     [FILE] Carved SWF MD5: 2498e9c0701dc0e461ab4358f9102bc5.swf
 
-xxxswf2 project website:
-`http://www.decalage.info/python/xxxswf2 <http://www.decalage.info/python/xxxswf2>`_
+pyxswf project website:
+`http://www.decalage.info/python/pyxswf <http://www.decalage.info/python/pyxswf>`_
 
 How to contribute:
 ------------------
