@@ -1,9 +1,10 @@
-oletools
-========
+python-oletools
+===============
 
-`oletools <http://www.decalage.info/python/oletools>`_ is a package of
-python tools to analyze `Microsoft OLE2 files (also called Structured
-Storage, Compound File Binary Format or Compound Document File
+`python-oletools <http://www.decalage.info/python/oletools>`_ is a
+package of python tools to analyze `Microsoft OLE2 files (also called
+Structured Storage, Compound File Binary Format or Compound Document
+File
 Format) <http://en.wikipedia.org/wiki/Compound_File_Binary_Format>`_,
 such as Microsoft Office documents or Outlook messages, mainly for
 malware analysis and debugging. It is based on the
@@ -11,8 +12,11 @@ malware analysis and debugging. It is based on the
 `http://www.decalage.info/python/oletools <http://www.decalage.info/python/oletools>`_
 for more info.
 
-Tools in oletools:
-------------------
+Note: python-oletools is not related to OLETools published by BeCubed
+Software.
+
+Tools in python-oletools:
+-------------------------
 
 -  **olebrowse**: A simple GUI to browse OLE files (e.g. MS Word, Excel,
    Powerpoint documents), to view and extract individual data streams.
@@ -49,7 +53,7 @@ of data streams will be displayed. You can select a stream, and then
 either view its content in a builtin hexadecimal viewer, or save it to a
 file for further analysis.
 
-olebrowse project website:
+For screenshots and other info, see
 `http://www.decalage.info/python/olebrowse <http://www.decalage.info/python/olebrowse>`_
 
 pyxswf:
@@ -59,9 +63,9 @@ pyxswf is a script to detect, extract and analyze Flash objects (SWF
 files) that may be embedded in files such as MS Office documents (e.g.
 Word, Excel), which is especially useful for malware analysis.
 
-pyxswf is an improved version of xxxswf.py published by Alexander Hanel
-on
-`http://hooked-on-mnemonics.blogspot.nl/2011/12/xxxswfpy.html <http://hooked-on-mnemonics.blogspot.nl/2011/12/xxxswfpy.html>`_
+pyxswf is an extension to
+`xxxswf.py <http://hooked-on-mnemonics.blogspot.nl/2011/12/xxxswfpy.html>`_
+published by Alexander Hanel.
 
 Compared to xxxswf, it can extract streams from MS Office documents by
 parsing their OLE structure properly, which is necessary when streams
@@ -110,7 +114,7 @@ Windows:
             [ADDR] SWF 1 at 0x8  - FWS Header
                     [FILE] Carved SWF MD5: 2498e9c0701dc0e461ab4358f9102bc5.swf
 
-pyxswf project website:
+For more info, see
 `http://www.decalage.info/python/pyxswf <http://www.decalage.info/python/pyxswf>`_
 
 How to contribute:
@@ -134,11 +138,11 @@ problem.
 License
 -------
 
-This license applies to the oletools package, apart from the thirdparty
-folder which contains third-party files published with their own
-license.
+This license applies to the python-oletools package, apart from the
+thirdparty folder which contains third-party files published with their
+own license.
 
-The oletools package is copyright (c) 2012, Philippe Lagadec
+The python-oletools package is copyright (c) 2012, Philippe Lagadec
 (http://www.decalage.info) All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

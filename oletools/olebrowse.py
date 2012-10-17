@@ -9,6 +9,9 @@ Usage: olebrowse.py [file]
 
 olebrowse project website: http://www.decalage.info/python/olebrowse
 
+olebrowse is part of the python-oletools package:
+http://www.decalage.info/python/oletools
+
 olebrowse is copyright (c) 2012, Philippe Lagadec (http://www.decalage.info)
 All rights reserved.
 
