@@ -1,9 +1,9 @@
-LICENSE for the oletools package:
+LICENSE for the python-oletools package:
 
-This license applies to the oletools package, apart from the thirdparty folder 
-which contains third-party files published with their own license.
+This license applies to the python-oletools package, apart from the thirdparty 
+folder which contains third-party files published with their own license.
 
-The oletools package is copyright (c) 2012, Philippe Lagadec (http://www.decalage.info)
+The python-oletools package is copyright (c) 2012, Philippe Lagadec (http://www.decalage.info)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,

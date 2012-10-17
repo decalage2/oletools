@@ -1,11 +1,12 @@
-oletools
-========
+python-oletools
+===============
 
-[oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze [Microsoft OLE2 files (also called Structured Storage, Compound File Binary Format or Compound Document File Format)](http://en.wikipedia.org/wiki/Compound_File_Binary_Format), such as Microsoft Office documents or Outlook messages, mainly for malware analysis and debugging. It is based on the [OleFileIO_PL](http://www.decalage.info/python/olefileio) parser. See [http://www.decalage.info/python/oletools](http://www.decalage.info/python/oletools) for more info.  
+[python-oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze [Microsoft OLE2 files (also called Structured Storage, Compound File Binary Format or Compound Document File Format)](http://en.wikipedia.org/wiki/Compound_File_Binary_Format), such as Microsoft Office documents or Outlook messages, mainly for malware analysis and debugging. It is based on the [OleFileIO_PL](http://www.decalage.info/python/olefileio) parser. See [http://www.decalage.info/python/oletools](http://www.decalage.info/python/oletools) for more info.  
 
+Note: python-oletools is not related to OLETools published by BeCubed Software.
 
-Tools in oletools:
------------------------------------
+Tools in python-oletools:
+-------------------------
 
 - **olebrowse**: A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to
   view and extract individual data streams.
@@ -36,7 +37,7 @@ view and extract individual data streams.
 
 If you provide a file it will be opened, else a dialog will allow you to browse folders to open a file. Then if it is a valid OLE file, the list of data streams will be displayed. You can select a stream, and then either view its content in a builtin hexadecimal viewer, or save it to a file for further analysis.
 
-olebrowse project website: [http://www.decalage.info/python/olebrowse](http://www.decalage.info/python/olebrowse)
+For screenshots and other info, see [http://www.decalage.info/python/olebrowse](http://www.decalage.info/python/olebrowse)
 
 pyxswf:
 --------
@@ -45,8 +46,7 @@ pyxswf is a script to detect, extract and analyze Flash objects (SWF files) that
 be embedded in files such as MS Office documents (e.g. Word, Excel),
 which is especially useful for malware analysis.
 
-pyxswf is an improved version of xxxswf.py published by Alexander Hanel on
-[http://hooked-on-mnemonics.blogspot.nl/2011/12/xxxswfpy.html](http://hooked-on-mnemonics.blogspot.nl/2011/12/xxxswfpy.html)
+pyxswf is an extension to [xxxswf.py](http://hooked-on-mnemonics.blogspot.nl/2011/12/xxxswfpy.html) published by Alexander Hanel.
 
 Compared to xxxswf, it can extract streams from MS Office documents by parsing
 their OLE structure properly, which is necessary when streams are fragmented.
@@ -88,7 +88,7 @@ Example - detecting and extracting a SWF file from a Word document on Windows:
 	        [ADDR] SWF 1 at 0x8  - FWS Header
 	                [FILE] Carved SWF MD5: 2498e9c0701dc0e461ab4358f9102bc5.swf
 	
-pyxswf project website: [http://www.decalage.info/python/pyxswf](http://www.decalage.info/python/pyxswf)
+For more info, see [http://www.decalage.info/python/pyxswf](http://www.decalage.info/python/pyxswf)
 
 
 How to contribute:
@@ -106,9 +106,9 @@ To report a bug or any issue, please use the [issue reporting page](https://bitb
 License
 -------
 
-This license applies to the oletools package, apart from the thirdparty folder which contains third-party files published with their own license.
+This license applies to the python-oletools package, apart from the thirdparty folder which contains third-party files published with their own license.
 
-The oletools package is copyright (c) 2012, Philippe Lagadec (http://www.decalage.info)
+The python-oletools package is copyright (c) 2012, Philippe Lagadec (http://www.decalage.info)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
