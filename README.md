@@ -10,7 +10,8 @@ Tools in python-oletools:
 
 - **olebrowse**: A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to
   view and extract individual data streams.
-- **pyxswf**: a script to detect, extract and analyze Flash objects (SWF) that may
+- **oleid**: a tool to analyze OLE files to detect specific characteristics that could potentially indicate that the file is suspicious or malicious.
+- **pyxswf**: a tool to detect, extract and analyze Flash objects (SWF) that may
   be embedded in files such as MS Office documents (e.g. Word, Excel),
   which is especially useful for malware analysis.
 - and a few others (coming soon)
@@ -18,7 +19,8 @@ Tools in python-oletools:
 News
 ----
 
-- 2012-10-09: Initial version of olebrowse and pyxswf
+- 2012-10-29 v0.02: Added oleid
+- 2012-10-09 v0.01: Initial version of olebrowse and pyxswf
 - see changelog in source code for more info.
 
 Download:
@@ -38,6 +40,35 @@ view and extract individual data streams.
 If you provide a file it will be opened, else a dialog will allow you to browse folders to open a file. Then if it is a valid OLE file, the list of data streams will be displayed. You can select a stream, and then either view its content in a builtin hexadecimal viewer, or save it to a file for further analysis.
 
 For screenshots and other info, see [http://www.decalage.info/python/olebrowse](http://www.decalage.info/python/olebrowse)
+
+oleid:
+------
+
+oleid is a script to analyze OLE files such as MS Office documents (e.g. Word,
+Excel), to detect specific characteristics that could potentially indicate that
+the file is suspicious or malicious, in terms of security (e.g. malware).
+For example it can detect VBA macros, embedded Flash objects, fragmentation.
+
+	Usage: oleid.py <file>
+
+Example - analyzing a Word document containing a Flash object and VBA macros:
+
+	C:\oletools>oleid.py word_flash_vba.doc
+	Filename: word_flash_vba.doc
+	OLE format: True
+	Has SummaryInformation stream: True
+	Application name: Microsoft Office Word
+	Encrypted: False
+	Word Document: True
+	VBA Macros: True
+	Excel Workbook: False
+	PowerPoint Presentation: False
+	Visio Drawing: False
+	ObjectPool: True
+	Flash objects: 1
+	
+oleid project website: [http://www.decalage.info/python/oleid](http://www.decalage.info/python/oleid)
+
 
 pyxswf:
 --------
