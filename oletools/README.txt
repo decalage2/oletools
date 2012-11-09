@@ -25,12 +25,13 @@ Tools in python-oletools:
    suspicious or malicious.
 -  **pyxswf**: a tool to detect, extract and analyze Flash objects (SWF)
    that may be embedded in files such as MS Office documents (e.g. Word,
-   Excel), which is especially useful for malware analysis.
+   Excel) and RTF, which is especially useful for malware analysis.
 -  and a few others (coming soon)
 
 News
 ----
 
+-  2012-11-09 v0.03: Improved pyxswf to extract Flash objects from RTF
 -  2012-10-29 v0.02: Added oleid
 -  2012-10-09 v0.01: Initial version of olebrowse and pyxswf
 -  see changelog in source code for more info.
@@ -112,8 +113,11 @@ are fragmented. Stream fragmentation is a known obfuscation technique,
 as explained on
 `http://www.breakingpointsystems.com/resources/blog/evasion-with-ole2-fragmentation/ <http://www.breakingpointsystems.com/resources/blog/evasion-with-ole2-fragmentation/>`_
 
+It can also extract Flash objects from RTF documents, by parsing
+embedded objects encoded in hexadecimal format (-f option).
+
 For this, simply add the -o option to work on OLE streams rather than
-raw files.
+raw files, or the -f option to work on RTF files.
 
 ::
 
@@ -122,6 +126,8 @@ raw files.
     Options:
       -o, --ole             Parse an OLE file (e.g. Word, Excel) to look for SWF
                             in each stream
+      -f, --rtf             Parse an RTF file to look for SWF in each embedded
+                            object
       -x, --extract         Extracts the embedded SWF(s), names it MD5HASH.swf &
                             saves it in the working dir. No addition args needed
       -h, --help            show this help message and exit
@@ -137,7 +143,7 @@ raw files.
                             contain SWFs. Must provide path in quotes
       -c, --compress        Compresses the SWF using Zlib
 
-Example - detecting and extracting a SWF file from a Word document on
+Example 1 - detecting and extracting a SWF file from a Word document on
 Windows:
 
 ::
@@ -151,6 +157,18 @@ Windows:
     OLE stream: 'Contents'
     [SUMMARY] 1 SWF(s) in MD5:993664cc86f60d52d671b6610813cfd1:Contents
             [ADDR] SWF 1 at 0x8  - FWS Header
+                    [FILE] Carved SWF MD5: 2498e9c0701dc0e461ab4358f9102bc5.swf
+
+Example 2 - detecting and extracting a SWF file from a RTF document on
+Windows:
+
+::
+
+    C:\oletools>pyxswf.py -xf "rtf_flash.rtf"
+    RTF embedded object size 1498557 at index 000036DD
+    [SUMMARY] 1 SWF(s) in MD5:46a110548007e04f4043785ac4184558:RTF_embedded_object_0
+    00036DD
+            [ADDR] SWF 1 at 0xc40  - FWS Header
                     [FILE] Carved SWF MD5: 2498e9c0701dc0e461ab4358f9102bc5.swf
 
 For more info, see
