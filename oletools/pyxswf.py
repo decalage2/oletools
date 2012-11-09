@@ -1,16 +1,21 @@
 #!/usr/bin/env python
 """
-pyxswf.py - Philippe Lagadec 2012-09-17
+pyxswf.py
 
 pyxswf is a script to detect, extract and analyze Flash objects (SWF) that may
 be embedded in files such as MS Office documents (e.g. Word, Excel),
 which is especially useful for malware analysis.
+
 pyxswf is an extension to xxxswf.py published by Alexander Hanel on
 http://hooked-on-mnemonics.blogspot.nl/2011/12/xxxswfpy.html
 Compared to xxxswf, it can extract streams from MS Office documents by parsing
-their OLE structure properly, which is necessary when streams are fragmented.
+their OLE structure properly (-o option), which is necessary when streams are
+fragmented.
 Stream fragmentation is a known obfuscation technique, as explained on
 http://www.breakingpointsystems.com/resources/blog/evasion-with-ole2-fragmentation/
+
+It can also extract Flash objects from RTF documents, by parsing embedded
+objects encoded in hexadecimal format (-f option).
 
 pyxswf project website: http://www.decalage.info/python/pyxswf
 
@@ -41,18 +46,19 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-__version__ = '0.01'
+__version__ = '0.02'
 
 #------------------------------------------------------------------------------
 # CHANGELOG:
 # 2012-09-17 v0.01 PL: - first version
+# 2012-11-09 v0.02 PL: - added RTF embedded objects extraction
 
 #------------------------------------------------------------------------------
 # TODO:
 # - check if file is OLE
 # - support -r
 
-import optparse, sys, os
+import optparse, sys, os, rtfobj, StringIO
 from thirdparty.xxxswf import xxxswf
 from thirdparty.OleFileIO_PL import OleFileIO_PL
 
@@ -76,6 +82,7 @@ def main():
     parser.add_option('-c', '--compress', action='store_true', dest='compress', help='Compresses the SWF using Zlib')
 
     parser.add_option('-o', '--ole', action='store_true', dest='ole', help='Parse an OLE file (e.g. Word, Excel) to look for SWF in each stream')
+    parser.add_option('-f', '--rtf', action='store_true', dest='rtf', help='Parse an RTF file to look for SWF in each embedded object')
 
 
     (options, args) = parser.parse_args()
@@ -85,6 +92,7 @@ def main():
         parser.print_help()
         return
 
+    # OLE MODE:
     if options.ole:
         for filename in args:
             ole = OleFileIO_PL.OleFileIO(filename)
@@ -99,6 +107,18 @@ def main():
                         xxxswf.disneyland(f, direntry.name, options)
                     f.close()
             ole.close()
+
+    # RTF MODE:
+    elif options.rtf:
+        for filename in args:
+            for index, data in rtfobj.rtf_iter_objects(filename):
+                if 'FWS' in data or 'CWS' in data:
+                    print 'RTF embedded object size %d at index %08X' % (len(data), index)
+                    f = StringIO.StringIO(data)
+                    name = 'RTF_embedded_object_%08X' % index
+                    # call xxxswf to scan or extract Flash files:
+                    xxxswf.disneyland(f, name, options)
+
     else:
         xxxswf.main()
 
