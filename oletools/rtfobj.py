@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-rtfobj.py - Philippe Lagadec 2012-11-09
+rtfobj.py - Philippe Lagadec 2013-04-02
 
 rtfobj is a Python module to extract embedded objects from RTF files, such as
 OLE ojects. It can be used as a Python library or a command-line tool.
@@ -12,7 +12,7 @@ rtfobj project website: http://www.decalage.info/python/rtfobj
 rtfobj is part of the python-oletools package:
 http://www.decalage.info/python/oletools
 
-rtfobj is copyright (c) 2012, Philippe Lagadec (http://www.decalage.info)
+rtfobj is copyright (c) 2012-2013, Philippe Lagadec (http://www.decalage.info)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -36,15 +36,18 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-__version__ = '0.01'
+__version__ = '0.02'
 
 #------------------------------------------------------------------------------
 # CHANGELOG:
 # 2012-11-09 v0.01 PL: - first version
+# 2013-04-02 v0.02 PL: - fixed bug in main
 
 #------------------------------------------------------------------------------
 # TODO:
 # - improve regex pattern for better performance?
+# - allow semicolon within hex, as found in  this sample:
+#   http://contagiodump.blogspot.nl/2011/10/sep-28-cve-2010-3333-manuscript-with.html
 
 import re, sys, string, binascii
 
@@ -54,6 +57,8 @@ import re, sys, string, binascii
 # several hex chars, at least 4: (?:[0-9A-Fa-f]{2}){4,}
 # at least 4 hex chars, followed by whitespace or CR/LF: (?:[0-9A-Fa-f]{2}){4,}\s*
 PATTERN = r'(?:(?:[0-9A-Fa-f]{2})+\s*)*(?:[0-9A-Fa-f]{2}){4,}'
+# improved pattern, allowing semicolons within hex:
+#PATTERN = r'(?:(?:[0-9A-Fa-f]{2})+\s*)*(?:[0-9A-Fa-f]{2}){4,}'
 
 # a dummy translation table for str.translate, which does not change anythying:
 TRANSTABLE_NOCHANGE = string.maketrans('', '')
@@ -78,7 +83,7 @@ def rtf_iter_objects (filename, min_size=32):
             yield m.start(), found
 
 if __name__ == '__main__':
-    if len(sys.argv<2):
+    if len(sys.argv)<2:
         sys.exit(__doc__)
     for index, data in rtf_iter_objects(sys.argv[1]):
         print 'found object size %d at index %08X' % (len(data), index)

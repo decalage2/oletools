@@ -14,11 +14,13 @@ Tools in python-oletools:
 - **pyxswf**: a tool to detect, extract and analyze Flash objects (SWF) that may
   be embedded in files such as MS Office documents (e.g. Word, Excel) and RTF,
   which is especially useful for malware analysis.
+- **rtfobj**: a tool and python module to extract embedded objects from RTF files.
 - and a few others (coming soon)
 
 News
 ----
 
+- 2013-04-18 v0.04: fixed bug in rtfobj, added documentation for rtfobj
 - 2012-11-09 v0.03: Improved pyxswf to extract Flash objects from RTF
 - 2012-10-29 v0.02: Added oleid
 - 2012-10-09 v0.01: Initial version of olebrowse and pyxswf
@@ -137,6 +139,26 @@ Example 2 - detecting and extracting a SWF file from a RTF document on Windows:
 For more info, see [http://www.decalage.info/python/pyxswf](http://www.decalage.info/python/pyxswf)
 
 
+rtfobj
+------
+
+rtfobj is a Python module to extract embedded objects from RTF files, such as
+OLE ojects. It can be used as a Python library or a command-line tool.
+
+	Usage: rtfobj.py <file.rtf>
+
+It extracts and decodes all the data blocks encoded as hexadecimal in the RTF document, and saves them as files named "object_xxxx.bin", xxxx being the location of the object in the RTF file.
+
+Usage as python module: rtf_iter_objects(filename) is an iterator which yields a tuple (index, object) providing the index of each hexadecimal stream in the RTF file, and the corresponding decoded object. Example:
+
+	import rtfobj    
+	for index, data in rtfobj.rtf_iter_objects("myfile.rtf"):
+        print 'found object size %d at index %08X' % (len(data), index)
+
+
+For more info, see [http://www.decalage.info/python/rtfobj](http://www.decalage.info/python/rtfobj)
+
+
 How to contribute:
 ------------------
 
@@ -154,7 +176,7 @@ License
 
 This license applies to the python-oletools package, apart from the thirdparty folder which contains third-party files published with their own license.
 
-The python-oletools package is copyright (c) 2012, Philippe Lagadec (http://www.decalage.info)
+The python-oletools package is copyright (c) 2012-2013, Philippe Lagadec (http://www.decalage.info)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
