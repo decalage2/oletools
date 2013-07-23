@@ -47,6 +47,7 @@ __version__ = '0.01'
 
 #------------------------------------------------------------------------------
 # TODO:
+# + extract relevant metadata: codepage, author, application, timestamps, etc
 # - detect RTF and OpenXML
 # - fragmentation
 # - OLE package
