@@ -23,6 +23,10 @@ Tools in python-oletools:
 -  **oleid**: a tool to analyze OLE files to detect specific
    characteristics that could potentially indicate that the file is
    suspicious or malicious.
+-  **olemeta**: a tool to extract all standard properties (metadata)
+   from OLE files.
+-  **oletimes**: a tool to extract creation and modification timestamps
+   of all streams and storages.
 -  **pyxswf**: a tool to detect, extract and analyze Flash objects (SWF)
    that may be embedded in files such as MS Office documents (e.g. Word,
    Excel) and RTF, which is especially useful for malware analysis.
@@ -33,6 +37,7 @@ Tools in python-oletools:
 News
 ----
 
+-  2013-07-24 v0.05: added new tools olemeta and oletimes
 -  2013-04-18 v0.04: fixed bug in rtfobj, added documentation for rtfobj
 -  2012-11-09 v0.03: Improved pyxswf to extract Flash objects from RTF
 -  2012-10-29 v0.02: Added oleid
