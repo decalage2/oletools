@@ -4,7 +4,7 @@ LICENSE for the OleFileIO_PL module:
 OleFileIO_PL is an improved version of the OleFileIO module from the
 Python Imaging Library (PIL).
 
-OleFileIO_PL changes are Copyright (c) 2005-2012 by Philippe Lagadec
+OleFileIO_PL changes are Copyright (c) 2005-2013 by Philippe Lagadec
 
 The Python Imaging Library (PIL) is
    Copyright (c) 1997-2005 by Secret Labs AB

@@ -12,7 +12,8 @@ This is an improved version of the OleFileIO module from
 `PIL <http://www.pythonware.com/products/pil/index.htm>`_, the excellent
 Python Imaging Library, created and maintained by Fredrik Lundh. The API
 is still compatible with PIL, but I have improved the internal
-implementation significantly, with bugfixes and a more robust design.
+implementation significantly, with new features, bugfixes and a more
+robust design.
 
 As far as I know, this module is now the most complete and robust Python
 implementation to read MS OLE2 files, portable on several operating
@@ -20,18 +21,31 @@ systems. (please tell me if you know other similar Python modules)
 
 WARNING: THIS IS (STILL) WORK IN PROGRESS.
 
-Main improvements over PIL version:
------------------------------------
+Main improvements over PIL version of OleFileIO:
+------------------------------------------------
 
 -  Better compatibility with Python 2.4 up to 2.7
 -  Support for files larger than 6.8MB
 -  Robust: many checks to detect malformed files
 -  Improved API
+-  New features: metadata extraction, stream/storage timestamps
 -  Added setup.py and install.bat to ease installation
 
 News
 ----
 
+-  2013-07-24 v0.26: added methods to parse stream/storage timestamps,
+   improved listdir to include storages, fixed parsing of direntry
+   timestamps
+-  2013-05-27 v0.25: improved metadata extraction, properties parsing
+   and exception handling, fixed `issue
+   #12 <https://bitbucket.org/decalage/olefileio_pl/issue/12/error-when-converting-timestamps-in-ole>`_
+-  2013-05-07 v0.24: new features to extract metadata (get\_metadata
+   method and OleMetadata class), improved getproperties to convert
+   timestamps to Python datetime
+-  2012-10-09: published
+   `python-oletools <http://www.decalage.info/python/oletools>`_, a
+   package of analysis tools based on OleFileIO\_PL
 -  2012-09-11 v0.23: added support for file-like objects, fixed `issue
    #8 <https://bitbucket.org/decalage/olefileio_pl/issue/8/bug-with-file-object>`_
 -  2012-02-17 v0.22: fixed issues #7 (bug in getproperties) and #2
@@ -86,6 +100,14 @@ Here are a few examples:
             f = open('Pictures.bin', 'w')
             f.write(data)
             f.close()
+
+        # Extract metadata (new in v0.24) - see source code for all attributes:
+        meta = ole.get_metadata()
+        print 'Author:', meta.author
+        print 'Title:', meta.title
+        print 'Creation date:', meta.create_time
+        # print all metadata:
+        meta.dump()
 
         # Close the OLE file:
         ole.close()
@@ -144,7 +166,7 @@ License
 
 OleFileIO\_PL is open-source.
 
-OleFileIO\_PL changes are Copyright (c) 2005-2012 by Philippe Lagadec.
+OleFileIO\_PL changes are Copyright (c) 2005-2013 by Philippe Lagadec.
 
 The Python Imaging Library (PIL) is
 

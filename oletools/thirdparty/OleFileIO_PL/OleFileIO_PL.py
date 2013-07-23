@@ -6,7 +6,7 @@ OleFileIO_PL:
     Microsoft Compound Document File Format), such as Microsoft Office
     documents, Image Composer and FlashPix files, Outlook messages, ...
 
-version 0.24 2012-09-18 Philippe Lagadec - http://www.decalage.info
+version 0.26 2013-07-24 Philippe Lagadec - http://www.decalage.info
 
 Project website: http://www.decalage.info/python/olefileio
 
@@ -16,23 +16,23 @@ See: http://www.pythonware.com/products/pil/index.htm
 The Python Imaging Library (PIL) is
     Copyright (c) 1997-2005 by Secret Labs AB
     Copyright (c) 1995-2005 by Fredrik Lundh
-OleFileIO_PL changes are Copyright (c) 2005-2012 by Philippe Lagadec
+OleFileIO_PL changes are Copyright (c) 2005-2013 by Philippe Lagadec
 
 See source code and LICENSE.txt for information on usage and redistribution.
 
 WARNING: THIS IS (STILL) WORK IN PROGRESS.
 """
 
-__author__  = "Fredrik Lundh (Secret Labs AB), Philippe Lagadec"
-__date__    = "2012-09-18"
-__version__ = '0.24'
+__author__  = "Philippe Lagadec, Fredrik Lundh (Secret Labs AB)"
+__date__    = "2013-07-24"
+__version__ = '0.26'
 
 #--- LICENSE ------------------------------------------------------------------
 
 # OleFileIO_PL is an improved version of the OleFileIO module from the
 # Python Imaging Library (PIL).
 
-# OleFileIO_PL changes are Copyright (c) 2005-2012 by Philippe Lagadec
+# OleFileIO_PL changes are Copyright (c) 2005-2013 by Philippe Lagadec
 #
 # The Python Imaging Library (PIL) is
 #    Copyright (c) 1997-2005 by Secret Labs AB
@@ -110,7 +110,27 @@ __version__ = '0.24'
 #                        (https://bitbucket.org/decalage/olefileio_pl/issue/7)
 #                      - added close method to OleFileIO (fixed issue #2)
 # 2012-07-25 v0.23 PL: - added support for file-like objects (patch by mete0r_kr)
-
+# 2013-05-05 v0.24 PL: - getproperties: added conversion from filetime to python
+#                        datetime
+#                      - main: displays properties with date format
+#                      - new class OleMetadata to parse standard properties
+#                      - added get_metadata method
+# 2013-05-07 v0.24 PL: - a few improvements in OleMetadata
+# 2013-05-24 v0.25 PL: - getproperties: option to not convert some timestamps
+#                      - OleMetaData: total_edit_time is now a number of seconds,
+#                        not a timestamp
+#                      - getproperties: added support for VT_BOOL, VT_INT, V_UINT
+#                      - getproperties: filter out null chars from strings
+#                      - getproperties: raise non-fatal defects instead of
+#                        exceptions when properties cannot be parsed properly
+# 2013-05-27       PL: - getproperties: improved exception handling
+#                      - _raise_defect: added option to set exception type
+#                      - all non-fatal issues are now recorded, and displayed
+#                        when run as a script
+# 2013-07-11 v0.26 PL: - added methods to get modification and creation times
+#                        of a directory entry or a storage/stream
+#                      - fixed parsing of direntry timestamps
+# 2013-07-24       PL: - new options in listdir to list storages and/or streams
 
 #-----------------------------------------------------------------------------
 # TODO (for version 1.0):
@@ -132,11 +152,10 @@ __version__ = '0.24'
 # - improve docstrings to show more sample uses
 # - see also original notes and FIXME below
 # - remove all obsolete FIXMEs
+# - OleMetadata: fix version attrib according to
+#   http://msdn.microsoft.com/en-us/library/dd945671%28v=office.12%29.aspx
 
 # IDEAS:
-# - allow _raise_defect to raise different exceptions, not only IOError
-# - provide a class with named attributes to get well-known properties of
-#   MS Office documents (title, author, ...) ?
 # - in OleFileIO._open and _OleStream, use size=None instead of 0x7FFFFFFF for
 #   streams with unknown size
 # - use arrays of int instead of long integers for FAT/MiniFAT, to improve
@@ -199,7 +218,7 @@ __version__ = '0.24'
 
 #------------------------------------------------------------------------------
 
-import string, StringIO, struct, array, os.path, sys
+import string, StringIO, struct, array, os.path, sys, datetime
 
 #[PL] Define explicitly the public API to avoid private objects in pydoc:
 __all__ = ['OleFileIO', 'isOleFile']
@@ -421,9 +440,171 @@ except NameError:
         return filter(ord, s)
 
 
+def filetime2datetime(filetime):
+        """
+        convert FILETIME (64 bits int) to Python datetime.datetime
+        """
+        # TODO: manage exception when microseconds is too large
+        # inspired from http://code.activestate.com/recipes/511425-filetime-to-datetime/
+        _FILETIME_null_date = datetime.datetime(1601, 1, 1, 0, 0, 0)
+        #debug('timedelta days=%d' % (filetime/(10*1000000*3600*24)))
+        return _FILETIME_null_date + datetime.timedelta(microseconds=filetime/10)
+
 
 
 #=== CLASSES ==================================================================
+
+class OleMetadata:
+    """
+    class to parse and store metadata from standard properties of OLE files.
+
+    Available attributes:
+    codepage, title, subject, author, keywords, comments, template,
+    last_saved_by, revision_number, total_edit_time, last_printed, create_time,
+    last_saved_time, num_pages, num_words, num_chars, thumbnail,
+    creating_application, security, codepage_doc, category, presentation_target,
+    bytes, lines, paragraphs, slides, notes, hidden_slides, mm_clips,
+    scale_crop, heading_pairs, titles_of_parts, manager, company, links_dirty,
+    chars_with_spaces, unused, shared_doc, link_base, hlinks, hlinks_changed,
+    version, dig_sig, content_type, content_status, language, doc_version
+
+    Note: an attribute is set to None when not present in the properties of the
+    OLE file.
+
+    References for SummaryInformation stream:
+    - http://msdn.microsoft.com/en-us/library/dd942545.aspx
+    - http://msdn.microsoft.com/en-us/library/dd925819%28v=office.12%29.aspx
+    - http://msdn.microsoft.com/en-us/library/windows/desktop/aa380376%28v=vs.85%29.aspx
+    - http://msdn.microsoft.com/en-us/library/aa372045.aspx
+    - http://sedna-soft.de/summary-information-stream/
+    - http://poi.apache.org/apidocs/org/apache/poi/hpsf/SummaryInformation.html
+
+    References for DocumentSummaryInformation stream:
+    - http://msdn.microsoft.com/en-us/library/dd945671%28v=office.12%29.aspx
+    - http://msdn.microsoft.com/en-us/library/windows/desktop/aa380374%28v=vs.85%29.aspx
+    - http://poi.apache.org/apidocs/org/apache/poi/hpsf/DocumentSummaryInformation.html
+
+    new in version 0.25
+    """
+
+    # attribute names for SummaryInformation stream properties:
+    # (ordered by property id, starting at 1)
+    SUMMARY_ATTRIBS = ['codepage', 'title', 'subject', 'author', 'keywords', 'comments',
+        'template', 'last_saved_by', 'revision_number', 'total_edit_time',
+        'last_printed', 'create_time', 'last_saved_time', 'num_pages',
+        'num_words', 'num_chars', 'thumbnail', 'creating_application',
+        'security']
+
+    # attribute names for DocumentSummaryInformation stream properties:
+    # (ordered by property id, starting at 1)
+    DOCSUM_ATTRIBS = ['codepage_doc', 'category', 'presentation_target', 'bytes', 'lines', 'paragraphs',
+        'slides', 'notes', 'hidden_slides', 'mm_clips',
+        'scale_crop', 'heading_pairs', 'titles_of_parts', 'manager',
+        'company', 'links_dirty', 'chars_with_spaces', 'unused', 'shared_doc',
+        'link_base', 'hlinks', 'hlinks_changed', 'version', 'dig_sig',
+        'content_type', 'content_status', 'language', 'doc_version']
+
+    def __init__(self):
+        """
+        Constructor for OleMetadata
+        All attributes are set to None by default
+        """
+        # properties from SummaryInformation stream
+        self.codepage = None
+        self.title = None
+        self.subject = None
+        self.author = None
+        self.keywords = None
+        self.comments = None
+        self.template = None
+        self.last_saved_by = None
+        self.revision_number = None
+        self.total_edit_time = None
+        self.last_printed = None
+        self.create_time = None
+        self.last_saved_time = None
+        self.num_pages = None
+        self.num_words = None
+        self.num_chars = None
+        self.thumbnail = None
+        self.creating_application = None
+        self.security = None
+        # properties from DocumentSummaryInformation stream
+        self.codepage_doc = None
+        self.category = None
+        self.presentation_target = None
+        self.bytes = None
+        self.lines = None
+        self.paragraphs = None
+        self.slides = None
+        self.notes = None
+        self.hidden_slides = None
+        self.mm_clips = None
+        self.scale_crop = None
+        self.heading_pairs = None
+        self.titles_of_parts = None
+        self.manager = None
+        self.company = None
+        self.links_dirty = None
+        self.chars_with_spaces = None
+        self.unused = None
+        self.shared_doc = None
+        self.link_base = None
+        self.hlinks = None
+        self.hlinks_changed = None
+        self.version = None
+        self.dig_sig = None
+        self.content_type = None
+        self.content_status = None
+        self.language = None
+        self.doc_version = None
+
+
+    def parse_properties(self, olefile):
+        """
+        Parse standard properties of an OLE file, from the streams
+        "\x05SummaryInformation" and "\x05DocumentSummaryInformation",
+        if present.
+        Properties are converted to strings, integers or python datetime objects.
+        If a property is not present, its value is set to None.
+        """
+        # first set all attributes to None:
+        for attrib in (self.SUMMARY_ATTRIBS + self.DOCSUM_ATTRIBS):
+            setattr(self, attrib, None)
+        if olefile.exists("\x05SummaryInformation"):
+            # get properties from the stream:
+            # (converting timestamps to python datetime, except total_edit_time,
+            # which is property #10)
+            props = olefile.getproperties("\x05SummaryInformation",
+                convert_time=True, no_conversion=[10])
+            # store them into this object's attributes:
+            for i in range(len(self.SUMMARY_ATTRIBS)):
+                # ids for standards properties start at 0x01, until 0x13
+                value = props.get(i+1, None)
+                setattr(self, self.SUMMARY_ATTRIBS[i], value)
+        if olefile.exists("\x05DocumentSummaryInformation"):
+            # get properties from the stream:
+            props = olefile.getproperties("\x05DocumentSummaryInformation",
+                convert_time=True)
+            # store them into this object's attributes:
+            for i in range(len(self.DOCSUM_ATTRIBS)):
+                # ids for standards properties start at 0x01, until 0x13
+                value = props.get(i+1, None)
+                setattr(self, self.DOCSUM_ATTRIBS[i], value)
+
+    def dump(self):
+        """
+        Dump all metadata, for debugging purposes.
+        """
+        print 'Properties from SummaryInformation stream:'
+        for prop in self.SUMMARY_ATTRIBS:
+            value = getattr(self, prop)
+            print '- %s: %s' % (prop, repr(value))
+        print 'Properties from DocumentSummaryInformation stream:'
+        for prop in self.DOCSUM_ATTRIBS:
+            value = getattr(self, prop)
+            print '- %s: %s' % (prop, repr(value))
+
 
 #--- _OleStream ---------------------------------------------------------------
 
@@ -566,7 +747,8 @@ class _OleDirectoryEntry:
     #[PL] parsing code moved from OleFileIO.loaddirectory
 
     # struct to parse directory entries:
-    # <: little-endian byte order
+    # <: little-endian byte order, standard sizes
+    #    (note: this should guarantee that Q returns a 64 bits int)
     # 64s: string containing entry name in unicode (max 31 chars) + null char
     # H: uint16, number of bytes used in name buffer, including null = (len+1)*2
     # B: uint8, dir entry type (between 0 and 5)
@@ -576,13 +758,13 @@ class _OleDirectoryEntry:
     # I: uint32, index of child root node if it is a storage, else NOSTREAM
     # 16s: CLSID, unique identifier (only used if it is a storage)
     # I: uint32, user flags
-    # 8s: uint64, creation timestamp or zero
-    # 8s: uint64, modification timestamp or zero
+    # Q (was 8s): uint64, creation timestamp or zero
+    # Q (was 8s): uint64, modification timestamp or zero
     # I: uint32, SID of first sector if stream or ministream, SID of 1st sector
     #    of stream containing ministreams if root entry, 0 otherwise
     # I: uint32, total stream size in bytes if stream (low 32 bits), 0 otherwise
     # I: uint32, total stream size in bytes if stream (high 32 bits), 0 otherwise
-    STRUCT_DIRENTRY = '<64sHBBIII16sI8s8sIII'
+    STRUCT_DIRENTRY = '<64sHBBIII16sIQQIII'
     # size of a directory entry: 128 bytes
     DIRENTRY_SIZE = 128
     assert struct.calcsize(STRUCT_DIRENTRY) == DIRENTRY_SIZE
@@ -772,6 +954,34 @@ class _OleDirectoryEntry:
             kid.dump(tab + 2)
 
 
+    def getmtime(self):
+        """
+        Return modification time of a directory entry.
+
+        return: None if modification time is null, a python datetime object
+        otherwise (UTC timezone)
+
+        new in version 0.26
+        """
+        if self.modifyTime == 0:
+            return None
+        return filetime2datetime(self.modifyTime)
+
+
+    def getctime(self):
+        """
+        Return creation time of a directory entry.
+
+        return: None if modification time is null, a python datetime object
+        otherwise (UTC timezone)
+
+        new in version 0.26
+        """
+        if self.createTime == 0:
+            return None
+        return filetime2datetime(self.createTime)
+
+
 #--- OleFileIO ----------------------------------------------------------------
 
 class OleFileIO:
@@ -812,12 +1022,16 @@ class OleFileIO:
         (use DEFECT_FATAL for a typical application, DEFECT_INCORRECT for a
         security-oriented application, see source code for details)
         """
+        # minimal level for defects to be raised as exceptions:
         self._raise_defects_level = raise_defects
+        # list of defects/issues not raised as exceptions:
+        # tuples of (exception type, message)
+        self.parsing_issues = []
         if filename:
             self.open(filename)
 
 
-    def _raise_defect(self, defect_level, message):
+    def _raise_defect(self, defect_level, message, exception_type=IOError):
         """
         This method should be called for any defect found during file parsing.
         It may raise an IOError exception according to the minimal level chosen
@@ -829,10 +1043,14 @@ class OleFileIO:
             DEFECT_INCORRECT : an error according to specifications, but parsing can go on
             DEFECT_FATAL     : an error which cannot be ignored, parsing is impossible
         message: string describing the defect, used with raised exception.
+        exception_type: exception class to be raised, IOError by default
         """
         # added by [PL]
         if defect_level >= self._raise_defects_level:
-            raise IOError, message
+            raise exception_type, message
+        else:
+            # just record the issue, no exception raised:
+            self.parsing_issues.append((exception_type, message))
 
 
     def open(self, filename):
@@ -1378,27 +1596,42 @@ class OleFileIO:
                               self.sectorsize, self.fat, self._filesize)
 
 
-    def _list(self, files, prefix, node):
+    def _list(self, files, prefix, node, streams=True, storages=False):
         """
         (listdir helper)
         files: list of files to fill in
         prefix: current location in storage tree (list of names)
         node: current node (_OleDirectoryEntry object)
+        streams: bool, include streams if True (True by default) - new in v0.26
+        storages: bool, include storages if True (False by default) - new in v0.26
+        (note: the root storage is never included)
         """
         prefix = prefix + [node.name]
         for entry in node.kids:
             if entry.kids:
-                self._list(files, prefix, entry)
+                # this is a storage
+                if storages:
+                    # add it to the list
+                    files.append(prefix[1:] + [entry.name])
+                # check its kids
+                self._list(files, prefix, entry, streams, storages)
             else:
-                files.append(prefix[1:] + [entry.name])
+                # this is a stream
+                if streams:
+                    # add it to the list
+                    files.append(prefix[1:] + [entry.name])
 
 
-    def listdir(self):
+    def listdir(self, streams=True, storages=False):
         """
         Return a list of streams stored in this file
+
+        streams: bool, include streams if True (True by default) - new in v0.26
+        storages: bool, include storages if True (False by default) - new in v0.26
+        (note: the root storage is never included)
         """
         files = []
-        self._list(files, [], self.root)
+        self._list(files, [], self.root, streams, storages)
         return files
 
 
@@ -1470,6 +1703,38 @@ class OleFileIO:
             return False
 
 
+    def getmtime(self, filename):
+        """
+        Return modification time of a stream/storage.
+
+        filename: path of stream/storage in storage tree. (see openstream for
+        syntax)
+        return: None if modification time is null, a python datetime object
+        otherwise (UTC timezone)
+
+        new in version 0.26
+        """
+        sid = self._find(filename)
+        entry = self.direntries[sid]
+        return entry.getmtime()
+
+
+    def getctime(self, filename):
+        """
+        Return creation time of a stream/storage.
+
+        filename: path of stream/storage in storage tree. (see openstream for
+        syntax)
+        return: None if creation time is null, a python datetime object
+        otherwise (UTC timezone)
+
+        new in version 0.26
+        """
+        sid = self._find(filename)
+        entry = self.direntries[sid]
+        return entry.getctime()
+
+
     def exists(self, filename):
         """
         Test if given filename exists as a stream or a storage in the OLE
@@ -1509,82 +1774,166 @@ class OleFileIO:
         return self.root.name
 
 
-    def getproperties(self, filename):
+    def getproperties(self, filename, convert_time=False, no_conversion=None):
         """
         Return properties described in substream.
 
         filename: path of stream in storage tree (see openstream for syntax)
+        convert_time: bool, if True timestamps will be converted to Python datetime
+        no_conversion: None or list of int, timestamps not to be converted
+                       (for example total editing time is not a real timestamp)
         return: a dictionary of values indexed by id (integer)
         """
+        # make sure no_conversion is a list, just to simplify code below:
+        if no_conversion == None:
+            no_conversion = []
+        # stream path as a string to report exceptions:
+        streampath = filename
+        if not isinstance(streampath, str):
+            streampath = '/'.join(streampath)
+
         fp = self.openstream(filename)
 
         data = {}
 
-        # header
-        s = fp.read(28)
-        clsid = _clsid(s[8:24])
+        try:
+            # header
+            s = fp.read(28)
+            clsid = _clsid(s[8:24])
 
-        # format id
-        s = fp.read(20)
-        fmtid = _clsid(s[:16])
-        fp.seek(i32(s, 16))
+            # format id
+            s = fp.read(20)
+            fmtid = _clsid(s[:16])
+            fp.seek(i32(s, 16))
 
-        # get section
-        s = "****" + fp.read(i32(fp.read(4))-4)
+            # get section
+            s = "****" + fp.read(i32(fp.read(4))-4)
+            # number of properties:
+            num_props = i32(s, 4)
+        except:
+            # catch exception while parsing property header, and only raise
+            # a DEFECT_INCORRECT then return an empty dict, because this is not
+            # a fatal error when parsing the whole file
+            exctype, excvalue = sys.exc_info()[:2]
+            msg = 'Error while parsing properties header in stream %s: %s' % (
+                repr(streampath), excvalue)
+            self._raise_defect(DEFECT_INCORRECT, msg, exctype)
+            return data
 
-        for i in range(i32(s, 4)):
+        for i in range(num_props):
+            try:
+                id = 0 # just in case of an exception
+                id = i32(s, 8+i*8)
+                offset = i32(s, 12+i*8)
+                type = i32(s, offset)
 
-            id = i32(s, 8+i*8)
-            offset = i32(s, 12+i*8)
-            type = i32(s, offset)
+                debug ('property id=%d: type=%d offset=%X' % (id, type, offset))
 
-            debug ('property id=%d: type=%d offset=%X' % (id, type, offset))
+                # test for common types first (should perhaps use
+                # a dictionary instead?)
 
-            # test for common types first (should perhaps use
-            # a dictionary instead?)
+                if type == VT_I2: # 16-bit signed integer
+                    value = i16(s, offset+4)
+                    if value >= 32768:
+                        value = value - 65536
+                elif type == VT_UI2: # 2-byte unsigned integer
+                    value = i16(s, offset+4)
+                elif type in (VT_I4, VT_INT, VT_ERROR):
+                    # VT_I4: 32-bit signed integer
+                    # VT_ERROR: HRESULT, similar to 32-bit signed integer,
+                    # see http://msdn.microsoft.com/en-us/library/cc230330.aspx
+                    value = i32(s, offset+4)
+                elif type in (VT_UI4, VT_UINT): # 4-byte unsigned integer
+                    value = i32(s, offset+4) # FIXME
+                elif type in (VT_BSTR, VT_LPSTR):
+                    # CodePageString, see http://msdn.microsoft.com/en-us/library/dd942354.aspx
+                    # size is a 32 bits integer, including the null terminator, and
+                    # possibly trailing or embedded null chars
+                    #TODO: if codepage is unicode, the string should be converted as such
+                    count = i32(s, offset+4)
+                    value = s[offset+8:offset+8+count-1]
+                    # remove all null chars:
+                    value = value.replace('\x00', '')
+                elif type == VT_BLOB:
+                    # binary large object (BLOB)
+                    # see http://msdn.microsoft.com/en-us/library/dd942282.aspx
+                    count = i32(s, offset+4)
+                    value = s[offset+8:offset+8+count]
+                elif type == VT_LPWSTR:
+                    # UnicodeString
+                    # see http://msdn.microsoft.com/en-us/library/dd942313.aspx
+                    # "the string should NOT contain embedded or additional trailing
+                    # null characters."
+                    count = i32(s, offset+4)
+                    value = _unicode(s[offset+8:offset+8+count*2])
+                elif type == VT_FILETIME:
+                    value = long(i32(s, offset+4)) + (long(i32(s, offset+8))<<32)
+                    # FILETIME is a 64-bit int: "number of 100ns periods
+                    # since Jan 1,1601".
+                    if convert_time and id not in no_conversion:
+                        debug('Converting property #%d to python datetime, value=%d=%fs'
+                                %(id, value, float(value)/10000000L))
+                        # convert FILETIME to Python datetime.datetime
+                        # inspired from http://code.activestate.com/recipes/511425-filetime-to-datetime/
+                        _FILETIME_null_date = datetime.datetime(1601, 1, 1, 0, 0, 0)
+                        debug('timedelta days=%d' % (value/(10*1000000*3600*24)))
+                        value = _FILETIME_null_date + datetime.timedelta(microseconds=value/10)
+                    else:
+                        # legacy code kept for backward compatibility: returns a
+                        # number of seconds since Jan 1,1601
+                        value = value / 10000000L # seconds
+                elif type == VT_UI1: # 1-byte unsigned integer
+                    value = ord(s[offset+4])
+                elif type == VT_CLSID:
+                    value = _clsid(s[offset+4:offset+20])
+                elif type == VT_CF:
+                    # PropertyIdentifier or ClipboardData??
+                    # see http://msdn.microsoft.com/en-us/library/dd941945.aspx
+                    count = i32(s, offset+4)
+                    value = s[offset+8:offset+8+count]
+                elif type == VT_BOOL:
+                    # VARIANT_BOOL, 16 bits bool, 0x0000=Fals, 0xFFFF=True
+                    # see http://msdn.microsoft.com/en-us/library/cc237864.aspx
+                    value = bool(i16(s, offset+4))
+                else:
+                    value = None # everything else yields "None"
+                    debug ('property id=%d: type=%d not implemented in parser yet' % (id, type))
 
-            if type == VT_I2:
-                value = i16(s, offset+4)
-                if value >= 32768:
-                    value = value - 65536
-            elif type == VT_UI2:
-                value = i16(s, offset+4)
-            elif type in (VT_I4, VT_ERROR):
-                value = i32(s, offset+4)
-            elif type == VT_UI4:
-                value = i32(s, offset+4) # FIXME
-            elif type in (VT_BSTR, VT_LPSTR):
-                count = i32(s, offset+4)
-                value = s[offset+8:offset+8+count-1]
-            elif type == VT_BLOB:
-                count = i32(s, offset+4)
-                value = s[offset+8:offset+8+count]
-            elif type == VT_LPWSTR:
-                count = i32(s, offset+4)
-                value = _unicode(s[offset+8:offset+8+count*2])
-            elif type == VT_FILETIME:
-                value = long(i32(s, offset+4)) + (long(i32(s, offset+8))<<32)
-                # FIXME: this is a 64-bit int: "number of 100ns periods
-                # since Jan 1,1601".  Should map this to Python time
-                value = value / 10000000L # seconds
-            elif type == VT_UI1:
-                value = ord(s[offset+4])
-            elif type == VT_CLSID:
-                value = _clsid(s[offset+4:offset+20])
-            elif type == VT_CF:
-                count = i32(s, offset+4)
-                value = s[offset+8:offset+8+count]
-            else:
-                value = None # everything else yields "None"
+                # missing: VT_EMPTY, VT_NULL, VT_R4, VT_R8, VT_CY, VT_DATE,
+                # VT_DECIMAL, VT_I1, VT_I8, VT_UI8,
+                # see http://msdn.microsoft.com/en-us/library/dd942033.aspx
 
-            # FIXME: add support for VT_VECTOR
+                # FIXME: add support for VT_VECTOR
+                # VT_VECTOR is a 32 uint giving the number of items, followed by
+                # the items in sequence. The VT_VECTOR value is combined with the
+                # type of items, e.g. VT_VECTOR|VT_BSTR
+                # see http://msdn.microsoft.com/en-us/library/dd942011.aspx
 
-            #print "%08x" % id, repr(value),
-            #print "(%s)" % VT[i32(s, offset) & 0xFFF]
+                #print "%08x" % id, repr(value),
+                #print "(%s)" % VT[i32(s, offset) & 0xFFF]
 
-            data[id] = value
+                data[id] = value
+            except:
+                # catch exception while parsing each property, and only raise
+                # a DEFECT_INCORRECT, because parsing can go on
+                exctype, excvalue = sys.exc_info()[:2]
+                msg = 'Error while parsing property id %d in stream %s: %s' % (
+                    id, repr(streampath), excvalue)
+                self._raise_defect(DEFECT_INCORRECT, msg, exctype)
 
         return data
+
+    def get_metadata(self):
+        """
+        Parse standard properties streams, return an OleMetadata object
+        containing all the available metadata.
+        (also stored in the metadata attribute of the OleFileIO object)
+
+        new in version 0.25
+        """
+        self.metadata = OleMetadata()
+        self.metadata.parse_properties(self)
+        return self.metadata
 
 #
 # --------------------------------------------------------------------
@@ -1622,7 +1971,7 @@ Options:
                 check_streams = True
                 continue
 
-            ole = OleFileIO(filename, raise_defects=DEFECT_INCORRECT)
+            ole = OleFileIO(filename)#, raise_defects=DEFECT_INCORRECT)
             print "-" * 68
             print filename
             print "-" * 68
@@ -1630,7 +1979,7 @@ Options:
             for streamname in ole.listdir():
                 if streamname[-1][0] == "\005":
                     print streamname, ": properties"
-                    props = ole.getproperties(streamname)
+                    props = ole.getproperties(streamname, convert_time=True)
                     props = props.items()
                     props.sort()
                     for k, v in props:
@@ -1661,6 +2010,23 @@ Options:
                         print 'NOT a stream : type=%d' % st_type
                 print ''
 
+##            for streamname in ole.listdir():
+##                # print name using repr() to convert binary chars to \xNN:
+##                print '-', repr('/'.join(streamname)),'-',
+##                print ole.getmtime(streamname)
+##            print ''
+
+            print 'Modification/Creation times of all directory entries:'
+            for entry in ole.direntries:
+                if entry is not None:
+                    print '- %s: mtime=%s ctime=%s' % (entry.name,
+                        entry.getmtime(), entry.getctime())
+            print ''
+
+            # parse and display metadata:
+            meta = ole.get_metadata()
+            meta.dump()
+            print ''
             #[PL] Test a few new methods:
             root = ole.get_rootentry_name()
             print 'Root entry name: "%s"' % root
@@ -1670,5 +2036,13 @@ Options:
                 print "size :", ole.get_size('worddocument')
                 if ole.exists('macros/vba'):
                     print "This document may contain VBA macros."
+
+            # print parsing issues:
+            print '\nNon-fatal issues raised during parsing:'
+            if ole.parsing_issues:
+                for exctype, msg in ole.parsing_issues:
+                    print '- %s: %s' % (exctype.__name__, msg)
+            else:
+                print 'None'
 ##      except IOError, v:
 ##          print "***", "cannot read", file, "-", v
