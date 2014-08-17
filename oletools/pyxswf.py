@@ -55,6 +55,11 @@ __version__ = '0.02'
 
 #------------------------------------------------------------------------------
 # TODO:
+# + add support for LZMA-compressed flash files (ZWS header)
+#   references: http://blog.malwaretracker.com/2014/01/cve-2013-5331-evaded-av-by-using.html
+#   http://code.metager.de/source/xref/adobe/flash/crossbridge/tools/swf-info.py
+#   http://room32.dyndns.org/forums/showthread.php?766-SWFCompression
+#   sample code: http://room32.dyndns.org/SWFCompression.py
 # - check if file is OLE
 # - support -r
 
