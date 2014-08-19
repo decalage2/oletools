@@ -38,7 +38,7 @@ Download and Install:
 
 To use python-oletools from the command line as analysis tools, you may simply [download the zip archive](https://bitbucket.org/decalage/oletools/downloads) and extract the files in the directory of your choice.
 
-If you plan to use python-oletools with other Python applications or your own scripts, then the simplest solution is to use "**easy_install oletools**" or "**pip install oletools**" to download and install in one go. Otherwise you may download the zip archive and run "**setup.py install**". 
+If you plan to use python-oletools with other Python applications or your own scripts, then the simplest solution is to use "**pip install oletools**" or "**easy_install oletools**" to download and install in one go. Otherwise you may download/extract the zip archive and run "**setup.py install**". 
 
 How to contribute:
 ------------------
