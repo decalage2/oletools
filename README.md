@@ -3,16 +3,28 @@ python-oletools
 
 [python-oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze [Microsoft OLE2 files (also called Structured Storage, Compound File Binary Format or Compound Document File Format)](http://en.wikipedia.org/wiki/Compound_File_Binary_Format), such as Microsoft Office documents or Outlook messages, mainly for malware analysis and debugging. It is based on the [OleFileIO_PL](http://www.decalage.info/python/olefileio) parser. See [http://www.decalage.info/python/oletools](http://www.decalage.info/python/oletools) for more info.  
 
-**Quick links:** [Home page](http://www.decalage.info/python/oletools) - [Download](https://bitbucket.org/decalage/oletools/downloads) - [Documentation](https://bitbucket.org/decalage/oletools/wiki) - [Report issues](https://bitbucket.org/decalage/oletools/issues?status=new&status=open) - [Contact the author](http://decalage.info/contact) - [Repository](https://bitbucket.org/decalage/oletools) - [Updates on Twitter](https://twitter.com/decalage2)
+**Quick links:** [Home page](http://www.decalage.info/python/oletools) - [Download](https://bitbucket.org/decalage/oletools/downloads) - [Documentation](https://bitbucket.org/decalage/oletools/wiki) - [Report Issues/Suggestions/Questions](https://bitbucket.org/decalage/oletools/issues?status=new&status=open) - [Contact the Author](http://decalage.info/contact) - [Repository](https://bitbucket.org/decalage/oletools) - [Updates on Twitter](https://twitter.com/decalage2)
 
 Note: python-oletools is not related to OLETools published by BeCubed Software.
+
+News
+----
+
+- **2014-08-27 v0.06**: added [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba), a new tool to extract VBA Macro source code from MS Office documents (97-2003 and 2007+). Improved [documentation](https://bitbucket.org/decalage/oletools/wiki)
+- 2013-07-24 v0.05: added new tools [olemeta](https://bitbucket.org/decalage/oletools/wiki/olemeta) and [oletimes](https://bitbucket.org/decalage/oletools/wiki/oletimes)
+- 2013-04-18 v0.04: fixed bug in rtfobj, added documentation for [rtfobj](https://bitbucket.org/decalage/oletools/wiki/rtfobj)
+- 2012-11-09 v0.03: Improved [pyxswf](https://bitbucket.org/decalage/oletools/wiki/pyxswf) to extract Flash objects from RTF
+- 2012-10-29 v0.02: Added [oleid](https://bitbucket.org/decalage/oletools/wiki/oleid)
+- 2012-10-09 v0.01: Initial version of [olebrowse](https://bitbucket.org/decalage/oletools/wiki/olebrowse) and pyxswf
+- see changelog in source code for more info.
+
 
 Tools in python-oletools:
 -------------------------
 
 - **[olebrowse](https://bitbucket.org/decalage/oletools/wiki/olebrowse)**: A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to
   view and extract individual data streams.
-- **[oleid](https://bitbucket.org/decalage/oletools/wiki/oleid)**: a tool to analyze OLE files to detect specific characteristics that could potentially indicate that the file is suspicious or malicious.
+- **[oleid](https://bitbucket.org/decalage/oletools/wiki/oleid)**: a tool to analyze OLE files to detect specific characteristics usually found in malicious files.
 - **[olemeta](https://bitbucket.org/decalage/oletools/wiki/olemeta)**: a tool to extract all standard properties (metadata) from OLE files.
 - **[oletimes](https://bitbucket.org/decalage/oletools/wiki/oletimes)**: a tool to extract creation and modification timestamps of all streams and storages.
 - **[olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) (new)**: a tool to extract VBA Macro source code from MS Office documents (OLE and OpenXML).
@@ -22,17 +34,6 @@ Tools in python-oletools:
 - **[rtfobj](https://bitbucket.org/decalage/oletools/wiki/rtfobj)**: a tool and python module to extract embedded objects from RTF files.
 - and a few others (coming soon)
 
-News
-----
-
-- **2014-08-16 v0.06**: added [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba), a new tool to extract VBA Macro source code from MS Office documents (97-2003 and 2007+). Improved [documentation](https://bitbucket.org/decalage/oletools/wiki)
-- 2013-07-24 v0.05: added new tools [olemeta](https://bitbucket.org/decalage/oletools/wiki/olemeta) and [oletimes](https://bitbucket.org/decalage/oletools/wiki/oletimes)
-- 2013-04-18 v0.04: fixed bug in rtfobj, added documentation for [rtfobj](https://bitbucket.org/decalage/oletools/wiki/rtfobj)
-- 2012-11-09 v0.03: Improved [pyxswf](https://bitbucket.org/decalage/oletools/wiki/pyxswf) to extract Flash objects from RTF
-- 2012-10-29 v0.02: Added [oleid](https://bitbucket.org/decalage/oletools/wiki/oleid)
-- 2012-10-09 v0.01: Initial version of [olebrowse](https://bitbucket.org/decalage/oletools/wiki/olebrowse) and pyxswf
-- see changelog in source code for more info.
-
 Download and Install:
 ---------------------
 
@@ -40,17 +41,22 @@ To use python-oletools from the command line as analysis tools, you may simply [
 
 If you plan to use python-oletools with other Python applications or your own scripts, then the simplest solution is to use "**pip install oletools**" or "**easy_install oletools**" to download and install in one go. Otherwise you may download/extract the zip archive and run "**setup.py install**". 
 
-How to contribute:
-------------------
+Documentation:
+--------------
 
-The code is available in [a Mercurial repository on bitbucket](https://bitbucket.org/decalage/oletools). You may use it to submit enhancements (using fork and pull requests) or to report any issue.
+The latest version of the documentation can be found [online](https://bitbucket.org/decalage/oletools/wiki), otherwise a copy is provided in the doc subfolder of the package.
 
-If you would like to help us improve this module, or simply provide feedback, you may also [contact the author](http://decalage.info/contact). 
 
-How to suggest improvements or report bugs:
--------------------------------------------
+How to Suggest Improvements, Report Issues or Contribute:
+---------------------------------------------------------
 
-To suggest improvements, report a bug or any issue, please use the [issue reporting page](https://bitbucket.org/decalage/olefileio_pl/issues?status=new&status=open), providing all the information and files to reproduce the problem. You may also [contact the author](http://decalage.info/contact).
+This is a personal open-source project, developed on my spare time. Any contribution, suggestion, feedback or bug report is welcome.
+
+To suggest improvements, report a bug or any issue, please use the [issue reporting page](https://bitbucket.org/decalage/olefileio_pl/issues?status=new&status=open), providing all the information and files to reproduce the problem. 
+
+You may also [contact the author](http://decalage.info/contact) directly to provide feedback.
+
+The code is available in [a Mercurial repository on Bitbucket](https://bitbucket.org/decalage/oletools). You may use it to submit enhancements using forks and pull requests.
 
 License
 -------
