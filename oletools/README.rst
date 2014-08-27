@@ -12,222 +12,104 @@ malware analysis and debugging. It is based on the
 `http://www.decalage.info/python/oletools <http://www.decalage.info/python/oletools>`_
 for more info.
 
+**Quick links:** `Home page <http://www.decalage.info/python/oletools>`_
+- `Download <https://bitbucket.org/decalage/oletools/downloads>`_ -
+`Documentation <https://bitbucket.org/decalage/oletools/wiki>`_ -
+`Report
+Issues/Suggestions/Questions <https://bitbucket.org/decalage/oletools/issues?status=new&status=open>`_
+- `Contact the Author <http://decalage.info/contact>`_ -
+`Repository <https://bitbucket.org/decalage/oletools>`_ - `Updates on
+Twitter <https://twitter.com/decalage2>`_
+
 Note: python-oletools is not related to OLETools published by BeCubed
 Software.
-
-Tools in python-oletools:
--------------------------
-
--  **olebrowse**: A simple GUI to browse OLE files (e.g. MS Word, Excel,
-   Powerpoint documents), to view and extract individual data streams.
--  **oleid**: a tool to analyze OLE files to detect specific
-   characteristics that could potentially indicate that the file is
-   suspicious or malicious.
--  **olemeta**: a tool to extract all standard properties (metadata)
-   from OLE files.
--  **oletimes**: a tool to extract creation and modification timestamps
-   of all streams and storages.
--  **pyxswf**: a tool to detect, extract and analyze Flash objects (SWF)
-   that may be embedded in files such as MS Office documents (e.g. Word,
-   Excel) and RTF, which is especially useful for malware analysis.
--  **rtfobj**: a tool and python module to extract embedded objects from
-   RTF files.
--  and a few others (coming soon)
 
 News
 ----
 
--  2013-07-24 v0.05: added new tools olemeta and oletimes
--  2013-04-18 v0.04: fixed bug in rtfobj, added documentation for rtfobj
--  2012-11-09 v0.03: Improved pyxswf to extract Flash objects from RTF
--  2012-10-29 v0.02: Added oleid
--  2012-10-09 v0.01: Initial version of olebrowse and pyxswf
+-  **2014-08-27 v0.06**: added
+   `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`_, a
+   new tool to extract VBA Macro source code from MS Office documents
+   (97-2003 and 2007+). Improved
+   `documentation <https://bitbucket.org/decalage/oletools/wiki>`_
+-  2013-07-24 v0.05: added new tools
+   `olemeta <https://bitbucket.org/decalage/oletools/wiki/olemeta>`_ and
+   `oletimes <https://bitbucket.org/decalage/oletools/wiki/oletimes>`_
+-  2013-04-18 v0.04: fixed bug in rtfobj, added documentation for
+   `rtfobj <https://bitbucket.org/decalage/oletools/wiki/rtfobj>`_
+-  2012-11-09 v0.03: Improved
+   `pyxswf <https://bitbucket.org/decalage/oletools/wiki/pyxswf>`_ to
+   extract Flash objects from RTF
+-  2012-10-29 v0.02: Added
+   `oleid <https://bitbucket.org/decalage/oletools/wiki/oleid>`_
+-  2012-10-09 v0.01: Initial version of
+   `olebrowse <https://bitbucket.org/decalage/oletools/wiki/olebrowse>`_
+   and pyxswf
 -  see changelog in source code for more info.
 
-Download:
----------
+Tools in python-oletools:
+-------------------------
 
-The archive is available on `the project
-page <https://bitbucket.org/decalage/oletools/downloads>`_.
+-  **`olebrowse <https://bitbucket.org/decalage/oletools/wiki/olebrowse>`_**:
+   A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint
+   documents), to view and extract individual data streams.
+-  **`oleid <https://bitbucket.org/decalage/oletools/wiki/oleid>`_**: a
+   tool to analyze OLE files to detect specific characteristics usually
+   found in malicious files.
+-  **`olemeta <https://bitbucket.org/decalage/oletools/wiki/olemeta>`_**:
+   a tool to extract all standard properties (metadata) from OLE files.
+-  **`oletimes <https://bitbucket.org/decalage/oletools/wiki/oletimes>`_**:
+   a tool to extract creation and modification timestamps of all streams
+   and storages.
+-  **`olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`_
+   (new)**: a tool to extract VBA Macro source code from MS Office
+   documents (OLE and OpenXML).
+-  **`pyxswf <https://bitbucket.org/decalage/oletools/wiki/pyxswf>`_**:
+   a tool to detect, extract and analyze Flash objects (SWF) that may be
+   embedded in files such as MS Office documents (e.g. Word, Excel) and
+   RTF, which is especially useful for malware analysis.
+-  **`rtfobj <https://bitbucket.org/decalage/oletools/wiki/rtfobj>`_**:
+   a tool and python module to extract embedded objects from RTF files.
+-  and a few others (coming soon)
 
-olebrowse:
-----------
+Download and Install:
+---------------------
 
-A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint
-documents), to view and extract individual data streams.
+To use python-oletools from the command line as analysis tools, you may
+simply `download the zip
+archive <https://bitbucket.org/decalage/oletools/downloads>`_ and
+extract the files in the directory of your choice.
 
-::
+If you plan to use python-oletools with other Python applications or
+your own scripts, then the simplest solution is to use "**pip install
+oletools**\ " or "**easy\_install oletools**\ " to download and install
+in one go. Otherwise you may download/extract the zip archive and run
+"**setup.py install**\ ".
 
-    Usage: olebrowse.py [file]
+Documentation:
+--------------
 
-If you provide a file it will be opened, else a dialog will allow you to
-browse folders to open a file. Then if it is a valid OLE file, the list
-of data streams will be displayed. You can select a stream, and then
-either view its content in a builtin hexadecimal viewer, or save it to a
-file for further analysis.
+The latest version of the documentation can be found
+`online <https://bitbucket.org/decalage/oletools/wiki>`_, otherwise a
+copy is provided in the doc subfolder of the package.
 
-For screenshots and other info, see
-`http://www.decalage.info/python/olebrowse <http://www.decalage.info/python/olebrowse>`_
+How to Suggest Improvements, Report Issues or Contribute:
+---------------------------------------------------------
 
-oleid:
-------
+This is a personal open-source project, developed on my spare time. Any
+contribution, suggestion, feedback or bug report is welcome.
 
-oleid is a script to analyze OLE files such as MS Office documents (e.g.
-Word, Excel), to detect specific characteristics that could potentially
-indicate that the file is suspicious or malicious, in terms of security
-(e.g. malware). For example it can detect VBA macros, embedded Flash
-objects, fragmentation.
+To suggest improvements, report a bug or any issue, please use the
+`issue reporting
+page <https://bitbucket.org/decalage/olefileio_pl/issues?status=new&status=open>`_,
+providing all the information and files to reproduce the problem.
 
-::
-
-    Usage: oleid.py <file>
-
-Example - analyzing a Word document containing a Flash object and VBA
-macros:
-
-::
-
-    C:\oletools>oleid.py word_flash_vba.doc
-    Filename: word_flash_vba.doc
-    OLE format: True
-    Has SummaryInformation stream: True
-    Application name: Microsoft Office Word
-    Encrypted: False
-    Word Document: True
-    VBA Macros: True
-    Excel Workbook: False
-    PowerPoint Presentation: False
-    Visio Drawing: False
-    ObjectPool: True
-    Flash objects: 1
-
-oleid project website:
-`http://www.decalage.info/python/oleid <http://www.decalage.info/python/oleid>`_
-
-pyxswf:
--------
-
-pyxswf is a script to detect, extract and analyze Flash objects (SWF
-files) that may be embedded in files such as MS Office documents (e.g.
-Word, Excel), which is especially useful for malware analysis.
-
-pyxswf is an extension to
-`xxxswf.py <http://hooked-on-mnemonics.blogspot.nl/2011/12/xxxswfpy.html>`_
-published by Alexander Hanel.
-
-Compared to xxxswf, it can extract streams from MS Office documents by
-parsing their OLE structure properly, which is necessary when streams
-are fragmented. Stream fragmentation is a known obfuscation technique,
-as explained on
-`http://www.breakingpointsystems.com/resources/blog/evasion-with-ole2-fragmentation/ <http://www.breakingpointsystems.com/resources/blog/evasion-with-ole2-fragmentation/>`_
-
-It can also extract Flash objects from RTF documents, by parsing
-embedded objects encoded in hexadecimal format (-f option).
-
-For this, simply add the -o option to work on OLE streams rather than
-raw files, or the -f option to work on RTF files.
-
-::
-
-    Usage: pyxswf.py [options] <file.bad>
-
-    Options:
-      -o, --ole             Parse an OLE file (e.g. Word, Excel) to look for SWF
-                            in each stream
-      -f, --rtf             Parse an RTF file to look for SWF in each embedded
-                            object
-      -x, --extract         Extracts the embedded SWF(s), names it MD5HASH.swf &
-                            saves it in the working dir. No addition args needed
-      -h, --help            show this help message and exit
-      -y, --yara            Scans the SWF(s) with yara. If the SWF(s) is
-                            compressed it will be deflated. No addition args
-                            needed
-      -s, --md5scan         Scans the SWF(s) for MD5 signatures. Please see func
-                            checkMD5 to define hashes. No addition args needed
-      -H, --header          Displays the SWFs file header. No addition args needed
-      -d, --decompress      Deflates compressed SWFS(s)
-      -r PATH, --recdir=PATH
-                            Will recursively scan a directory for files that
-                            contain SWFs. Must provide path in quotes
-      -c, --compress        Compresses the SWF using Zlib
-
-Example 1 - detecting and extracting a SWF file from a Word document on
-Windows:
-
-::
-
-    C:\oletools>pyxswf.py -o word_flash.doc
-    OLE stream: 'Contents'
-    [SUMMARY] 1 SWF(s) in MD5:993664cc86f60d52d671b6610813cfd1:Contents
-            [ADDR] SWF 1 at 0x8  - FWS Header
-
-    C:\oletools>pyxswf.py -xo word_flash.doc
-    OLE stream: 'Contents'
-    [SUMMARY] 1 SWF(s) in MD5:993664cc86f60d52d671b6610813cfd1:Contents
-            [ADDR] SWF 1 at 0x8  - FWS Header
-                    [FILE] Carved SWF MD5: 2498e9c0701dc0e461ab4358f9102bc5.swf
-
-Example 2 - detecting and extracting a SWF file from a RTF document on
-Windows:
-
-::
-
-    C:\oletools>pyxswf.py -xf "rtf_flash.rtf"
-    RTF embedded object size 1498557 at index 000036DD
-    [SUMMARY] 1 SWF(s) in MD5:46a110548007e04f4043785ac4184558:RTF_embedded_object_0
-    00036DD
-            [ADDR] SWF 1 at 0xc40  - FWS Header
-                    [FILE] Carved SWF MD5: 2498e9c0701dc0e461ab4358f9102bc5.swf
-
-For more info, see
-`http://www.decalage.info/python/pyxswf <http://www.decalage.info/python/pyxswf>`_
-
-rtfobj
-------
-
-rtfobj is a Python module to extract embedded objects from RTF files,
-such as OLE ojects. It can be used as a Python library or a command-line
-tool.
-
-::
-
-    Usage: rtfobj.py <file.rtf>
-
-It extracts and decodes all the data blocks encoded as hexadecimal in
-the RTF document, and saves them as files named "object\_xxxx.bin", xxxx
-being the location of the object in the RTF file.
-
-Usage as python module: rtf\_iter\_objects(filename) is an iterator
-which yields a tuple (index, object) providing the index of each
-hexadecimal stream in the RTF file, and the corresponding decoded
-object. Example:
-
-::
-
-    import rtfobj    
-    for index, data in rtfobj.rtf_iter_objects("myfile.rtf"):
-        print 'found object size %d at index %08X' % (len(data), index)
-
-For more info, see
-`http://www.decalage.info/python/rtfobj <http://www.decalage.info/python/rtfobj>`_
-
-How to contribute:
-------------------
+You may also `contact the author <http://decalage.info/contact>`_
+directly to provide feedback.
 
 The code is available in `a Mercurial repository on
-bitbucket <https://bitbucket.org/decalage/oletools>`_. You may use it to
-submit enhancements or to report any issue.
-
-If you would like to help us improve this module, or simply provide
-feedback, you may also send an e-mail to decalage(at)laposte.net.
-
-How to report bugs:
--------------------
-
-To report a bug or any issue, please use the `issue reporting
-page <https://bitbucket.org/decalage/olefileio_pl/issues?status=new&status=open>`_,
-or send an e-mail with all the information and files to reproduce the
-problem.
+Bitbucket <https://bitbucket.org/decalage/oletools>`_. You may use it to
+submit enhancements using forks and pull requests.
 
 License
 -------
@@ -236,8 +118,10 @@ This license applies to the python-oletools package, apart from the
 thirdparty folder which contains third-party files published with their
 own license.
 
-The python-oletools package is copyright (c) 2012-2013, Philippe Lagadec
-(http://www.decalage.info) All rights reserved.
+The python-oletools package is copyright (c) 2012-2014 Philippe Lagadec
+(http://www.decalage.info)
+
+All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -260,3 +144,29 @@ PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
 LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+--------------
+
+olevba contains modified source code from the officeparser project,
+published under the following MIT License (MIT):
+
+officeparser is copyright (c) 2014 John William Davison
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
