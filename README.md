@@ -1,7 +1,7 @@
 python-oletools
 ===============
 
-[python-oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze [Microsoft OLE2 files (also called Structured Storage, Compound File Binary Format or Compound Document File Format)](http://en.wikipedia.org/wiki/Compound_File_Binary_Format), such as Microsoft Office documents or Outlook messages, mainly for malware analysis and debugging. It is based on the [OleFileIO_PL](http://www.decalage.info/python/olefileio) parser. See [http://www.decalage.info/python/oletools](http://www.decalage.info/python/oletools) for more info.  
+[python-oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze [Microsoft OLE2 files (also called Structured Storage, Compound File Binary Format or Compound Document File Format)](http://en.wikipedia.org/wiki/Compound_File_Binary_Format), such as Microsoft Office documents or Outlook messages, mainly for malware analysis, forensics and debugging. It is based on the [OleFileIO_PL](http://www.decalage.info/python/olefileio) parser. See [http://www.decalage.info/python/oletools](http://www.decalage.info/python/oletools) for more info.  
 
 **Quick links:** [Home page](http://www.decalage.info/python/oletools) - [Download](https://bitbucket.org/decalage/oletools/downloads) - [Documentation](https://bitbucket.org/decalage/oletools/wiki) - [Report Issues/Suggestions/Questions](https://bitbucket.org/decalage/oletools/issues?status=new&status=open) - [Contact the Author](http://decalage.info/contact) - [Repository](https://bitbucket.org/decalage/oletools) - [Updates on Twitter](https://twitter.com/decalage2)
 
@@ -10,7 +10,7 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2014-08-27 v0.06**: added [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba), a new tool to extract VBA Macro source code from MS Office documents (97-2003 and 2007+). Improved [documentation](https://bitbucket.org/decalage/oletools/wiki)
+- **2014-08-28 v0.06**: added [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba), a new tool to extract VBA Macro source code from MS Office documents (97-2003 and 2007+). Improved [documentation](https://bitbucket.org/decalage/oletools/wiki)
 - 2013-07-24 v0.05: added new tools [olemeta](https://bitbucket.org/decalage/oletools/wiki/olemeta) and [oletimes](https://bitbucket.org/decalage/oletools/wiki/oletimes)
 - 2013-04-18 v0.04: fixed bug in rtfobj, added documentation for [rtfobj](https://bitbucket.org/decalage/oletools/wiki/rtfobj)
 - 2012-11-09 v0.03: Improved [pyxswf](https://bitbucket.org/decalage/oletools/wiki/pyxswf) to extract Flash objects from RTF

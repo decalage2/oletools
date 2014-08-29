@@ -7,7 +7,7 @@ Structured Storage, Compound File Binary Format or Compound Document
 File
 Format) <http://en.wikipedia.org/wiki/Compound_File_Binary_Format>`_,
 such as Microsoft Office documents or Outlook messages, mainly for
-malware analysis and debugging. It is based on the
+malware analysis, forensics and debugging. It is based on the
 `OleFileIO\_PL <http://www.decalage.info/python/olefileio>`_ parser. See
 `http://www.decalage.info/python/oletools <http://www.decalage.info/python/oletools>`_
 for more info.
@@ -27,7 +27,7 @@ Software.
 News
 ----
 
--  **2014-08-27 v0.06**: added
+-  **2014-08-28 v0.06**: added
    `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`_, a
    new tool to extract VBA Macro source code from MS Office documents
    (97-2003 and 2007+). Improved
