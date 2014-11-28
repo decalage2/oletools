@@ -22,16 +22,16 @@ News
 Tools in python-oletools:
 -------------------------
 
-- **[olebrowse](https://bitbucket.org/decalage/oletools/wiki/olebrowse)**: A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to
+- [olebrowse](https://bitbucket.org/decalage/oletools/wiki/olebrowse): A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to
   view and extract individual data streams.
-- **[oleid](https://bitbucket.org/decalage/oletools/wiki/oleid)**: a tool to analyze OLE files to detect specific characteristics usually found in malicious files.
-- **[olemeta](https://bitbucket.org/decalage/oletools/wiki/olemeta)**: a tool to extract all standard properties (metadata) from OLE files.
-- **[oletimes](https://bitbucket.org/decalage/oletools/wiki/oletimes)**: a tool to extract creation and modification timestamps of all streams and storages.
-- **[olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) (new)**: a tool to extract VBA Macro source code from MS Office documents (OLE and OpenXML).
-- **[pyxswf](https://bitbucket.org/decalage/oletools/wiki/pyxswf)**: a tool to detect, extract and analyze Flash objects (SWF) that may
+- [oleid](https://bitbucket.org/decalage/oletools/wiki/oleid): a tool to analyze OLE files to detect specific characteristics usually found in malicious files.
+- [olemeta](https://bitbucket.org/decalage/oletools/wiki/olemeta): a tool to extract all standard properties (metadata) from OLE files.
+- [oletimes](https://bitbucket.org/decalage/oletools/wiki/oletimes): a tool to extract creation and modification timestamps of all streams and storages.
+- [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) (new): a tool to extract VBA Macro source code from MS Office documents (OLE and OpenXML).
+- [pyxswf](https://bitbucket.org/decalage/oletools/wiki/pyxswf): a tool to detect, extract and analyze Flash objects (SWF) that may
   be embedded in files such as MS Office documents (e.g. Word, Excel) and RTF,
   which is especially useful for malware analysis.
-- **[rtfobj](https://bitbucket.org/decalage/oletools/wiki/rtfobj)**: a tool and python module to extract embedded objects from RTF files.
+- [rtfobj](https://bitbucket.org/decalage/oletools/wiki/rtfobj): a tool and python module to extract embedded objects from RTF files.
 - and a few others (coming soon)
 
 Download and Install:
