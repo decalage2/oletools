@@ -12,7 +12,7 @@ olebrowse project website: http://www.decalage.info/python/olebrowse
 olebrowse is part of the python-oletools package:
 http://www.decalage.info/python/oletools
 
-olebrowse is copyright (c) 2012, Philippe Lagadec (http://www.decalage.info)
+olebrowse is copyright (c) 2012-2014, Philippe Lagadec (http://www.decalage.info)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -36,11 +36,12 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-__version__ = '0.01'
+__version__ = '0.02'
 
 #------------------------------------------------------------------------------
 # CHANGELOG:
 # 2012-09-17 v0.01 PL: - first version
+# 2014-11-29 v0.02 PL: - use olefile instead of OleFileIO_PL
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -52,7 +53,7 @@ __version__ = '0.01'
 
 import optparse, sys, os
 from thirdparty.easygui import easygui
-from thirdparty.OleFileIO_PL import OleFileIO_PL
+import thirdparty.olefile as olefile
 import ezhexviewer
 
 ABOUT = '~ About olebrowse'
@@ -60,10 +61,16 @@ QUIT  = '~ Quit'
 
 
 def about ():
+    """
+    Display information about this tool
+    """
     easygui.textbox(title='About olebrowse', text=__doc__)
 
 
 def browse_stream (ole, stream):
+    """
+    Browse a stream (hex view or save to file)
+    """
     #print 'stream:', stream
     while True:
         msg ='Select an action for the stream "%s", or press Esc to exit' % repr(stream)
@@ -98,12 +105,15 @@ def browse_stream (ole, stream):
 
 
 def main():
+    """
+    Main function
+    """
     try:
         filename = sys.argv[1]
     except:
         filename = easygui.fileopenbox()
     try:
-        ole = OleFileIO_PL.OleFileIO(filename)
+        ole = olefile.OleFileIO(filename)
         listdir = ole.listdir()
         streams = []
         for direntry in listdir:
