@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-olemeta.py - Philippe Lagadec 2013-07-24
+olemeta.py
 
 olemeta is a script to parse OLE files such as MS Office documents (e.g. Word,
 Excel), to extract all standard properties present in the OLE file.
@@ -57,6 +57,9 @@ __version__ = '0.02'
 
 import sys
 import thirdparty.olefile as olefile
+
+
+#=== MAIN =================================================================
 
 try:
     ole = olefile.OleFileIO(sys.argv[1])
