@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-oleid.py - Philippe Lagadec 2012-10-18
+oleid.py
 
 oleid is a script to analyze OLE files such as MS Office documents (e.g. Word,
 Excel), to detect specific characteristics that could potentially indicate that
@@ -14,36 +14,42 @@ oleid project website: http://www.decalage.info/python/oleid
 
 oleid is part of the python-oletools package:
 http://www.decalage.info/python/oletools
-
-oleid is copyright (c) 2012, Philippe Lagadec (http://www.decalage.info)
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer.
- * Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-__version__ = '0.01'
+#=== LICENSE =================================================================
+
+# oleid is copyright (c) 2012-2014, Philippe Lagadec (http://www.decalage.info)
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
+#
+#  * Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+#  * Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 
 #------------------------------------------------------------------------------
 # CHANGELOG:
 # 2012-10-29 v0.01 PL: - first version
+# 2014-11-29 v0.02 PL: - use olefile instead of OleFileIO_PL
+#                      - improved usage display with -h
+
+__version__ = '0.02'
+
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -60,21 +66,14 @@ __version__ = '0.01'
 # - verbose option
 # - csv, xml output
 
+
+#=== IMPORTS =================================================================
+
 import optparse, sys, os, re, zlib, struct
-from thirdparty.OleFileIO_PL import OleFileIO_PL
+import thirdparty.olefile as olefile
 
 
-class Indicator (object):
-
-    def __init__(self, _id, value=None, _type=bool, name=None, description=None):
-        self.id = _id
-        self.value = value
-        self.type = _type
-        self.name = name
-        if name == None:
-            self.name = _id
-        self.description = description
-
+#=== FUNCTIONS ===============================================================
 
 def detect_flash (data):
     """
@@ -127,6 +126,20 @@ def detect_flash (data):
     return found
 
 
+#=== CLASSES =================================================================
+
+class Indicator (object):
+
+    def __init__(self, _id, value=None, _type=bool, name=None, description=None):
+        self.id = _id
+        self.value = value
+        self.type = _type
+        self.name = name
+        if name == None:
+            self.name = _id
+        self.description = description
+
+
 class OleID:
 
     def __init__(self, filename):
@@ -137,11 +150,11 @@ class OleID:
         # check if it is actually an OLE file:
         oleformat = Indicator('ole_format', True, name='OLE format')
         self.indicators.append(oleformat)
-        if not OleFileIO_PL.isOleFile(self.filename):
+        if not olefile.isOleFile(self.filename):
             oleformat.value = False
             return self.indicators
         # parse file:
-        self.ole = OleFileIO_PL.OleFileIO(self.filename)
+        self.ole = olefile.OleFileIO(self.filename)
         # checks:
         self.check_properties()
         self.check_encrypted()
@@ -244,9 +257,12 @@ class OleID:
             flash.value += len(found)
             #print stream, found
 
+
+#=== MAIN =================================================================
+
 def main():
     usage = 'usage: %prog [options] <file>'
-    parser = optparse.OptionParser(usage=usage)
+    parser = optparse.OptionParser(usage=__doc__ + '\n' + usage)
 ##    parser.add_option('-o', '--ole', action='store_true', dest='ole', help='Parse an OLE file (e.g. Word, Excel) to look for SWF in each stream')
 
     (options, args) = parser.parse_args()
