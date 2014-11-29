@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-olevba.py v0.03 2014-08-15
+olevba.py
 
 olevba is a script to parse OLE and OpenXML files such as MS Office documents
 (e.g. Word, Excel), to extract VBA Macro code in clear text.
@@ -21,8 +21,6 @@ https://github.com/unixfreak0037/officeparser
 
 Usage: olevba.py <file>
 """
-
-__version__ = '0.03'
 
 #=== LICENSE ==================================================================
 
@@ -80,6 +78,9 @@ __version__ = '0.03'
 # 2014-08-15       PL: - fixed incorrect value check in PROJECTHELPFILEPATH Record
 # 2014-08-15 v0.03 PL: - refactored extract_macros to support OpenXML formats
 #                        and to find the VBA project root anywhere in the file
+# 2014-11-29 v0.04 PL: - use olefile instead of OleFileIO_PL
+
+__version__ = '0.04'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -116,7 +117,7 @@ import cStringIO
 import math
 import zipfile
 
-from thirdparty.OleFileIO_PL import OleFileIO_PL
+import thirdparty.olefile as olefile
 
 #--- CONSTANTS ----------------------------------------------------------------
 
@@ -296,7 +297,7 @@ def extract_macros_ole(ole):
 
             def check_vba_stream(ole, vba_root, stream_path):
                 full_path = vba_root + stream_path
-                if ole.exists(full_path) and ole.get_type(full_path) == OleFileIO_PL.STGTY_STREAM:
+                if ole.exists(full_path) and ole.get_type(full_path) == olefile.STGTY_STREAM:
                     logging.debug('Found %s stream: %s' % (stream_path, full_path))
                     return full_path
                 else:
@@ -697,15 +698,15 @@ def _extract_vba (ole, vba_root, project_path, dir_path):
 
 
 def extract_macros (filename):
-    if OleFileIO_PL.isOleFile(filename):
+    if olefile.isOleFile(filename):
         # This looks like an OLE file
         logging.info('Extracting VBA Macros from OLE file %s' % filename)
-        ole = OleFileIO_PL.OleFileIO(filename)
+        ole = olefile.OleFileIO(filename)
         extract_macros_ole(ole)
         ole.close()
     elif zipfile.is_zipfile(filename):
         # This looks like a zip file, need to look for vbaProject.bin inside
-        #TODO: here we could even look for any OLE file inside the archive
+        #TODO: here we should look for any OLE file inside the archive
         #...because vbaProject.bin can be renamed:
         # see http://www.decalage.info/files/JCV07_Lagadec_OpenDocument_OpenXML_v4_decalage.pdf#page=18
         logging.info('Opening ZIP/OpenXML file %s' % filename)
@@ -716,7 +717,7 @@ def extract_macros (filename):
                 vbadata = z.open(f).read()
                 vbafile = cStringIO.StringIO(vbadata)
                 try:
-                    ole = OleFileIO_PL.OleFileIO(vbafile)
+                    ole = olefile.OleFileIO(vbafile)
                 except:
                     logging.debug('%s is not a valid OLE file' % f)
                     continue
