@@ -1,39 +1,68 @@
 #!/usr/local/bin/python
 # -*- coding: latin-1 -*-
 """
-OleFileIO_PL:
-    Module to read Microsoft OLE2 files (also called Structured Storage or
-    Microsoft Compound Document File Format), such as Microsoft Office
-    documents, Image Composer and FlashPix files, Outlook messages, ...
+olefile2 (formerly OleFileIO_PL2) version 0.40py2 2014-10-01
 
-version 0.26 2013-07-24 Philippe Lagadec - http://www.decalage.info
+Module to read Microsoft OLE2 files (also called Structured Storage or
+Microsoft Compound Document File Format), such as Microsoft Office
+documents, Image Composer and FlashPix files, Outlook messages, ...
+
+IMPORTANT NOTE: olefile2 is an old version of olefile meant to be used
+as fallback for Python 2.5 and older. For Python 2.6, 2.7 and 3.x, please use
+olefile which is more up-to-date. The improvements in olefile might
+not always be backported to olefile2.
 
 Project website: http://www.decalage.info/python/olefileio
 
-Improved version of the OleFileIO module from PIL library v1.1.6
+olefile2 is copyright (c) 2005-2014 Philippe Lagadec (http://www.decalage.info)
+
+olefile2 is based on the OleFileIO module from the PIL library v1.1.6
 See: http://www.pythonware.com/products/pil/index.htm
 
 The Python Imaging Library (PIL) is
     Copyright (c) 1997-2005 by Secret Labs AB
     Copyright (c) 1995-2005 by Fredrik Lundh
-OleFileIO_PL changes are Copyright (c) 2005-2013 by Philippe Lagadec
 
 See source code and LICENSE.txt for information on usage and redistribution.
-
-WARNING: THIS IS (STILL) WORK IN PROGRESS.
 """
 
-__author__  = "Philippe Lagadec, Fredrik Lundh (Secret Labs AB)"
-__date__    = "2013-07-24"
-__version__ = '0.26'
+__author__  = "Philippe Lagadec"
+__date__    = "2014-10-01"
+__version__ = '0.40py2'
 
 #--- LICENSE ------------------------------------------------------------------
 
-# OleFileIO_PL is an improved version of the OleFileIO module from the
-# Python Imaging Library (PIL).
-
-# OleFileIO_PL changes are Copyright (c) 2005-2013 by Philippe Lagadec
+# olefile (formerly OleFileIO_PL) is copyright (c) 2005-2014 Philippe Lagadec
+# (http://www.decalage.info)
 #
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
+#
+#  * Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+#  * Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+# ----------
+# PIL License:
+#
+# olefile is based on source code from the OleFileIO module of the Python
+# Imaging Library (PIL) published by Fredrik Lundh under the following license:
+
 # The Python Imaging Library (PIL) is
 #    Copyright (c) 1997-2005 by Secret Labs AB
 #    Copyright (c) 1995-2005 by Fredrik Lundh
@@ -59,7 +88,7 @@ __version__ = '0.26'
 # PERFORMANCE OF THIS SOFTWARE.
 
 #-----------------------------------------------------------------------------
-# CHANGELOG: (only OleFileIO_PL changes compared to PIL 1.1.6)
+# CHANGELOG: (only olefile/OleFileIO_PL changes compared to PIL 1.1.6)
 # 2005-05-11 v0.10 PL: - a few fixes for Python 2.4 compatibility
 #                        (all changes flagged with [PL])
 # 2006-02-22 v0.11 PL: - a few fixes for some Office 2003 documents which raise
@@ -131,51 +160,13 @@ __version__ = '0.26'
 #                        of a directory entry or a storage/stream
 #                      - fixed parsing of direntry timestamps
 # 2013-07-24       PL: - new options in listdir to list storages and/or streams
+# 2014-07-18 v0.31     - preliminary support for 4K sectors
+# 2014-09-26 v0.40 PL: - renamed OleFileIO_PL to olefile
 
 #-----------------------------------------------------------------------------
-# TODO (for version 1.0):
-# + add path attrib to _OleDirEntry, set it once and for all in init or
-#   append_kids (then listdir/_list can be simplified)
-# - TESTS with Linux, MacOSX, Python 1.5.2, various files, PIL, ...
-# - add underscore to each private method, to avoid their display in
-#   pydoc/epydoc documentation - Remove it for classes to be documented
-# - replace all raised exceptions with _raise_defect (at least in OleFileIO)
-# - merge code from _OleStream and OleFileIO.getsect to read sectors
-#   (maybe add a class for FAT and MiniFAT ?)
-# - add method to check all streams (follow sectors chains without storing all
-#   stream in memory, and report anomalies)
-# - use _OleDirectoryEntry.kids_dict to improve _find and _list ?
-# - fix Unicode names handling (find some way to stay compatible with Py1.5.2)
-#   => if possible avoid converting names to Latin-1
-# - review DIFAT code: fix handling of DIFSECT blocks in FAT (not stop)
-# - rewrite OleFileIO.getproperties
-# - improve docstrings to show more sample uses
-# - see also original notes and FIXME below
-# - remove all obsolete FIXMEs
-# - OleMetadata: fix version attrib according to
-#   http://msdn.microsoft.com/en-us/library/dd945671%28v=office.12%29.aspx
+# TODO:
+# + check if running on Python 2.6+, if so issue warning to use olefile
 
-# IDEAS:
-# - in OleFileIO._open and _OleStream, use size=None instead of 0x7FFFFFFF for
-#   streams with unknown size
-# - use arrays of int instead of long integers for FAT/MiniFAT, to improve
-#   performance and reduce memory usage ? (possible issue with values >2^31)
-# - provide tests with unittest (may need write support to create samples)
-# - move all debug code (and maybe dump methods) to a separate module, with
-#   a class which inherits OleFileIO ?
-# - fix docstrings to follow epydoc format
-# - add support for 4K sectors ?
-# - add support for big endian byte order ?
-# - create a simple OLE explorer with wxPython
-
-# FUTURE EVOLUTIONS to add write support:
-# 1) add ability to write a stream back on disk from StringIO (same size, no
-#    change in FAT/MiniFAT).
-# 2) rename a stream/storage if it doesn't change the RB tree
-# 3) use rbtree module to update the red-black tree + any rename
-# 4) remove a stream/storage: free sectors in FAT/MiniFAT
-# 5) allocate new sectors in FAT/MiniFAT
-# 6) create new storage/stream
 #-----------------------------------------------------------------------------
 
 #
@@ -1002,7 +993,7 @@ class OleFileIO:
             if entry[1:2] == "Image":
                 fin = ole.openstream(entry)
                 fout = open(entry[0:1], "wb")
-                while 1:
+                while True:
                     s = fin.read(8192)
                     if not s:
                         break
@@ -1587,13 +1578,15 @@ class OleFileIO:
                     (self.root.isectStart, size_ministream))
                 self.ministream = self._open(self.root.isectStart,
                     size_ministream, force_FAT=True)
-            return _OleStream(self.ministream, start, size, 0,
-                              self.minisectorsize, self.minifat,
-                              self.ministream.size)
+            return _OleStream(fp=self.ministream, sect=start, size=size,
+                              offset=0, sectorsize=self.minisectorsize,
+                              fat=self.minifat, filesize=self.ministream.size)
         else:
             # standard stream
-            return _OleStream(self.fp, start, size, 512,
-                              self.sectorsize, self.fat, self._filesize)
+            return _OleStream(fp=self.fp, sect=start, size=size,
+                              offset=self.sectorsize,
+                              sectorsize=self.sectorsize, fat=self.fat,
+                              filesize=self._filesize)
 
 
     def _list(self, files, prefix, node, streams=True, storages=False):
@@ -1950,7 +1943,7 @@ if __name__ == "__main__":
         print """
 Launched from command line, this script parses OLE files and prints info.
 
-Usage: OleFileIO_PL.py [-d] [-c] <file> [file2 ...]
+Usage: olefile2.py [-d] [-c] <file> [file2 ...]
 
 Options:
 -d : debug mode (display a lot of debug information, for developers only)
@@ -2046,3 +2039,5 @@ Options:
                 print 'None'
 ##      except IOError, v:
 ##          print "***", "cannot read", file, "-", v
+
+# this code was developed while listening to The Wedding Present "Sea Monsters"
