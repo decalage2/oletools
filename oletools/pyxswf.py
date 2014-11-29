@@ -21,37 +21,41 @@ pyxswf project website: http://www.decalage.info/python/pyxswf
 
 pyxswf is part of the python-oletools package:
 http://www.decalage.info/python/oletools
-
-pyxswf is copyright (c) 2012, Philippe Lagadec (http://www.decalage.info)
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer.
- * Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-__version__ = '0.02'
+#=== LICENSE =================================================================
+
+# pyxswf is copyright (c) 2012-2014, Philippe Lagadec (http://www.decalage.info)
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
+#
+#  * Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+#  * Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #------------------------------------------------------------------------------
 # CHANGELOG:
 # 2012-09-17 v0.01 PL: - first version
 # 2012-11-09 v0.02 PL: - added RTF embedded objects extraction
+# 2014-11-29 v0.03 PL: - use olefile instead of OleFileIO_PL
+#                      - improved usage display with -h
+
+__version__ = '0.03'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -63,9 +67,15 @@ __version__ = '0.02'
 # - check if file is OLE
 # - support -r
 
+
+#=== IMPORTS =================================================================
+
 import optparse, sys, os, rtfobj, StringIO
 from thirdparty.xxxswf import xxxswf
-from thirdparty.OleFileIO_PL import OleFileIO_PL
+import thirdparty.olefile as olefile
+
+
+#=== MAIN =================================================================
 
 def main():
     # Scenarios:
@@ -77,7 +87,7 @@ def main():
     # Scan directory recursively for files that contain SWF(s) and extract them
 
     usage = 'usage: %prog [options] <file.bad>'
-    parser = optparse.OptionParser(usage=usage)
+    parser = optparse.OptionParser(usage=__doc__ + '\n' + usage)
     parser.add_option('-x', '--extract', action='store_true', dest='extract', help='Extracts the embedded SWF(s), names it MD5HASH.swf & saves it in the working dir. No addition args needed')
     parser.add_option('-y', '--yara', action='store_true', dest='yara', help='Scans the SWF(s) with yara. If the SWF(s) is compressed it will be deflated. No addition args needed')
     parser.add_option('-s', '--md5scan', action='store_true', dest='md5scan', help='Scans the SWF(s) for MD5 signatures. Please see func checkMD5 to define hashes. No addition args needed')
@@ -92,7 +102,7 @@ def main():
 
     (options, args) = parser.parse_args()
 
-    # Print help if no argurments are passed
+    # Print help if no arguments are passed
     if len(args) == 0:
         parser.print_help()
         return
@@ -100,9 +110,9 @@ def main():
     # OLE MODE:
     if options.ole:
         for filename in args:
-            ole = OleFileIO_PL.OleFileIO(filename)
+            ole = olefile.OleFileIO(filename)
             for direntry in ole.direntries:
-                if direntry is not None and direntry.entry_type == OleFileIO_PL.STGTY_STREAM:
+                if direntry is not None and direntry.entry_type == olefile.STGTY_STREAM:
                     f = ole._open(direntry.isectStart, direntry.size)
                     # check if data contains the SWF magic: FWS or CWS
                     data = f.getvalue()
