@@ -47,8 +47,9 @@ http://www.decalage.info/python/oletools
 # 2012-10-29 v0.01 PL: - first version
 # 2014-11-29 v0.02 PL: - use olefile instead of OleFileIO_PL
 #                      - improved usage display with -h
+# 2014-11-30 v0.03 PL: - improved output with prettytable
 
-__version__ = '0.02'
+__version__ = '0.03'
 
 
 #------------------------------------------------------------------------------
@@ -71,6 +72,7 @@ __version__ = '0.02'
 
 import optparse, sys, os, re, zlib, struct
 import thirdparty.olefile as olefile
+from thirdparty.prettytable import prettytable
 
 
 #=== FUNCTIONS ===============================================================
@@ -276,8 +278,17 @@ def main():
         print '\nFilename:', filename
         oleid = OleID(filename)
         indicators = oleid.check()
+
+        t = prettytable.PrettyTable(['Indicator', 'Value'])
+        t.align = 'l'
+        t.max_width = 39
+        #t.border = False
+
         for indicator in indicators:
-            print '%s: %s' % (indicator.name, indicator.value)
+            #print '%s: %s' % (indicator.name, indicator.value)
+            t.add_row((indicator.name, indicator.value))
+
+        print t
 
 if __name__ == '__main__':
     main()

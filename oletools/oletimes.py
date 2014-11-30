@@ -45,8 +45,9 @@ http://www.decalage.info/python/oletools
 # 2013-07-24 v0.01 PL: - first version
 # 2014-11-29 v0.02 PL: - use olefile instead of OleFileIO_PL
 #                      - improved usage display
+# 2014-11-30 v0.03 PL: - improved output with prettytable
 
-__version__ = '0.02'
+__version__ = '0.03'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -57,8 +58,9 @@ __version__ = '0.02'
 
 #=== IMPORTS =================================================================
 
-import sys
+import sys, datetime
 import thirdparty.olefile as olefile
+from thirdparty.prettytable import prettytable
 
 
 #=== MAIN =================================================================
@@ -68,9 +70,30 @@ try:
 except IndexError:
     sys.exit(__doc__)
 
-print'- Root mtime=%s ctime=%s' % (ole.root.getmtime(), ole.root.getctime())
+def dt2str (dt):
+    """
+    Convert a datetime object to a string for display, without microseconds
+
+    :param dt: datetime.datetime object, or None
+    :return: str, or None
+    """
+    if dt is None:
+        return None
+    dt = dt.replace(microsecond = 0)
+    return str(dt)
+
+t = prettytable.PrettyTable(['Stream/Storage name', 'Modification Time', 'Creation Time'])
+t.align = 'l'
+t.max_width = 26
+#t.border = False
+
+#print'- Root mtime=%s ctime=%s' % (ole.root.getmtime(), ole.root.getctime())
+t.add_row(('Root', dt2str(ole.root.getmtime()), dt2str(ole.root.getctime())))
 
 for obj in ole.listdir(streams=True, storages=True):
-    print '- %s: mtime=%s ctime=%s' % (repr('/'.join(obj)), ole.getmtime(obj), ole.getctime(obj))
+    #print '- %s: mtime=%s ctime=%s' % (repr('/'.join(obj)), ole.getmtime(obj), ole.getctime(obj))
+    t.add_row((repr('/'.join(obj)), dt2str(ole.getmtime(obj)), dt2str(ole.getctime(obj))))
+
+print t
 
 ole.close()
