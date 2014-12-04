@@ -2,9 +2,8 @@ python-oletools
 ===============
 
 [python-oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze 
-[Microsoft OLE2 files (also called Structured Storage, Compound File Binary Format or Compound Document File Format)]
-(http://en.wikipedia.org/wiki/Compound_File_Binary_Format), such as Microsoft Office documents or Outlook messages, 
-mainly for malware analysis, forensics and debugging. 
+[Microsoft OLE2 files (also called Structured Storage, Compound File Binary Format or Compound Document File Format)](http://en.wikipedia.org/wiki/Compound_File_Binary_Format), 
+such as Microsoft Office documents or Outlook messages, mainly for malware analysis, forensics and debugging. 
 It is based on the [olefile](http://www.decalage.info/olefile) parser. 
 See [http://www.decalage.info/python/oletools](http://www.decalage.info/python/oletools) for more info.  
 
