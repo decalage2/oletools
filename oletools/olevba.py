@@ -79,12 +79,16 @@ Usage: olevba.py <file>
 # 2014-08-15 v0.03 PL: - refactored extract_macros to support OpenXML formats
 #                        and to find the VBA project root anywhere in the file
 # 2014-11-29 v0.04 PL: - use olefile instead of OleFileIO_PL
+# 2014-12-05 v0.05 PL: - refactored most functions into a class, new API
+#                      - added detect_vba_macros
 
-__version__ = '0.04'
+__version__ = '0.05'
 
 #------------------------------------------------------------------------------
 # TODO:
-# + extract_macros should yield filename, code
+# + do not use logging, but a provided logger (null logger by default)
+# + by default, do not display empty macros containing only lines with Attribute=... (option)
+#   (...unless it can be used to hide code: to be tested)
 # + optparse
 # + nicer output
 # + setup logging (common with other oletools)
@@ -124,8 +128,6 @@ import thirdparty.olefile as olefile
 MODULE_EXTENSION = "bas"
 CLASS_EXTENSION = "cls"
 FORM_EXTENSION = "frm"
-
-BINFILE_PATH = "xl/vbaProject.bin"
 
 
 #--- FUNCTIONS ----------------------------------------------------------------
@@ -265,61 +267,6 @@ def decompress_stream (compressed_container):
     return decompressed_container
 
 
-def extract_macros_ole(ole):
-    """
-    Extract VBA macros from an OLE file
-    """
-    # Find the VBA project root (different in MS Word, Excel, etc):
-    # - Word 97-2003: Macros
-    # - Excel 97-2003: _VBA_PROJECT_CUR
-    # - PowerPoint 97-2003: not supported yet (different file structure)
-    # - Word 2007+: word/vbaProject.bin in zip archive, then the VBA project is the root of vbaProject.bin.
-    # - Excel 2007+: xl/vbaProject.bin in zip archive, then same as Word
-    # - PowerPoint 2007+: ppt/vbaProject.bin in zip archive, then same as Word
-    # - Visio 2007: not supported yet (different file structure)
-
-    # According to MS-OVBA section 2.2.1:
-    # - the VBA project root storage MUST contain a VBA storage and a PROJECT stream
-    # - The root/VBA storage MUST contain a _VBA_PROJECT stream and a dir stream
-    # - all names are case-insensitive
-
-    # Look for any storage containing those storage/streams:
-    for storage in ole.listdir(streams=False, storages=True):
-        # Look for a storage ending with "VBA":
-        if storage[-1].upper() == 'VBA':
-            logging.debug('Found VBA storage: %s' % ('/'.join(storage)))
-            vba_root = '/'.join(storage[:-1])
-            # Add a trailing slash to vba_root, unless it is the root of the OLE file:
-            # (used later to append all the child streams/storages)
-            if vba_root != '':
-                vba_root += '/'
-            logging.debug('Checking vba_root="%s"' % vba_root)
-
-            def check_vba_stream(ole, vba_root, stream_path):
-                full_path = vba_root + stream_path
-                if ole.exists(full_path) and ole.get_type(full_path) == olefile.STGTY_STREAM:
-                    logging.debug('Found %s stream: %s' % (stream_path, full_path))
-                    return full_path
-                else:
-                    logging.debug('Missing %s stream, this is not a valid VBA project structure' % stream_path)
-                    return False
-
-            # Check if the VBA root storage also contains a PROJECT stream:
-            project_path = check_vba_stream(ole, vba_root, 'PROJECT')
-            if not project_path: continue
-            # Check if the VBA root storage also contains a VBA/_VBA_PROJECT stream:
-            vba_project_path = check_vba_stream(ole, vba_root, 'VBA/_VBA_PROJECT')
-            if not vba_project_path: continue
-            # Check if the VBA root storage also contains a VBA/dir stream:
-            dir_path = check_vba_stream(ole, vba_root, 'VBA/dir')
-            if not dir_path: continue
-            # Now we are pretty sure it is a VBA project structure
-            logging.debug('VBA root storage: "%s"' % vba_root)
-            # extract all VBA macros from that VBA root storage:
-            _extract_vba(ole, vba_root, project_path, dir_path)
-
-
-
 def _extract_vba (ole, vba_root, project_path, dir_path):
     """
     Extract VBA macros from an OleFileIO object.
@@ -327,7 +274,7 @@ def _extract_vba (ole, vba_root, project_path, dir_path):
 
     vba_root: path to the VBA root storage, containing the VBA storage and the PROJECT stream
     vba_project: path to the PROJECT stream
-    This is a generator, yielding (filename, stream path, VBA source code) for each VBA code stream
+    This is a generator, yielding (stream path, VBA filename, VBA source code) for each VBA code stream
     """
     # Open the PROJECT stream:
     project = ole.openstream(project_path)
@@ -685,49 +632,225 @@ def _extract_vba (ole, vba_root, project_path, dir_path):
             code_data = decompress_stream(code_data)
             filext = code_modules[MODULENAME_ModuleName]
             filename = '{0}.{1}'.format(MODULENAME_ModuleName, filext)
-            #TODO: return list of strings or dict instead of printing
-            print '-'*79
-            print filename
-            print ''
-            print code_data
-            print ''
+            yield (code_path, filename, code_data)
+            # print '-'*79
+            # print filename
+            # print ''
+            # print code_data
+            # print ''
             logging.debug('extracted file {0}'.format(filename))
         else:
             logging.warning("module stream {0} has code data length 0".format(MODULESTREAMNAME_StreamName))
     return
 
 
-def extract_macros (filename):
-    if olefile.isOleFile(filename):
-        # This looks like an OLE file
-        logging.info('Extracting VBA Macros from OLE file %s' % filename)
-        ole = olefile.OleFileIO(filename)
-        extract_macros_ole(ole)
-        ole.close()
-    elif zipfile.is_zipfile(filename):
-        # This looks like a zip file, need to look for vbaProject.bin inside
-        #TODO: here we should look for any OLE file inside the archive
-        #...because vbaProject.bin can be renamed:
-        # see http://www.decalage.info/files/JCV07_Lagadec_OpenDocument_OpenXML_v4_decalage.pdf#page=18
-        logging.info('Opening ZIP/OpenXML file %s' % filename)
-        z = zipfile.ZipFile(filename)
-        for f in z.namelist():
-            if f.lower().endswith('vbaproject.bin'):
-                logging.debug('Opening OLE VBA storage %s within zip' % f)
-                vbadata = z.open(f).read()
-                vbafile = cStringIO.StringIO(vbadata)
-                try:
-                    ole = olefile.OleFileIO(vbafile)
-                except:
-                    logging.debug('%s is not a valid OLE file' % f)
-                    continue
-                logging.info('Extracting VBA Macros from %s/%s' % (filename, f))
-                extract_macros_ole(ole)
-                ole.close()
-        z.close()
-    else:
-        logging.error('%s is not an OLE nor an OpenXML file, cannot extract VBA Macros.' % filename)
+#=== CLASSES =================================================================
 
+class VBA_Parser(object):
+    """
+    Class to parse MS Office files, to detect VBA macros and extract VBA source code
+    Supported file formats:
+    - Word 97-2003 (.doc, .dot), Word 2007+ (.docm, .dotm)
+    - Excel 97-2003 (.xls), Excel 2007+ (.xlsm, .xlsb)
+    - PowerPoint 2007+ (.pptm, .ppsm)
+    """
+
+    def __init__(self, _file, filename=None):
+        """
+        Constructor for VBA_Parser
+
+        :param _file: path of file to parse, file-like object or file content
+        :param filename: actual filename if _file is a  file-like object or file content
+        in a bytes string
+        """
+        #TODO: also support olefile and zipfile as input
+        self.file = _file
+        self.ole_file = None
+        self.ole_subfiles = []
+        self.filename = filename
+        self.type = None
+        self.vba_projects = None
+        if filename is None:
+            if isinstance(_file, basestring):
+                if len(_file) < olefile.MINIMAL_OLEFILE_SIZE:
+                    self.filename = _file
+                else:
+                    self.filename = '<file in bytes string>'
+            else:
+                self.filename = '<file-like object>'
+        if olefile.isOleFile(_file):
+            # This looks like an OLE file
+            logging.info('Parsing OLE file %s' % self.filename)
+            self.ole_file = olefile.OleFileIO(_file)
+            self.type = 'OLE'
+        elif zipfile.is_zipfile(_file):
+            # This looks like a zip file, need to look for vbaProject.bin inside
+            # It can be any OLE file inside the archive
+            #...because vbaProject.bin can be renamed:
+            # see http://www.decalage.info/files/JCV07_Lagadec_OpenDocument_OpenXML_v4_decalage.pdf#page=18
+            logging.info('Opening ZIP/OpenXML file %s' % self.filename)
+            self.type = 'OpenXML'
+            z = zipfile.ZipFile(_file)
+            #TODO: check if this is actually an OpenXML file
+            # check each file within the zip if it is an OLE file, by reading its magic:
+            for subfile in z.namelist():
+                magic = z.open(subfile).read(len(olefile.MAGIC))
+                if magic == olefile.MAGIC:
+                    logging.debug('Opening OLE file %s within zip' % subfile)
+                    ole_data = z.open(subfile).read()
+                    try:
+                        self.ole_subfiles.append(VBA_Parser(ole_data, filename=subfile))
+                    except:
+                        logging.debug('%s is not a valid OLE file' % subfile)
+                        continue
+            z.close()
+        else:
+            msg = '%s is not an OLE nor an OpenXML file, cannot extract VBA Macros.' % self.filename
+            logging.error(msg)
+            raise TypeError(msg)
+
+    def find_vba_projects (self):
+        """
+        Finds all the VBA projects stored in an OLE file.
+
+        Return None if the file is not OLE but OpenXML.
+        Return a list of tuples (vba_root, project_path, dir_path) for each VBA project.
+        vba_root is the path of the root OLE storage containing the VBA project,
+        including a trailing slash unless it is the root of the OLE file.
+        project_path is the path of the OLE stream named "PROJECT" within the VBA project.
+        dir_path is the path of the OLE stream named "VBA/dir" within the VBA project.
+
+        If this function returns an empty list for one of the supported formats
+        (i.e. Word, Excel, Powerpoint except Powerpoint 97-2003), then the
+        file does not contain VBA macros.
+
+        :return: None if OpenXML file, list of tuples (vba_root, project_path, dir_path)
+        for each VBA project found if OLE file
+        """
+        # if the file is not OLE but OpenXML, return None:
+        if self.ole_file is None:
+            return None
+
+        # if this method has already been called, return previous result:
+        if self.vba_projects is not None:
+            return self.vba_projects
+
+        # Find the VBA project root (different in MS Word, Excel, etc):
+        # - Word 97-2003: Macros
+        # - Excel 97-2003: _VBA_PROJECT_CUR
+        # - PowerPoint 97-2003: not supported yet (different file structure)
+        # - Word 2007+: word/vbaProject.bin in zip archive, then the VBA project is the root of vbaProject.bin.
+        # - Excel 2007+: xl/vbaProject.bin in zip archive, then same as Word
+        # - PowerPoint 2007+: ppt/vbaProject.bin in zip archive, then same as Word
+        # - Visio 2007: not supported yet (different file structure)
+
+        # According to MS-OVBA section 2.2.1:
+        # - the VBA project root storage MUST contain a VBA storage and a PROJECT stream
+        # - The root/VBA storage MUST contain a _VBA_PROJECT stream and a dir stream
+        # - all names are case-insensitive
+
+        # start with an empty list:
+        self.vba_projects = []
+        # Look for any storage containing those storage/streams:
+        ole = self.ole_file
+        for storage in ole.listdir(streams=False, storages=True):
+            # Look for a storage ending with "VBA":
+            if storage[-1].upper() == 'VBA':
+                logging.debug('Found VBA storage: %s' % ('/'.join(storage)))
+                vba_root = '/'.join(storage[:-1])
+                # Add a trailing slash to vba_root, unless it is the root of the OLE file:
+                # (used later to append all the child streams/storages)
+                if vba_root != '':
+                    vba_root += '/'
+                logging.debug('Checking vba_root="%s"' % vba_root)
+
+                def check_vba_stream(ole, vba_root, stream_path):
+                    full_path = vba_root + stream_path
+                    if ole.exists(full_path) and ole.get_type(full_path) == olefile.STGTY_STREAM:
+                        logging.debug('Found %s stream: %s' % (stream_path, full_path))
+                        return full_path
+                    else:
+                        logging.debug('Missing %s stream, this is not a valid VBA project structure' % stream_path)
+                        return False
+
+                # Check if the VBA root storage also contains a PROJECT stream:
+                project_path = check_vba_stream(ole, vba_root, 'PROJECT')
+                if not project_path: continue
+                # Check if the VBA root storage also contains a VBA/_VBA_PROJECT stream:
+                vba_project_path = check_vba_stream(ole, vba_root, 'VBA/_VBA_PROJECT')
+                if not vba_project_path: continue
+                # Check if the VBA root storage also contains a VBA/dir stream:
+                dir_path = check_vba_stream(ole, vba_root, 'VBA/dir')
+                if not dir_path: continue
+                # Now we are pretty sure it is a VBA project structure
+                logging.debug('VBA root storage: "%s"' % vba_root)
+                # append the results to the list as a tuple for later use:
+                self.vba_projects.append((vba_root, project_path, dir_path))
+        return self.vba_projects
+
+    def detect_vba_macros(self):
+        """
+        Detect the potential presence of VBA macros in the file, by checking
+        if it contains VBA projects. Both OLE and OpenXML files are supported.
+
+        Important: for now, results are accurate only for Word, Excel and PowerPoint
+        EXCEPT Powerpoint 97-2003, which has a different structure for VBA.
+
+        Note: this method does NOT attempt to check the actual presence or validity
+        of VBA macro source code, so there might be false positives.
+        It may also detect VBA macros in files embedded within the main file,
+        for example an Excel workbook with macros embedded into a Word
+        document without macros may be detected, without distinction.
+
+        :return: bool, True if at least one VBA project has been found, False otherwise
+        """
+        #TODO: return None or raise exception if format not supported like PPT 97-2003
+        #TODO: return the number of VBA projects found instead of True/False?
+        # if OpenXML, check all the OLE subfiles:
+        if self.ole_file is None:
+            for ole_subfile in self.ole_subfiles:
+                if ole_subfile.detect_vba_macros():
+                    return True
+            return False
+        # otherwise it's an OLE file, find VBA projects:
+        vba_projects = self.find_vba_projects()
+        if len(vba_projects) == 0:
+            return False
+        else:
+            return True
+
+
+    def extract_macros (self):
+        """
+        Extract and decompress source code for each VBA macro found in the file
+
+        Iterator: yields (filename, stream_path, vba_filename, vba_code) for each VBA macro found
+        If the file is OLE, filename is the path of the file.
+        If the file is OpenXML, filename is the path of the OLE subfile containing VBA macros
+        within the zip archive, e.g. word/vbaProject.bin.
+        """
+        if self.ole_file is None:
+            for ole_subfile in self.ole_subfiles:
+                for results in ole_subfile.extract_macros():
+                    yield results
+        else:
+            self.find_vba_projects()
+            for vba_root, project_path, dir_path in self.vba_projects:
+                # extract all VBA macros from that VBA root storage:
+                for stream_path, vba_filename, vba_code in _extract_vba(self.ole_file, vba_root, project_path, dir_path):
+                    yield (self.filename, stream_path, vba_filename, vba_code)
+
+
+    def close(self):
+        """
+        Close all the open files. This method must be called after usage, if
+        the application is opening many files.
+        """
+        if self.ole_file is None:
+            for ole_subfile in self.ole_subfiles:
+                ole_subfile.close()
+        else:
+            self.ole_file.close()
 
 
 #=== MAIN =====================================================================
@@ -738,8 +861,28 @@ if __name__ == '__main__':
         print __doc__
         sys.exit(1)
 
-    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
+    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.WARNING) #INFO)
 
-    extract_macros(sys.argv[1])
+    #TODO: option parser
+    fname = sys.argv[1]
+    print '='*79
+    print 'File:', fname
+    try:
+        vba = VBA_Parser(fname)
+        print 'Type:', vba.type
+        if vba.detect_vba_macros():
+            print 'Contains VBA Macros:'
+            for (filename, stream_path, vba_filename, vba_code) in vba.extract_macros():
+                print '-'*79
+                print 'Filename    :', filename
+                print 'OLE stream  :', stream_path
+                print 'VBA filename:', vba_filename
+                print '- '*39
+                print vba_code
+        else:
+            print 'No VBA macros found.'
+    except TypeError:
+        raise
+        print sys.exc_value
 
 # This was coded while listening to "Dust" from I Love You But I've Chosen Darkness
