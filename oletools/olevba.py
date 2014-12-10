@@ -81,8 +81,9 @@ Usage: olevba.py <file>
 # 2014-11-29 v0.04 PL: - use olefile instead of OleFileIO_PL
 # 2014-12-05 v0.05 PL: - refactored most functions into a class, new API
 #                      - added detect_vba_macros
+# 2014-12-10 v0.06 PL: - hide first lines with VB attributes
 
-__version__ = '0.05'
+__version__ = '0.06'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -644,6 +645,26 @@ def _extract_vba (ole, vba_root, project_path, dir_path):
     return
 
 
+def filter_vba(vba_code):
+    """
+    Filter VBA source code to remove the first lines starting with "Attribute VB_"
+
+    :param vba_code: str, VBA source code
+    :return: str, filtered VBA source code
+    """
+    vba_lines = vba_code.splitlines()
+    start = 0
+    for line in vba_lines:
+        if line.startswith("Attribute VB_"):
+            start += 1
+        else:
+            break
+    #TODO: also remove empty lines?
+    vba = '\n'.join(vba_lines[start:])
+    return vba
+
+
+
 #=== CLASSES =================================================================
 
 class VBA_Parser(object):
@@ -878,7 +899,7 @@ if __name__ == '__main__':
                 print 'OLE stream  :', stream_path
                 print 'VBA filename:', vba_filename
                 print '- '*39
-                print vba_code
+                print filter_vba(vba_code)
         else:
             print 'No VBA macros found.'
     except TypeError:
