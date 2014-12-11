@@ -60,7 +60,7 @@ classifiers=[
 packages=[
     "oletools",
     'oletools.thirdparty',
-    'oletools.thirdparty.OleFileIO_PL',
+    'oletools.thirdparty.olefile',
     'oletools.thirdparty.easygui',
     'oletools.thirdparty.xxxswf',
 ]
@@ -138,7 +138,7 @@ package_data={
         + rglob('oletools/doc', 'doc', '*.md')
         + rglob('oletools/doc', 'doc', '*.png'),
 
-    'oletools.thirdparty.OleFileIO_PL': [
+    'oletools.thirdparty.olefile': [
         'README.txt',
         'LICENSE.txt',
         ],
