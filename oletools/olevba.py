@@ -133,19 +133,19 @@ FORM_EXTENSION = "frm"
 # Keywords to detect auto-executable macros
 AUTOEXEC_KEYWORDS = {
     # MS Word:
-    'Macro running automatically when the Word document is opened':
+    'Macro triggered when the Word document is opened':
         ('AutoExec', 'AutoOpen', 'Document_Open', 'DocumentOpen'),
-    'Macro running automatically when the Word document is closed':
+    'Macro triggered when the Word document is closed':
         ('AutoExit', 'AutoClose', 'Document_Close', 'DocumentBeforeClose'),
-    'Macro running automatically when the Word document is modified':
+    'Macro triggered when the Word document is modified':
         ('DocumentChange',),
-    'Macro running automatically when a new Word document is created':
+    'Macro triggered when a new Word document is created':
         ('AutoNew', 'Document_New', 'NewDocument'),
 
     # MS Excel:
-    'Macro running automatically when the Excel Workbook is opened':
+    'Macro triggered when the Excel Workbook is opened':
         ('Auto_Open', 'Workbook_Open'),
-    'Macro running automatically when the Excel Workbook is closed':
+    'Macro triggered when the Excel Workbook is closed':
         ('Auto_Close', 'Workbook_Close'),
 
     #TODO: full list in MS specs??
@@ -949,6 +949,7 @@ if __name__ == '__main__':
                 if autoexec_keywords:
                     print 'Auto-executable macro keywords found:'
                     t = prettytable.PrettyTable(('Keyword', 'Description'))
+                    t.align = 'l'
                     t.max_width['Keyword'] = 20
                     t.max_width['Description'] = 59
                     for keyword, description in autoexec_keywords:
