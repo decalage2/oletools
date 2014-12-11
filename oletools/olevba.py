@@ -82,14 +82,14 @@ Usage: olevba.py <file>
 # 2014-12-05 v0.05 PL: - refactored most functions into a class, new API
 #                      - added detect_vba_macros
 # 2014-12-10 v0.06 PL: - hide first lines with VB attributes
+#                      - detect auto-executable macros
+#                      - ignore empty macros
 
 __version__ = '0.06'
 
 #------------------------------------------------------------------------------
 # TODO:
 # + do not use logging, but a provided logger (null logger by default)
-# + by default, do not display empty macros containing only lines with Attribute=... (option)
-#   (...unless it can be used to hide code: to be tested)
 # + optparse
 # + nicer output
 # + setup logging (common with other oletools)
@@ -129,6 +129,27 @@ import thirdparty.olefile as olefile
 MODULE_EXTENSION = "bas"
 CLASS_EXTENSION = "cls"
 FORM_EXTENSION = "frm"
+
+# Keywords to detect auto-executable macros
+AUTOEXEC_KEYWORDS = {
+    # MS Word:
+    'Macro running automatically when the Word document is opened':
+        ('AutoExec', 'AutoOpen', 'Document_Open', 'DocumentOpen'),
+    'Macro running automatically when the Word document is closed':
+        ('AutoExit', 'AutoClose', 'Document_Close', 'DocumentBeforeClose'),
+    'Macro running automatically when the Word document is modified':
+        ('DocumentChange',),
+    'Macro running automatically when a new Word document is created':
+        ('AutoNew', 'Document_New', 'NewDocument'),
+
+    # MS Excel:
+    'Macro running automatically when the Excel Workbook is opened':
+        ('Auto_Open', 'Workbook_Open'),
+    'Macro running automatically when the Excel Workbook is closed':
+        ('Auto_Close', 'Workbook_Close'),
+
+    #TODO: full list in MS specs??
+}
 
 
 #--- FUNCTIONS ----------------------------------------------------------------
@@ -664,6 +685,22 @@ def filter_vba(vba_code):
     return vba
 
 
+def detect_autoexec(vba_code):
+    """
+    Detect if the VBA code contains keywords corresponding to macros running
+    automatically when triggered by specific actions (e.g. when a document is
+    opened or closed).
+
+    :param vba_code: str, VBA source code
+    :return: list of str tuples (keyword, description)
+    """
+    results = []
+    for description, keywords in AUTOEXEC_KEYWORDS.items():
+        for keyword in keywords:
+            if keyword in vba_code:
+                results.append((keyword, description))
+    return results
+
 
 #=== CLASSES =================================================================
 
@@ -878,6 +915,8 @@ class VBA_Parser(object):
 
 if __name__ == '__main__':
 
+    from thirdparty.prettytable import prettytable
+
     if len(sys.argv)<2:
         print __doc__
         sys.exit(1)
@@ -894,12 +933,30 @@ if __name__ == '__main__':
         if vba.detect_vba_macros():
             print 'Contains VBA Macros:'
             for (filename, stream_path, vba_filename, vba_code) in vba.extract_macros():
+                # hide attribute lines:
+                vba_code = filter_vba(vba_code)
+                # ignore empty macros:
+                if vba_code.strip() == '':
+                    continue
                 print '-'*79
                 print 'Filename    :', filename
                 print 'OLE stream  :', stream_path
                 print 'VBA filename:', vba_filename
                 print '- '*39
                 print filter_vba(vba_code)
+                print '- '*39
+                autoexec_keywords = detect_autoexec(vba_code)
+                if autoexec_keywords:
+                    print 'Auto-executable macro keywords found:'
+                    t = prettytable.PrettyTable(('Keyword', 'Description'))
+                    t.max_width['Keyword'] = 20
+                    t.max_width['Description'] = 59
+                    for keyword, description in autoexec_keywords:
+                        t.add_row((keyword, description))
+                    print t
+                else:
+                    print 'Auto-executable macro keywords: None found'
+
         else:
             print 'No VBA macros found.'
     except TypeError:
