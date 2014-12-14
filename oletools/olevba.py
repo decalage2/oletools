@@ -84,8 +84,9 @@ Usage: olevba.py <file>
 # 2014-12-10 v0.06 PL: - hide first lines with VB attributes
 #                      - detect auto-executable macros
 #                      - ignore empty macros
+# 2014-12-14 v0.07 PL: - detect_autoexec() is now case-insensitive
 
-__version__ = '0.06'
+__version__ = '0.07'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -694,10 +695,12 @@ def detect_autoexec(vba_code):
     :param vba_code: str, VBA source code
     :return: list of str tuples (keyword, description)
     """
+    # case-insensitive search
+    vba_code = vba_code.lower()
     results = []
     for description, keywords in AUTOEXEC_KEYWORDS.items():
         for keyword in keywords:
-            if keyword in vba_code:
+            if keyword.lower() in vba_code:
                 results.append((keyword, description))
     return results
 
