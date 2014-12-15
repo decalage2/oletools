@@ -85,6 +85,7 @@ Usage: olevba.py <file>
 #                      - detect auto-executable macros
 #                      - ignore empty macros
 # 2014-12-14 v0.07 PL: - detect_autoexec() is now case-insensitive
+# 2014-12-15 v0.08 PL: - improved display for empty macros
 
 __version__ = '0.07'
 
@@ -931,6 +932,7 @@ if __name__ == '__main__':
     print '='*79
     print 'File:', fname
     try:
+        #TODO: handle olefile errors, when an OLE file is malformed
         vba = VBA_Parser(fname)
         print 'Type:', vba.type
         if vba.detect_vba_macros():
@@ -938,28 +940,29 @@ if __name__ == '__main__':
             for (filename, stream_path, vba_filename, vba_code) in vba.extract_macros():
                 # hide attribute lines:
                 vba_code = filter_vba(vba_code)
-                # ignore empty macros:
-                if vba_code.strip() == '':
-                    continue
                 print '-'*79
                 print 'Filename    :', filename
                 print 'OLE stream  :', stream_path
                 print 'VBA filename:', vba_filename
                 print '- '*39
-                print filter_vba(vba_code)
-                print '- '*39
-                autoexec_keywords = detect_autoexec(vba_code)
-                if autoexec_keywords:
-                    print 'Auto-executable macro keywords found:'
-                    t = prettytable.PrettyTable(('Keyword', 'Description'))
-                    t.align = 'l'
-                    t.max_width['Keyword'] = 20
-                    t.max_width['Description'] = 59
-                    for keyword, description in autoexec_keywords:
-                        t.add_row((keyword, description))
-                    print t
+                # detect empty macros:
+                if vba_code.strip() == '':
+                    print '(empty macro)'
                 else:
-                    print 'Auto-executable macro keywords: None found'
+                    print vba_code
+                    print '- '*39
+                    autoexec_keywords = detect_autoexec(vba_code)
+                    if autoexec_keywords:
+                        print 'Auto-executable macro keywords found:'
+                        t = prettytable.PrettyTable(('Keyword', 'Description'))
+                        t.align = 'l'
+                        t.max_width['Keyword'] = 20
+                        t.max_width['Description'] = 59
+                        for keyword, description in autoexec_keywords:
+                            t.add_row((keyword, description))
+                        print t
+                    else:
+                        print 'Auto-executable macro keywords: None found'
 
         else:
             print 'No VBA macros found.'
