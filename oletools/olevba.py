@@ -87,8 +87,9 @@ Usage: olevba.py <file>
 # 2014-12-14 v0.07 PL: - detect_autoexec() is now case-insensitive
 # 2014-12-15 v0.08 PL: - improved display for empty macros
 #                      - added pattern extraction
+# 2014-12-25 v0.09 PL: - added suspicious keywords detection
 
-__version__ = '0.08'
+__version__ = '0.09'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -160,6 +161,36 @@ AUTOEXEC_KEYWORDS = {
         ('Auto_Close', 'Workbook_Close'),
 
     #TODO: full list in MS specs??
+}
+
+# Suspicious Keywords that may be used by malware
+SUSPICIOUS_KEYWORDS = {
+    #TODO: use regex to support variable whitespaces
+    'May read system environment variables':
+        ('environ',),
+    'May open a file':
+        ('open',),
+    'May write to a file (if combined with Open)':
+        ('write', 'put', 'output', 'print #'),
+    'May read or write a binary file (if combined with Open)':
+        ('binary',),
+    'May run an executable file or a system command':
+        ('shell', 'vbnormalfocus'),
+    'May hide the application':
+        ('Application.Visible', 'ShowWindow', 'SW_HIDE'),
+    'May create a directory':
+        ('MkDir',),
+    'May save the current workbook':
+        ('ActiveWorkbook.SaveAs',),
+    'May change which directory contains files to open at startup':
+        #TODO: confirm the actual effect
+        ('Application.AltStartupPath',),
+    'May create an OLE object':
+        ('CreateObject',),
+    'May run an application (if combined with CreateObject)':
+        ('Shell.Application',),
+    'May enumerate application windows (if combined with Shell.Application object)':
+        ('.Windows', 'FindWindow'),
 }
 
 # Patterns to be extracted (IP addresses, URLs, etc)
@@ -726,6 +757,26 @@ def detect_autoexec(vba_code):
     return results
 
 
+def detect_suspicious(vba_code):
+    """
+    Detect if the VBA code contains suspicious keywords corresponding to
+    potential malware behaviour.
+
+    :param vba_code: str, VBA source code
+    :return: list of str tuples (keyword, description)
+    """
+    #TODO: use regex to find keywords with word boundaries
+    # case-insensitive search
+    #vba_code = vba_code.lower()
+    results = []
+    for description, keywords in SUSPICIOUS_KEYWORDS.items():
+        for keyword in keywords:
+            if re.search(r'(?i)\b'+keyword+r'\b', vba_code):
+            #if keyword.lower() in vba_code:
+                results.append((keyword, description))
+    return results
+
+
 def detect_patterns(vba_code):
     """
     Detect if the VBA code contains specific patterns such as IP addresses,
@@ -999,6 +1050,20 @@ if __name__ == '__main__':
                         print t
                     else:
                         print 'Auto-executable macro keywords: None found'
+
+                    print '- '*39
+                    suspicious_keywords = detect_suspicious(vba_code)
+                    if suspicious_keywords:
+                        print 'Suspicious macro keywords found:'
+                        t = prettytable.PrettyTable(('Keyword', 'Description'))
+                        t.align = 'l'
+                        t.max_width['Keyword'] = 20
+                        t.max_width['Description'] = 59
+                        for keyword, description in suspicious_keywords:
+                            t.add_row((keyword, description))
+                        print t
+                    else:
+                        print 'Suspicious macro keywords: None found'
 
                     print '- '*39
                     patterns = detect_patterns(vba_code)
