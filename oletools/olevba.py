@@ -746,13 +746,16 @@ def detect_autoexec(vba_code):
     :param vba_code: str, VBA source code
     :return: list of str tuples (keyword, description)
     """
-    #TODO: use regex to find keywords with word boundaries
+    #TODO: merge code with detect_suspicious
     # case-insensitive search
-    vba_code = vba_code.lower()
+    #vba_code = vba_code.lower()
     results = []
     for description, keywords in AUTOEXEC_KEYWORDS.items():
         for keyword in keywords:
-            if keyword.lower() in vba_code:
+            #TODO: if keyword is already a compiled regex, use it as-is
+            # search using regex to detect word boundaries:
+            if re.search(r'(?i)\b'+keyword+r'\b', vba_code):
+            #if keyword.lower() in vba_code:
                 results.append((keyword, description))
     return results
 
@@ -765,12 +768,12 @@ def detect_suspicious(vba_code):
     :param vba_code: str, VBA source code
     :return: list of str tuples (keyword, description)
     """
-    #TODO: use regex to find keywords with word boundaries
     # case-insensitive search
     #vba_code = vba_code.lower()
     results = []
     for description, keywords in SUSPICIOUS_KEYWORDS.items():
         for keyword in keywords:
+            # search using regex to detect word boundaries:
             if re.search(r'(?i)\b'+keyword+r'\b', vba_code):
             #if keyword.lower() in vba_code:
                 results.append((keyword, description))
