@@ -86,8 +86,9 @@ Usage: olevba.py <file>
 #                      - ignore empty macros
 # 2014-12-14 v0.07 PL: - detect_autoexec() is now case-insensitive
 # 2014-12-15 v0.08 PL: - improved display for empty macros
+#                      - added pattern extraction
 
-__version__ = '0.07'
+__version__ = '0.08'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -96,6 +97,13 @@ __version__ = '0.07'
 # + nicer output
 # + setup logging (common with other oletools)
 # + update readme, wiki and decalage.info, pypi (link to sample files)
+# + performance improvement: instead of searching each keyword separately,
+#   first split vba code into a list of words (per line), then check each
+#   word against a dict. (or put vba words into a set/dict?)
+# + for regex, maybe combine them into a single re with named groups?
+# + add Yara support, include sample rules? plugins like balbuzard?
+# + add balbuzard support
+# + move main into functions
 
 # TODO later:
 # + output to file
@@ -103,7 +111,7 @@ __version__ = '0.07'
 # + look for VBA in embedded documents (e.g. Excel in Word)
 # + support SRP streams (see Lenny's article + links and sample)
 # - python 3.x support
-# - add support for PowerPoint macros (see libclamav, libgsf)
+# - add support for PowerPoint macros (see libclamav, libgsf), use oledump heuristic?
 # - check VBA macros in Visio, Access, Project, etc
 # - extract_macros: convert to a class, split long function into smaller methods
 # - extract_macros: read bytes from stream file objects instead of strings
@@ -123,6 +131,7 @@ import struct
 import cStringIO
 import math
 import zipfile
+import re
 
 import thirdparty.olefile as olefile
 
@@ -152,6 +161,16 @@ AUTOEXEC_KEYWORDS = {
 
     #TODO: full list in MS specs??
 }
+
+# Patterns to be extracted (IP addresses, URLs, etc)
+# From patterns.py in balbuzard
+RE_PATTERNS = (
+    ('URL', re.compile(r'(http|https|ftp)\://[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(:[a-zA-Z0-9]*)?/?([a-zA-Z0-9\-\._\?\,\'/\\\+&amp;%\$#\=~])*[^\.\,\)\(\s]')),
+    ('IPv4 address', re.compile(r"\b(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\b")),
+    ('E-mail address', re.compile(r'(?i)\b[A-Z0-9._%+-]+@(?:[A-Z0-9-]+\.)+(?:[A-Z]{2,12}|XN--[A-Z0-9]{4,18})\b')),
+    ('Domain name', re.compile(r'(?=^.{1,254}$)(^(?:(?!\d+\.|-)[a-zA-Z0-9_\-]{1,63}(?<!-)\.?)+(?:[a-zA-Z]{2,})$)')),
+    ("Executable file name", re.compile(r"(?i)\b\w+\.(EXE|COM|VBS|JS|VBE|JSE|BAT|CMD|DLL|SCR|CLASS|JAR)\b")),
+    )
 
 
 #--- FUNCTIONS ----------------------------------------------------------------
@@ -696,6 +715,7 @@ def detect_autoexec(vba_code):
     :param vba_code: str, VBA source code
     :return: list of str tuples (keyword, description)
     """
+    #TODO: use regex to find keywords with word boundaries
     # case-insensitive search
     vba_code = vba_code.lower()
     results = []
@@ -703,6 +723,22 @@ def detect_autoexec(vba_code):
         for keyword in keywords:
             if keyword.lower() in vba_code:
                 results.append((keyword, description))
+    return results
+
+
+def detect_patterns(vba_code):
+    """
+    Detect if the VBA code contains specific patterns such as IP addresses,
+    URLs, e-mail addresses, executable file names, etc.
+
+    :param vba_code: str, VBA source code
+    :return: list of str tuples (pattern type, value)
+    """
+    results = []
+    for pattern_type, pattern_re in RE_PATTERNS:
+        match = pattern_re.search(vba_code)
+        if match is not None:
+            results.append((pattern_type, match.group()))
     return results
 
 
@@ -963,6 +999,20 @@ if __name__ == '__main__':
                         print t
                     else:
                         print 'Auto-executable macro keywords: None found'
+
+                    print '- '*39
+                    patterns = detect_patterns(vba_code)
+                    if patterns:
+                        print 'Patterns found:'
+                        t = prettytable.PrettyTable(('Value', 'Pattern type'))
+                        t.align = 'l'
+                        t.max_width['Value'] = 40
+                        t.max_width['Pattern type'] = 39
+                        for pattern_type, value in patterns:
+                            t.add_row((value, pattern_type))
+                        print t
+                    else:
+                        print 'Patterns: None found'
 
         else:
             print 'No VBA macros found.'
