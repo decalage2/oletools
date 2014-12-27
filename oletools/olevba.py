@@ -87,6 +87,9 @@ https://github.com/unixfreak0037/officeparser
 #                      - added pattern extraction
 # 2014-12-25 v0.09 PL: - added suspicious keywords detection
 # 2014-12-27 v0.10 PL: - added OptionParser, main and process_file
+#                      - uses xglob to scan several files with wildcards
+#                      - option -r to recurse subdirectories
+#                      - option -z to scan files in password-protected zips
 
 __version__ = '0.10'
 
@@ -134,6 +137,7 @@ import optparse
 
 import thirdparty.olefile as olefile
 from thirdparty.prettytable import prettytable
+from thirdparty.xglob import xglob
 
 #--- CONSTANTS ----------------------------------------------------------------
 
@@ -806,7 +810,7 @@ class VBA_Parser(object):
     - PowerPoint 2007+ (.pptm, .ppsm)
     """
 
-    def __init__(self, _file, filename=None):
+    def __init__(self, filename, data=None):
         """
         Constructor for VBA_Parser
 
@@ -816,20 +820,26 @@ class VBA_Parser(object):
         """
         #TODO: filename should be mandatory, optional data is a string or file-like object
         #TODO: also support olefile and zipfile as input
-        self.file = _file
+        if data is None:
+            # open file from disk:
+            _file = filename
+        else:
+            # file already read in memory, make it a file-like object for zipfile:
+            _file = cStringIO.StringIO(data)
+        #self.file = _file
         self.ole_file = None
         self.ole_subfiles = []
         self.filename = filename
         self.type = None
         self.vba_projects = None
-        if filename is None:
-            if isinstance(_file, basestring):
-                if len(_file) < olefile.MINIMAL_OLEFILE_SIZE:
-                    self.filename = _file
-                else:
-                    self.filename = '<file in bytes string>'
-            else:
-                self.filename = '<file-like object>'
+        # if filename is None:
+        #     if isinstance(_file, basestring):
+        #         if len(_file) < olefile.MINIMAL_OLEFILE_SIZE:
+        #             self.filename = _file
+        #         else:
+        #             self.filename = '<file in bytes string>'
+        #     else:
+        #         self.filename = '<file-like object>'
         if olefile.isOleFile(_file):
             # This looks like an OLE file
             logging.info('Parsing OLE file %s' % self.filename)
@@ -851,7 +861,7 @@ class VBA_Parser(object):
                     logging.debug('Opening OLE file %s within zip' % subfile)
                     ole_data = z.open(subfile).read()
                     try:
-                        self.ole_subfiles.append(VBA_Parser(ole_data, filename=subfile))
+                        self.ole_subfiles.append(VBA_Parser(filename=subfile, data=ole_data))
                     except:
                         logging.debug('%s is not a valid OLE file' % subfile)
                         continue
@@ -1005,16 +1015,17 @@ class VBA_Parser(object):
             self.ole_file.close()
 
 
-def process_file (filename):
+def process_file (filename, data):
     """
     Process a single file
     """
     #TODO: replace print by writing to a provided output file (sys.stdout by default)
+    print ''
     print '='*79
     print 'File:', filename
     try:
         #TODO: handle olefile errors, when an OLE file is malformed
-        vba = VBA_Parser(filename, filename=filename)
+        vba = VBA_Parser(filename, data)
         print 'Type:', vba.type
         if vba.detect_vba_macros():
             print 'Contains VBA Macros:'
@@ -1075,8 +1086,8 @@ def process_file (filename):
 
         else:
             print 'No VBA macros found.'
-    except TypeError:
-        raise
+    except: #TypeError:
+        #raise
         print sys.exc_value
 
 
@@ -1092,12 +1103,12 @@ def main():
     #     help='output file')
     # parser.add_option('-c', '--csv', dest='csv',
     #     help='export results to a CSV file')
-    # parser.add_option("-r", action="store_true", dest="recursive",
-    #     help='find files recursively in subdirectories.')
-    # parser.add_option("-z", "--zip", dest='zip_password', type='str', default=None,
-    #     help='if the file is a zip archive, open first file from it, using the provided password (requires Python 2.6+)')
-    # parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
-    #     help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
+    parser.add_option("-r", action="store_true", dest="recursive",
+        help='find files recursively in subdirectories.')
+    parser.add_option("-z", "--zip", dest='zip_password', type='str', default=None,
+        help='if the file is a zip archive, open first file from it, using the provided password (requires Python 2.6+)')
+    parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
+        help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
 
     (options, args) = parser.parse_args()
 
@@ -1109,9 +1120,10 @@ def main():
 
     logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.WARNING) #INFO)
 
-    for filespec in args:
+    for filename, data in xglob.iter_files(args, recursive=options.recursive,
+        zip_password=options.zip_password, zip_fname=options.zip_fname):
         #data = open(filespec, 'rb').read()
-        process_file(filespec)
+        process_file(filename, data)
 
 if __name__ == '__main__':
     main()
