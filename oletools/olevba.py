@@ -18,8 +18,6 @@ http://www.decalage.info/python/oletools
 
 olevba is based on source code from officeparser by John William Davison
 https://github.com/unixfreak0037/officeparser
-
-Usage: olevba.py <file>
 """
 
 #=== LICENSE ==================================================================
@@ -88,27 +86,26 @@ Usage: olevba.py <file>
 # 2014-12-15 v0.08 PL: - improved display for empty macros
 #                      - added pattern extraction
 # 2014-12-25 v0.09 PL: - added suspicious keywords detection
+# 2014-12-27 v0.10 PL: - added OptionParser, main and process_file
 
-__version__ = '0.09'
+__version__ = '0.10'
 
 #------------------------------------------------------------------------------
 # TODO:
+# + process several files in dirs or zips with password
 # + do not use logging, but a provided logger (null logger by default)
-# + optparse
 # + nicer output
 # + setup logging (common with other oletools)
 # + update readme, wiki and decalage.info, pypi (link to sample files)
+
+# TODO later:
 # + performance improvement: instead of searching each keyword separately,
 #   first split vba code into a list of words (per line), then check each
 #   word against a dict. (or put vba words into a set/dict?)
 # + for regex, maybe combine them into a single re with named groups?
 # + add Yara support, include sample rules? plugins like balbuzard?
 # + add balbuzard support
-# + move main into functions
-
-# TODO later:
-# + output to file
-# + process several files in dirs or zips with password
+# + output to file (replace print by file.write, sys.stdout by default)
 # + look for VBA in embedded documents (e.g. Excel in Word)
 # + support SRP streams (see Lenny's article + links and sample)
 # - python 3.x support
@@ -133,8 +130,10 @@ import cStringIO
 import math
 import zipfile
 import re
+import optparse
 
 import thirdparty.olefile as olefile
+from thirdparty.prettytable import prettytable
 
 #--- CONSTANTS ----------------------------------------------------------------
 
@@ -815,6 +814,7 @@ class VBA_Parser(object):
         :param filename: actual filename if _file is a  file-like object or file content
         in a bytes string
         """
+        #TODO: filename should be mandatory, optional data is a string or file-like object
         #TODO: also support olefile and zipfile as input
         self.file = _file
         self.ole_file = None
@@ -1005,33 +1005,24 @@ class VBA_Parser(object):
             self.ole_file.close()
 
 
-#=== MAIN =====================================================================
-
-if __name__ == '__main__':
-
-    from thirdparty.prettytable import prettytable
-
-    if len(sys.argv)<2:
-        print __doc__
-        sys.exit(1)
-
-    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.WARNING) #INFO)
-
-    #TODO: option parser
-    fname = sys.argv[1]
+def process_file (filename):
+    """
+    Process a single file
+    """
+    #TODO: replace print by writing to a provided output file (sys.stdout by default)
     print '='*79
-    print 'File:', fname
+    print 'File:', filename
     try:
         #TODO: handle olefile errors, when an OLE file is malformed
-        vba = VBA_Parser(fname)
+        vba = VBA_Parser(filename, filename=filename)
         print 'Type:', vba.type
         if vba.detect_vba_macros():
             print 'Contains VBA Macros:'
-            for (filename, stream_path, vba_filename, vba_code) in vba.extract_macros():
+            for (subfilename, stream_path, vba_filename, vba_code) in vba.extract_macros():
                 # hide attribute lines:
                 vba_code = filter_vba(vba_code)
                 print '-'*79
-                print 'Filename    :', filename
+                print 'Filename    :', subfilename
                 print 'OLE stream  :', stream_path
                 print 'VBA filename:', vba_filename
                 print '- '*39
@@ -1087,5 +1078,42 @@ if __name__ == '__main__':
     except TypeError:
         raise
         print sys.exc_value
+
+
+#=== MAIN =====================================================================
+
+def main():
+    """
+    Main function, called when olevba is run from the command line
+    """
+    usage = 'usage: %prog [options] <filename> [filename2 ...]'
+    parser = optparse.OptionParser(usage=usage)
+    # parser.add_option('-o', '--outfile', dest='outfile',
+    #     help='output file')
+    # parser.add_option('-c', '--csv', dest='csv',
+    #     help='export results to a CSV file')
+    # parser.add_option("-r", action="store_true", dest="recursive",
+    #     help='find files recursively in subdirectories.')
+    # parser.add_option("-z", "--zip", dest='zip_password', type='str', default=None,
+    #     help='if the file is a zip archive, open first file from it, using the provided password (requires Python 2.6+)')
+    # parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
+    #     help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
+
+    (options, args) = parser.parse_args()
+
+    # Print help if no argurments are passed
+    if len(args) == 0:
+        print __doc__
+        parser.print_help()
+        sys.exit()
+
+    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.WARNING) #INFO)
+
+    for filespec in args:
+        #data = open(filespec, 'rb').read()
+        process_file(filespec)
+
+if __name__ == '__main__':
+    main()
 
 # This was coded while listening to "Dust" from I Love You But I've Chosen Darkness
