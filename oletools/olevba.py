@@ -22,7 +22,7 @@ https://github.com/unixfreak0037/officeparser
 
 #=== LICENSE ==================================================================
 
-# olevba is copyright (c) 2014 Philippe Lagadec (http://www.decalage.info)
+# olevba is copyright (c) 2014-2015 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -90,8 +90,9 @@ https://github.com/unixfreak0037/officeparser
 #                      - uses xglob to scan several files with wildcards
 #                      - option -r to recurse subdirectories
 #                      - option -z to scan files in password-protected zips
+# 2015-01-02 v0.11 PL: - improved filter_vba to detect colons
 
-__version__ = '0.10'
+__version__ = '0.11'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -723,7 +724,12 @@ def _extract_vba (ole, vba_root, project_path, dir_path):
 
 def filter_vba(vba_code):
     """
-    Filter VBA source code to remove the first lines starting with "Attribute VB_"
+    Filter VBA source code to remove the first lines starting with "Attribute VB_",
+    which are automatically added by MS Office and not displayed in the VBA Editor.
+    This should only be used when displaying source code for human analysis.
+
+    Note: lines are not filtered if they contain a colon, because it could be
+    used to hide malicious instructions.
 
     :param vba_code: str, VBA source code
     :return: str, filtered VBA source code
@@ -731,7 +737,7 @@ def filter_vba(vba_code):
     vba_lines = vba_code.splitlines()
     start = 0
     for line in vba_lines:
-        if line.startswith("Attribute VB_"):
+        if line.startswith("Attribute VB_") and not ':' in line:
             start += 1
         else:
             break
