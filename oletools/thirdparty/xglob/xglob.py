@@ -20,7 +20,7 @@ For more info and updates: http://www.decalage.info/xglob
 
 # LICENSE:
 #
-# xglob is copyright (c) 2013-2014, Philippe Lagadec (http://www.decalage.info)
+# xglob is copyright (c) 2013-2015, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -49,8 +49,9 @@ For more info and updates: http://www.decalage.info/xglob
 # 2013-12-04 v0.01 PL: - scan several files from command line args
 # 2014-01-14 v0.02 PL: - added riglob, ziglob
 # 2014-12-26 v0.03 PL: - moved code from balbuzard into a separate package
+# 2015-01-03 v0.04 PL: - fixed issues in iter_files + yield container name
 
-__version__ = '0.03'
+__version__ = '0.04'
 
 
 #=== IMPORTS =================================================================
@@ -96,7 +97,7 @@ def ziglob (zipfileobj, pathname):
     filenames, using wildcards, e.g. *.txt
     """
     files = zipfileobj.namelist()
-    for f in files: print f
+    #for f in files: print f
     for f in fnmatch.filter(files, pathname):
         yield f
 
@@ -110,10 +111,13 @@ def iter_files(files, recursive=False, zip_password=None, zip_fname='*'):
     - if not, then each file is opened as a zip archive with the provided password
     - then files matching zip_fname are opened from the zip archive
 
-    Iterator: yields (filename, data) for each file. If zip_password is None, then
-    only the filename is returned, and data=None. Otherwise data is the file
-    content.
+    Iterator: yields (container, filename, data) for each file. If zip_password is None, then
+    only the filename is returned, container and data=None. Otherwise container si the
+    filename of the container (zip file), and data is the file content.
     """
+    #TODO: catch exceptions and yield them for the caller (no file found, file is not zip, wrong password, etc)
+    #TODO: use logging instead of printing
+    #TODO: split in two simpler functions, the caller knows if it's a zip or not
     # choose recursive or non-recursive iglob:
     if recursive:
         iglob = riglob
@@ -123,18 +127,19 @@ def iter_files(files, recursive=False, zip_password=None, zip_fname='*'):
         for filename in iglob(filespec):
             if zip_password is not None:
                 # Each file is expected to be a zip archive:
-                print 'Opening zip archive %s with provided password' % filename
+                #print 'Opening zip archive %s with provided password' % filename
                 z = zipfile.ZipFile(filename, 'r')
-                print 'Looking for file(s) matching "%s"' % zip_fname
-                for filename in ziglob(z, zip_fname):
-                    print 'Opening file in zip archive:', filename
-                    data = z.read(filename, zip_password)
-                    yield filename, data
+                #print 'Looking for file(s) matching "%s"' % zip_fname
+                for subfilename in ziglob(z, zip_fname):
+                    #print 'Opening file in zip archive:', filename
+                    data = z.read(subfilename, zip_password)
+                    yield filename, subfilename, data
+                z.close()
             else:
                 # normal file
                 # do not read the file content, just yield the filename
-                yield filename, None
-                print 'Opening file', filename
+                yield None, filename, None
+                #print 'Opening file', filename
                 #data = open(filename, 'rb').read()
-                #yield filename, data
+                #yield None, filename, data
 
