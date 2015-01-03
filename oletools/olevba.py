@@ -98,9 +98,7 @@ __version__ = '0.12'
 
 #------------------------------------------------------------------------------
 # TODO:
-# + process several files in dirs or zips with password
 # + do not use logging, but a provided logger (null logger by default)
-# + nicer output
 # + setup logging (common with other oletools)
 # + update readme, wiki and decalage.info, pypi (link to sample files)
 
@@ -207,7 +205,7 @@ RE_PATTERNS = (
     ('IPv4 address', re.compile(r"\b(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\b")),
     ('E-mail address', re.compile(r'(?i)\b[A-Z0-9._%+-]+@(?:[A-Z0-9-]+\.)+(?:[A-Z]{2,12}|XN--[A-Z0-9]{4,18})\b')),
     ('Domain name', re.compile(r'(?=^.{1,254}$)(^(?:(?!\d+\.|-)[a-zA-Z0-9_\-]{1,63}(?<!-)\.?)+(?:[a-zA-Z]{2,})$)')),
-    ("Executable file name", re.compile(r"(?i)\b\w+\.(EXE|COM|VBS|JS|VBE|JSE|BAT|CMD|DLL|SCR|CLASS|JAR)\b")),
+    ("Executable file name", re.compile(r"(?i)\b\w+\.(EXE|COM|PIF|APPLICATION|GADGET|MSI|MSP|MSC|VB|VBS|JS|VBE|JSE|WS|WSF|WSC|WSH|BAT|CMD|DLL|SCR|HTA|CPL|CLASS|JAR|PS1|PS1XML|PS2|PS2XML|PSC1|PSC2|SCF|LNK|INF|REG)\b")),
     )
 
 
@@ -1064,45 +1062,23 @@ def process_file (container, filename, data):
                     print '- '*39
                     print 'ANALYSIS:'
                     autoexec_keywords = detect_autoexec(vba_code)
-                    if autoexec_keywords:
-                        print 'Auto-executable macro keywords found:'
-                        t = prettytable.PrettyTable(('Keyword', 'Description'))
-                        t.align = 'l'
-                        t.max_width['Keyword'] = 20
-                        t.max_width['Description'] = 59
-                        for keyword, description in autoexec_keywords:
-                            t.add_row((keyword, description))
-                        print t
-                    else:
-                        print 'Auto-executable macro keywords: None found'
-
-                    print '- '*39
                     suspicious_keywords = detect_suspicious(vba_code)
-                    if suspicious_keywords:
-                        print 'Suspicious macro keywords found:'
-                        t = prettytable.PrettyTable(('Keyword', 'Description'))
-                        t.align = 'l'
-                        t.max_width['Keyword'] = 20
-                        t.max_width['Description'] = 59
-                        for keyword, description in suspicious_keywords:
-                            t.add_row((keyword, description))
-                        print t
-                    else:
-                        print 'Suspicious macro keywords: None found'
-
-                    print '- '*39
                     patterns = detect_patterns(vba_code)
-                    if patterns:
-                        print 'Patterns found:'
-                        t = prettytable.PrettyTable(('Value', 'Pattern type'))
+                    if autoexec_keywords or suspicious_keywords or patterns:
+                        t = prettytable.PrettyTable(('Type', 'Keyword', 'Description'))
                         t.align = 'l'
-                        t.max_width['Value'] = 40
-                        t.max_width['Pattern type'] = 39
+                        t.max_width['Type'] = 10
+                        t.max_width['Keyword'] = 20
+                        t.max_width['Description'] = 40
+                        for keyword, description in autoexec_keywords:
+                            t.add_row(('AutoExec', keyword, description))
+                        for keyword, description in suspicious_keywords:
+                            t.add_row(('Suspicious', keyword, description))
                         for pattern_type, value in patterns:
-                            t.add_row((value, pattern_type))
+                            t.add_row(('IOC', value, pattern_type))
                         print t
                     else:
-                        print 'Patterns: None found'
+                        print 'No suspicious keyword or pattern found.'
 
         else:
             print 'No VBA macros found.'
