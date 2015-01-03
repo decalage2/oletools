@@ -92,6 +92,7 @@ https://github.com/unixfreak0037/officeparser
 #                      - option -z to scan files in password-protected zips
 # 2015-01-02 v0.11 PL: - improved filter_vba to detect colons
 # 2015-01-03 v0.12 PL: - fixed detect_patterns to detect all patterns
+#                      - process_file: improved display, shows container file
 
 __version__ = '0.12'
 
@@ -136,6 +137,7 @@ import math
 import zipfile
 import re
 import optparse
+import os.path
 
 import thirdparty.olefile as olefile
 from thirdparty.prettytable import prettytable
@@ -1025,27 +1027,34 @@ class VBA_Parser(object):
             self.ole_file.close()
 
 
-def process_file (filename, data):
+def process_file (container, filename, data):
     """
     Process a single file
+
+    :param container: str, path and filename of container if the file is within
+    a zip archive, None otherwise.
+    :param filename: str, path and filename of file on disk, or within the container.
+    :param data: bytes, content of the file if it is in a container, None if it is a file on disk.
     """
     #TODO: replace print by writing to a provided output file (sys.stdout by default)
-    print ''
+    if container:
+        display_filename = '%s in %s' % (filename, container)
+    else:
+        display_filename = filename
     print '='*79
-    print 'File:', filename
+    print 'FILE:', display_filename
     try:
         #TODO: handle olefile errors, when an OLE file is malformed
         vba = VBA_Parser(filename, data)
         print 'Type:', vba.type
         if vba.detect_vba_macros():
-            print 'Contains VBA Macros:'
+            #print 'Contains VBA Macros:'
             for (subfilename, stream_path, vba_filename, vba_code) in vba.extract_macros():
                 # hide attribute lines:
                 vba_code = filter_vba(vba_code)
                 print '-'*79
-                print 'Filename    :', subfilename
-                print 'OLE stream  :', stream_path
-                print 'VBA filename:', vba_filename
+                print 'VBA MACRO %s ' % vba_filename
+                print 'in file: %s - OLE stream: %s' % (subfilename, stream_path)
                 print '- '*39
                 # detect empty macros:
                 if vba_code.strip() == '':
@@ -1053,6 +1062,7 @@ def process_file (filename, data):
                 else:
                     print vba_code
                     print '- '*39
+                    print 'ANALYSIS:'
                     autoexec_keywords = detect_autoexec(vba_code)
                     if autoexec_keywords:
                         print 'Auto-executable macro keywords found:'
@@ -1099,6 +1109,7 @@ def process_file (filename, data):
     except: #TypeError:
         #raise
         print sys.exc_value
+    print ''
 
 
 #=== MAIN =====================================================================
@@ -1130,10 +1141,10 @@ def main():
 
     logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.WARNING) #INFO)
 
-    for filename, data in xglob.iter_files(args, recursive=options.recursive,
+    for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
         zip_password=options.zip_password, zip_fname=options.zip_fname):
         #data = open(filespec, 'rb').read()
-        process_file(filename, data)
+        process_file(container, filename, data)
 
 if __name__ == '__main__':
     main()
