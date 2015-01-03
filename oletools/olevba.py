@@ -93,6 +93,7 @@ https://github.com/unixfreak0037/officeparser
 # 2015-01-02 v0.11 PL: - improved filter_vba to detect colons
 # 2015-01-03 v0.12 PL: - fixed detect_patterns to detect all patterns
 #                      - process_file: improved display, shows container file
+#                      - improved list of executable file extensions
 
 __version__ = '0.12'
 
@@ -206,6 +207,8 @@ RE_PATTERNS = (
     ('E-mail address', re.compile(r'(?i)\b[A-Z0-9._%+-]+@(?:[A-Z0-9-]+\.)+(?:[A-Z]{2,12}|XN--[A-Z0-9]{4,18})\b')),
     ('Domain name', re.compile(r'(?=^.{1,254}$)(^(?:(?!\d+\.|-)[a-zA-Z0-9_\-]{1,63}(?<!-)\.?)+(?:[a-zA-Z]{2,})$)')),
     ("Executable file name", re.compile(r"(?i)\b\w+\.(EXE|COM|PIF|APPLICATION|GADGET|MSI|MSP|MSC|VB|VBS|JS|VBE|JSE|WS|WSF|WSC|WSH|BAT|CMD|DLL|SCR|HTA|CPL|CLASS|JAR|PS1|PS1XML|PS2|PS2XML|PSC1|PSC2|SCF|LNK|INF|REG)\b")),
+    # Sources: http://www.howtogeek.com/137270/50-file-extensions-that-are-potentially-dangerous-on-windows/
+    #TODO: https://support.office.com/en-us/article/Blocked-attachments-in-Outlook-3811cddc-17c3-4279-a30c-060ba0207372#__attachment_file_types
     )
 
 
