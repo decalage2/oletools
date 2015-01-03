@@ -91,8 +91,9 @@ https://github.com/unixfreak0037/officeparser
 #                      - option -r to recurse subdirectories
 #                      - option -z to scan files in password-protected zips
 # 2015-01-02 v0.11 PL: - improved filter_vba to detect colons
+# 2015-01-03 v0.12 PL: - fixed detect_patterns to detect all patterns
 
-__version__ = '0.11'
+__version__ = '0.12'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -798,10 +799,13 @@ def detect_patterns(vba_code):
     :return: list of str tuples (pattern type, value)
     """
     results = []
+    found = set()
     for pattern_type, pattern_re in RE_PATTERNS:
-        match = pattern_re.search(vba_code)
-        if match is not None:
-            results.append((pattern_type, match.group()))
+        for match in pattern_re.finditer(vba_code):
+            value = match.group()
+            if value not in found:
+                results.append((pattern_type, value))
+                found.add(value)
     return results
 
 
