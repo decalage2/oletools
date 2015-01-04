@@ -94,8 +94,9 @@ https://github.com/unixfreak0037/officeparser
 # 2015-01-03 v0.12 PL: - fixed detect_patterns to detect all patterns
 #                      - process_file: improved display, shows container file
 #                      - improved list of executable file extensions
+# 2015-01-04 v0.13 PL: - added several suspicious keywords, improved display
 
-__version__ = '0.12'
+__version__ = '0.13'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -151,37 +152,48 @@ FORM_EXTENSION = "frm"
 # Keywords to detect auto-executable macros
 AUTOEXEC_KEYWORDS = {
     # MS Word:
-    'Macro triggered when the Word document is opened':
+    'Runs when the Word document is opened':
         ('AutoExec', 'AutoOpen', 'Document_Open', 'DocumentOpen'),
-    'Macro triggered when the Word document is closed':
+    'Runs when the Word document is closed':
         ('AutoExit', 'AutoClose', 'Document_Close', 'DocumentBeforeClose'),
-    'Macro triggered when the Word document is modified':
+    'Runs when the Word document is modified':
         ('DocumentChange',),
-    'Macro triggered when a new Word document is created':
+    'Runs when a new Word document is created':
         ('AutoNew', 'Document_New', 'NewDocument'),
 
     # MS Excel:
-    'Macro triggered when the Excel Workbook is opened':
+    'Runs when the Excel Workbook is opened':
         ('Auto_Open', 'Workbook_Open'),
-    'Macro triggered when the Excel Workbook is closed':
+    'Runs when the Excel Workbook is closed':
         ('Auto_Close', 'Workbook_Close'),
 
     #TODO: full list in MS specs??
 }
 
 # Suspicious Keywords that may be used by malware
+# See VBA language reference: http://msdn.microsoft.com/en-us/library/office/jj692818%28v=office.15%29.aspx
 SUSPICIOUS_KEYWORDS = {
     #TODO: use regex to support variable whitespaces
     'May read system environment variables':
-        ('environ',),
+        ('Environ',),
     'May open a file':
-        ('open',),
+        ('Open',),
     'May write to a file (if combined with Open)':
-        ('write', 'put', 'output', 'print #'),
+        #TODO: regex to find Open+Write on same line
+        ('Write', 'Put', 'Output', 'Print #'),
     'May read or write a binary file (if combined with Open)':
-        ('binary',),
+        #TODO: regex to find Open+Binary on same line
+        ('Binary',),
+    'May copy a file':
+        ('FileCopy', 'CopyFile'),
+        #FileCopy: http://msdn.microsoft.com/en-us/library/office/gg264390%28v=office.15%29.aspx
+        #CopyFile: http://msdn.microsoft.com/en-us/library/office/gg264089%28v=office.15%29.aspx
+    'May create a text file':
+        ('CreateTextFile'),
+        #CreateTextFile: http://msdn.microsoft.com/en-us/library/office/gg264617%28v=office.15%29.aspx
     'May run an executable file or a system command':
-        ('shell', 'vbnormalfocus'),
+        ('Shell', 'vbNormalFocus', 'vbHide', 'vbMinimizedFocus', 'vbMaximizedFocus', 'vbNormalNoFocus', 'vbMinimizedNoFocus'),
+        #Shell: http://msdn.microsoft.com/en-us/library/office/gg278437%28v=office.15%29.aspx
     'May hide the application':
         ('Application.Visible', 'ShowWindow', 'SW_HIDE'),
     'May create a directory':
@@ -196,7 +208,22 @@ SUSPICIOUS_KEYWORDS = {
     'May run an application (if combined with CreateObject)':
         ('Shell.Application',),
     'May enumerate application windows (if combined with Shell.Application object)':
-        ('.Windows', 'FindWindow'),
+        ('Windows', 'FindWindow'),
+    'May run code from a DLL':
+        #TODO: regex to find declare+lib on same line
+        ('Lib',),
+    'May download files from the Internet':
+        #TODO: regex to find urlmon+URLDownloadToFileA on same line
+        ('URLDownloadToFileA',),
+    'May control another application by simulating user keystrokes':
+        ('SendKeys', 'AppActivate'),
+        #SendKeys: http://msdn.microsoft.com/en-us/library/office/gg278655%28v=office.15%29.aspx
+    'May attempt to obfuscate malicious function calls':
+        ('CallByName'),
+        #CallByName: http://msdn.microsoft.com/en-us/library/office/gg278760%28v=office.15%29.aspx
+    'May attempt to obfuscate specific strings':
+        ('Chr', 'ChrB', 'ChrW'),
+        #Chr: http://msdn.microsoft.com/en-us/library/office/gg264465%28v=office.15%29.aspx
 }
 
 # Patterns to be extracted (IP addresses, URLs, etc)
@@ -1072,7 +1099,7 @@ def process_file (container, filename, data):
                         t.align = 'l'
                         t.max_width['Type'] = 10
                         t.max_width['Keyword'] = 20
-                        t.max_width['Description'] = 40
+                        t.max_width['Description'] = 39
                         for keyword, description in autoexec_keywords:
                             t.add_row(('AutoExec', keyword, description))
                         for keyword, description in suspicious_keywords:
