@@ -63,6 +63,8 @@ packages=[
     'oletools.thirdparty.olefile',
     'oletools.thirdparty.easygui',
     'oletools.thirdparty.xxxswf',
+    'oletools.thirdparty.prettytable',
+    'oletools.thirdparty.xglob'
 ]
 ##setupdir = '.'
 ##package_dir={'': setupdir}
