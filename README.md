@@ -10,7 +10,7 @@ See [http://www.decalage.info/python/oletools](http://www.decalage.info/python/o
 
 **Quick links:** 
 [Home page](http://www.decalage.info/python/oletools) - 
-[Download](https://bitbucket.org/decalage/oletools/downloads) - 
+[Download/Install](https://bitbucket.org/decalage/oletools/wiki/Install) - 
 [Documentation](https://bitbucket.org/decalage/oletools/wiki) - 
 [Report Issues/Suggestions/Questions](https://bitbucket.org/decalage/oletools/issues?status=new&status=open) - 
 [Contact the Author](http://decalage.info/contact) - 
