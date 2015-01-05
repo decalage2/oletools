@@ -189,7 +189,7 @@ SUSPICIOUS_KEYWORDS = {
         #FileCopy: http://msdn.microsoft.com/en-us/library/office/gg264390%28v=office.15%29.aspx
         #CopyFile: http://msdn.microsoft.com/en-us/library/office/gg264089%28v=office.15%29.aspx
     'May create a text file':
-        ('CreateTextFile'),
+        ('CreateTextFile',),
         #CreateTextFile: http://msdn.microsoft.com/en-us/library/office/gg264617%28v=office.15%29.aspx
     'May run an executable file or a system command':
         ('Shell', 'vbNormalFocus', 'vbHide', 'vbMinimizedFocus', 'vbMaximizedFocus', 'vbNormalNoFocus', 'vbMinimizedNoFocus'),
@@ -219,7 +219,7 @@ SUSPICIOUS_KEYWORDS = {
         ('SendKeys', 'AppActivate'),
         #SendKeys: http://msdn.microsoft.com/en-us/library/office/gg278655%28v=office.15%29.aspx
     'May attempt to obfuscate malicious function calls':
-        ('CallByName'),
+        ('CallByName',),
         #CallByName: http://msdn.microsoft.com/en-us/library/office/gg278760%28v=office.15%29.aspx
     'May attempt to obfuscate specific strings':
         ('Chr', 'ChrB', 'ChrW'),
