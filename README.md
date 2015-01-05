@@ -22,7 +22,7 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2015-01-03 v0.07**: improved [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) to detect suspicious 
+- **2015-01-05 v0.07**: improved [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) to detect suspicious 
 keywords and IOCs in VBA macros, can now scan several files and open password-protected zip archives, added a Python API,
 upgraded OleFileIO_PL to olefile v0.41
 - 2014-08-28 v0.06: added [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba), a new tool to extract VBA Macro 
@@ -57,6 +57,9 @@ Download and Install:
 To use python-oletools from the command line as analysis tools, you may simply 
 [download the zip archive](https://bitbucket.org/decalage/oletools/downloads) 
 and extract the files in the directory of your choice.
+
+To get the latest development version, click on "Download repository" on the 
+[downloads page](https://bitbucket.org/decalage/oletools/downloads), or use mercurial to clone the repository.
 
 If you plan to use python-oletools with other Python applications or your own scripts, then the simplest solution is to 
 use "**pip install oletools**" or "**easy_install oletools**" to download and install in one go. Otherwise you may 
