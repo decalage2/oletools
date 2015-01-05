@@ -8,12 +8,13 @@
 </head>
 <body>
 <h1 id="python-oletools">python-oletools</h1>
-<p><a href="http://www.decalage.info/python/oletools">python-oletools</a> is a package of python tools to analyze <a href="http://en.wikipedia.org/wiki/Compound_File_Binary_Format">Microsoft OLE2 files (also called Structured Storage, Compound File Binary Format or Compound Document File Format)</a>, such as Microsoft Office documents or Outlook messages, mainly for malware analysis, forensics and debugging. It is based on the <a href="http://www.decalage.info/python/olefileio">OleFileIO_PL</a> parser. See <a href="http://www.decalage.info/python/oletools">http://www.decalage.info/python/oletools</a> for more info.</p>
-<p><strong>Quick links:</strong> <a href="http://www.decalage.info/python/oletools">Home page</a> - <a href="https://bitbucket.org/decalage/oletools/downloads">Download</a> - <a href="https://bitbucket.org/decalage/oletools/wiki">Documentation</a> - <a href="https://bitbucket.org/decalage/oletools/issues?status=new&amp;status=open">Report Issues/Suggestions/Questions</a> - <a href="http://decalage.info/contact">Contact the Author</a> - <a href="https://bitbucket.org/decalage/oletools">Repository</a> - <a href="https://twitter.com/decalage2">Updates on Twitter</a></p>
+<p><a href="http://www.decalage.info/python/oletools">python-oletools</a> is a package of python tools to analyze <a href="http://en.wikipedia.org/wiki/Compound_File_Binary_Format">Microsoft OLE2 files</a> (also called Structured Storage, Compound File Binary Format or Compound Document File Format), such as Microsoft Office documents or Outlook messages, mainly for malware analysis, forensics and debugging. It is based on the <a href="http://www.decalage.info/olefile">olefile</a> parser. See <a href="http://www.decalage.info/python/oletools">http://www.decalage.info/python/oletools</a> for more info.</p>
+<p><strong>Quick links:</strong> <a href="http://www.decalage.info/python/oletools">Home page</a> - <a href="https://bitbucket.org/decalage/oletools/wiki/Install">Download/Install</a> - <a href="https://bitbucket.org/decalage/oletools/wiki">Documentation</a> - <a href="https://bitbucket.org/decalage/oletools/issues?status=new&amp;status=open">Report Issues/Suggestions/Questions</a> - <a href="http://decalage.info/contact">Contact the Author</a> - <a href="https://bitbucket.org/decalage/oletools">Repository</a> - <a href="https://twitter.com/decalage2">Updates on Twitter</a></p>
 <p>Note: python-oletools is not related to OLETools published by BeCubed Software.</p>
 <h2 id="news">News</h2>
 <ul>
-<li><strong>2014-08-28 v0.06</strong>: added <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>, a new tool to extract VBA Macro source code from MS Office documents (97-2003 and 2007+). Improved <a href="https://bitbucket.org/decalage/oletools/wiki">documentation</a></li>
+<li><strong>2015-01-05 v0.07</strong>: improved <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a> to detect suspicious keywords and IOCs in VBA macros, can now scan several files and open password-protected zip archives, added a Python API, upgraded OleFileIO_PL to olefile v0.41</li>
+<li>2014-08-28 v0.06: added <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>, a new tool to extract VBA Macro source code from MS Office documents (97-2003 and 2007+). Improved <a href="https://bitbucket.org/decalage/oletools/wiki">documentation</a></li>
 <li>2013-07-24 v0.05: added new tools <a href="https://bitbucket.org/decalage/oletools/wiki/olemeta">olemeta</a> and <a href="https://bitbucket.org/decalage/oletools/wiki/oletimes">oletimes</a></li>
 <li>2013-04-18 v0.04: fixed bug in rtfobj, added documentation for <a href="https://bitbucket.org/decalage/oletools/wiki/rtfobj">rtfobj</a></li>
 <li>2012-11-09 v0.03: Improved <a href="https://bitbucket.org/decalage/oletools/wiki/pyxswf">pyxswf</a> to extract Flash objects from RTF</li>
@@ -27,13 +28,14 @@
 <li><a href="https://bitbucket.org/decalage/oletools/wiki/oleid">oleid</a>: a tool to analyze OLE files to detect specific characteristics usually found in malicious files.</li>
 <li><a href="https://bitbucket.org/decalage/oletools/wiki/olemeta">olemeta</a>: a tool to extract all standard properties (metadata) from OLE files.</li>
 <li><a href="https://bitbucket.org/decalage/oletools/wiki/oletimes">oletimes</a>: a tool to extract creation and modification timestamps of all streams and storages.</li>
-<li><a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a> (new): a tool to extract VBA Macro source code from MS Office documents (OLE and OpenXML).</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>: a tool to extract and analyze VBA Macro source code from MS Office documents (OLE and OpenXML).</li>
 <li><a href="https://bitbucket.org/decalage/oletools/wiki/pyxswf">pyxswf</a>: a tool to detect, extract and analyze Flash objects (SWF) that may be embedded in files such as MS Office documents (e.g. Word, Excel) and RTF, which is especially useful for malware analysis.</li>
 <li><a href="https://bitbucket.org/decalage/oletools/wiki/rtfobj">rtfobj</a>: a tool and python module to extract embedded objects from RTF files.</li>
 <li>and a few others (coming soon)</li>
 </ul>
 <h2 id="download-and-install">Download and Install:</h2>
 <p>To use python-oletools from the command line as analysis tools, you may simply <a href="https://bitbucket.org/decalage/oletools/downloads">download the zip archive</a> and extract the files in the directory of your choice.</p>
+<p>To get the latest development version, click on &quot;Download repository&quot; on the <a href="https://bitbucket.org/decalage/oletools/downloads">downloads page</a>, or use mercurial to clone the repository.</p>
 <p>If you plan to use python-oletools with other Python applications or your own scripts, then the simplest solution is to use &quot;<strong>pip install oletools</strong>&quot; or &quot;<strong>easy_install oletools</strong>&quot; to download and install in one go. Otherwise you may download/extract the zip archive and run &quot;<strong>setup.py install</strong>&quot;.</p>
 <h2 id="documentation">Documentation:</h2>
 <p>The latest version of the documentation can be found <a href="https://bitbucket.org/decalage/oletools/wiki">online</a>, otherwise a copy is provided in the doc subfolder of the package.</p>
@@ -44,7 +46,7 @@
 <p>The code is available in <a href="https://bitbucket.org/decalage/oletools">a Mercurial repository on Bitbucket</a>. You may use it to submit enhancements using forks and pull requests.</p>
 <h2 id="license">License</h2>
 <p>This license applies to the python-oletools package, apart from the thirdparty folder which contains third-party files published with their own license.</p>
-<p>The python-oletools package is copyright (c) 2012-2014 Philippe Lagadec (http://www.decalage.info)</p>
+<p>The python-oletools package is copyright (c) 2012-2015 Philippe Lagadec (http://www.decalage.info)</p>
 <p>All rights reserved.</p>
 <p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
 <ul>
