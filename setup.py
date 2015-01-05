@@ -11,10 +11,10 @@ to install this package.
 #--- CHANGELOG ----------------------------------------------------------------
 
 # 2014-08-27 v0.06: - added doc subfolder
+# 2015-01-05 v0.07: - added xglob, prettytable
 
 #--- TODO ---------------------------------------------------------------------
 
-# + avoid using data_files, which installs files in the main python dir/oletools
 # - deploy scripts?
 # - version for python 3 using 2to3
 
@@ -33,7 +33,7 @@ import sys, os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.06'
+version      = '0.07'
 desc         = "Python tools to analyze security characteristics of MS OLE2 files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), such as Microsoft Office documents, for Malware Analysis and Incident Response."
 long_desc    = open('oletools/README.rst').read()
 author       ="Philippe Lagadec"
@@ -144,13 +144,17 @@ package_data={
         'README.txt',
         'LICENSE.txt',
         ],
-
+    'oletools.thirdparty.xglob': [
+        'LICENSE.txt',
+        ],
     'oletools.thirdparty.easygui': [
         'LICENSE.txt',
         ],
-
     'oletools.thirdparty.xxxswf': [
         'LICENSE.txt',
+        ],
+    'oletools.thirdparty.prettytable': [
+        'CHANGELOG', 'COPYING', 'README'
         ],
     }
 
