@@ -95,8 +95,9 @@ https://github.com/unixfreak0037/officeparser
 #                      - process_file: improved display, shows container file
 #                      - improved list of executable file extensions
 # 2015-01-04 v0.13 PL: - added several suspicious keywords, improved display
+# 2015-01-08 v0.14 PL: - added hex strings detection and decoding
 
-__version__ = '0.13'
+__version__ = '0.14'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -105,6 +106,7 @@ __version__ = '0.13'
 # + update readme, wiki and decalage.info, pypi (link to sample files)
 
 # TODO later:
+# - append decoded hex strings to VBA code, in order to detect IOCs and suspicious keywords
 # + performance improvement: instead of searching each keyword separately,
 #   first split vba code into a list of words (per line), then check each
 #   word against a dict. (or put vba words into a set/dict?)
@@ -138,6 +140,7 @@ import zipfile
 import re
 import optparse
 import os.path
+import binascii
 
 import thirdparty.olefile as olefile
 from thirdparty.prettytable import prettytable
@@ -236,7 +239,11 @@ RE_PATTERNS = (
     ("Executable file name", re.compile(r"(?i)\b\w+\.(EXE|COM|PIF|APPLICATION|GADGET|MSI|MSP|MSC|VB|VBS|JS|VBE|JSE|WS|WSF|WSC|WSH|BAT|CMD|DLL|SCR|HTA|CPL|CLASS|JAR|PS1|PS1XML|PS2|PS2XML|PSC1|PSC2|SCF|LNK|INF|REG)\b")),
     # Sources: http://www.howtogeek.com/137270/50-file-extensions-that-are-potentially-dangerous-on-windows/
     #TODO: https://support.office.com/en-us/article/Blocked-attachments-in-Outlook-3811cddc-17c3-4279-a30c-060ba0207372#__attachment_file_types
+    #('Hex string', re.compile(r'(?:[0-9A-Fa-f]{2}){4,}')),
     )
+
+# regex to detect strings encoded in hexadecimal
+re_hex_string = re.compile(r'(?:[0-9A-Fa-f]{2}){4,}')
 
 
 #--- FUNCTIONS ----------------------------------------------------------------
@@ -839,6 +846,24 @@ def detect_patterns(vba_code):
     return results
 
 
+def detect_hex_strings(vba_code):
+    """
+    Detect if the VBA code contains strings encoded in hexadecimal.
+
+    :param vba_code: str, VBA source code
+    :return: list of str tuples (encoded string, decoded string)
+    """
+    results = []
+    found = set()
+    for match in re_hex_string.finditer(vba_code):
+        value = match.group()
+        if value not in found:
+            decoded = binascii.unhexlify(value)
+            results.append((value, decoded))
+            found.add(value)
+    return results
+
+
 #=== CLASSES =================================================================
 
 class VBA_Parser(object):
@@ -1094,6 +1119,7 @@ def process_file (container, filename, data):
                     autoexec_keywords = detect_autoexec(vba_code)
                     suspicious_keywords = detect_suspicious(vba_code)
                     patterns = detect_patterns(vba_code)
+                    hex_strings = detect_hex_strings(vba_code)
                     if autoexec_keywords or suspicious_keywords or patterns:
                         t = prettytable.PrettyTable(('Type', 'Keyword', 'Description'))
                         t.align = 'l'
@@ -1106,6 +1132,8 @@ def process_file (container, filename, data):
                             t.add_row(('Suspicious', keyword, description))
                         for pattern_type, value in patterns:
                             t.add_row(('IOC', value, pattern_type))
+                        for encoded, decoded in hex_strings:
+                            t.add_row(('Hex String', repr(decoded), encoded))
                         print t
                     else:
                         print 'No suspicious keyword or pattern found.'
