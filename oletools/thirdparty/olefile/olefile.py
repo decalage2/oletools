@@ -312,7 +312,7 @@ except NameError:
 
 #[PL] Experimental setting: if True, OLE filenames will be kept in Unicode
 # if False (default PIL behaviour), all filenames are converted to Latin-1.
-KEEP_UNICODE_NAMES = False
+KEEP_UNICODE_NAMES = True
 
 #=== DEBUGGING ===============================================================
 
