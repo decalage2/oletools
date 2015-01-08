@@ -96,6 +96,8 @@ https://github.com/unixfreak0037/officeparser
 #                      - improved list of executable file extensions
 # 2015-01-04 v0.13 PL: - added several suspicious keywords, improved display
 # 2015-01-08 v0.14 PL: - added hex strings detection and decoding
+#                      - fixed issue #2, decoding VBA stream names using
+#                        specified codepage and unicode stream names
 
 __version__ = '0.14'
 
@@ -734,12 +736,18 @@ def _extract_vba (ole, vba_root, project_path, dir_path):
         if section_id != None:
             logging.warning('unknown or invalid module section id {0:04X}'.format(section_id))
 
+        logging.debug('Project CodePage = %d' % PROJECTCODEPAGE_CodePage)
+        vba_codec = 'cp%d' % PROJECTCODEPAGE_CodePage
         logging.debug("ModuleName = {0}".format(MODULENAME_ModuleName))
-        logging.debug("StreamName = {0}".format(MODULESTREAMNAME_StreamName))
+        logging.debug("StreamName = {0}".format(repr(MODULESTREAMNAME_StreamName)))
+        streamname_unicode = MODULESTREAMNAME_StreamName.decode(vba_codec)
+        logging.debug("StreamName.decode('%s') = %s" % (vba_codec, repr(streamname_unicode)))
+        logging.debug("StreamNameUnicode = {0}".format(repr(MODULESTREAMNAME_StreamNameUnicode)))
         logging.debug("TextOffset = {0}".format(MODULEOFFSET_TextOffset))
 
-        code_path = vba_root + 'VBA/' + MODULESTREAMNAME_StreamName
+        code_path = vba_root + u'VBA/' + streamname_unicode
         #TODO: test if stream exists
+        logging.debug('opening VBA code stream %s' % repr(code_path))
         code_data = ole.openstream(code_path).read()
         logging.debug("length of code_data = {0}".format(len(code_data)))
         logging.debug("offset of code_data = {0}".format(MODULEOFFSET_TextOffset))
@@ -1107,7 +1115,7 @@ def process_file (container, filename, data):
                 vba_code = filter_vba(vba_code)
                 print '-'*79
                 print 'VBA MACRO %s ' % vba_filename
-                print 'in file: %s - OLE stream: %s' % (subfilename, stream_path)
+                print 'in file: %s - OLE stream: %s' % (subfilename, repr(stream_path))
                 print '- '*39
                 # detect empty macros:
                 if vba_code.strip() == '':
@@ -1142,6 +1150,7 @@ def process_file (container, filename, data):
             print 'No VBA macros found.'
     except: #TypeError:
         #raise
+        #TODO: print more info if debug mode
         print sys.exc_value
     print ''
 
