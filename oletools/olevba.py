@@ -98,17 +98,18 @@ https://github.com/unixfreak0037/officeparser
 # 2015-01-08 v0.14 PL: - added hex strings detection and decoding
 #                      - fixed issue #2, decoding VBA stream names using
 #                        specified codepage and unicode stream names
+# 2015-01-11 v0.15 PL: - added new triage mode, options -t and -d
 
-__version__ = '0.14'
+__version__ = '0.15'
 
 #------------------------------------------------------------------------------
 # TODO:
 # + do not use logging, but a provided logger (null logger by default)
 # + setup logging (common with other oletools)
-# + update readme, wiki and decalage.info, pypi (link to sample files)
 
 # TODO later:
-# - append decoded hex strings to VBA code, in order to detect IOCs and suspicious keywords
+# + append decoded hex strings to VBA code, in order to detect IOCs and suspicious keywords
+# + do not show hex strings by default (add option --hex)
 # + performance improvement: instead of searching each keyword separately,
 #   first split vba code into a list of words (per line), then check each
 #   word against a dict. (or put vba words into a set/dict?)
@@ -149,6 +150,9 @@ from thirdparty.prettytable import prettytable
 from thirdparty.xglob import xglob
 
 #--- CONSTANTS ----------------------------------------------------------------
+
+TYPE_OLE     = 'OLE'
+TYPE_OpenXML = 'OpenXML'
 
 MODULE_EXTENSION = "bas"
 CLASS_EXTENSION = "cls"
@@ -237,7 +241,7 @@ RE_PATTERNS = (
     ('URL', re.compile(r'(http|https|ftp)\://[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(:[a-zA-Z0-9]*)?/?([a-zA-Z0-9\-\._\?\,\'/\\\+&amp;%\$#\=~])*[^\.\,\)\(\s]')),
     ('IPv4 address', re.compile(r"\b(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\b")),
     ('E-mail address', re.compile(r'(?i)\b[A-Z0-9._%+-]+@(?:[A-Z0-9-]+\.)+(?:[A-Z]{2,12}|XN--[A-Z0-9]{4,18})\b')),
-    ('Domain name', re.compile(r'(?=^.{1,254}$)(^(?:(?!\d+\.|-)[a-zA-Z0-9_\-]{1,63}(?<!-)\.?)+(?:[a-zA-Z]{2,})$)')),
+    # ('Domain name', re.compile(r'(?=^.{1,254}$)(^(?:(?!\d+\.|-)[a-zA-Z0-9_\-]{1,63}(?<!-)\.?)+(?:[a-zA-Z]{2,})$)')),
     ("Executable file name", re.compile(r"(?i)\b\w+\.(EXE|COM|PIF|APPLICATION|GADGET|MSI|MSP|MSC|VB|VBS|JS|VBE|JSE|WS|WSF|WSC|WSH|BAT|CMD|DLL|SCR|HTA|CPL|CLASS|JAR|PS1|PS1XML|PS2|PS2XML|PSC1|PSC2|SCF|LNK|INF|REG)\b")),
     # Sources: http://www.howtogeek.com/137270/50-file-extensions-that-are-potentially-dangerous-on-windows/
     #TODO: https://support.office.com/en-us/article/Blocked-attachments-in-Outlook-3811cddc-17c3-4279-a30c-060ba0207372#__attachment_file_types
@@ -917,14 +921,15 @@ class VBA_Parser(object):
             # This looks like an OLE file
             logging.info('Parsing OLE file %s' % self.filename)
             self.ole_file = olefile.OleFileIO(_file)
-            self.type = 'OLE'
+            self.type = TYPE_OLE
+            #TODO: raise TypeError if this is a Powerpoint 97 file, since VBA macros cannot be detected yet
         elif zipfile.is_zipfile(_file):
             # This looks like a zip file, need to look for vbaProject.bin inside
             # It can be any OLE file inside the archive
             #...because vbaProject.bin can be renamed:
             # see http://www.decalage.info/files/JCV07_Lagadec_OpenDocument_OpenXML_v4_decalage.pdf#page=18
             logging.info('Opening ZIP/OpenXML file %s' % self.filename)
-            self.type = 'OpenXML'
+            self.type = TYPE_OpenXML
             z = zipfile.ZipFile(_file)
             #TODO: check if this is actually an OpenXML file
             # check each file within the zip if it is an OLE file, by reading its magic:
@@ -1155,6 +1160,86 @@ def process_file (container, filename, data):
     print ''
 
 
+def process_file_triage (container, filename, data):
+    """
+    Process a single file
+
+    :param container: str, path and filename of container if the file is within
+    a zip archive, None otherwise.
+    :param filename: str, path and filename of file on disk, or within the container.
+    :param data: bytes, content of the file if it is in a container, None if it is a file on disk.
+    """
+    #TODO: replace print by writing to a provided output file (sys.stdout by default)
+    nb_macros = 0
+    nb_autoexec = 0
+    nb_suspicious = 0
+    nb_iocs = 0
+    nb_hexstrings = 0
+    # ftype = 'Other'
+    message = ''
+    try:
+        #TODO: handle olefile errors, when an OLE file is malformed
+        vba = VBA_Parser(filename, data)
+        if vba.detect_vba_macros():
+            for (subfilename, stream_path, vba_filename, vba_code) in vba.extract_macros():
+                nb_macros += 1
+                if vba_code.strip() != '':
+                    nb_autoexec += len(detect_autoexec(vba_code))
+                    nb_suspicious += len(detect_suspicious(vba_code))
+                    nb_iocs += len(detect_patterns(vba_code))
+                    nb_hexstrings += len(detect_hex_strings(vba_code))
+        if vba.type == TYPE_OLE:
+            flags = 'O'
+        else:
+            flags = 'X'
+        macros = autoexec = suspicious = iocs = hexstrings = '-'
+        if nb_macros: macros = 'M'
+        if nb_autoexec: autoexec = 'A'
+        if nb_suspicious: suspicious = 'S'
+        if nb_iocs: iocs = 'I'
+        if nb_hexstrings: hexstrings = 'H'
+        flags += '%s%s%s%s%s' % (macros, autoexec, suspicious, iocs, hexstrings)
+
+        # macros = autoexec = suspicious = iocs = hexstrings = 'no'
+        # if nb_macros: macros = 'YES:%d' % nb_macros
+        # if nb_autoexec: autoexec = 'YES:%d' % nb_autoexec
+        # if nb_suspicious: suspicious = 'YES:%d' % nb_suspicious
+        # if nb_iocs: iocs = 'YES:%d' % nb_iocs
+        # if nb_hexstrings: hexstrings = 'YES:%d' % nb_hexstrings
+        # # 2nd line = info
+        # print '%-8s %-7s %-7s %-7s %-7s %-7s' % (vba.type, macros, autoexec, suspicious, iocs, hexstrings)
+    except TypeError:
+        # file type not OLE nor OpenXML
+        flags = '?'
+        message = 'File format not supported'
+    except:
+        # another error occurred
+        #raise
+        #TODO: print more info if debug mode
+        #TODO: distinguish real errors from incorrect file types
+        flags = '!ERROR'
+        message = sys.exc_value
+    line = '%-6s %s' % (flags, filename)
+    if message:
+        line += ' - %s' % message
+    print line
+
+    # t = prettytable.PrettyTable(('filename', 'type', 'macros', 'autoexec', 'suspicious', 'ioc', 'hexstrings'),
+    #     header=False, border=False)
+    # t.align = 'l'
+    # t.max_width['filename'] = 30
+    # t.max_width['type'] = 10
+    # t.max_width['macros'] = 6
+    # t.max_width['autoexec'] = 6
+    # t.max_width['suspicious'] = 6
+    # t.max_width['ioc'] = 6
+    # t.max_width['hexstrings'] = 6
+    # t.add_row((filename, ftype, macros, autoexec, suspicious, iocs, hexstrings))
+    # print t
+
+def main_triage_quick():
+    pass
+
 #=== MAIN =====================================================================
 
 def main():
@@ -1173,20 +1258,54 @@ def main():
         help='if the file is a zip archive, open first file from it, using the provided password (requires Python 2.6+)')
     parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
         help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
+    parser.add_option("-t", action="store_true", dest="triage_mode",
+        help='triage mode, display results as a summary table (default for multiple files)')
+    parser.add_option("-d", action="store_true", dest="detailed_mode",
+        help='detailed mode, display full results (default for single file)')
 
     (options, args) = parser.parse_args()
 
-    # Print help if no argurments are passed
+    # Print help if no arguments are passed
     if len(args) == 0:
         print __doc__
         parser.print_help()
         sys.exit()
 
     logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.WARNING) #INFO)
+    # For now, all logging is disabled:
+    logging.disable(logging.CRITICAL)
 
+    # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('Type', 'Macros', 'AutoEx', 'Susp.', 'IOCs', 'HexStr')
+    # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('-'*8, '-'*7, '-'*7, '-'*7, '-'*7, '-'*7)
+    if not options.detailed_mode or options.triage_mode:
+        print '%-6s %-72s' % ('Flags', 'Filename')
+        print '%-6s %-72s' % ('-'*6, '-'*72)
+    previous_container = None
+    count = 0
+    container = filename = data = None
     for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
         zip_password=options.zip_password, zip_fname=options.zip_fname):
-        #data = open(filespec, 'rb').read()
+        # ignore directory names stored in zip files:
+        if container and filename.endswith('/'):
+            continue
+        if options.detailed_mode and not options.triage_mode:
+            # fully detailed output
+            process_file(container, filename, data)
+        else:
+            # print container name when it changes:
+            if container != previous_container:
+                if container is not None:
+                    print '\nFiles in %s:' % container
+                previous_container = container
+            # summarized output for triage:
+            process_file_triage(container, filename, data)
+        count += 1
+    if not options.detailed_mode or options.triage_mode:
+        print '\n(Flags: O=OLE, X=OpenXML, M=Macros, A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex-encoded strings, ?=Unknown)\n'
+
+    if count == 1 and not options.triage_mode and not options.detailed_mode:
+        # if options -t and -d were not specified and it's a single file, print details:
+        #TODO: avoid doing the analysis twice by storing results
         process_file(container, filename, data)
 
 if __name__ == '__main__':
