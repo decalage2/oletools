@@ -100,6 +100,7 @@ https://github.com/unixfreak0037/officeparser
 #                        specified codepage and unicode stream names
 # 2015-01-11 v0.15 PL: - added new triage mode, options -t and -d
 # 2015-01-16 v0.16 PL: - fix for issue #3 (exception when module name="text")
+#                      - added several suspicious keywords
 
 __version__ = '0.16'
 
@@ -199,11 +200,14 @@ SUSPICIOUS_KEYWORDS = {
         #FileCopy: http://msdn.microsoft.com/en-us/library/office/gg264390%28v=office.15%29.aspx
         #CopyFile: http://msdn.microsoft.com/en-us/library/office/gg264089%28v=office.15%29.aspx
     'May create a text file':
-        ('CreateTextFile',),
+        ('CreateTextFile','ADODB.Stream', 'WriteText', 'SaveToFile'),
         #CreateTextFile: http://msdn.microsoft.com/en-us/library/office/gg264617%28v=office.15%29.aspx
+        #ADODB.Stream sample: http://pastebin.com/Z4TMyuq6
     'May run an executable file or a system command':
-        ('Shell', 'vbNormalFocus', 'vbHide', 'vbMinimizedFocus', 'vbMaximizedFocus', 'vbNormalNoFocus', 'vbMinimizedNoFocus'),
+        ('Shell', 'vbNormalFocus', 'vbHide', 'vbMinimizedFocus', 'vbMaximizedFocus', 'vbNormalNoFocus',
+         'vbMinimizedNoFocus', 'WScript.Shell', 'Run'),
         #Shell: http://msdn.microsoft.com/en-us/library/office/gg278437%28v=office.15%29.aspx
+        #WScript.Shell+Run sample: http://pastebin.com/Z4TMyuq6
     'May hide the application':
         ('Application.Visible', 'ShowWindow', 'SW_HIDE'),
     'May create a directory':
@@ -232,7 +236,7 @@ SUSPICIOUS_KEYWORDS = {
         ('CallByName',),
         #CallByName: http://msdn.microsoft.com/en-us/library/office/gg278760%28v=office.15%29.aspx
     'May attempt to obfuscate specific strings':
-        ('Chr', 'ChrB', 'ChrW'),
+        ('Chr', 'ChrB', 'ChrW', 'StrReverse'),
         #Chr: http://msdn.microsoft.com/en-us/library/office/gg264465%28v=office.15%29.aspx
 }
 
