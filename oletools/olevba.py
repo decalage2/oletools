@@ -99,8 +99,9 @@ https://github.com/unixfreak0037/officeparser
 #                      - fixed issue #2, decoding VBA stream names using
 #                        specified codepage and unicode stream names
 # 2015-01-11 v0.15 PL: - added new triage mode, options -t and -d
+# 2015-01-16 v0.16 PL: - fix for issue #3 (exception when module name="text")
 
-__version__ = '0.15'
+__version__ = '0.16'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -758,7 +759,7 @@ def _extract_vba (ole, vba_root, project_path, dir_path):
         code_data = code_data[MODULEOFFSET_TextOffset:]
         if len(code_data) > 0:
             code_data = decompress_stream(code_data)
-            filext = code_modules[MODULENAME_ModuleName]
+            filext = code_modules.get(MODULENAME_ModuleName, 'bin')
             filename = '{0}.{1}'.format(MODULENAME_ModuleName, filext)
             yield (code_path, filename, code_data)
             # print '-'*79
