@@ -101,6 +101,7 @@ https://github.com/unixfreak0037/officeparser
 # 2015-01-11 v0.15 PL: - added new triage mode, options -t and -d
 # 2015-01-16 v0.16 PL: - fix for issue #3 (exception when module name="text")
 #                      - added several suspicious keywords
+#                      - added option -i to analyze VBA source code directly
 
 __version__ = '0.16'
 
@@ -1098,6 +1099,37 @@ class VBA_Parser(object):
             self.ole_file.close()
 
 
+def print_analysis(vba_code):
+    """
+    Analyze the provided VBA code, and print the results in a table
+
+    :param vba_code: str, VBA source code to be analyzed
+    :return: None
+    """
+    autoexec_keywords = detect_autoexec(vba_code)
+    suspicious_keywords = detect_suspicious(vba_code)
+    patterns = detect_patterns(vba_code)
+    hex_strings = detect_hex_strings(vba_code)
+    if autoexec_keywords or suspicious_keywords or patterns:
+        t = prettytable.PrettyTable(('Type', 'Keyword', 'Description'))
+        t.align = 'l'
+        t.max_width['Type'] = 10
+        t.max_width['Keyword'] = 20
+        t.max_width['Description'] = 39
+        for keyword, description in autoexec_keywords:
+            t.add_row(('AutoExec', keyword, description))
+        for keyword, description in suspicious_keywords:
+            t.add_row(('Suspicious', keyword, description))
+        for pattern_type, value in patterns:
+            t.add_row(('IOC', value, pattern_type))
+        for encoded, decoded in hex_strings:
+            t.add_row(('Hex String', repr(decoded), encoded))
+        print t
+    else:
+        print 'No suspicious keyword or pattern found.'
+
+
+
 def process_file (container, filename, data):
     """
     Process a single file
@@ -1134,28 +1166,7 @@ def process_file (container, filename, data):
                     print vba_code
                     print '- '*39
                     print 'ANALYSIS:'
-                    autoexec_keywords = detect_autoexec(vba_code)
-                    suspicious_keywords = detect_suspicious(vba_code)
-                    patterns = detect_patterns(vba_code)
-                    hex_strings = detect_hex_strings(vba_code)
-                    if autoexec_keywords or suspicious_keywords or patterns:
-                        t = prettytable.PrettyTable(('Type', 'Keyword', 'Description'))
-                        t.align = 'l'
-                        t.max_width['Type'] = 10
-                        t.max_width['Keyword'] = 20
-                        t.max_width['Description'] = 39
-                        for keyword, description in autoexec_keywords:
-                            t.add_row(('AutoExec', keyword, description))
-                        for keyword, description in suspicious_keywords:
-                            t.add_row(('Suspicious', keyword, description))
-                        for pattern_type, value in patterns:
-                            t.add_row(('IOC', value, pattern_type))
-                        for encoded, decoded in hex_strings:
-                            t.add_row(('Hex String', repr(decoded), encoded))
-                        print t
-                    else:
-                        print 'No suspicious keyword or pattern found.'
-
+                    print_analysis(vba_code)
         else:
             print 'No VBA macros found.'
     except: #TypeError:
@@ -1267,11 +1278,13 @@ def main():
         help='triage mode, display results as a summary table (default for multiple files)')
     parser.add_option("-d", action="store_true", dest="detailed_mode",
         help='detailed mode, display full results (default for single file)')
+    parser.add_option("-i", "--input", dest='input', type='str', default=None,
+        help='input file containing VBA source code to be analyzed (no parsing)')
 
     (options, args) = parser.parse_args()
 
     # Print help if no arguments are passed
-    if len(args) == 0:
+    if len(args) == 0 and not options.input:
         print __doc__
         parser.print_help()
         sys.exit()
@@ -1279,6 +1292,13 @@ def main():
     logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.WARNING) #INFO)
     # For now, all logging is disabled:
     logging.disable(logging.CRITICAL)
+
+    if options.input:
+        # input file provided with VBA source code to be analyzed directly:
+        print 'Analysis of VBA source code from %s:' % options.input
+        vba_code = open(options.input).read()
+        print_analysis(vba_code)
+        sys.exit()
 
     # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('Type', 'Macros', 'AutoEx', 'Susp.', 'IOCs', 'HexStr')
     # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('-'*8, '-'*7, '-'*7, '-'*7, '-'*7, '-'*7)
