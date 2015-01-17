@@ -102,8 +102,11 @@ https://github.com/unixfreak0037/officeparser
 # 2015-01-16 v0.16 PL: - fix for issue #3 (exception when module name="text")
 #                      - added several suspicious keywords
 #                      - added option -i to analyze VBA source code directly
+# 2015-01-17 v0.17 PL: - removed .com from the list of executable extensions
+#                      - added scan_vba to run all detection algorithms
+#                      - decoded hex strings are now also scanned
 
-__version__ = '0.16'
+__version__ = '0.17'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -248,7 +251,8 @@ RE_PATTERNS = (
     ('IPv4 address', re.compile(r"\b(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\b")),
     ('E-mail address', re.compile(r'(?i)\b[A-Z0-9._%+-]+@(?:[A-Z0-9-]+\.)+(?:[A-Z]{2,12}|XN--[A-Z0-9]{4,18})\b')),
     # ('Domain name', re.compile(r'(?=^.{1,254}$)(^(?:(?!\d+\.|-)[a-zA-Z0-9_\-]{1,63}(?<!-)\.?)+(?:[a-zA-Z]{2,})$)')),
-    ("Executable file name", re.compile(r"(?i)\b\w+\.(EXE|COM|PIF|APPLICATION|GADGET|MSI|MSP|MSC|VB|VBS|JS|VBE|JSE|WS|WSF|WSC|WSH|BAT|CMD|DLL|SCR|HTA|CPL|CLASS|JAR|PS1|PS1XML|PS2|PS2XML|PSC1|PSC2|SCF|LNK|INF|REG)\b")),
+    # Executable file name with known extensions (except .com which is present in many URLs):
+    ("Executable file name", re.compile(r"(?i)\b\w+\.(EXE|PIF|APPLICATION|GADGET|MSI|MSP|MSC|VB|VBS|JS|VBE|JSE|WS|WSF|WSC|WSH|BAT|CMD|DLL|SCR|HTA|CPL|CLASS|JAR|PS1|PS1XML|PS2|PS2XML|PSC1|PSC2|SCF|LNK|INF|REG)\b")),
     # Sources: http://www.howtogeek.com/137270/50-file-extensions-that-are-potentially-dangerous-on-windows/
     #TODO: https://support.office.com/en-us/article/Blocked-attachments-in-Outlook-3811cddc-17c3-4279-a30c-060ba0207372#__attachment_file_types
     #('Hex string', re.compile(r'(?:[0-9A-Fa-f]{2}){4,}')),
@@ -882,6 +886,41 @@ def detect_hex_strings(vba_code):
     return results
 
 
+def scan_vba(vba_code):
+    """
+    Analyze the provided VBA code to detect suspicious keywords,
+    auto-executable macros, IOC patterns, obfuscation patterns
+    such as hex-encoded strings.
+
+    :param vba_code: str, VBA source code to be analyzed
+    :return: list of tuples (type, keyword, description)
+    (type = 'AutoExec', 'Suspicious', 'IOC' or 'Hex String')
+    """
+    # First, detect and extract hex-encoded strings:
+    hex_strings = detect_hex_strings(vba_code)
+    # Then append the decoded strings to the VBA code, to detect obfuscated IOCs and keywords:
+    for encoded, decoded in hex_strings:
+        vba_code += '\n'+decoded
+    #TODO: also add reverse strings (before and after decoding), for StrReverse obfuscation
+    autoexec_keywords = detect_autoexec(vba_code)
+    suspicious_keywords = detect_suspicious(vba_code)
+    # If hex-encoded strings were discovered, add an item to suspicious keywords:
+    if hex_strings:
+        suspicious_keywords.append(('Hex Strings', 'Hex-encoded strings were detected, may be used to obfuscate strings (option --hex to see all)'))
+    patterns = detect_patterns(vba_code)
+    results = []
+    for keyword, description in autoexec_keywords:
+        results.append(('AutoExec', keyword, description))
+    for keyword, description in suspicious_keywords:
+        results.append(('Suspicious', keyword, description))
+    for pattern_type, value in patterns:
+        results.append(('IOC', value, pattern_type))
+    # Only if option --hex:
+    # for encoded, decoded in hex_strings:
+    #     results.append(('Hex String', repr(decoded), encoded))
+    return results
+
+
 #=== CLASSES =================================================================
 
 class VBA_Parser(object):
@@ -1106,27 +1145,18 @@ def print_analysis(vba_code):
     :param vba_code: str, VBA source code to be analyzed
     :return: None
     """
-    autoexec_keywords = detect_autoexec(vba_code)
-    suspicious_keywords = detect_suspicious(vba_code)
-    patterns = detect_patterns(vba_code)
-    hex_strings = detect_hex_strings(vba_code)
-    if autoexec_keywords or suspicious_keywords or patterns:
+    results = scan_vba(vba_code)
+    if results:
         t = prettytable.PrettyTable(('Type', 'Keyword', 'Description'))
         t.align = 'l'
         t.max_width['Type'] = 10
         t.max_width['Keyword'] = 20
         t.max_width['Description'] = 39
-        for keyword, description in autoexec_keywords:
-            t.add_row(('AutoExec', keyword, description))
-        for keyword, description in suspicious_keywords:
-            t.add_row(('Suspicious', keyword, description))
-        for pattern_type, value in patterns:
-            t.add_row(('IOC', value, pattern_type))
-        for encoded, decoded in hex_strings:
-            t.add_row(('Hex String', repr(decoded), encoded))
+        for kw_type, keyword, description in results:
+            t.add_row((kw_type, keyword, description))
         print t
     else:
-        print 'No suspicious keyword or pattern found.'
+        print 'No suspicious keyword or IOC found.'
 
 
 
