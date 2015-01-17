@@ -104,7 +104,7 @@ https://github.com/unixfreak0037/officeparser
 #                      - added option -i to analyze VBA source code directly
 # 2015-01-17 v0.17 PL: - removed .com from the list of executable extensions
 #                      - added scan_vba to run all detection algorithms
-#                      - decoded hex strings are now also scanned
+#                      - decoded hex strings are now also scanned + reversed
 
 __version__ = '0.17'
 
@@ -114,7 +114,6 @@ __version__ = '0.17'
 # + setup logging (common with other oletools)
 
 # TODO later:
-# + append decoded hex strings to VBA code, in order to detect IOCs and suspicious keywords
 # + do not show hex strings by default (add option --hex)
 # + performance improvement: instead of searching each keyword separately,
 #   first split vba code into a list of words (per line), then check each
@@ -251,8 +250,8 @@ RE_PATTERNS = (
     ('IPv4 address', re.compile(r"\b(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\b")),
     ('E-mail address', re.compile(r'(?i)\b[A-Z0-9._%+-]+@(?:[A-Z0-9-]+\.)+(?:[A-Z]{2,12}|XN--[A-Z0-9]{4,18})\b')),
     # ('Domain name', re.compile(r'(?=^.{1,254}$)(^(?:(?!\d+\.|-)[a-zA-Z0-9_\-]{1,63}(?<!-)\.?)+(?:[a-zA-Z]{2,})$)')),
-    # Executable file name with known extensions (except .com which is present in many URLs):
-    ("Executable file name", re.compile(r"(?i)\b\w+\.(EXE|PIF|APPLICATION|GADGET|MSI|MSP|MSC|VB|VBS|JS|VBE|JSE|WS|WSF|WSC|WSH|BAT|CMD|DLL|SCR|HTA|CPL|CLASS|JAR|PS1|PS1XML|PS2|PS2XML|PSC1|PSC2|SCF|LNK|INF|REG)\b")),
+    # Executable file name with known extensions (except .com which is present in many URLs, and .application):
+    ("Executable file name", re.compile(r"(?i)\b\w+\.(EXE|PIF|GADGET|MSI|MSP|MSC|VB|VBS|JS|VBE|JSE|WS|WSF|WSC|WSH|BAT|CMD|DLL|SCR|HTA|CPL|CLASS|JAR|PS1|PS1XML|PS2|PS2XML|PSC1|PSC2|SCF|LNK|INF|REG)\b")),
     # Sources: http://www.howtogeek.com/137270/50-file-extensions-that-are-potentially-dangerous-on-windows/
     #TODO: https://support.office.com/en-us/article/Blocked-attachments-in-Outlook-3811cddc-17c3-4279-a30c-060ba0207372#__attachment_file_types
     #('Hex string', re.compile(r'(?:[0-9A-Fa-f]{2}){4,}')),
@@ -901,7 +900,9 @@ def scan_vba(vba_code):
     # Then append the decoded strings to the VBA code, to detect obfuscated IOCs and keywords:
     for encoded, decoded in hex_strings:
         vba_code += '\n'+decoded
-    #TODO: also add reverse strings (before and after decoding), for StrReverse obfuscation
+        #TODO: also add reverse strings (before and after decoding), for StrReverse obfuscation
+        #TODO: only do it if StrReverse found in code?
+        vba_code += '\n'+decoded[::-1]
     autoexec_keywords = detect_autoexec(vba_code)
     suspicious_keywords = detect_suspicious(vba_code)
     # If hex-encoded strings were discovered, add an item to suspicious keywords:
@@ -1230,6 +1231,7 @@ def process_file_triage (container, filename, data):
             for (subfilename, stream_path, vba_filename, vba_code) in vba.extract_macros():
                 nb_macros += 1
                 if vba_code.strip() != '':
+                    #TODO: same changes as scan_vba, or modify scan_vba to return these counts
                     nb_autoexec += len(detect_autoexec(vba_code))
                     nb_suspicious += len(detect_suspicious(vba_code))
                     nb_iocs += len(detect_patterns(vba_code))
