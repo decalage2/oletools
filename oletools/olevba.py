@@ -105,8 +105,9 @@ https://github.com/unixfreak0037/officeparser
 # 2015-01-17 v0.17 PL: - removed .com from the list of executable extensions
 #                      - added scan_vba to run all detection algorithms
 #                      - decoded hex strings are now also scanned + reversed
+# 2015-01-23 v0.18 PL: - fixed issue #3, case-insensitive search in code_modules
 
-__version__ = '0.17'
+__version__ = '0.18'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -246,6 +247,7 @@ SUSPICIOUS_KEYWORDS = {
 # Patterns to be extracted (IP addresses, URLs, etc)
 # From patterns.py in balbuzard
 RE_PATTERNS = (
+    #TODO: check if this regex matches URLs with an IP address (various forms)
     ('URL', re.compile(r'(http|https|ftp)\://[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(:[a-zA-Z0-9]*)?/?([a-zA-Z0-9\-\._\?\,\'/\\\+&amp;%\$#\=~])*[^\.\,\)\(\s]')),
     ('IPv4 address', re.compile(r"\b(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\b")),
     ('E-mail address', re.compile(r'(?i)\b[A-Z0-9._%+-]+@(?:[A-Z0-9-]+\.)+(?:[A-Z]{2,12}|XN--[A-Z0-9]{4,18})\b')),
@@ -440,6 +442,8 @@ def _extract_vba (ole, vba_root, project_path, dir_path):
             # looking for code modules
             # add the code module as a key in the dictionary
             # the value will be the extension needed later
+            # The value is converted to lowercase, to allow case-insensitive matching (issue #3)
+            value = value.lower()
             if name == 'Document':
                 # split value at the 1st slash, keep 1st part:
                 value = value.split('/', 1)[0]
@@ -767,7 +771,8 @@ def _extract_vba (ole, vba_root, project_path, dir_path):
         code_data = code_data[MODULEOFFSET_TextOffset:]
         if len(code_data) > 0:
             code_data = decompress_stream(code_data)
-            filext = code_modules.get(MODULENAME_ModuleName, 'bin')
+            # case-insensitive search in the code_modules dict to find the file extension:
+            filext = code_modules.get(MODULENAME_ModuleName.lower(), 'bin')
             filename = '{0}.{1}'.format(MODULENAME_ModuleName, filext)
             yield (code_path, filename, code_data)
             # print '-'*79
@@ -903,6 +908,7 @@ def scan_vba(vba_code):
         #TODO: also add reverse strings (before and after decoding), for StrReverse obfuscation
         #TODO: only do it if StrReverse found in code?
         vba_code += '\n'+decoded[::-1]
+        vba_code += '\n'+binascii.unhexlify(encoded[::-1])
     autoexec_keywords = detect_autoexec(vba_code)
     suspicious_keywords = detect_suspicious(vba_code)
     # If hex-encoded strings were discovered, add an item to suspicious keywords:
@@ -917,8 +923,8 @@ def scan_vba(vba_code):
     for pattern_type, value in patterns:
         results.append(('IOC', value, pattern_type))
     # Only if option --hex:
-    # for encoded, decoded in hex_strings:
-    #     results.append(('Hex String', repr(decoded), encoded))
+    for encoded, decoded in hex_strings:
+        results.append(('Hex String', repr(decoded), encoded))
     return results
 
 
@@ -1185,6 +1191,7 @@ def process_file (container, filename, data):
             #print 'Contains VBA Macros:'
             for (subfilename, stream_path, vba_filename, vba_code) in vba.extract_macros():
                 # hide attribute lines:
+                #TODO: option to disable attribute filtering
                 vba_code = filter_vba(vba_code)
                 print '-'*79
                 print 'VBA MACRO %s ' % vba_filename
