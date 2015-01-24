@@ -180,6 +180,7 @@ __version__ = '0.42'
 # 2015-01-24 v0.42 PL: - changed the default path name encoding from Latin-1
 #                        to UTF-8 on Python 2.x (Unicode on Python 3.x)
 #                      - added path_encoding option to override the default
+#                      - fixed a bug in _list when a storage is empty
 
 #-----------------------------------------------------------------------------
 # TODO (for version 1.0):
@@ -1826,19 +1827,20 @@ class OleFileIO:
         """
         prefix = prefix + [node.name]
         for entry in node.kids:
-            #TODO: fix bug here, check entry type, a storage can have no kids
-            if entry.kids:
+            if entry.entry_type == STGTY_STORAGE:
                 # this is a storage
                 if storages:
                     # add it to the list
                     files.append(prefix[1:] + [entry.name])
                 # check its kids
                 self._list(files, prefix, entry, streams, storages)
-            else:
+            elif entry.entry_type == STGTY_STREAM:
                 # this is a stream
                 if streams:
                     # add it to the list
                     files.append(prefix[1:] + [entry.name])
+            else:
+                self._raise_defect(DEFECT_INCORRECT, 'The directory tree contains an entry which is not a stream nor a storage.')
 
 
     def listdir(self, streams=True, storages=False):
