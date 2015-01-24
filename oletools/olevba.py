@@ -106,8 +106,10 @@ https://github.com/unixfreak0037/officeparser
 #                      - added scan_vba to run all detection algorithms
 #                      - decoded hex strings are now also scanned + reversed
 # 2015-01-23 v0.18 PL: - fixed issue #3, case-insensitive search in code_modules
+# 2015-01-24 v0.19 PL: - improved the detection of IOCs obfuscated with hex
+#                        strings and StrReverse
 
-__version__ = '0.18'
+__version__ = '0.19'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -903,13 +905,19 @@ def scan_vba(vba_code):
     """
     # First, detect and extract hex-encoded strings:
     hex_strings = detect_hex_strings(vba_code)
+    # detect if the code contains StrReverse:
+    if 'strreverse' in vba_code.lower(): strreverse = True
+    else: strreverse = False
     # Then append the decoded strings to the VBA code, to detect obfuscated IOCs and keywords:
     for encoded, decoded in hex_strings:
         vba_code += '\n'+decoded
-        #TODO: also add reverse strings (before and after decoding), for StrReverse obfuscation
-        #TODO: only do it if StrReverse found in code?
-        vba_code += '\n'+decoded[::-1]
-        vba_code += '\n'+binascii.unhexlify(encoded[::-1])
+        # if the code contains "StrReverse", also append the hex strings in reverse order:
+        if strreverse:
+            # StrReverse after hex decoding:
+            vba_code += '\n'+decoded[::-1]
+            # StrReverse before hex decoding:
+            vba_code += '\n'+binascii.unhexlify(encoded[::-1])
+            #example: https://malwr.com/analysis/NmFlMGI4YTY1YzYyNDkwNTg1ZTBiZmY5OGI3YjlhYzU/
     autoexec_keywords = detect_autoexec(vba_code)
     suspicious_keywords = detect_suspicious(vba_code)
     # If hex-encoded strings were discovered, add an item to suspicious keywords:
@@ -924,8 +932,8 @@ def scan_vba(vba_code):
     for pattern_type, value in patterns:
         results.append(('IOC', value, pattern_type))
     # Only if option --hex:
-    for encoded, decoded in hex_strings:
-        results.append(('Hex String', repr(decoded), encoded))
+    # for encoded, decoded in hex_strings:
+    #     results.append(('Hex String', repr(decoded), encoded))
     return results
 
 
