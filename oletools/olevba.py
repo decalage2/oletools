@@ -774,6 +774,7 @@ def _extract_vba (ole, vba_root, project_path, dir_path):
             # case-insensitive search in the code_modules dict to find the file extension:
             filext = code_modules.get(MODULENAME_ModuleName.lower(), 'bin')
             filename = '{0}.{1}'.format(MODULENAME_ModuleName, filext)
+            #TODO: also yield the codepage so that callers can decode it properly
             yield (code_path, filename, code_data)
             # print '-'*79
             # print filename
@@ -972,7 +973,8 @@ class VBA_Parser(object):
         if olefile.isOleFile(_file):
             # This looks like an OLE file
             logging.info('Parsing OLE file %s' % self.filename)
-            self.ole_file = olefile.OleFileIO(_file)
+            # Open and parse the OLE file, using unicode for path names:
+            self.ole_file = olefile.OleFileIO(_file, path_encoding=None)
             self.type = TYPE_OLE
             #TODO: raise TypeError if this is a Powerpoint 97 file, since VBA macros cannot be detected yet
         elif zipfile.is_zipfile(_file):

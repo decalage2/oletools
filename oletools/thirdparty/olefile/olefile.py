@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# olefile (formerly OleFileIO_PL) version 0.41 2014-11-25
+# olefile (formerly OleFileIO_PL) version 0.42 2015-01-24
 #
 # Module to read/write Microsoft OLE2 files (also called Structured Storage or
 # Microsoft Compound Document File Format), such as Microsoft Office 97-2003
@@ -9,7 +9,7 @@
 #
 # Project website: http://www.decalage.info/olefile
 #
-# olefile is copyright (c) 2005-2014 Philippe Lagadec (http://www.decalage.info)
+# olefile is copyright (c) 2005-2015 Philippe Lagadec (http://www.decalage.info)
 #
 # olefile is based on the OleFileIO module from the PIL library v1.1.6
 # See: http://www.pythonware.com/products/pil/index.htm
@@ -29,12 +29,12 @@ from __future__ import print_function   # This version of olefile requires Pytho
 
 
 __author__  = "Philippe Lagadec"
-__date__    = "2014-11-25"
-__version__ = '0.41'
+__date__    = "2015-01-24"
+__version__ = '0.42'
 
 #--- LICENSE ------------------------------------------------------------------
 
-# olefile (formerly OleFileIO_PL) is copyright (c) 2005-2014 Philippe Lagadec
+# olefile (formerly OleFileIO_PL) is copyright (c) 2005-2015 Philippe Lagadec
 # (http://www.decalage.info)
 #
 # All rights reserved.
@@ -177,6 +177,9 @@ __version__ = '0.41'
 # 2014-11-13 v0.41 PL: - improved isOleFile and OleFileIO.open to support OLE
 #                        data in a string buffer and file-like objects.
 # 2014-11-21       PL: - updated comments according to Pillow's commits
+# 2015-01-24 v0.42 PL: - changed the default path name encoding from Latin-1
+#                        to UTF-8 on Python 2.x (Unicode on Python 3.x)
+#                      - added path_encoding option to override the default
 
 #-----------------------------------------------------------------------------
 # TODO (for version 1.0):
@@ -313,6 +316,14 @@ except NameError:
 #[PL] Experimental setting: if True, OLE filenames will be kept in Unicode
 # if False (default PIL behaviour), all filenames are converted to Latin-1.
 KEEP_UNICODE_NAMES = True
+
+if sys.version_info[0] < 3:
+    # On Python 2.x, the default encoding for path names is UTF-8:
+    DEFAULT_PATH_ENCODING = 'utf-8'
+else:
+    # On Python 3.x, the default encoding for path names is Unicode (None):
+    DEFAULT_PATH_ENCODING = None
+
 
 #=== DEBUGGING ===============================================================
 
@@ -496,32 +507,6 @@ def _clsid(clsid):
             ((i32(clsid, 0), i16(clsid, 4), i16(clsid, 6)) +
             tuple(map(i8, clsid[8:16]))))
 
-
-
-# UNICODE support:
-# (necessary to handle storages/streams names which use Unicode)
-
-def _unicode(s, errors='replace'):
-    """
-    Map unicode string to Latin 1. (Python with Unicode support)
-
-    :param s: UTF-16LE unicode string to convert to Latin-1
-    :param errors: 'replace', 'ignore' or 'strict'.
-    """
-    #TODO: test if it OleFileIO works with Unicode strings, instead of
-    #      converting to Latin-1.
-    try:
-        # First the string is converted to plain Unicode:
-        # (assuming it is encoded as UTF-16 little-endian)
-        u = s.decode('UTF-16LE', errors)
-        if bytes is not str or KEEP_UNICODE_NAMES:
-            return u
-        else:
-            # Second the unicode string is converted to Latin-1
-            return u.encode('latin_1', errors)
-    except:
-        # there was an error during Unicode to Latin-1 conversion:
-        raise IOError('incorrect Unicode name')
 
 
 def filetime2datetime(filetime):
@@ -910,8 +895,11 @@ class _OleDirectoryEntry:
             namelength = 64
         # only characters without ending null char are kept:
         name = name[:(namelength-2)]
-        # name is converted from unicode to Latin-1:
-        self.name = _unicode(name)
+        #TODO: check if the name is actually followed by a null unicode character ([MS-CFB] 2.6.1)
+        #TODO: check if the name does not contain forbidden characters:
+        # [MS-CFB] 2.6.1: "The following characters are illegal and MUST NOT be part of the name: '/', '\', ':', '!'."
+        # name is converted from UTF-16LE to the path encoding specified in the OleFileIO:
+        self.name = olefile._decode_utf16_str(name)
 
         debug('DirEntry SID=%d: %s' % (self.sid, repr(self.name)))
         debug(' - type: %d' % self.entry_type)
@@ -1112,7 +1100,7 @@ class OleFileIO:
     """
 
     def __init__(self, filename=None, raise_defects=DEFECT_FATAL,
-                 write_mode=False, debug=False):
+                 write_mode=False, debug=False, path_encoding=DEFAULT_PATH_ENCODING):
         """
         Constructor for the OleFileIO class.
 
@@ -1133,6 +1121,11 @@ class OleFileIO:
             of read-only by default.
 
         :param debug: bool, set debug mode
+
+        :param path_encoding: None or str, name of the codec to use for path
+            names (streams and storages), or None for Unicode.
+            Unicode by default on Python 3+, UTF-8 on Python 2.x.
+            (new in olefile 0.42, was hardcoded to Latin-1 until olefile v0.41)
         """
         set_debug_mode(debug)
         # minimal level for defects to be raised as exceptions:
@@ -1141,6 +1134,7 @@ class OleFileIO:
         # tuples of (exception type, message)
         self.parsing_issues = []
         self.write_mode = write_mode
+        self.path_encoding = path_encoding
         self._filesize = None
         self.fp = None
         if filename:
@@ -1169,6 +1163,25 @@ class OleFileIO:
         else:
             # just record the issue, no exception raised:
             self.parsing_issues.append((exception_type, message))
+
+
+    def _decode_utf16_str(self, utf16_str, errors='replace'):
+        """
+        Decode a string encoded in UTF-16 LE format, as found in the OLE
+        directory or in property streams. Return a string encoded
+        according to the path_encoding specified for the OleFileIO object.
+
+        :param utf16_str: bytes string encoded in UTF-16 LE format
+        :param errors: str, see python documentation for str.decode()
+        :return: str, encoded according to path_encoding
+        """
+        unicode_str = utf16_str.decode('UTF-16LE', errors)
+        if self.path_encoding:
+            # an encoding has been specified for path names:
+            return unicode_str.encode(self.path_encoding, errors)
+        else:
+            # path_encoding=None, return the Unicode string as-is:
+            return unicode_str
 
 
     def open(self, filename, write_mode=False):
@@ -1813,6 +1826,7 @@ class OleFileIO:
         """
         prefix = prefix + [node.name]
         for entry in node.kids:
+            #TODO: fix bug here, check entry type, a storage can have no kids
             if entry.kids:
                 # this is a storage
                 if storages:
@@ -2060,6 +2074,7 @@ class OleFileIO:
 
         :returns: a dictionary of values indexed by id (integer)
         """
+        #REFERENCE: [MS-OLEPS] https://msdn.microsoft.com/en-us/library/dd942421.aspx
         # make sure no_conversion is a list, just to simplify code below:
         if no_conversion == None:
             no_conversion = []
@@ -2140,7 +2155,7 @@ class OleFileIO:
                     # "the string should NOT contain embedded or additional trailing
                     # null characters."
                     count = i32(s, offset+4)
-                    value = _unicode(s[offset+8:offset+8+count*2])
+                    value = self._decode_utf16_str(s[offset+8:offset+8+count*2])
                 elif type == VT_FILETIME:
                     value = long(i32(s, offset+4)) + (long(i32(s, offset+8))<<32)
                     # FILETIME is a 64-bit int: "number of 100ns periods
