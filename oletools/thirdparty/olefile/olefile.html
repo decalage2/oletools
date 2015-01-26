@@ -6,10 +6,10 @@
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
 <tr bgcolor="#7799ee">
 <td valign=bottom>&nbsp;<br>
-<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>olefile</strong></big></big> (version 0.41, 2014-11-25)</font></td
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>olefile</strong></big></big> (version 0.42, 2015-01-24)</font></td
 ><td align=right valign=bottom
 ><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:./olefile.py">.\olefile.py</a></font></td></tr></table>
-    <p><tt>#&nbsp;olefile&nbsp;(formerly&nbsp;OleFileIO_PL)&nbsp;version&nbsp;0.41&nbsp;2014-11-25<br>
+    <p><tt>#&nbsp;olefile&nbsp;(formerly&nbsp;OleFileIO_PL)&nbsp;version&nbsp;0.42&nbsp;2015-01-24<br>
 #<br>
 #&nbsp;Module&nbsp;to&nbsp;read/write&nbsp;Microsoft&nbsp;OLE2&nbsp;files&nbsp;(also&nbsp;called&nbsp;Structured&nbsp;Storage&nbsp;or<br>
 #&nbsp;Microsoft&nbsp;Compound&nbsp;Document&nbsp;File&nbsp;Format),&nbsp;such&nbsp;as&nbsp;Microsoft&nbsp;Office&nbsp;97-2003<br>
@@ -18,7 +18,7 @@
 #<br>
 #&nbsp;Project&nbsp;website:&nbsp;<a href="http://www.decalage.info/olefile">http://www.decalage.info/olefile</a><br>
 #<br>
-#&nbsp;olefile&nbsp;is&nbsp;copyright&nbsp;(c)&nbsp;2005-2014&nbsp;Philippe&nbsp;Lagadec&nbsp;(<a href="http://www.decalage.info">http://www.decalage.info</a>)<br>
+#&nbsp;olefile&nbsp;is&nbsp;copyright&nbsp;(c)&nbsp;2005-2015&nbsp;Philippe&nbsp;Lagadec&nbsp;(<a href="http://www.decalage.info">http://www.decalage.info</a>)<br>
 #<br>
 #&nbsp;olefile&nbsp;is&nbsp;based&nbsp;on&nbsp;the&nbsp;<a href="#OleFileIO">OleFileIO</a>&nbsp;module&nbsp;from&nbsp;the&nbsp;PIL&nbsp;library&nbsp;v1.1.6<br>
 #&nbsp;See:&nbsp;<a href="http://www.pythonware.com/products/pil/index.htm">http://www.pythonware.com/products/pil/index.htm</a><br>
@@ -86,7 +86,7 @@ Library&nbsp;to&nbsp;view&nbsp;the&nbsp;resulting&nbsp;files&nbsp;(which&nbsp;ha
 TIFF&nbsp;files).<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%">Methods defined here:<br>
-<dl><dt><a name="OleFileIO-__init__"><strong>__init__</strong></a>(self, filename<font color="#909090">=None</font>, raise_defects<font color="#909090">=40</font>, write_mode<font color="#909090">=False</font>, debug<font color="#909090">=False</font>)</dt><dd><tt>Constructor&nbsp;for&nbsp;the&nbsp;<a href="#OleFileIO">OleFileIO</a>&nbsp;class.<br>
+<dl><dt><a name="OleFileIO-__init__"><strong>__init__</strong></a>(self, filename<font color="#909090">=None</font>, raise_defects<font color="#909090">=40</font>, write_mode<font color="#909090">=False</font>, debug<font color="#909090">=False</font>, path_encoding<font color="#909090">='utf-8'</font>)</dt><dd><tt>Constructor&nbsp;for&nbsp;the&nbsp;<a href="#OleFileIO">OleFileIO</a>&nbsp;class.<br>
 &nbsp;<br>
 :param&nbsp;filename:&nbsp;file&nbsp;to&nbsp;open.<br>
 &nbsp;<br>
@@ -104,7 +104,12 @@ TIFF&nbsp;files).<br>&nbsp;</tt></td></tr>
 :param&nbsp;write_mode:&nbsp;bool,&nbsp;if&nbsp;True&nbsp;the&nbsp;file&nbsp;is&nbsp;opened&nbsp;in&nbsp;read/write&nbsp;mode&nbsp;instead<br>
 &nbsp;&nbsp;&nbsp;&nbsp;of&nbsp;read-only&nbsp;by&nbsp;default.<br>
 &nbsp;<br>
-:param&nbsp;debug:&nbsp;bool,&nbsp;set&nbsp;debug&nbsp;mode</tt></dd></dl>
+:param&nbsp;debug:&nbsp;bool,&nbsp;set&nbsp;debug&nbsp;mode<br>
+&nbsp;<br>
+:param&nbsp;path_encoding:&nbsp;None&nbsp;or&nbsp;str,&nbsp;name&nbsp;of&nbsp;the&nbsp;codec&nbsp;to&nbsp;use&nbsp;for&nbsp;path<br>
+&nbsp;&nbsp;&nbsp;&nbsp;names&nbsp;(streams&nbsp;and&nbsp;storages),&nbsp;or&nbsp;None&nbsp;for&nbsp;Unicode.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Unicode&nbsp;by&nbsp;default&nbsp;on&nbsp;Python&nbsp;3+,&nbsp;UTF-8&nbsp;on&nbsp;Python&nbsp;2.x.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;(new&nbsp;in&nbsp;olefile&nbsp;0.42,&nbsp;was&nbsp;hardcoded&nbsp;to&nbsp;Latin-1&nbsp;until&nbsp;olefile&nbsp;v0.41)</tt></dd></dl>
 
 <dl><dt><a name="OleFileIO-close"><strong>close</strong></a>(self)</dt><dd><tt>close&nbsp;the&nbsp;OLE&nbsp;file,&nbsp;to&nbsp;release&nbsp;the&nbsp;file&nbsp;object</tt></dd></dl>
 
@@ -346,6 +351,7 @@ Data and other attributes defined here:<br>
     
 <tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
 <td width="100%"><strong>DEBUG_MODE</strong> = False<br>
+<strong>DEFAULT_PATH_ENCODING</strong> = 'utf-8'<br>
 <strong>DEFECT_FATAL</strong> = 40<br>
 <strong>DEFECT_INCORRECT</strong> = 30<br>
 <strong>DEFECT_POTENTIAL</strong> = 20<br>
@@ -354,7 +360,7 @@ Data and other attributes defined here:<br>
 <strong>ENDOFCHAIN</strong> = 4294967294L<br>
 <strong>FATSECT</strong> = 4294967293L<br>
 <strong>FREESECT</strong> = 4294967295L<br>
-<strong>KEEP_UNICODE_NAMES</strong> = False<br>
+<strong>KEEP_UNICODE_NAMES</strong> = True<br>
 <strong>MAGIC</strong> = '<font color="#c040c0">\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1</font>'<br>
 <strong>MAXREGSECT</strong> = 4294967290L<br>
 <strong>MAXREGSID</strong> = 4294967290L<br>
@@ -411,8 +417,8 @@ Data and other attributes defined here:<br>
 <strong>VT_VOID</strong> = 24<br>
 <strong>WORD_CLSID</strong> = '00020900-0000-0000-C000-000000000046'<br>
 <strong>__author__</strong> = 'Philippe Lagadec'<br>
-<strong>__date__</strong> = '2014-11-25'<br>
-<strong>__version__</strong> = '0.41'<br>
+<strong>__date__</strong> = '2015-01-24'<br>
+<strong>__version__</strong> = '0.42'<br>
 <strong>keyword</strong> = 'VT_UNKNOWN'<br>
 <strong>print_function</strong> = _Feature((2, 6, 0, 'alpha', 2), (3, 0, 0, 'alpha', 0), 65536)<br>
 <strong>var</strong> = 13</td></tr></table><p>
