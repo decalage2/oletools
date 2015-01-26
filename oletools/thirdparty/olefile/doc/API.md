@@ -112,13 +112,18 @@ Before using the write features, the OLE file must be opened in read/write mode:
 The code for write features is new and it has not been thoroughly tested yet. See [issue #6](https://bitbucket.org/decalage/olefileio_pl/issue/6/improve-olefileio_pl-to-write-ole-files) for the roadmap and the implementation status. If you encounter any issue, please send me your [feedback](http://www.decalage.info/en/contact) or [report issues](https://bitbucket.org/decalage/olefileio_pl/issues?status=new&status=open).
 
 
-## Syntax for stream and storage path
+## Syntax for stream and storage paths
 
 Two different syntaxes are allowed for methods that need or return the path of streams and storages:
 
-1) Either a **list of strings** including all the storages from the root up to the stream/storage name. For example a stream called "WordDocument" at the root will have ['WordDocument'] as full path. A stream called "ThisDocument" located in the storage "Macros/VBA" will be ['Macros', 'VBA', 'ThisDocument']. This is the original syntax from PIL. While hard to read and not very convenient, this syntax works in all cases.
+1) Either a **list of strings** including all the storages from the root up to the stream/storage name. For example a 
+stream called "WordDocument" at the root will have ['WordDocument'] as full path. A stream called "ThisDocument" 
+located in the storage "Macros/VBA" will be ['Macros', 'VBA', 'ThisDocument']. This is the original syntax from PIL. 
+While hard to read and not very convenient, this syntax works in all cases.
 
-2) Or a **single string with slashes** to separate storage and stream names (similar to the Unix path syntax). The previous examples would be 'WordDocument' and 'Macros/VBA/ThisDocument'. This syntax is easier, but may fail if a stream or storage name contains a slash. (new in v0.15)
+2) Or a **single string with slashes** to separate storage and stream names (similar to the Unix path syntax). 
+The previous examples would be 'WordDocument' and 'Macros/VBA/ThisDocument'. This syntax is easier, but may fail if a 
+stream or storage name contains a slash (which is normally not allowed, according to the Microsoft specifications [MS-CFB]). (new in v0.15)
 
 Both are case-insensitive.
 
@@ -128,10 +133,20 @@ Switching between the two is easy:
     slash_path = '/'.join(list_path)
     list_path  = slash_path.split('/')
 
+**Encoding**: 
+
+- Stream and Storage names are stored in Unicode format in OLE files, which means they may contain special characters
+    (e.g. Greek, Cyrillic, Japanese, etc) that applications must support to avoid exceptions.
+- **On Python 2.x**, all stream and storage paths are handled by olefile in bytes strings, using the **UTF-8 encoding**
+    by default. If you need to use Unicode instead, add the option **path_encoding=None** when creating the OleFileIO 
+    object. This is new in v0.42. Olefile was using the Latin-1 encoding until v0.41, therefore special characters were 
+    not supported.  
+- **On Python 3.x**, all stream and storage paths are handled by olefile in unicode strings, without encoding.
 
 ## Get the list of streams
 
-listdir() returns a list of all the streams contained in the OLE file, including those stored in storages. Each stream is listed itself as a list, as described above. 
+listdir() returns a list of all the streams contained in the OLE file, including those stored in storages. 
+Each stream is listed itself as a list, as described above. 
 
 	:::python
     print(ole.listdir())

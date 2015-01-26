@@ -56,16 +56,22 @@ else:
 <pre><code>ole = olefile.OleFileIO(&#39;test.doc&#39;, write_mode=True)</code></pre>
 <p>(new in v0.40)</p>
 <p>The code for write features is new and it has not been thoroughly tested yet. See <a href="https://bitbucket.org/decalage/olefileio_pl/issue/6/improve-olefileio_pl-to-write-ole-files">issue #6</a> for the roadmap and the implementation status. If you encounter any issue, please send me your <a href="http://www.decalage.info/en/contact">feedback</a> or <a href="https://bitbucket.org/decalage/olefileio_pl/issues?status=new&amp;status=open">report issues</a>.</p>
-<h2 id="syntax-for-stream-and-storage-path">Syntax for stream and storage path</h2>
+<h2 id="syntax-for-stream-and-storage-paths">Syntax for stream and storage paths</h2>
 <p>Two different syntaxes are allowed for methods that need or return the path of streams and storages:</p>
 <ol style="list-style-type: decimal">
 <li><p>Either a <strong>list of strings</strong> including all the storages from the root up to the stream/storage name. For example a stream called &quot;WordDocument&quot; at the root will have ['WordDocument'] as full path. A stream called &quot;ThisDocument&quot; located in the storage &quot;Macros/VBA&quot; will be ['Macros', 'VBA', 'ThisDocument']. This is the original syntax from PIL. While hard to read and not very convenient, this syntax works in all cases.</p></li>
-<li><p>Or a <strong>single string with slashes</strong> to separate storage and stream names (similar to the Unix path syntax). The previous examples would be 'WordDocument' and 'Macros/VBA/ThisDocument'. This syntax is easier, but may fail if a stream or storage name contains a slash. (new in v0.15)</p></li>
+<li><p>Or a <strong>single string with slashes</strong> to separate storage and stream names (similar to the Unix path syntax). The previous examples would be 'WordDocument' and 'Macros/VBA/ThisDocument'. This syntax is easier, but may fail if a stream or storage name contains a slash (which is normally not allowed, according to the Microsoft specifications [MS-CFB]). (new in v0.15)</p></li>
 </ol>
 <p>Both are case-insensitive.</p>
 <p>Switching between the two is easy:</p>
 <pre><code>slash_path = &#39;/&#39;.join(list_path)
 list_path  = slash_path.split(&#39;/&#39;)</code></pre>
+<p><strong>Encoding</strong>:</p>
+<ul>
+<li>Stream and Storage names are stored in Unicode format in OLE files, which means they may contain special characters (e.g. Greek, Cyrillic, Japanese, etc) that applications must support to avoid exceptions.</li>
+<li><strong>On Python 2.x</strong>, all stream and storage paths are handled by olefile in bytes strings, using the <strong>UTF-8 encoding</strong> by default. If you need to use Unicode instead, add the option <strong>path_encoding=None</strong> when creating the OleFileIO object. This is new in v0.42. Olefile was using the Latin-1 encoding until v0.41, therefore special characters were not supported.<br /></li>
+<li><strong>On Python 3.x</strong>, all stream and storage paths are handled by olefile in unicode strings, without encoding.</li>
+</ul>
 <h2 id="get-the-list-of-streams">Get the list of streams</h2>
 <p>listdir() returns a list of all the streams contained in the OLE file, including those stored in storages. Each stream is listed itself as a list, as described above.</p>
 <pre><code>print(ole.listdir())</code></pre>
