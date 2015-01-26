@@ -33,7 +33,7 @@ import sys, os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.07'
+version      = '0.08a'
 desc         = "Python tools to analyze security characteristics of MS OLE2 files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), such as Microsoft Office documents, for Malware Analysis and Incident Response."
 long_desc    = open('oletools/README.rst').read()
 author       ="Philippe Lagadec"

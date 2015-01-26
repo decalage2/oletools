@@ -108,8 +108,9 @@ https://github.com/unixfreak0037/officeparser
 # 2015-01-23 v0.18 PL: - fixed issue #3, case-insensitive search in code_modules
 # 2015-01-24 v0.19 PL: - improved the detection of IOCs obfuscated with hex
 #                        strings and StrReverse
+# 2015-01-26 v0.20 PL: - added option --hex to show all hex strings decoded
 
-__version__ = '0.19'
+__version__ = '0.20'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -893,13 +894,14 @@ def detect_hex_strings(vba_code):
     return results
 
 
-def scan_vba(vba_code):
+def scan_vba(vba_code, include_hex_strings=False):
     """
     Analyze the provided VBA code to detect suspicious keywords,
     auto-executable macros, IOC patterns, obfuscation patterns
     such as hex-encoded strings.
 
     :param vba_code: str, VBA source code to be analyzed
+    :param include_hex_strings: bool, if True hex-encoded strings will be included with their decoded content.
     :return: list of tuples (type, keyword, description)
     (type = 'AutoExec', 'Suspicious', 'IOC' or 'Hex String')
     """
@@ -918,11 +920,14 @@ def scan_vba(vba_code):
             # StrReverse before hex decoding:
             vba_code += '\n'+binascii.unhexlify(encoded[::-1])
             #example: https://malwr.com/analysis/NmFlMGI4YTY1YzYyNDkwNTg1ZTBiZmY5OGI3YjlhYzU/
+    #TODO: also append the full code reversed if StrReverse? (risk of false positives?)
+    #TODO: show which IOCs have been found using hex, strrev or both
     autoexec_keywords = detect_autoexec(vba_code)
     suspicious_keywords = detect_suspicious(vba_code)
     # If hex-encoded strings were discovered, add an item to suspicious keywords:
     if hex_strings:
-        suspicious_keywords.append(('Hex Strings', 'Hex-encoded strings were detected, may be used to obfuscate strings (option --hex to see all)'))
+        suspicious_keywords.append(('Hex Strings',
+            'Hex-encoded strings were detected, may be used to obfuscate strings (option --hex to see all)'))
     patterns = detect_patterns(vba_code)
     results = []
     for keyword, description in autoexec_keywords:
@@ -931,9 +936,9 @@ def scan_vba(vba_code):
         results.append(('Suspicious', keyword, description))
     for pattern_type, value in patterns:
         results.append(('IOC', value, pattern_type))
-    # Only if option --hex:
-    # for encoded, decoded in hex_strings:
-    #     results.append(('Hex String', repr(decoded), encoded))
+    if include_hex_strings:
+        for encoded, decoded in hex_strings:
+            results.append(('Hex String', repr(decoded), encoded))
     return results
 
 
@@ -994,6 +999,7 @@ class VBA_Parser(object):
             self.type = TYPE_OpenXML
             z = zipfile.ZipFile(_file)
             #TODO: check if this is actually an OpenXML file
+            #TODO: if the zip file is encrypted, suggest to use the -z option, or try '-z infected' automatically?
             # check each file within the zip if it is an OLE file, by reading its magic:
             for subfile in z.namelist():
                 magic = z.open(subfile).read(len(olefile.MAGIC))
@@ -1155,14 +1161,15 @@ class VBA_Parser(object):
             self.ole_file.close()
 
 
-def print_analysis(vba_code):
+def print_analysis(vba_code, show_hex_strings=False):
     """
     Analyze the provided VBA code, and print the results in a table
 
     :param vba_code: str, VBA source code to be analyzed
+    :param show_hex_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
     :return: None
     """
-    results = scan_vba(vba_code)
+    results = scan_vba(vba_code, show_hex_strings)
     if results:
         t = prettytable.PrettyTable(('Type', 'Keyword', 'Description'))
         t.align = 'l'
@@ -1177,7 +1184,7 @@ def print_analysis(vba_code):
 
 
 
-def process_file (container, filename, data):
+def process_file (container, filename, data, show_hex_strings=False):
     """
     Process a single file
 
@@ -1185,6 +1192,7 @@ def process_file (container, filename, data):
     a zip archive, None otherwise.
     :param filename: str, path and filename of file on disk, or within the container.
     :param data: bytes, content of the file if it is in a container, None if it is a file on disk.
+    :param show_hex_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
     """
     #TODO: replace print by writing to a provided output file (sys.stdout by default)
     if container:
@@ -1214,7 +1222,7 @@ def process_file (container, filename, data):
                     print vba_code
                     print '- '*39
                     print 'ANALYSIS:'
-                    print_analysis(vba_code)
+                    print_analysis(vba_code, show_hex_strings)
         else:
             print 'No VBA macros found.'
     except: #TypeError:
@@ -1329,6 +1337,8 @@ def main():
         help='detailed mode, display full results (default for single file)')
     parser.add_option("-i", "--input", dest='input', type='str', default=None,
         help='input file containing VBA source code to be analyzed (no parsing)')
+    parser.add_option("--hex", action="store_true", dest="show_hex_strings",
+        help='display all the hex-encoded strings with their decoded content.')
 
     (options, args) = parser.parse_args()
 
@@ -1364,7 +1374,7 @@ def main():
             continue
         if options.detailed_mode and not options.triage_mode:
             # fully detailed output
-            process_file(container, filename, data)
+            process_file(container, filename, data, show_hex_strings=options.show_hex_strings)
         else:
             # print container name when it changes:
             if container != previous_container:
@@ -1380,7 +1390,7 @@ def main():
     if count == 1 and not options.triage_mode and not options.detailed_mode:
         # if options -t and -d were not specified and it's a single file, print details:
         #TODO: avoid doing the analysis twice by storing results
-        process_file(container, filename, data)
+        process_file(container, filename, data, show_hex_strings=options.show_hex_strings)
 
 if __name__ == '__main__':
     main()
