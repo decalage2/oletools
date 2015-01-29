@@ -109,8 +109,10 @@ https://github.com/unixfreak0037/officeparser
 # 2015-01-24 v0.19 PL: - improved the detection of IOCs obfuscated with hex
 #                        strings and StrReverse
 # 2015-01-26 v0.20 PL: - added option --hex to show all hex strings decoded
+# 2015-01-29 v0.21 PL: - added Dridex obfuscation decoding
+#                      - improved display, shows obfuscation name
 
-__version__ = '0.20'
+__version__ = '0.21'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -814,50 +816,58 @@ def filter_vba(vba_code):
     return vba
 
 
-def detect_autoexec(vba_code):
+def detect_autoexec(vba_code, obfuscation=None):
     """
     Detect if the VBA code contains keywords corresponding to macros running
     automatically when triggered by specific actions (e.g. when a document is
     opened or closed).
 
     :param vba_code: str, VBA source code
+    :param obfuscation: None or str, name of obfuscation to be added to description
     :return: list of str tuples (keyword, description)
     """
     #TODO: merge code with detect_suspicious
     # case-insensitive search
     #vba_code = vba_code.lower()
     results = []
+    obf_text = ''
+    if obfuscation:
+        obf_text = ' (obfuscation: %s)' % obfuscation
     for description, keywords in AUTOEXEC_KEYWORDS.items():
         for keyword in keywords:
             #TODO: if keyword is already a compiled regex, use it as-is
             # search using regex to detect word boundaries:
             if re.search(r'(?i)\b'+keyword+r'\b', vba_code):
             #if keyword.lower() in vba_code:
-                results.append((keyword, description))
+                results.append((keyword, description+obf_text))
     return results
 
 
-def detect_suspicious(vba_code):
+def detect_suspicious(vba_code, obfuscation=None):
     """
     Detect if the VBA code contains suspicious keywords corresponding to
     potential malware behaviour.
 
     :param vba_code: str, VBA source code
+    :param obfuscation: None or str, name of obfuscation to be added to description
     :return: list of str tuples (keyword, description)
     """
     # case-insensitive search
     #vba_code = vba_code.lower()
     results = []
+    obf_text = ''
+    if obfuscation:
+        obf_text = ' (obfuscation: %s)' % obfuscation
     for description, keywords in SUSPICIOUS_KEYWORDS.items():
         for keyword in keywords:
             # search using regex to detect word boundaries:
             if re.search(r'(?i)\b'+keyword+r'\b', vba_code):
             #if keyword.lower() in vba_code:
-                results.append((keyword, description))
+                results.append((keyword, description+obf_text))
     return results
 
 
-def detect_patterns(vba_code):
+def detect_patterns(vba_code, obfuscation=None):
     """
     Detect if the VBA code contains specific patterns such as IP addresses,
     URLs, e-mail addresses, executable file names, etc.
@@ -867,11 +877,14 @@ def detect_patterns(vba_code):
     """
     results = []
     found = set()
+    obf_text = ''
+    if obfuscation:
+        obf_text = ' (obfuscation: %s)' % obfuscation
     for pattern_type, pattern_re in RE_PATTERNS:
         for match in pattern_re.finditer(vba_code):
             value = match.group()
             if value not in found:
-                results.append((pattern_type, value))
+                results.append((pattern_type+obf_text, value))
                 found.add(value)
     return results
 
@@ -894,7 +907,120 @@ def detect_hex_strings(vba_code):
     return results
 
 
-def scan_vba(vba_code, include_hex_strings=False):
+def detect_dridex_strings(vba_code):
+    """
+    Detect if the VBA code contains strings obfuscated with a specific algorithm found in Dridex samples.
+
+    :param vba_code: str, VBA source code
+    :return: list of str tuples (encoded string, decoded string)
+    """
+    from thirdparty.DridexUrlDecoder.DridexUrlDecoder import DridexUrlDecode
+    results = []
+    found = set()
+    re_dridex_string = re.compile(r'"[0-9A-Za-z]{20,}"')
+    # regex to check that it is not just a hex string:
+    re_dridex_check = re.compile(r'[G-Zg-z]')
+    for match in re_dridex_string.finditer(vba_code):
+        value = match.group()[1:-1]
+        if not re_dridex_check.search(value):
+            continue
+        if value not in found:
+            try:
+                decoded = DridexUrlDecode(value)
+                results.append((value, decoded))
+                found.add(value)
+            except:
+                # if an exception occurs, it is likely not a dridex-encoded string
+                pass
+    return results
+
+
+class VBA_Scanner (object):
+    """
+    Class to scan the source code of a VBA module to find obfuscated strings,
+    suspicious keywords, IOCs, auto-executable macros, etc.
+    """
+
+    def __init__(self, vba_code):
+        """
+        VBA_Scanner constructor
+
+        :param vba_code: str, VBA source code to be analyzed
+        """
+        self.code = vba_code
+        self.code_hex = ''
+        self.code_hex_rev = ''
+        self.code_rev_hex = ''
+        self.code_dridex = ''
+
+
+    def scan(self, include_hex_strings=False):
+        """
+        Analyze the provided VBA code to detect suspicious keywords,
+        auto-executable macros, IOC patterns, obfuscation patterns
+        such as hex-encoded strings.
+
+        :param include_hex_strings: bool, if True hex-encoded strings will be included with their decoded content.
+        :return: list of tuples (type, keyword, description)
+        (type = 'AutoExec', 'Suspicious', 'IOC' or 'Hex String')
+        """
+        # First, detect and extract hex-encoded strings:
+        self.hex_strings = detect_hex_strings(self.code)
+        # detect if the code contains StrReverse:
+        self.strReverse = False
+        if 'strreverse' in self.code.lower(): self.strReverse = True
+        # Then append the decoded strings to the VBA code, to detect obfuscated IOCs and keywords:
+        for encoded, decoded in self.hex_strings:
+            self.code_hex += '\n'+decoded
+            # if the code contains "StrReverse", also append the hex strings in reverse order:
+            if self.strReverse:
+                # StrReverse after hex decoding:
+                self.code_hex_rev += '\n'+decoded[::-1]
+                # StrReverse before hex decoding:
+                self.code_rev_hex += '\n'+binascii.unhexlify(encoded[::-1])
+                #example: https://malwr.com/analysis/NmFlMGI4YTY1YzYyNDkwNTg1ZTBiZmY5OGI3YjlhYzU/
+        #TODO: also append the full code reversed if StrReverse? (risk of false positives?)
+        #TODO: show which IOCs have been found using hex, strrev or both
+        # Detect Dridex-encoded strings
+        self.dridex_strings = detect_dridex_strings(self.code)
+        for encoded, decoded in self.dridex_strings:
+            self.code_dridex += '\n'+decoded
+        results = []
+        self.autoexec_keywords = []
+        self.suspicious_keywords = []
+        self.iocs = []
+
+        for code, obfuscation in (
+            (self.code, None),
+            (self.code_hex, 'Hex'),
+            (self.code_hex_rev, 'Hex+StrReverse'),
+            (self.code_rev_hex, 'StrReverse+Hex'),
+            (self.code_dridex, 'Dridex'),
+        ):
+            self.autoexec_keywords += detect_autoexec(code, obfuscation)
+            self.suspicious_keywords += detect_suspicious(code, obfuscation)
+            self.iocs += detect_patterns(code, obfuscation)
+
+        # If hex-encoded strings were discovered, add an item to suspicious keywords:
+        if self.hex_strings:
+            self.suspicious_keywords.append(('Hex Strings',
+                'Hex-encoded strings were detected, may be used to obfuscate strings (option --hex to see all)'))
+        for keyword, description in self.autoexec_keywords:
+            results.append(('AutoExec', keyword, description))
+        for keyword, description in self.suspicious_keywords:
+            results.append(('Suspicious', keyword, description))
+        for pattern_type, value in self.iocs:
+            results.append(('IOC', value, pattern_type))
+        if include_hex_strings:
+            for encoded, decoded in self.hex_strings:
+                results.append(('Hex String', repr(decoded), encoded))
+        for encoded, decoded in self.dridex_strings:
+            results.append(('Dridex string', repr(decoded), encoded))
+        return results
+
+
+
+def scan_vba(vba_code, include_hex_strings):
     """
     Analyze the provided VBA code to detect suspicious keywords,
     auto-executable macros, IOC patterns, obfuscation patterns
@@ -905,41 +1031,7 @@ def scan_vba(vba_code, include_hex_strings=False):
     :return: list of tuples (type, keyword, description)
     (type = 'AutoExec', 'Suspicious', 'IOC' or 'Hex String')
     """
-    # First, detect and extract hex-encoded strings:
-    hex_strings = detect_hex_strings(vba_code)
-    # detect if the code contains StrReverse:
-    if 'strreverse' in vba_code.lower(): strreverse = True
-    else: strreverse = False
-    # Then append the decoded strings to the VBA code, to detect obfuscated IOCs and keywords:
-    for encoded, decoded in hex_strings:
-        vba_code += '\n'+decoded
-        # if the code contains "StrReverse", also append the hex strings in reverse order:
-        if strreverse:
-            # StrReverse after hex decoding:
-            vba_code += '\n'+decoded[::-1]
-            # StrReverse before hex decoding:
-            vba_code += '\n'+binascii.unhexlify(encoded[::-1])
-            #example: https://malwr.com/analysis/NmFlMGI4YTY1YzYyNDkwNTg1ZTBiZmY5OGI3YjlhYzU/
-    #TODO: also append the full code reversed if StrReverse? (risk of false positives?)
-    #TODO: show which IOCs have been found using hex, strrev or both
-    autoexec_keywords = detect_autoexec(vba_code)
-    suspicious_keywords = detect_suspicious(vba_code)
-    # If hex-encoded strings were discovered, add an item to suspicious keywords:
-    if hex_strings:
-        suspicious_keywords.append(('Hex Strings',
-            'Hex-encoded strings were detected, may be used to obfuscate strings (option --hex to see all)'))
-    patterns = detect_patterns(vba_code)
-    results = []
-    for keyword, description in autoexec_keywords:
-        results.append(('AutoExec', keyword, description))
-    for keyword, description in suspicious_keywords:
-        results.append(('Suspicious', keyword, description))
-    for pattern_type, value in patterns:
-        results.append(('IOC', value, pattern_type))
-    if include_hex_strings:
-        for encoded, decoded in hex_strings:
-            results.append(('Hex String', repr(decoded), encoded))
-    return results
+    return VBA_Scanner(vba_code).scan(include_hex_strings)
 
 
 #=== CLASSES =================================================================
@@ -1226,7 +1318,7 @@ def process_file (container, filename, data, show_hex_strings=False):
         else:
             print 'No VBA macros found.'
     except: #TypeError:
-        #raise
+        raise
         #TODO: print more info if debug mode
         print sys.exc_value
     print ''
