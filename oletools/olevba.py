@@ -112,6 +112,8 @@ https://github.com/unixfreak0037/officeparser
 # 2015-01-29 v0.21 PL: - added Dridex obfuscation decoding
 #                      - improved display, shows obfuscation name
 # 2015-02-01 v0.22 PL: - fixed issue #4: regex for URL, e-mail and exe filename
+#                      - added Base64 obfuscation decoding (contribution from
+#                        @JamesHabben)
 
 __version__ = '0.22'
 
@@ -121,7 +123,6 @@ __version__ = '0.22'
 # + setup logging (common with other oletools)
 
 # TODO later:
-# + do not show hex strings by default (add option --hex)
 # + performance improvement: instead of searching each keyword separately,
 #   first split vba code into a list of words (per line), then check each
 #   word against a dict. (or put vba words into a set/dict?)
@@ -156,6 +157,7 @@ import re
 import optparse
 import os.path
 import binascii
+import base64
 
 import thirdparty.olefile as olefile
 from thirdparty.prettytable import prettytable
@@ -289,6 +291,8 @@ RE_PATTERNS = (
 # regex to detect strings encoded in hexadecimal
 re_hex_string = re.compile(r'(?:[0-9A-Fa-f]{2}){4,}')
 
+# regex to detect strings encoded in base64
+re_base64_string = re.compile(r'"(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?"')
 
 #--- FUNCTIONS ----------------------------------------------------------------
 
@@ -929,6 +933,24 @@ def detect_hex_strings(vba_code):
     return results
 
 
+def detect_base64_strings(vba_code):
+    """
+    Detect if the VBA code contains strings encoded in base64.
+
+    :param vba_code: str, VBA source code
+    :return: list of str tuples (encoded string, decoded string)
+    """
+    results = []
+    found = set()
+    for match in re_base64_string.finditer(vba_code):
+        value = match.group()
+        if value not in found:
+            decoded = base64.b64decode(value)
+            results.append((value, decoded))
+            found.add(value)
+    return results
+
+
 def detect_dridex_strings(vba_code):
     """
     Detect if the VBA code contains strings obfuscated with a specific algorithm found in Dridex samples.
@@ -973,6 +995,7 @@ class VBA_Scanner (object):
         self.code_hex = ''
         self.code_hex_rev = ''
         self.code_rev_hex = ''
+        self.code_base64 = ''
         self.code_dridex = ''
 
 
@@ -1003,6 +1026,10 @@ class VBA_Scanner (object):
                 #example: https://malwr.com/analysis/NmFlMGI4YTY1YzYyNDkwNTg1ZTBiZmY5OGI3YjlhYzU/
         #TODO: also append the full code reversed if StrReverse? (risk of false positives?)
         #TODO: show which IOCs have been found using hex, strrev or both
+        # Detect Base64-encoded strings
+        self.base64_strings = detect_base64_strings(self.code)
+        for encoded, decoded in self.base64_strings:
+            self.code_base64 += '\n'+decoded
         # Detect Dridex-encoded strings
         self.dridex_strings = detect_dridex_strings(self.code)
         for encoded, decoded in self.dridex_strings:
@@ -1017,6 +1044,7 @@ class VBA_Scanner (object):
             (self.code_hex, 'Hex'),
             (self.code_hex_rev, 'Hex+StrReverse'),
             (self.code_rev_hex, 'StrReverse+Hex'),
+            (self.code_base64, 'Base64'),
             (self.code_dridex, 'Dridex'),
         ):
             self.autoexec_keywords += detect_autoexec(code, obfuscation)
@@ -1027,6 +1055,12 @@ class VBA_Scanner (object):
         if self.hex_strings:
             self.suspicious_keywords.append(('Hex Strings',
                 'Hex-encoded strings were detected, may be used to obfuscate strings (option --hex to see all)'))
+        if self.base64_strings:
+            self.suspicious_keywords.append(('Base64 Strings',
+                'Base64-encoded strings were detected, may be used to obfuscate strings (option --hex to see all)'))
+        if self.dridex_strings:
+            self.suspicious_keywords.append(('Dridex Strings',
+                'Dridex-encoded strings were detected, may be used to obfuscate strings (option --hex to see all)'))
         for keyword, description in self.autoexec_keywords:
             results.append(('AutoExec', keyword, description))
         for keyword, description in self.suspicious_keywords:
@@ -1036,8 +1070,10 @@ class VBA_Scanner (object):
         if include_hex_strings:
             for encoded, decoded in self.hex_strings:
                 results.append(('Hex String', repr(decoded), encoded))
-        for encoded, decoded in self.dridex_strings:
-            results.append(('Dridex string', repr(decoded), encoded))
+            for encoded, decoded in self.base64_strings:
+                results.append(('Base64 String', repr(decoded), encoded))
+            for encoded, decoded in self.dridex_strings:
+                results.append(('Dridex string', repr(decoded), encoded))
         return results
 
 
@@ -1470,7 +1506,7 @@ def main():
         # input file provided with VBA source code to be analyzed directly:
         print 'Analysis of VBA source code from %s:' % options.input
         vba_code = open(options.input).read()
-        print_analysis(vba_code)
+        print_analysis(vba_code, show_hex_strings=options.show_hex_strings)
         sys.exit()
 
     # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('Type', 'Macros', 'AutoEx', 'Susp.', 'IOCs', 'HexStr')
