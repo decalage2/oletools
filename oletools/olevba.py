@@ -111,8 +111,9 @@ https://github.com/unixfreak0037/officeparser
 # 2015-01-26 v0.20 PL: - added option --hex to show all hex strings decoded
 # 2015-01-29 v0.21 PL: - added Dridex obfuscation decoding
 #                      - improved display, shows obfuscation name
+# 2015-02-01 v0.22 PL: - fixed issue #4: regex for URL, e-mail and exe filename
 
-__version__ = '0.21'
+__version__ = '0.22'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -249,16 +250,37 @@ SUSPICIOUS_KEYWORDS = {
         #Chr: http://msdn.microsoft.com/en-us/library/office/gg264465%28v=office.15%29.aspx
 }
 
+# Regular Expression for a URL:
+# http://en.wikipedia.org/wiki/Uniform_resource_locator
+# http://www.w3.org/Addressing/URL/uri-spec.html
+#TODO: also support username:password@server
+#TODO: other protocols (file, gopher, wais, ...?)
+SCHEME = r'\b(?:http|ftp)s?'
+# see http://en.wikipedia.org/wiki/List_of_Internet_top-level_domains
+TLD = r'(?:xn--[a-zA-Z0-9]{4,20}|[a-zA-Z]{2,20})'
+DNS_NAME = r'(?:[a-zA-Z0-9\-\.]+\.' + TLD + ')'
+#TODO: IPv6 - see https://www.debuggex.com/
+# A literal numeric IPv6 address may be given, but must be enclosed in [ ] e.g. [db8:0cec::99:123a]
+NUMBER_0_255 = r'(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[0-9])'
+IPv4 = r'(?:'+NUMBER_0_255+r'\.){3}'+NUMBER_0_255
+# IPv4 must come before the DNS name because it is more specific
+SERVER = r'(?:' + IPv4 + '|' + DNS_NAME + ')'
+PORT = r'(?:\:[0-9]{1,5})?'
+SERVER_PORT = SERVER + PORT
+URL_PATH = r'(?:/[a-zA-Z0-9\-\._\?\,\'/\\\+&%\$#\=~]*)?' # [^\.\,\)\(\s"]
+URL_RE = SCHEME + r'\://' + SERVER_PORT + URL_PATH
+re_url = re.compile(URL_RE)
+
+
 # Patterns to be extracted (IP addresses, URLs, etc)
 # From patterns.py in balbuzard
 RE_PATTERNS = (
-    #TODO: check if this regex matches URLs with an IP address (various forms)
-    ('URL', re.compile(r'(http|https|ftp)\://[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(:[a-zA-Z0-9]*)?/?([a-zA-Z0-9\-\._\?\,\'/\\\+&amp;%\$#\=~])*[^\.\,\)\(\s]')),
-    ('IPv4 address', re.compile(r"\b(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\b")),
-    ('E-mail address', re.compile(r'(?i)\b[A-Z0-9._%+-]+@(?:[A-Z0-9-]+\.)+(?:[A-Z]{2,12}|XN--[A-Z0-9]{4,18})\b')),
+    ('URL', re.compile(URL_RE)),
+    ('IPv4 address', re.compile(IPv4)),
+    ('E-mail address', re.compile(r'(?i)\b[A-Z0-9._%+-]+@'+SERVER+'\b')),
     # ('Domain name', re.compile(r'(?=^.{1,254}$)(^(?:(?!\d+\.|-)[a-zA-Z0-9_\-]{1,63}(?<!-)\.?)+(?:[a-zA-Z]{2,})$)')),
     # Executable file name with known extensions (except .com which is present in many URLs, and .application):
-    ("Executable file name", re.compile(r"(?i)\b\w+\.(EXE|PIF|GADGET|MSI|MSP|MSC|VB|VBS|JS|VBE|JSE|WS|WSF|WSC|WSH|BAT|CMD|DLL|SCR|HTA|CPL|CLASS|JAR|PS1|PS1XML|PS2|PS2XML|PSC1|PSC2|SCF|LNK|INF|REG)\b")),
+    ("Executable file name", re.compile(r"(?i)\b\w+\.(EXE|PIF|GADGET|MSI|MSP|MSC|VBS|VBE|VB|JSE|JS|WSF|WSC|WSH|WS|BAT|CMD|DLL|SCR|HTA|CPL|CLASS|JAR|PS1XML|PS1|PS2XML|PS2|PSC1|PSC2|SCF|LNK|INF|REG)\b")),
     # Sources: http://www.howtogeek.com/137270/50-file-extensions-that-are-potentially-dangerous-on-windows/
     #TODO: https://support.office.com/en-us/article/Blocked-attachments-in-Outlook-3811cddc-17c3-4279-a30c-060ba0207372#__attachment_file_types
     #('Hex string', re.compile(r'(?:[0-9A-Fa-f]{2}){4,}')),
