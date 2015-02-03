@@ -114,8 +114,11 @@ https://github.com/unixfreak0037/officeparser
 # 2015-02-01 v0.22 PL: - fixed issue #4: regex for URL, e-mail and exe filename
 #                      - added Base64 obfuscation decoding (contribution from
 #                        @JamesHabben)
+# 2015-02-03 v0.23 PL: - triage now uses VBA_Scanner results, shows Base64 and
+#                        Dridex strings
+#                      - exception handling in detect_base64_strings
 
-__version__ = '0.22'
+__version__ = '0.23'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -940,14 +943,19 @@ def detect_base64_strings(vba_code):
     :param vba_code: str, VBA source code
     :return: list of str tuples (encoded string, decoded string)
     """
+    #TODO: avoid matching simple hex strings as base64?
     results = []
     found = set()
     for match in re_base64_string.finditer(vba_code):
         value = match.group()
         if value not in found:
-            decoded = base64.b64decode(value)
-            results.append((value, decoded))
-            found.add(value)
+            try:
+                decoded = base64.b64decode(value)
+                results.append((value, decoded))
+                found.add(value)
+            except:
+                # if an exception occurs, it is likely not a base64-encoded string
+                pass
     return results
 
 
@@ -1075,6 +1083,20 @@ class VBA_Scanner (object):
             for encoded, decoded in self.dridex_strings:
                 results.append(('Dridex string', repr(decoded), encoded))
         return results
+
+    def scan_summary(self):
+        """
+        Analyze the provided VBA code to detect suspicious keywords,
+        auto-executable macros, IOC patterns, obfuscation patterns
+        such as hex-encoded strings.
+
+        :return: tuple with the number of items found for each category:
+            (autoexec, suspicious, IOCs, hex, base64, dridex)
+        """
+        self.scan()
+        return (len(self.autoexec_keywords), len(self.suspicious_keywords),
+            len(self.iocs), len(self.hex_strings), len(self.base64_strings),
+            len(self.dridex_strings))
 
 
 
@@ -1397,6 +1419,8 @@ def process_file_triage (container, filename, data):
     nb_suspicious = 0
     nb_iocs = 0
     nb_hexstrings = 0
+    nb_base64strings = 0
+    nb_dridexstrings = 0
     # ftype = 'Other'
     message = ''
     try:
@@ -1406,22 +1430,28 @@ def process_file_triage (container, filename, data):
             for (subfilename, stream_path, vba_filename, vba_code) in vba.extract_macros():
                 nb_macros += 1
                 if vba_code.strip() != '':
-                    #TODO: same changes as scan_vba, or modify scan_vba to return these counts
-                    nb_autoexec += len(detect_autoexec(vba_code))
-                    nb_suspicious += len(detect_suspicious(vba_code))
-                    nb_iocs += len(detect_patterns(vba_code))
-                    nb_hexstrings += len(detect_hex_strings(vba_code))
+                    scanner = VBA_Scanner(vba_code)
+                    autoexec, suspicious, iocs, hexstrings, base64strings, dridex = scanner.scan_summary()
+                    nb_autoexec += autoexec
+                    nb_suspicious += suspicious
+                    nb_iocs += iocs
+                    nb_hexstrings += hexstrings
+                    nb_base64strings += base64strings
+                    nb_dridexstrings += dridex
         if vba.type == TYPE_OLE:
-            flags = 'O'
+            flags = 'OLE:'
         else:
-            flags = 'X'
-        macros = autoexec = suspicious = iocs = hexstrings = '-'
+            flags = 'OpX:'
+        macros = autoexec = suspicious = iocs = hexstrings = base64strings = dridex = '-'
         if nb_macros: macros = 'M'
         if nb_autoexec: autoexec = 'A'
         if nb_suspicious: suspicious = 'S'
         if nb_iocs: iocs = 'I'
         if nb_hexstrings: hexstrings = 'H'
-        flags += '%s%s%s%s%s' % (macros, autoexec, suspicious, iocs, hexstrings)
+        if nb_base64strings: base64strings = 'B'
+        if nb_dridexstrings: dridex = 'D'
+        flags += '%s%s%s%s%s%s%s' % (macros, autoexec, suspicious, iocs, hexstrings,
+            base64strings, dridex)
 
         # macros = autoexec = suspicious = iocs = hexstrings = 'no'
         # if nb_macros: macros = 'YES:%d' % nb_macros
@@ -1535,7 +1565,7 @@ def main():
             process_file_triage(container, filename, data)
         count += 1
     if not options.detailed_mode or options.triage_mode:
-        print '\n(Flags: O=OLE, X=OpenXML, M=Macros, A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex-encoded strings, ?=Unknown)\n'
+        print '\n(Flags: OpX=OpenXML, M=Macros, A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex strings, B=Base64 strings, D=Dridex strings, ?=Unknown)\n'
 
     if count == 1 and not options.triage_mode and not options.detailed_mode:
         # if options -t and -d were not specified and it's a single file, print details:
