@@ -27,7 +27,13 @@ Software.
 News
 ----
 
--  **2015-01-05 v0.07**: improved
+-  **2015-02-05 v0.08**:
+   `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`_ can
+   now decode strings obfuscated with Hex/StrReverse/Base64/Dridex and
+   extract IOCs. Added new triage mode, support for non-western
+   codepages with olefile 0.42, improved API and display, several
+   bugfixes.
+-  2015-01-05 v0.07: improved
    `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`_ to
    detect suspicious keywords and IOCs in VBA macros, can now scan
    several files and open password-protected zip archives, added a
