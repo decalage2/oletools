@@ -118,6 +118,7 @@ https://github.com/unixfreak0037/officeparser
 #                        Dridex strings
 #                      - exception handling in detect_base64_strings
 # 2015-02-07 v0.24 PL: - renamed option --hex to --decode, fixed display
+#                      - display exceptions with stack trace
 
 __version__ = '0.24'
 
@@ -162,6 +163,7 @@ import optparse
 import os.path
 import binascii
 import base64
+import traceback
 
 import thirdparty.olefile as olefile
 from thirdparty.prettytable import prettytable
@@ -296,7 +298,9 @@ RE_PATTERNS = (
 re_hex_string = re.compile(r'(?:[0-9A-Fa-f]{2}){4,}')
 
 # regex to detect strings encoded in base64
-re_base64_string = re.compile(r'"(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?"')
+#re_base64_string = re.compile(r'"(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?"')
+# alternate version from balbuzard:
+re_base64_string = re.compile(r'"(?:[A-Za-z0-9+/]{4}){2,}(?:[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=|[A-Za-z0-9+/][AQgw]==)"')
 
 #--- FUNCTIONS ----------------------------------------------------------------
 
@@ -1399,9 +1403,11 @@ def process_file (container, filename, data, show_decoded_strings=False):
         else:
             print 'No VBA macros found.'
     except: #TypeError:
-        raise
+        #raise
         #TODO: print more info if debug mode
-        print sys.exc_value
+        #print sys.exc_value
+        # display the exception with full stack trace for debugging, but do not stop:
+        traceback.print_exc()
     print ''
 
 
@@ -1473,7 +1479,7 @@ def process_file_triage (container, filename, data):
         #TODO: distinguish real errors from incorrect file types
         flags = '!ERROR'
         message = sys.exc_value
-    line = '%-6s %s' % (flags, filename)
+    line = '%-11s %s' % (flags, filename)
     if message:
         line += ' - %s' % message
     print line
