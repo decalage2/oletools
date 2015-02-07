@@ -117,8 +117,9 @@ https://github.com/unixfreak0037/officeparser
 # 2015-02-03 v0.23 PL: - triage now uses VBA_Scanner results, shows Base64 and
 #                        Dridex strings
 #                      - exception handling in detect_base64_strings
+# 2015-02-07 v0.24 PL: - renamed option --hex to --decode, fixed display
 
-__version__ = '0.23'
+__version__ = '0.24'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -1062,13 +1063,13 @@ class VBA_Scanner (object):
         # If hex-encoded strings were discovered, add an item to suspicious keywords:
         if self.hex_strings:
             self.suspicious_keywords.append(('Hex Strings',
-                'Hex-encoded strings were detected, may be used to obfuscate strings (option --hex to see all)'))
+                'Hex-encoded strings were detected, may be used to obfuscate strings (option --decode to see all)'))
         if self.base64_strings:
             self.suspicious_keywords.append(('Base64 Strings',
-                'Base64-encoded strings were detected, may be used to obfuscate strings (option --hex to see all)'))
+                'Base64-encoded strings were detected, may be used to obfuscate strings (option --decode to see all)'))
         if self.dridex_strings:
             self.suspicious_keywords.append(('Dridex Strings',
-                'Dridex-encoded strings were detected, may be used to obfuscate strings (option --hex to see all)'))
+                'Dridex-encoded strings were detected, may be used to obfuscate strings (option --decode to see all)'))
         for keyword, description in self.autoexec_keywords:
             results.append(('AutoExec', keyword, description))
         for keyword, description in self.suspicious_keywords:
@@ -1333,15 +1334,15 @@ class VBA_Parser(object):
             self.ole_file.close()
 
 
-def print_analysis(vba_code, show_hex_strings=False):
+def print_analysis(vba_code, show_decoded_strings=False):
     """
     Analyze the provided VBA code, and print the results in a table
 
     :param vba_code: str, VBA source code to be analyzed
-    :param show_hex_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
+    :param show_decoded_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
     :return: None
     """
-    results = scan_vba(vba_code, show_hex_strings)
+    results = scan_vba(vba_code, show_decoded_strings)
     if results:
         t = prettytable.PrettyTable(('Type', 'Keyword', 'Description'))
         t.align = 'l'
@@ -1356,7 +1357,7 @@ def print_analysis(vba_code, show_hex_strings=False):
 
 
 
-def process_file (container, filename, data, show_hex_strings=False):
+def process_file (container, filename, data, show_decoded_strings=False):
     """
     Process a single file
 
@@ -1364,7 +1365,7 @@ def process_file (container, filename, data, show_hex_strings=False):
     a zip archive, None otherwise.
     :param filename: str, path and filename of file on disk, or within the container.
     :param data: bytes, content of the file if it is in a container, None if it is a file on disk.
-    :param show_hex_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
+    :param show_decoded_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
     """
     #TODO: replace print by writing to a provided output file (sys.stdout by default)
     if container:
@@ -1394,7 +1395,7 @@ def process_file (container, filename, data, show_hex_strings=False):
                     print vba_code
                     print '- '*39
                     print 'ANALYSIS:'
-                    print_analysis(vba_code, show_hex_strings)
+                    print_analysis(vba_code, show_decoded_strings)
         else:
             print 'No VBA macros found.'
     except: #TypeError:
@@ -1517,8 +1518,8 @@ def main():
         help='detailed mode, display full results (default for single file)')
     parser.add_option("-i", "--input", dest='input', type='str', default=None,
         help='input file containing VBA source code to be analyzed (no parsing)')
-    parser.add_option("--hex", action="store_true", dest="show_hex_strings",
-        help='display all the hex-encoded strings with their decoded content.')
+    parser.add_option("--decode", action="store_true", dest="show_decoded_strings",
+        help='display all the obfuscated strings with their decoded content (Hex, Base64, StrReverse, Dridex).')
 
     (options, args) = parser.parse_args()
 
@@ -1536,14 +1537,14 @@ def main():
         # input file provided with VBA source code to be analyzed directly:
         print 'Analysis of VBA source code from %s:' % options.input
         vba_code = open(options.input).read()
-        print_analysis(vba_code, show_hex_strings=options.show_hex_strings)
+        print_analysis(vba_code, show_decoded_strings=options.show_decoded_strings)
         sys.exit()
 
     # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('Type', 'Macros', 'AutoEx', 'Susp.', 'IOCs', 'HexStr')
     # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('-'*8, '-'*7, '-'*7, '-'*7, '-'*7, '-'*7)
     if not options.detailed_mode or options.triage_mode:
-        print '%-6s %-72s' % ('Flags', 'Filename')
-        print '%-6s %-72s' % ('-'*6, '-'*72)
+        print '%-11s %-65s' % ('Flags', 'Filename')
+        print '%-11s %-65s' % ('-'*11, '-'*65)
     previous_container = None
     count = 0
     container = filename = data = None
@@ -1554,7 +1555,7 @@ def main():
             continue
         if options.detailed_mode and not options.triage_mode:
             # fully detailed output
-            process_file(container, filename, data, show_hex_strings=options.show_hex_strings)
+            process_file(container, filename, data, show_decoded_strings=options.show_decoded_strings)
         else:
             # print container name when it changes:
             if container != previous_container:
@@ -1570,7 +1571,7 @@ def main():
     if count == 1 and not options.triage_mode and not options.detailed_mode:
         # if options -t and -d were not specified and it's a single file, print details:
         #TODO: avoid doing the analysis twice by storing results
-        process_file(container, filename, data, show_hex_strings=options.show_hex_strings)
+        process_file(container, filename, data, show_decoded_strings=options.show_decoded_strings)
 
 if __name__ == '__main__':
     main()
