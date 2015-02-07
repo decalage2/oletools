@@ -120,6 +120,7 @@ https://github.com/unixfreak0037/officeparser
 # 2015-02-07 v0.24 PL: - renamed option --hex to --decode, fixed display
 #                      - display exceptions with stack trace
 #                      - added several suspicious keywords
+#                      - improved Base64 detection and decoding
 
 __version__ = '0.24'
 
@@ -127,6 +128,8 @@ __version__ = '0.24'
 # TODO:
 # + do not use logging, but a provided logger (null logger by default)
 # + setup logging (common with other oletools)
+# + add xor bruteforcing like bbharvest
+# + add chr() decoding
 
 # TODO later:
 # + performance improvement: instead of searching each keyword separately,
@@ -249,7 +252,7 @@ SUSPICIOUS_KEYWORDS = {
         ('Lib',),
     'May download files from the Internet':
         #TODO: regex to find urlmon+URLDownloadToFileA on same line
-        ('URLDownloadToFileA',),
+        ('URLDownloadToFileA', 'Msxml2.XMLHTTP', 'Microsoft.XMLHTTP'),
     'May control another application by simulating user keystrokes':
         ('SendKeys', 'AppActivate'),
         #SendKeys: http://msdn.microsoft.com/en-us/library/office/gg278655%28v=office.15%29.aspx
@@ -303,8 +306,16 @@ re_hex_string = re.compile(r'(?:[0-9A-Fa-f]{2}){4,}')
 
 # regex to detect strings encoded in base64
 #re_base64_string = re.compile(r'"(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?"')
-# alternate version from balbuzard:
-re_base64_string = re.compile(r'"(?:[A-Za-z0-9+/]{4}){2,}(?:[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=|[A-Za-z0-9+/][AQgw]==)"')
+# better version from balbuzard, less false positives:
+re_base64_string = re.compile(r'"(?:[A-Za-z0-9+/]{4}){1,}(?:[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=|[A-Za-z0-9+/][AQgw]==)?"')
+# white list of common strings matching the base64 regex, but which are not base64 strings (all lowercase):
+BASE64_WHITELIST = set(['thisdocument'])
+
+# regex to detect strings encoded with a specific Dridex algorithm
+# (see https://github.com/JamesHabben/MalwareStuff)
+re_dridex_string = re.compile(r'"[0-9A-Za-z]{20,}"')
+# regex to check that it is not just a hex string:
+re_dridex_check = re.compile(r'[G-Zg-z]')
 
 #--- FUNCTIONS ----------------------------------------------------------------
 
@@ -956,8 +967,10 @@ def detect_base64_strings(vba_code):
     results = []
     found = set()
     for match in re_base64_string.finditer(vba_code):
-        value = match.group()
-        if value not in found:
+        # extract the base64 string without quotes:
+        value = match.group().strip('"')
+        # only keep new values and not in the whitelist:
+        if value not in found and value.lower() not in BASE64_WHITELIST:
             try:
                 decoded = base64.b64decode(value)
                 results.append((value, decoded))
@@ -978,9 +991,6 @@ def detect_dridex_strings(vba_code):
     from thirdparty.DridexUrlDecoder.DridexUrlDecoder import DridexUrlDecode
     results = []
     found = set()
-    re_dridex_string = re.compile(r'"[0-9A-Za-z]{20,}"')
-    # regex to check that it is not just a hex string:
-    re_dridex_check = re.compile(r'[G-Zg-z]')
     for match in re_dridex_string.finditer(vba_code):
         value = match.group()[1:-1]
         if not re_dridex_check.search(value):
