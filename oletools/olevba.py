@@ -1152,10 +1152,13 @@ class VBA_Parser(object):
         """
         Constructor for VBA_Parser
 
-        :param _file: path of file to parse, file-like object or file content
-        :param filename: actual filename if _file is a  file-like object or file content
-        in a bytes string
+        :param filename: filename or path of file to parse, or file-like object
+
+        :param data: None or bytes str, if None the file will be read from disk (or from the file-like object).
+        If data is provided as a bytes string, it will be parsed as the content of the file in memory,
+        and not read from disk. Note: files must be read in binary mode, i.e. open(f, 'rb').
         """
+        #TODO: filename should only be a string, data should be used for the file-like object
         #TODO: filename should be mandatory, optional data is a string or file-like object
         #TODO: also support olefile and zipfile as input
         if data is None:
