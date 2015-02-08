@@ -19,24 +19,29 @@ Checking the malware sample [DIAN_caso-5415.doc](https://malwr.com/analysis/M2I4
 	:::text
 	>oletimes.py DIAN_caso-5415.doc
 
-	- Root mtime=2014-05-14 12:45:24.752000 ctime=None
-	- '\x01CompObj': mtime=None ctime=None
-	- '\x05DocumentSummaryInformation': mtime=None ctime=None
-	- '\x05SummaryInformation': mtime=None ctime=None
-	- '1Table': mtime=None ctime=None
-	- 'Data': mtime=None ctime=None
-	- 'Macros': mtime=2014-05-14 12:45:24.708000 ctime=2014-05-14 12:45:24.355000
-	- 'Macros/PROJECT': mtime=None ctime=None
-	- 'Macros/PROJECTwm': mtime=None ctime=None
-	- 'Macros/VBA': mtime=2014-05-14 12:45:24.684000 ctime=2014-05-14 12:45:24.355000
-	- 'Macros/VBA/ThisDocument': mtime=None ctime=None
-	- 'Macros/VBA/_VBA_PROJECT': mtime=None ctime=None
-	- 'Macros/VBA/__SRP_0': mtime=None ctime=None
-	- 'Macros/VBA/__SRP_1': mtime=None ctime=None
-	- 'Macros/VBA/__SRP_2': mtime=None ctime=None
-	- 'Macros/VBA/__SRP_3': mtime=None ctime=None
-	- 'Macros/VBA/dir': mtime=None ctime=None
-	- 'WordDocument': mtime=None ctime=None
+	+----------------------------+---------------------+---------------------+
+	| Stream/Storage name        | Modification Time   | Creation Time       |
+	+----------------------------+---------------------+---------------------+
+	| Root                       | 2014-05-14 12:45:24 | None                |
+	| '\x01CompObj'              | None                | None                |
+	| '\x05DocumentSummaryInform | None                | None                |
+	| ation'                     |                     |                     |
+	| '\x05SummaryInformation'   | None                | None                |
+	| '1Table'                   | None                | None                |
+	| 'Data'                     | None                | None                |
+	| 'Macros'                   | 2014-05-14 12:45:24 | 2014-05-14 12:45:24 |
+	| 'Macros/PROJECT'           | None                | None                |
+	| 'Macros/PROJECTwm'         | None                | None                |
+	| 'Macros/VBA'               | 2014-05-14 12:45:24 | 2014-05-14 12:45:24 |
+	| 'Macros/VBA/ThisDocument'  | None                | None                |
+	| 'Macros/VBA/_VBA_PROJECT'  | None                | None                |
+	| 'Macros/VBA/__SRP_0'       | None                | None                |
+	| 'Macros/VBA/__SRP_1'       | None                | None                |
+	| 'Macros/VBA/__SRP_2'       | None                | None                |
+	| 'Macros/VBA/__SRP_3'       | None                | None                |
+	| 'Macros/VBA/dir'           | None                | None                |
+	| 'WordDocument'             | None                | None                |
+	+----------------------------+---------------------+---------------------+
 
 ## How to use oletimes in Python applications	
 

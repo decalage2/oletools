@@ -1,4 +1,4 @@
-python-oletools v0.07 documentation
+python-oletools v0.08 documentation
 ===================================
 
 This is the home page of the documentation for python-oletools. The latest version can be found 
@@ -29,7 +29,7 @@ Tools in python-oletools:
 - **[[oleid]]**: a tool to analyze OLE files to detect specific characteristics usually found in malicious files.
 - **[[olemeta]]**: a tool to extract all standard properties (metadata) from OLE files.
 - **[[oletimes]]**: a tool to extract creation and modification timestamps of all streams and storages.
-- **[[olevba]]**: a tool to extract VBA Macro source code from MS Office documents (OLE and OpenXML).
+- **[[olevba]]**: a tool to extract and analyze VBA Macro source code from MS Office documents (OLE and OpenXML).
 - **[[pyxswf]]**: a tool to detect, extract and analyze Flash objects (SWF) that may
   be embedded in files such as MS Office documents (e.g. Word, Excel) and RTF,
   which is especially useful for malware analysis.
