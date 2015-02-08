@@ -22,7 +22,7 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2015-02-05 v0.08**: [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) can now decode strings 
+- **2015-02-08 v0.08**: [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) can now decode strings 
 obfuscated with Hex/StrReverse/Base64/Dridex and extract IOCs. Added new triage mode, support for non-western
 codepages with olefile 0.42, improved API and display, several bugfixes.
 - 2015-01-05 v0.07: improved [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) to detect suspicious 

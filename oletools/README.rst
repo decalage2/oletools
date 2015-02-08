@@ -27,7 +27,7 @@ Software.
 News
 ----
 
--  **2015-02-05 v0.08**:
+-  **2015-02-08 v0.08**:
    `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`_ can
    now decode strings obfuscated with Hex/StrReverse/Base64/Dridex and
    extract IOCs. Added new triage mode, support for non-western
