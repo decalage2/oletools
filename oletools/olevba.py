@@ -121,6 +121,7 @@ https://github.com/unixfreak0037/officeparser
 #                      - display exceptions with stack trace
 #                      - added several suspicious keywords
 #                      - improved Base64 detection and decoding
+#                      - fixed triage mode not to scan attrib lines
 
 __version__ = '0.24'
 
@@ -309,13 +310,13 @@ re_hex_string = re.compile(r'(?:[0-9A-Fa-f]{2}){4,}')
 # better version from balbuzard, less false positives:
 re_base64_string = re.compile(r'"(?:[A-Za-z0-9+/]{4}){1,}(?:[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=|[A-Za-z0-9+/][AQgw]==)?"')
 # white list of common strings matching the base64 regex, but which are not base64 strings (all lowercase):
-BASE64_WHITELIST = set(['thisdocument'])
+BASE64_WHITELIST = set(['thisdocument', 'thisworkbook', 'test', 'temp', 'http', 'open', 'exit'])
 
 # regex to detect strings encoded with a specific Dridex algorithm
 # (see https://github.com/JamesHabben/MalwareStuff)
 re_dridex_string = re.compile(r'"[0-9A-Za-z]{20,}"')
 # regex to check that it is not just a hex string:
-re_dridex_check = re.compile(r'[G-Zg-z]')
+re_nothex_check = re.compile(r'[G-Zg-z]')
 
 #--- FUNCTIONS ----------------------------------------------------------------
 
@@ -969,6 +970,9 @@ def detect_base64_strings(vba_code):
     for match in re_base64_string.finditer(vba_code):
         # extract the base64 string without quotes:
         value = match.group().strip('"')
+        # check it is not just a hex string:
+        if not re_nothex_check.search(value):
+            continue
         # only keep new values and not in the whitelist:
         if value not in found and value.lower() not in BASE64_WHITELIST:
             try:
@@ -993,7 +997,8 @@ def detect_dridex_strings(vba_code):
     found = set()
     for match in re_dridex_string.finditer(vba_code):
         value = match.group()[1:-1]
-        if not re_dridex_check.search(value):
+        # check it is not just a hex string:
+        if not re_nothex_check.search(value):
             continue
         if value not in found:
             try:
@@ -1052,7 +1057,6 @@ class VBA_Scanner (object):
                 self.code_rev_hex += '\n'+binascii.unhexlify(encoded[::-1])
                 #example: https://malwr.com/analysis/NmFlMGI4YTY1YzYyNDkwNTg1ZTBiZmY5OGI3YjlhYzU/
         #TODO: also append the full code reversed if StrReverse? (risk of false positives?)
-        #TODO: show which IOCs have been found using hex, strrev or both
         # Detect Base64-encoded strings
         self.base64_strings = detect_base64_strings(self.code)
         for encoded, decoded in self.base64_strings:
@@ -1401,19 +1405,20 @@ def process_file (container, filename, data, show_decoded_strings=False):
             for (subfilename, stream_path, vba_filename, vba_code) in vba.extract_macros():
                 # hide attribute lines:
                 #TODO: option to disable attribute filtering
-                vba_code = filter_vba(vba_code)
+                vba_code_filtered = filter_vba(vba_code)
                 print '-'*79
                 print 'VBA MACRO %s ' % vba_filename
                 print 'in file: %s - OLE stream: %s' % (subfilename, repr(stream_path))
                 print '- '*39
                 # detect empty macros:
-                if vba_code.strip() == '':
+                if vba_code_filtered.strip() == '':
                     print '(empty macro)'
                 else:
-                    print vba_code
+                    print vba_code_filtered
                     print '- '*39
                     print 'ANALYSIS:'
-                    print_analysis(vba_code, show_decoded_strings)
+                    # analyse the whole code, filtered to avoid false positives:
+                    print_analysis(vba_code_filtered, show_decoded_strings)
         else:
             print 'No VBA macros found.'
     except: #TypeError:
@@ -1451,7 +1456,8 @@ def process_file_triage (container, filename, data):
             for (subfilename, stream_path, vba_filename, vba_code) in vba.extract_macros():
                 nb_macros += 1
                 if vba_code.strip() != '':
-                    scanner = VBA_Scanner(vba_code)
+                    # analyse the whole code, filtered to avoid false positives:
+                    scanner = VBA_Scanner(filter_vba(vba_code))
                     autoexec, suspicious, iocs, hexstrings, base64strings, dridex = scanner.scan_summary()
                     nb_autoexec += autoexec
                     nb_suspicious += suspicious
@@ -1463,16 +1469,16 @@ def process_file_triage (container, filename, data):
             flags = 'OLE:'
         else:
             flags = 'OpX:'
-        macros = autoexec = suspicious = iocs = hexstrings = base64strings = dridex = '-'
+        macros = autoexec = suspicious = iocs = hexstrings = base64obf = dridex = '-'
         if nb_macros: macros = 'M'
         if nb_autoexec: autoexec = 'A'
         if nb_suspicious: suspicious = 'S'
         if nb_iocs: iocs = 'I'
         if nb_hexstrings: hexstrings = 'H'
-        if nb_base64strings: base64strings = 'B'
+        if nb_base64strings: base64obf = 'B'
         if nb_dridexstrings: dridex = 'D'
         flags += '%s%s%s%s%s%s%s' % (macros, autoexec, suspicious, iocs, hexstrings,
-            base64strings, dridex)
+            base64obf, dridex)
 
         # macros = autoexec = suspicious = iocs = hexstrings = 'no'
         # if nb_macros: macros = 'YES:%d' % nb_macros
