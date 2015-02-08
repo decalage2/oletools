@@ -12,6 +12,7 @@ to install this package.
 
 # 2014-08-27 v0.06: - added doc subfolder
 # 2015-01-05 v0.07: - added xglob, prettytable
+# 2015-02-08 v0.08: - added DridexUrlDecoder
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -33,7 +34,7 @@ import sys, os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.08a'
+version      = '0.08'
 desc         = "Python tools to analyze security characteristics of MS OLE2 files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), such as Microsoft Office documents, for Malware Analysis and Incident Response."
 long_desc    = open('oletools/README.rst').read()
 author       ="Philippe Lagadec"
@@ -64,7 +65,8 @@ packages=[
     'oletools.thirdparty.easygui',
     'oletools.thirdparty.xxxswf',
     'oletools.thirdparty.prettytable',
-    'oletools.thirdparty.xglob'
+    'oletools.thirdparty.xglob',
+    'oletools.thirdparty.DridexUrlDecoder',
 ]
 ##setupdir = '.'
 ##package_dir={'': setupdir}
@@ -155,6 +157,9 @@ package_data={
         ],
     'oletools.thirdparty.prettytable': [
         'CHANGELOG', 'COPYING', 'README'
+        ],
+    'oletools.thirdparty.DridexUrlDecoder': [
+        'LICENSE.txt',
         ],
     }
 
