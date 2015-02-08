@@ -1031,15 +1031,15 @@ class VBA_Scanner (object):
         self.code_dridex = ''
 
 
-    def scan(self, include_hex_strings=False):
+    def scan(self, include_decoded_strings=False):
         """
         Analyze the provided VBA code to detect suspicious keywords,
         auto-executable macros, IOC patterns, obfuscation patterns
         such as hex-encoded strings.
 
-        :param include_hex_strings: bool, if True hex-encoded strings will be included with their decoded content.
+        :param include_decoded_strings: bool, if True, all encoded strings will be included with their decoded content.
         :return: list of tuples (type, keyword, description)
-        (type = 'AutoExec', 'Suspicious', 'IOC' or 'Hex String')
+        (type = 'AutoExec', 'Suspicious', 'IOC', 'Hex String', 'Base64 String' or 'Dridex String')
         """
         # First, detect and extract hex-encoded strings:
         self.hex_strings = detect_hex_strings(self.code)
@@ -1098,7 +1098,7 @@ class VBA_Scanner (object):
             results.append(('Suspicious', keyword, description))
         for pattern_type, value in self.iocs:
             results.append(('IOC', value, pattern_type))
-        if include_hex_strings:
+        if include_decoded_strings:
             for encoded, decoded in self.hex_strings:
                 results.append(('Hex String', repr(decoded), encoded))
             for encoded, decoded in self.base64_strings:
@@ -1123,18 +1123,19 @@ class VBA_Scanner (object):
 
 
 
-def scan_vba(vba_code, include_hex_strings):
+def scan_vba(vba_code, include_decoded_strings):
     """
     Analyze the provided VBA code to detect suspicious keywords,
     auto-executable macros, IOC patterns, obfuscation patterns
     such as hex-encoded strings.
+    (shortcut for VBA_Scanner(vba_code).scan())
 
     :param vba_code: str, VBA source code to be analyzed
-    :param include_hex_strings: bool, if True hex-encoded strings will be included with their decoded content.
+    :param include_decoded_strings: bool, if True all encoded strings will be included with their decoded content.
     :return: list of tuples (type, keyword, description)
-    (type = 'AutoExec', 'Suspicious', 'IOC' or 'Hex String')
+    (type = 'AutoExec', 'Suspicious', 'IOC', 'Hex String', 'Base64 String' or 'Dridex String')
     """
-    return VBA_Scanner(vba_code).scan(include_hex_strings)
+    return VBA_Scanner(vba_code).scan(include_decoded_strings)
 
 
 #=== CLASSES =================================================================
