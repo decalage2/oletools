@@ -279,6 +279,8 @@ def main():
         oleid = OleID(filename)
         indicators = oleid.check()
 
+        #TODO: add description
+        #TODO: highlight suspicious indicators
         t = prettytable.PrettyTable(['Indicator', 'Value'])
         t.align = 'l'
         t.max_width = 39
