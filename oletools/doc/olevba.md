@@ -76,9 +76,9 @@ and potential IOCs (URLs, IP addresses, e-mail addresses, executable filenames, 
       -i INPUT, --input=INPUT
                             input file containing VBA source code to be analyzed
                             (no parsing)
-      --hex                 display all the hex-encoded strings with their decoded
-                            content.
-                            
+      --decode              display all the obfuscated strings with their decoded
+                            content (Hex, Base64, StrReverse, Dridex).          
+                                              
 ### Examples
 
 Scan a single file:
@@ -94,7 +94,7 @@ Scan a single file, stored in a Zip archive with password "infected":
 Scan a single file, showing all obfuscated strings decoded:
 
     :::text
-    olevba.py file.doc --hex
+    olevba.py file.doc --decode
     
 Scan VBA source code extracted into a text file:
 

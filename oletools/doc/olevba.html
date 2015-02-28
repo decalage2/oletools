@@ -64,15 +64,15 @@ Options:
   -i INPUT, --input=INPUT
                         input file containing VBA source code to be analyzed
                         (no parsing)
-  --hex                 display all the hex-encoded strings with their decoded
-                        content.</code></pre>
+  --decode              display all the obfuscated strings with their decoded
+                        content (Hex, Base64, StrReverse, Dridex).          </code></pre>
 <h3 id="examples">Examples</h3>
 <p>Scan a single file:</p>
 <pre><code>olevba.py file.doc</code></pre>
 <p>Scan a single file, stored in a Zip archive with password &quot;infected&quot;:</p>
 <pre><code>olevba.py malicious_file.xls.zip -z infected</code></pre>
 <p>Scan a single file, showing all obfuscated strings decoded:</p>
-<pre><code>olevba.py file.doc --hex</code></pre>
+<pre><code>olevba.py file.doc --decode</code></pre>
 <p>Scan VBA source code extracted into a text file:</p>
 <pre><code>olevba.py -i source_code.vba</code></pre>
 <p>Scan a collection of files stored in a folder:</p>
