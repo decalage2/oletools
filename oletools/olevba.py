@@ -1618,6 +1618,9 @@ def main():
         parser.print_help()
         sys.exit()
 
+    # print banner with version
+    print 'olevba %s - http://decalage.info/python/oletools' % __version__
+
     logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.WARNING) #INFO)
     # For now, all logging is disabled:
     logging.disable(logging.CRITICAL)
