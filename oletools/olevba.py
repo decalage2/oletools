@@ -123,8 +123,9 @@ https://github.com/unixfreak0037/officeparser
 #                      - added several suspicious keywords
 #                      - improved Base64 detection and decoding
 #                      - fixed triage mode not to scan attrib lines
+# 2015-03-04 v0.25 PL: - added support for Word 2003 XML
 
-__version__ = '0.24'
+__version__ = '0.25'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -170,6 +171,24 @@ import os.path
 import binascii
 import base64
 import traceback
+import zlib
+
+# import lxml or ElementTree for XML parsing:
+try:
+    # lxml: best performance for XML processing
+    import lxml.etree as ET
+except ImportError:
+    try:
+        # Python 2.5+: batteries included
+        import xml.etree.cElementTree as ET
+    except ImportError:
+        try:
+            # Python <2.5: standalone ElementTree install
+            import elementtree.cElementTree as ET
+        except ImportError:
+            raise ImportError, "lxml or ElementTree are not installed, "\
+                +"see http://codespeak.net/lxml "\
+                +"or http://effbot.org/zone/element-index.htm"
 
 import thirdparty.olefile as olefile
 from thirdparty.prettytable import prettytable
@@ -179,10 +198,17 @@ from thirdparty.xglob import xglob
 
 TYPE_OLE     = 'OLE'
 TYPE_OpenXML = 'OpenXML'
+TYPE_Word2003_XML = 'Word2003_XML'
 
 MODULE_EXTENSION = "bas"
 CLASS_EXTENSION = "cls"
 FORM_EXTENSION = "frm"
+
+# Namespaces and tags for Word2003 XML parsing:
+NS_W = '{http://schemas.microsoft.com/office/word/2003/wordml}'
+# the tag <w:binData w:name="editdata.mso"> contains the VBA macro code:
+TAG_BINDATA = NS_W + 'binData'
+ATTR_NAME = NS_W + 'name'
 
 # Keywords to detect auto-executable macros
 AUTOEXEC_KEYWORDS = {
@@ -1213,9 +1239,38 @@ class VBA_Parser(object):
                         continue
             z.close()
         else:
-            msg = '%s is not an OLE nor an OpenXML file, cannot extract VBA Macros.' % self.filename
-            logging.error(msg)
-            raise TypeError(msg)
+            # read file from disk, check if it is a Word 2003 XML file (WordProcessingML), Excel 2003 XML,
+            # or a plain text file containing VBA code
+            if data is None:
+                data = open(filename, 'rb').read()
+            # check if it is a Word 2003 XML file (WordProcessingML): must contain the namespace
+            if 'http://schemas.microsoft.com/office/word/2003/wordml' in data:
+                logging.info('Opening Word 2003 XML file %s' % self.filename)
+                self.type = TYPE_Word2003_XML
+                # parse the XML content
+                et = ET.fromstring(data)
+                # find all the binData elements:
+                for bindata in et.getiterator(TAG_BINDATA):
+                    # the binData content is an OLE container for the VBA project, compressed
+                    # using the ActiveMime/MSO format (zlib-compressed), and Base64 encoded.
+                    # get the filename:
+                    fname = bindata.get(ATTR_NAME, 'noname.mso')
+                    # decode the base64 activemime
+                    activemime = binascii.a2b_base64(bindata.text)
+                    # decompress the zlib data starting at offset 0x32, which is the OLE container:
+                    ole_data = zlib.decompress(activemime[0x32:])
+                    try:
+                        self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
+                    except:
+                        logging.debug('%s is not a valid OLE file' % fname)
+                        continue
+            #TODO: handle exceptions
+            #TODO: Excel 2003 XML
+            #TODO: plain text VBA file
+            else:
+                msg = '%s is not an OLE nor an OpenXML file, cannot extract VBA Macros.' % self.filename
+                logging.error(msg)
+                raise TypeError(msg)
 
     def find_vba_projects (self):
         """
@@ -1472,8 +1527,10 @@ def process_file_triage (container, filename, data):
                     nb_dridexstrings += dridex
         if vba.type == TYPE_OLE:
             flags = 'OLE:'
-        else:
+        elif vba.type == TYPE_OpenXML:
             flags = 'OpX:'
+        elif vba.type == TYPE_Word2003_XML:
+            flags = 'XML:'
         macros = autoexec = suspicious = iocs = hexstrings = base64obf = dridex = '-'
         if nb_macros: macros = 'M'
         if nb_autoexec: autoexec = 'A'
@@ -1597,7 +1654,7 @@ def main():
             process_file_triage(container, filename, data)
         count += 1
     if not options.detailed_mode or options.triage_mode:
-        print '\n(Flags: OpX=OpenXML, M=Macros, A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex strings, B=Base64 strings, D=Dridex strings, ?=Unknown)\n'
+        print '\n(Flags: OpX=OpenXML, XML=Word2003XML, M=Macros, A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex strings, B=Base64 strings, D=Dridex strings, ?=Unknown)\n'
 
     if count == 1 and not options.triage_mode and not options.detailed_mode:
         # if options -t and -d were not specified and it's a single file, print details:
