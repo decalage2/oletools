@@ -10,6 +10,7 @@ Supported formats:
 - Word 97-2003 (.doc, .dot), Word 2007+ (.docm, .dotm)
 - Excel 97-2003 (.xls), Excel 2007+ (.xlsm, .xlsb)
 - PowerPoint 2007+ (.pptm, .ppsm)
+- Word 2003 XML (.xml)
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
