@@ -12,7 +12,7 @@ olebrowse project website: http://www.decalage.info/python/olebrowse
 olebrowse is part of the python-oletools package:
 http://www.decalage.info/python/oletools
 
-olebrowse is copyright (c) 2012-2014, Philippe Lagadec (http://www.decalage.info)
+olebrowse is copyright (c) 2012-2015, Philippe Lagadec (http://www.decalage.info)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
