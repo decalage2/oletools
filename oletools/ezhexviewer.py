@@ -16,7 +16,7 @@ Usage in a python application:
 
 ezhexviewer project website: http://www.decalage.info/python/ezhexviewer
 
-ezhexviewer is copyright (c) 2012, Philippe Lagadec (http://www.decalage.info)
+ezhexviewer is copyright (c) 2012-2015, Philippe Lagadec (http://www.decalage.info)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -40,7 +40,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-__version__ = '0.01'
+__version__ = '0.02'
 
 #------------------------------------------------------------------------------
 # CHANGELOG:
