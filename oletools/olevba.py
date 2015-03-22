@@ -125,8 +125,10 @@ https://github.com/unixfreak0037/officeparser
 #                      - improved Base64 detection and decoding
 #                      - fixed triage mode not to scan attrib lines
 # 2015-03-04 v0.25 PL: - added support for Word 2003 XML
+# 2015-03-22 v0.26 PL: - added suspicious keywords for sandboxing and
+#                        virtualisation detection
 
-__version__ = '0.25'
+__version__ = '0.26'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -261,6 +263,9 @@ SUSPICIOUS_KEYWORDS = {
          'vbMinimizedNoFocus', 'WScript.Shell', 'Run'),
         #Shell: http://msdn.microsoft.com/en-us/library/office/gg278437%28v=office.15%29.aspx
         #WScript.Shell+Run sample: http://pastebin.com/Z4TMyuq6
+    'May run PowerShell commands':
+        #sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
+        ('PowerShell', ),
     'May hide the application':
         ('Application.Visible', 'ShowWindow', 'SW_HIDE'),
     'May create a directory':
@@ -282,6 +287,9 @@ SUSPICIOUS_KEYWORDS = {
     'May download files from the Internet':
         #TODO: regex to find urlmon+URLDownloadToFileA on same line
         ('URLDownloadToFileA', 'Msxml2.XMLHTTP', 'Microsoft.XMLHTTP'),
+    'May download files from the Internet using PowerShell':
+        #sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
+        ('New-Object System.Net.WebClient', 'DownloadFile'),
     'May control another application by simulating user keystrokes':
         ('SendKeys', 'AppActivate'),
         #SendKeys: http://msdn.microsoft.com/en-us/library/office/gg278655%28v=office.15%29.aspx
@@ -292,6 +300,41 @@ SUSPICIOUS_KEYWORDS = {
         #TODO: regex to find several Chr*, not just one
         ('Chr', 'ChrB', 'ChrW', 'StrReverse', 'Xor'),
         #Chr: http://msdn.microsoft.com/en-us/library/office/gg264465%28v=office.15%29.aspx
+    'May read or write registry keys':
+        #sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
+        ('RegOpenKeyExA', 'RegOpenKeyEx', 'RegCloseKey'),
+    'May read registry keys':
+        #sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
+        ('RegQueryValueExA', 'RegQueryValueEx',
+         'RegRead',  #with Wscript.Shell
+         ),
+    'May detect virtualisation':
+        #sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
+        (r'SYSTEM\ControlSet001\Services\Disk\Enum', 'VIRTUAL', 'VMWARE', 'VBOX'),
+    'May detect Anubis Sandbox':
+        #sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
+        #NOTES: this sample also checks App.EXEName but that seems to be a bug, it works in VB6 but not in VBA
+        #ref: http://www.syssec-project.eu/m/page-media/3/disarm-raid11.pdf
+        ('GetVolumeInformationA', 'GetVolumeInformation', #with kernel32.dll
+         '1824245000', r'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProductId',
+         '76487-337-8429955-22614', 'andy', 'sample', r'C:\exec\exec.exe', 'popupkiller'
+        ),
+    'May detect Sandboxie':
+        #sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
+        #ref: http://www.cplusplus.com/forum/windows/96874/
+        ('SbieDll.dll', 'SandboxieControlWndClass'),
+    'May detect Sunbelt Sandbox':
+        #ref: http://www.cplusplus.com/forum/windows/96874/
+        (r'C:\file.exe',),
+    'May detect Norman Sandbox':
+        #ref: http://www.cplusplus.com/forum/windows/96874/
+        ('currentuser',),
+    'May detect CW Sandbox':
+        #ref: http://www.cplusplus.com/forum/windows/96874/
+        ('Schmidti',),
+    'May detect WinJail Sandbox':
+        #ref: http://www.cplusplus.com/forum/windows/96874/
+        ('Afx:400000:0',),
 }
 
 # Regular Expression for a URL:
