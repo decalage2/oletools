@@ -13,6 +13,7 @@ to install this package.
 # 2014-08-27 v0.06: - added doc subfolder
 # 2015-01-05 v0.07: - added xglob, prettytable
 # 2015-02-08 v0.08: - added DridexUrlDecoder
+# 2015-03-23 v0.09: - updated description and classifiers
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -34,8 +35,8 @@ import sys, os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.08'
-desc         = "Python tools to analyze security characteristics of MS OLE2 files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), such as Microsoft Office documents, for Malware Analysis and Incident Response."
+version      = '0.09'
+desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       ="Philippe Lagadec"
 author_email ="decalage at laposte dot net"
@@ -43,17 +44,22 @@ url          ="http://www.decalage.info/python/oletools"
 license      ="BSD"
 download_url ="https://bitbucket.org/decalage/oletools/downloads"
 
+# see https://pypi.python.org/pypi?%3Aaction=list_classifiers
 classifiers=[
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
     "Intended Audience :: Science/Research",
     "Intended Audience :: System Administrators",
     "License :: OSI Approved :: BSD License",
+    "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 2",
+    "Programming Language :: Python :: 2 :: Only",
 #    "Programming Language :: Python :: 3",
     "Topic :: Security",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
 #--- PACKAGES -----------------------------------------------------------------
