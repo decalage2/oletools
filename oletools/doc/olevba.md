@@ -4,8 +4,9 @@ olevba
 olevba is a script to parse OLE and OpenXML files such as MS Office documents
 (e.g. Word, Excel), to **detect VBA Macros**, extract their **source code** in clear text, 
 and detect security-related patterns such as **auto-executable macros**, **suspicious
-VBA keywords** used by malware, and potential **IOCs** (IP addresses, URLs, executable
-filenames, etc). It also detects and decodes several common **obfuscation methods including Hex encoding,
+VBA keywords** used by malware, anti-sandboxing and anti-virtualization techniques, 
+and potential **IOCs** (IP addresses, URLs, executable filenames, etc). 
+It also detects and decodes several common **obfuscation methods including Hex encoding,
 StrReverse, Base64, Dridex**, and extracts IOCs from decoded strings.
 
 It can be used either as a command-line tool, or as a python module from your own applications.
@@ -17,8 +18,11 @@ by John William Davison, with significant modifications.
 
 ## Supported formats
 
-- Word 97-2003 (.doc, .dot), Word 2007+ (.docm, .dotm)
-- Excel 97-2003 (.xls), Excel 2007+ (.xlsm, .xlsb)
+- Word 97-2003 (.doc, .dot)
+- Word 2007+ (.docm, .dotm)
+- Word 2003 XML (.xml)
+- Excel 97-2003 (.xls)
+- Excel 2007+ (.xlsm, .xlsb)
 - PowerPoint 2007+ (.pptm, .ppsm)
 
 ## Main Features
@@ -27,6 +31,7 @@ by John William Davison, with significant modifications.
 - Extract VBA macro source code
 - Detect auto-executable macros
 - Detect suspicious VBA keywords often used by malware
+- Detect anti-sandboxing and anti-virtualization techniques
 - Detect and decodes strings obfuscated with Hex/Base64/StrReverse/Dridex
 - Extract IOCs/patterns of interest such as IP addresses, URLs, e-mail addresses and executable file names
 - Scan multiple files and sample collections (wildcards, recursive)
