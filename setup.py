@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Installs oletools using distutils
 
 Run:
@@ -13,7 +14,7 @@ to install this package.
 # 2014-08-27 v0.06: - added doc subfolder
 # 2015-01-05 v0.07: - added xglob, prettytable
 # 2015-02-08 v0.08: - added DridexUrlDecoder
-# 2015-03-23 v0.09: - updated description and classifiers
+# 2015-03-23 v0.09: - updated description and classifiers, added shebang line
 
 #--- TODO ---------------------------------------------------------------------
 
