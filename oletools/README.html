@@ -1,19 +1,11 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
-  <meta name="generator" content="pandoc" />
-  <title></title>
-</head>
-<body>
 <h1 id="python-oletools">python-oletools</h1>
 <p><a href="http://www.decalage.info/python/oletools">python-oletools</a> is a package of python tools to analyze <a href="http://en.wikipedia.org/wiki/Compound_File_Binary_Format">Microsoft OLE2 files</a> (also called Structured Storage, Compound File Binary Format or Compound Document File Format), such as Microsoft Office documents or Outlook messages, mainly for malware analysis, forensics and debugging. It is based on the <a href="http://www.decalage.info/olefile">olefile</a> parser. See <a href="http://www.decalage.info/python/oletools">http://www.decalage.info/python/oletools</a> for more info.</p>
 <p><strong>Quick links:</strong> <a href="http://www.decalage.info/python/oletools">Home page</a> - <a href="https://bitbucket.org/decalage/oletools/wiki/Install">Download/Install</a> - <a href="https://bitbucket.org/decalage/oletools/wiki">Documentation</a> - <a href="https://bitbucket.org/decalage/oletools/issues?status=new&amp;status=open">Report Issues/Suggestions/Questions</a> - <a href="http://decalage.info/contact">Contact the Author</a> - <a href="https://bitbucket.org/decalage/oletools">Repository</a> - <a href="https://twitter.com/decalage2">Updates on Twitter</a></p>
 <p>Note: python-oletools is not related to OLETools published by BeCubed Software.</p>
 <h2 id="news">News</h2>
 <ul>
-<li><strong>2015-02-08 v0.08</strong>: <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a> can now decode strings obfuscated with Hex/StrReverse/Base64/Dridex and extract IOCs. Added new triage mode, support for non-western codepages with olefile 0.42, improved API and display, several bugfixes.</li>
+<li><strong>2015-03-23 v0.09</strong>: <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a> now supports Word 2003 XML files, added anti-sandboxing/VM detection</li>
+<li>2015-02-08 v0.08: <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a> can now decode strings obfuscated with Hex/StrReverse/Base64/Dridex and extract IOCs. Added new triage mode, support for non-western codepages with olefile 0.42, improved API and display, several bugfixes.</li>
 <li>2015-01-05 v0.07: improved <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a> to detect suspicious keywords and IOCs in VBA macros, can now scan several files and open password-protected zip archives, added a Python API, upgraded OleFileIO_PL to olefile v0.41</li>
 <li>2014-08-28 v0.06: added <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>, a new tool to extract VBA Macro source code from MS Office documents (97-2003 and 2007+). Improved <a href="https://bitbucket.org/decalage/oletools/wiki">documentation</a></li>
 <li>2013-07-24 v0.05: added new tools <a href="https://bitbucket.org/decalage/oletools/wiki/olemeta">olemeta</a> and <a href="https://bitbucket.org/decalage/oletools/wiki/oletimes">oletimes</a></li>
@@ -61,5 +53,3 @@
 <p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the &quot;Software&quot;), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
 <p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
 <p>THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
-</body>
-</html>
