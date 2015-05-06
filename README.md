@@ -22,7 +22,9 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2015-03-23 v0.09**: [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) now supports Word 2003 XML files,
+- **2015-05-06 v0.10**: [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) now supports Word MHTML files
+with macros, aka "Single File Web Page" (.mht)
+- 2015-03-23 v0.09: [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) now supports Word 2003 XML files,
 added anti-sandboxing/VM detection
 - 2015-02-08 v0.08: [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) can now decode strings 
 obfuscated with Hex/StrReverse/Base64/Dridex and extract IOCs. Added new triage mode, support for non-western
