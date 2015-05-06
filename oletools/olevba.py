@@ -11,6 +11,7 @@ Supported formats:
 - Excel 97-2003 (.xls), Excel 2007+ (.xlsm, .xlsb)
 - PowerPoint 2007+ (.pptm, .ppsm)
 - Word 2003 XML (.xml)
+- Word Single File Web Page / MHTML (.mht)
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -127,8 +128,10 @@ https://github.com/unixfreak0037/officeparser
 # 2015-03-04 v0.25 PL: - added support for Word 2003 XML
 # 2015-03-22 v0.26 PL: - added suspicious keywords for sandboxing and
 #                        virtualisation detection
+# 2015-05-06 v0.27 PL: - added support for MHTML files with VBA macros
+#                        (issue #10 reported by Greg from SpamStopsHere)
 
-__version__ = '0.26'
+__version__ = '0.27'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -175,6 +178,7 @@ import binascii
 import base64
 import traceback
 import zlib
+import email    # for MHTML parsing
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -199,9 +203,11 @@ from thirdparty.xglob import xglob
 
 #--- CONSTANTS ----------------------------------------------------------------
 
+# Container types:
 TYPE_OLE     = 'OLE'
 TYPE_OpenXML = 'OpenXML'
 TYPE_Word2003_XML = 'Word2003_XML'
+TYPE_MHTML = 'MHTML'
 
 MODULE_EXTENSION = "bas"
 CLASS_EXTENSION = "cls"
@@ -308,32 +314,32 @@ SUSPICIOUS_KEYWORDS = {
         ('RegQueryValueExA', 'RegQueryValueEx',
          'RegRead',  #with Wscript.Shell
          ),
-    'May detect virtualisation':
-        #sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
+    'May detect virtualization':
+        # sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
         (r'SYSTEM\ControlSet001\Services\Disk\Enum', 'VIRTUAL', 'VMWARE', 'VBOX'),
     'May detect Anubis Sandbox':
-        #sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
-        #NOTES: this sample also checks App.EXEName but that seems to be a bug, it works in VB6 but not in VBA
-        #ref: http://www.syssec-project.eu/m/page-media/3/disarm-raid11.pdf
-        ('GetVolumeInformationA', 'GetVolumeInformation', #with kernel32.dll
+        # sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
+        # NOTES: this sample also checks App.EXEName but that seems to be a bug, it works in VB6 but not in VBA
+        # ref: http://www.syssec-project.eu/m/page-media/3/disarm-raid11.pdf
+        ('GetVolumeInformationA', 'GetVolumeInformation', # with kernel32.dll
          '1824245000', r'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProductId',
          '76487-337-8429955-22614', 'andy', 'sample', r'C:\exec\exec.exe', 'popupkiller'
         ),
     'May detect Sandboxie':
-        #sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
-        #ref: http://www.cplusplus.com/forum/windows/96874/
+        # sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
+        # ref: http://www.cplusplus.com/forum/windows/96874/
         ('SbieDll.dll', 'SandboxieControlWndClass'),
     'May detect Sunbelt Sandbox':
-        #ref: http://www.cplusplus.com/forum/windows/96874/
+        # ref: http://www.cplusplus.com/forum/windows/96874/
         (r'C:\file.exe',),
     'May detect Norman Sandbox':
-        #ref: http://www.cplusplus.com/forum/windows/96874/
+        # ref: http://www.cplusplus.com/forum/windows/96874/
         ('currentuser',),
     'May detect CW Sandbox':
-        #ref: http://www.cplusplus.com/forum/windows/96874/
+        # ref: http://www.cplusplus.com/forum/windows/96874/
         ('Schmidti',),
     'May detect WinJail Sandbox':
-        #ref: http://www.cplusplus.com/forum/windows/96874/
+        # ref: http://www.cplusplus.com/forum/windows/96874/
         ('Afx:400000:0',),
 }
 
@@ -1215,8 +1221,12 @@ class VBA_Parser(object):
     """
     Class to parse MS Office files, to detect VBA macros and extract VBA source code
     Supported file formats:
-    - Word 97-2003 (.doc, .dot), Word 2007+ (.docm, .dotm)
-    - Excel 97-2003 (.xls), Excel 2007+ (.xlsm, .xlsb)
+    - Word 97-2003 (.doc, .dot)
+    - Word 2007+ (.docm, .dotm)
+    - Word 2003 XML (.xml)
+    - Word MHT - Single File Web Page / MHTML (.mht)
+    - Excel 97-2003 (.xls)
+    - Excel 2007+ (.xlsm, .xlsb)
     - PowerPoint 2007+ (.pptm, .ppsm)
     """
 
@@ -1287,6 +1297,7 @@ class VBA_Parser(object):
             # or a plain text file containing VBA code
             if data is None:
                 data = open(filename, 'rb').read()
+            # TODO: move each format parser to a separate method
             # check if it is a Word 2003 XML file (WordProcessingML): must contain the namespace
             if 'http://schemas.microsoft.com/office/word/2003/wordml' in data:
                 logging.info('Opening Word 2003 XML file %s' % self.filename)
@@ -1303,6 +1314,33 @@ class VBA_Parser(object):
                     activemime = binascii.a2b_base64(bindata.text)
                     # decompress the zlib data starting at offset 0x32, which is the OLE container:
                     ole_data = zlib.decompress(activemime[0x32:])
+                    try:
+                        self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
+                    except:
+                        logging.debug('%s is not a valid OLE file' % fname)
+                        continue
+            # check if it is a Word 2003 XML file (WordProcessingML): must contain the namespace
+            # TODO: check if Word accepts data before the MIME header, if is case-sensitive, etc.
+            elif data.lower().startswith('mime-version:'):
+                logging.info('Opening Word MHTML file %s' % self.filename)
+                self.type = TYPE_MHTML
+                # parse the MIME content
+                mhtml = email.message_from_string(data)
+                # find all the attached files:
+                for part in mhtml.walk():
+                    content_type = part.get_content_type()  # always returns a value
+                    fname = part.get_filename(None)  # returns None if it fails
+                    logging.debug('MHTML part: filename=%r, content-type=%r' % (fname, content_type))
+                    part_data = part.get_payload(decode=True)
+                    # VBA macros are stored in a binary file named "editdata.mso".
+                    # the data content is an OLE container for the VBA project, compressed
+                    # using the ActiveMime/MSO format (zlib-compressed), and Base64 encoded.
+                    # decompress the zlib data starting at offset 0x32, which is the OLE container:
+                    try:
+                        ole_data = zlib.decompress(part_data[0x32:])
+                    except:
+                        logging.debug('%s is not an ActiveMime container' % fname)
+                        continue
                     try:
                         self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
                     except:
@@ -1575,6 +1613,8 @@ def process_file_triage (container, filename, data):
             flags = 'OpX:'
         elif vba.type == TYPE_Word2003_XML:
             flags = 'XML:'
+        elif vba.type == TYPE_MHTML:
+            flags = 'MHT:'
         macros = autoexec = suspicious = iocs = hexstrings = base64obf = dridex = '-'
         if nb_macros: macros = 'M'
         if nb_autoexec: autoexec = 'A'
@@ -1664,6 +1704,7 @@ def main():
     # print banner with version
     print 'olevba %s - http://decalage.info/python/oletools' % __version__
 
+    # TODO: option to set logging level, none by default
     logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.WARNING) #INFO)
     # For now, all logging is disabled:
     logging.disable(logging.CRITICAL)
@@ -1701,7 +1742,7 @@ def main():
             process_file_triage(container, filename, data)
         count += 1
     if not options.detailed_mode or options.triage_mode:
-        print '\n(Flags: OpX=OpenXML, XML=Word2003XML, M=Macros, A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex strings, B=Base64 strings, D=Dridex strings, ?=Unknown)\n'
+        print '\n(Flags: OpX=OpenXML, XML=Word2003XML, MHT=MHTML, M=Macros, A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex strings, B=Base64 strings, D=Dridex strings, ?=Unknown)\n'
 
     if count == 1 and not options.triage_mode and not options.detailed_mode:
         # if options -t and -d were not specified and it's a single file, print details:
