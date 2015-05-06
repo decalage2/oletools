@@ -21,13 +21,14 @@ by John William Davison, with significant modifications.
 - Word 97-2003 (.doc, .dot)
 - Word 2007+ (.docm, .dotm)
 - Word 2003 XML (.xml)
+- Word MHTML Single File Web Page (.mht)
 - Excel 97-2003 (.xls)
 - Excel 2007+ (.xlsm, .xlsb)
 - PowerPoint 2007+ (.pptm, .ppsm)
 
 ## Main Features
 
-- Detect VBA macros in MS Office 97-2003 and 2007+ files
+- Detect VBA macros in MS Office 97-2003 and 2007+ files, XML, MHT
 - Extract VBA macro source code
 - Detect auto-executable macros
 - Detect suspicious VBA keywords often used by malware
@@ -200,6 +201,8 @@ The following flags show the results of the analysis:
 
 - **OLE**: the file type is OLE, for example MS Office 97-2003
 - **OpX**: the file type is OpenXML, for example MS Office 2007+
+- **XML**: the file type is Word 2003 XML
+- **MHT**: the file type is Word MHTML, aka Single File Web Page (.mht)
 - **?**: the file type is not supported
 - **M**: contains VBA Macros
 - **A**: auto-executable macros
