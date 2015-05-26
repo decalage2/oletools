@@ -21,7 +21,7 @@ by John William Davison, with significant modifications.
 - Word 97-2003 (.doc, .dot)
 - Word 2007+ (.docm, .dotm)
 - Word 2003 XML (.xml)
-- Word MHTML Single File Web Page (.mht)
+- Word MHTML, aka Single File Web Page (.mht)
 - Excel 97-2003 (.xls)
 - Excel 2007+ (.xlsm, .xlsb)
 - PowerPoint 2007+ (.pptm, .ppsm)
