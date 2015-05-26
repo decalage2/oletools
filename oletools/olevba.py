@@ -11,7 +11,7 @@ Supported formats:
 - Excel 97-2003 (.xls), Excel 2007+ (.xlsm, .xlsb)
 - PowerPoint 2007+ (.pptm, .ppsm)
 - Word 2003 XML (.xml)
-- Word Single File Web Page / MHTML (.mht)
+- Word/Excel Single File Web Page / MHTML (.mht)
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -132,7 +132,10 @@ https://github.com/unixfreak0037/officeparser
 #                        (issue #10 reported by Greg from SpamStopsHere)
 # 2015-05-24 v0.28 PL: - improved support for MHTML files with modified header
 #                        (issue #11 reported by Thomas Chopitea)
-# 2015-05-26 v0.29 PL: - improved MSO files parsing (issue #12)
+# 2015-05-26 v0.29 PL: - improved MSO files parsing, taking into account
+#                        various data offsets (issue #12)
+#                      - improved detection of MSO files, avoiding incorrect
+#                        parsing errors (issue #7)
 
 __version__ = '0.29'
 
@@ -416,10 +419,62 @@ def is_mso_file(data):
     the ones created by Outlook in some cases, or Word/Excel when saving a
     file with the MHTML format or the Word 2003 XML format.
     This function only checks the ActiveMime magic at the beginning of data.
-    :param data: bytes string
+    :param data: bytes string, MSO/ActiveMime file content
     :return: bool, True if the file is MSO, False otherwise
     """
     return data.startswith(MSO_ACTIVEMIME_HEADER)
+
+
+# regex to find zlib block headers, starting with byte 0x78 = 'x'
+re_zlib_header = re.compile(r'x')
+
+
+def mso_file_extract(data):
+    """
+    Extract the data stored into a MSO/ActiveMime file, such as
+    the ones created by Outlook in some cases, or Word/Excel when saving a
+    file with the MHTML format or the Word 2003 XML format.
+
+    :param data: bytes string, MSO/ActiveMime file content
+    :return: bytes string, extracted data (uncompressed)
+
+    raise a RuntimeError if the data cannot be extracted
+    """
+    # check the magic:
+    assert is_mso_file(data)
+    # First, attempt to get the compressed data offset from the header
+    # According to my tests, it should be an unsigned 16 bits integer,
+    # at offset 0x1E (little endian) + add 46:
+    try:
+        offset = struct.unpack_from('<H', data, offset=0x1E)[0] + 46
+        logging.debug('Parsing MSO file: data offset = 0x%X' % offset)
+    except:
+        logging.exception('Unable to parse MSO/ActiveMime file header')
+        raise RuntimeError('Unable to parse MSO/ActiveMime file header')
+    # In all the samples seen so far, Word always uses an offset of 0x32,
+    # and Excel 0x22A. But we read the offset from the header to be more
+    # generic.
+    # Let's try that offset, then 0x32 and 0x22A, just in case:
+    for start in (offset, 0x32, 0x22A):
+        try:
+            logging.debug('Attempting zlib decompression from MSO file offset 0x%X' % start)
+            extracted_data = zlib.decompress(data[start:])
+            return extracted_data
+        except:
+            logging.exception('zlib decompression failed')
+    # None of the guessed offsets worked, let's try brute-forcing by looking
+    # for potential zlib-compressed blocks starting with 0x78:
+    logging.debug('Looking for potential zlib-compressed blocks in MSO file')
+    for match in re_zlib_header.finditer(data):
+        start = match.start()
+        try:
+            logging.debug('Attempting zlib decompression from MSO file offset 0x%X' % start)
+            extracted_data = zlib.decompress(data[start:])
+            return extracted_data
+        except:
+            logging.exception('zlib decompression failed')
+    raise RuntimeError('Unable to decompress data from a MSO/ActiveMime file')
+
 
 #--- FUNCTIONS ----------------------------------------------------------------
 
@@ -1351,16 +1406,19 @@ class VBA_Parser(object):
                         # get the filename:
                         fname = bindata.get(ATTR_NAME, 'noname.mso')
                         # decode the base64 activemime
-                        activemime = binascii.a2b_base64(bindata.text)
-                        # decompress the zlib data starting at offset 0x32, which is the OLE container:
-                        # TODO: handle different offsets => separate function
-                        ole_data = zlib.decompress(activemime[0x32:])
-                        try:
-                            self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
-                        except:
-                            logging.debug('%s is not a valid OLE file' % fname)
-                            continue
+                        mso_data = binascii.a2b_base64(bindata.text)
+                        if is_mso_file(mso_data):
+                            # decompress the zlib data stored in the MSO file, which is the OLE container:
+                            # TODO: handle different offsets => separate function
+                            ole_data = mso_file_extract(mso_data)
+                            try:
+                                self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
+                            except:
+                                logging.error('%s does not contain a valid OLE file' % fname)
+                        else:
+                            logging.error('%s is not a valid MSO file' % fname)
                 except:
+                    # TODO: differentiate exceptions for each parsing stage
                     logging.exception('Failed XML parsing for file %r' % self.filename)
                     pass
             # check if it is a MHT file (MIME HTML, Word or Excel saved as "Single File Web Page"):
@@ -1381,6 +1439,7 @@ class VBA_Parser(object):
                     for part in mhtml.walk():
                         content_type = part.get_content_type()  # always returns a value
                         fname = part.get_filename(None)  # returns None if it fails
+                        # TODO: get content-location if no filename
                         logging.debug('MHTML part: filename=%r, content-type=%r' % (fname, content_type))
                         part_data = part.get_payload(decode=True)
                         # VBA macros are stored in a binary file named "editdata.mso".
@@ -1391,15 +1450,15 @@ class VBA_Parser(object):
                         if isinstance(part_data, str) and is_mso_file(part_data):
                             logging.debug('Found ActiveMime header, decompressing MSO container')
                             try:
-                                ole_data = zlib.decompress(part_data[0x32:])
+                                ole_data = mso_file_extract(part_data)
                                 try:
                                     # TODO: check if it is actually an OLE file
                                     # TODO: get the MSO filename from content_location?
                                     self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
                                 except:
-                                    logging.debug('%s is not a valid OLE file' % fname)
+                                    logging.debug('%s does not contain a valid OLE file' % fname)
                             except:
-                                logging.error('Failed decompressing an MSO container in %r - %s'
+                                logging.exception('Failed decompressing an MSO container in %r - %s'
                                               % (fname, MSG_OLEVBA_ISSUES))
                                 # TODO: bug here - need to split in smaller functions/classes?
                 except:
@@ -1768,9 +1827,9 @@ def main():
     print 'olevba %s - http://decalage.info/python/oletools' % __version__
 
     # TODO: option to set logging level, none by default
-    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG)  #.WARNING) #INFO)
+    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.WARNING)  #.DEBUG) #INFO)
     # For now, all logging is disabled:
-    #logging.disable(logging.CRITICAL)
+    logging.disable(logging.CRITICAL)
 
     if options.input:
         # input file provided with VBA source code to be analyzed directly:
