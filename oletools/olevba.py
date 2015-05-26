@@ -132,8 +132,9 @@ https://github.com/unixfreak0037/officeparser
 #                        (issue #10 reported by Greg from SpamStopsHere)
 # 2015-05-24 v0.28 PL: - improved support for MHTML files with modified header
 #                        (issue #11 reported by Thomas Chopitea)
+# 2015-05-26 v0.29 PL: - improved MSO files parsing (issue #12)
 
-__version__ = '0.28'
+__version__ = '0.29'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -405,6 +406,20 @@ BASE64_WHITELIST = set(['thisdocument', 'thisworkbook', 'test', 'temp', 'http', 
 re_dridex_string = re.compile(r'"[0-9A-Za-z]{20,}"')
 # regex to check that it is not just a hex string:
 re_nothex_check = re.compile(r'[G-Zg-z]')
+
+
+# === MSO/ActiveMime files parsing ===========================================
+
+def is_mso_file(data):
+    """
+    Check if the provided data is the content of a MSO/ActiveMime file, such as
+    the ones created by Outlook in some cases, or Word/Excel when saving a
+    file with the MHTML format or the Word 2003 XML format.
+    This function only checks the ActiveMime magic at the beginning of data.
+    :param data: bytes string
+    :return: bool, True if the file is MSO, False otherwise
+    """
+    return data.startswith(MSO_ACTIVEMIME_HEADER)
 
 #--- FUNCTIONS ----------------------------------------------------------------
 
@@ -1373,7 +1388,7 @@ class VBA_Parser(object):
                         # using the ActiveMime/MSO format (zlib-compressed), and Base64 encoded.
                         # decompress the zlib data starting at offset 0x32, which is the OLE container:
                         # check ActiveMime header:
-                        if isinstance(part_data, str) and part_data.startswith(MSO_ACTIVEMIME_HEADER):
+                        if isinstance(part_data, str) and is_mso_file(part_data):
                             logging.debug('Found ActiveMime header, decompressing MSO container')
                             try:
                                 ole_data = zlib.decompress(part_data[0x32:])
