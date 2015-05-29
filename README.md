@@ -22,7 +22,10 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2015-05-06 v0.10**: [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) now supports Word MHTML files
+- **2015-05-29 v0.11**: Improved parsing of MHTML and ActiveMime/MSO files in 
+[olevba](https://bitbucket.org/decalage/oletools/wiki/olevba), added several suspicious keywords to VBA scanner
+(thanks to @ozhermit and Davy Douhine for the suggestions) 
+- 2015-05-06 v0.10: [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) now supports Word MHTML files
 with macros, aka "Single File Web Page" (.mht) - see [issue #10](https://bitbucket.org/decalage/oletools/issue/10) for more info
 - 2015-03-23 v0.09: [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) now supports Word 2003 XML files,
 added anti-sandboxing/VM detection

@@ -26,7 +26,12 @@ Software.
 News
 ----
 
--  **2015-05-06 v0.10**:
+-  **2015-05-29 v0.11**: Improved parsing of MHTML and ActiveMime/MSO
+   files in
+   `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`__,
+   added several suspicious keywords to VBA scanner (thanks to @ozhermit
+   and Davy Douhine for the suggestions)
+-  2015-05-06 v0.10:
    `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`__ now
    supports Word MHTML files with macros, aka "Single File Web Page"
    (.mht) - see `issue
