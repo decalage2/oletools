@@ -136,8 +136,9 @@ https://github.com/unixfreak0037/officeparser
 #                        various data offsets (issue #12)
 #                      - improved detection of MSO files, avoiding incorrect
 #                        parsing errors (issue #7)
+# 2015-05-29 v0.30 PL: - added suspicious keywords suggested by @ozhermit
 
-__version__ = '0.29'
+__version__ = '0.30'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -305,7 +306,9 @@ SUSPICIOUS_KEYWORDS = {
         ('Lib',),
     'May download files from the Internet':
     #TODO: regex to find urlmon+URLDownloadToFileA on same line
-        ('URLDownloadToFileA', 'Msxml2.XMLHTTP', 'Microsoft.XMLHTTP'),
+        ('URLDownloadToFileA', 'Msxml2.XMLHTTP', 'Microsoft.XMLHTTP',
+        'User-Agent', # sample from @ozhermit: http://pastebin.com/MPc3iV6z
+        ),
     'May download files from the Internet using PowerShell':
     #sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
         ('New-Object System.Net.WebClient', 'DownloadFile'),
