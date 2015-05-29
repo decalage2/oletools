@@ -136,7 +136,8 @@ https://github.com/unixfreak0037/officeparser
 #                        various data offsets (issue #12)
 #                      - improved detection of MSO files, avoiding incorrect
 #                        parsing errors (issue #7)
-# 2015-05-29 v0.30 PL: - added suspicious keywords suggested by @ozhermit
+# 2015-05-29 v0.30 PL: - added suspicious keywords suggested by @ozhermit,
+#                        Davy Douhine (issue #9)
 
 __version__ = '0.30'
 
@@ -304,6 +305,9 @@ SUSPICIOUS_KEYWORDS = {
     'May run code from a DLL':
     #TODO: regex to find declare+lib on same line
         ('Lib',),
+    'May inject code into another process':
+        ('CreateThread', 'VirtualAlloc', # (issue #9) suggested by Davy Douhine - used by MSF payload
+        ),
     'May download files from the Internet':
     #TODO: regex to find urlmon+URLDownloadToFileA on same line
         ('URLDownloadToFileA', 'Msxml2.XMLHTTP', 'Microsoft.XMLHTTP',
