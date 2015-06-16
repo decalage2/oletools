@@ -138,15 +138,15 @@ https://github.com/unixfreak0037/officeparser
 #                        parsing errors (issue #7)
 # 2015-05-29 v0.30 PL: - added suspicious keywords suggested by @ozhermit,
 #                        Davy Douhine (issue #9), issue #13
+# 2015-06-16 v0.31 PL: - added generic VBA expression deobfuscation (chr,asc,etc)
 
-__version__ = '0.30'
+__version__ = '0.31'
 
 #------------------------------------------------------------------------------
 # TODO:
 # + do not use logging, but a provided logger (null logger by default)
 # + setup logging (common with other oletools)
 # + add xor bruteforcing like bbharvest
-# + add chr() decoding
 
 # TODO later:
 # + performance improvement: instead of searching each keyword separately,
@@ -208,6 +208,11 @@ except ImportError:
 import thirdparty.olefile as olefile
 from thirdparty.prettytable import prettytable
 from thirdparty.xglob import xglob
+
+# TODO: move to thirdparty
+from pyparsing import *
+
+
 
 #--- CONSTANTS ----------------------------------------------------------------
 
@@ -391,13 +396,15 @@ re_url = re.compile(URL_RE)
 RE_PATTERNS = (
     ('URL', re.compile(URL_RE)),
     ('IPv4 address', re.compile(IPv4)),
+    # TODO: add IPv6
     ('E-mail address', re.compile(r'(?i)\b[A-Z0-9._%+-]+@' + SERVER + '\b')),
     # ('Domain name', re.compile(r'(?=^.{1,254}$)(^(?:(?!\d+\.|-)[a-zA-Z0-9_\-]{1,63}(?<!-)\.?)+(?:[a-zA-Z]{2,})$)')),
     # Executable file name with known extensions (except .com which is present in many URLs, and .application):
     ("Executable file name", re.compile(
         r"(?i)\b\w+\.(EXE|PIF|GADGET|MSI|MSP|MSC|VBS|VBE|VB|JSE|JS|WSF|WSC|WSH|WS|BAT|CMD|DLL|SCR|HTA|CPL|CLASS|JAR|PS1XML|PS1|PS2XML|PS2|PSC1|PSC2|SCF|LNK|INF|REG)\b")),
     # Sources: http://www.howtogeek.com/137270/50-file-extensions-that-are-potentially-dangerous-on-windows/
-    #TODO: https://support.office.com/en-us/article/Blocked-attachments-in-Outlook-3811cddc-17c3-4279-a30c-060ba0207372#__attachment_file_types
+    # TODO: https://support.office.com/en-us/article/Blocked-attachments-in-Outlook-3811cddc-17c3-4279-a30c-060ba0207372#__attachment_file_types
+    # TODO: add win & unix file paths
     #('Hex string', re.compile(r'(?:[0-9A-Fa-f]{2}){4,}')),
 )
 
@@ -418,6 +425,163 @@ re_dridex_string = re.compile(r'"[0-9A-Za-z]{20,}"')
 # regex to check that it is not just a hex string:
 re_nothex_check = re.compile(r'[G-Zg-z]')
 
+
+# === PARTIAL VBA GRAMMAR ====================================================
+
+# REFERENCES:
+# - [MS-VBAL]: VBA Language Specification
+#   https://msdn.microsoft.com/en-us/library/dd361851.aspx
+# - pyparsing: http://pyparsing.wikispaces.com/
+
+# VBA identifier chars (from MS-VBAL 3.3.5)
+vba_identifier_chars = alphanums + '_'
+
+class VbaExpressionString(str):
+    """
+    Class identical to str, used to distinguish plain strings from strings
+    obfuscated using VBA expressions (Chr, StrReverse, etc)
+    Usage: each VBA expression parse action should convert strings to
+    VbaExpressionString.
+    Then isinstance(s, VbaExpressionString) is True only for VBA expressions.
+     (see detect_vba_strings)
+    """
+    pass
+
+
+# --- NUMBER TOKENS ----------------------------------------------------------
+
+# 3.3.2 Number Tokens
+# INTEGER = integer-literal ["%" / "&" / "^"]
+# integer-literal = decimal-literal / octal-literal / hex-literal
+# decimal-literal = 1*decimal-digit
+# octal-literal = "&" [%x004F / %x006F] 1*octal-digit
+# ; & or &o or &O
+# hex-literal = "&" (%x0048 / %x0068) 1*hex-digit
+# ; &h or &H
+# octal-digit = "0" / "1" / "2" / "3" / "4" / "5" / "6" / "7"
+# decimal-digit = octal-digit / "8" / "9"
+# hex-digit = decimal-digit / %x0041-0046 / %x0061-0066 ;A-F / a-f
+
+# NOTE: here Combine() is required to avoid spaces between elements
+# NOTE: here WordStart is necessary to avoid matching a number preceded by
+#       letters or underscore (e.g. "VBT1" or "ABC_34"), when using scanString
+decimal_literal = Combine(WordStart(vba_identifier_chars) + Word(nums)
+                          + Suppress(Optional(Word('%&^', exact=1))))
+decimal_literal.setParseAction(lambda t: int(t[0]))
+
+octal_literal = Combine(Suppress(Literal('&') + Optional((CaselessLiteral('o')))) + Word(srange('[0-7]'))
+                + Suppress(Optional(Word('%&^', exact=1))))
+octal_literal.setParseAction(lambda t: int(t[0], base=8))
+
+hex_literal = Combine(Suppress(CaselessLiteral('&h')) + Word(srange('[0-9a-fA-F]'))
+                + Suppress(Optional(Word('%&^', exact=1))))
+hex_literal.setParseAction(lambda t: int(t[0], base=16))
+
+integer = decimal_literal | octal_literal | hex_literal
+
+
+# --- QUOTED STRINGS ---------------------------------------------------------
+
+# 3.3.4 String Tokens
+# STRING = double-quote *string-character (double-quote / line-continuation / LINE-END)
+# double-quote = %x0022 ; "
+# string-character = NO-LINE-CONTINUATION ((double-quote double-quote) termination-character)
+
+quoted_string = QuotedString('"', escQuote='""')
+quoted_string.setParseAction(lambda t: str(t[0]))
+
+
+#--- VBA Expressions ---------------------------------------------------------
+
+# See MS-VBAL 5.6 Expressions
+
+# need to pre-declare using Forward() because it is recursive
+# VBA string expression and integer expression
+vba_expr_str = Forward()
+vba_expr_int = Forward()
+
+# --- CHR --------------------------------------------------------------------
+
+# Chr, Chr$, ChrB, ChrW(int) => char
+vba_chr = Suppress(
+            Combine(WordStart(vba_identifier_chars) + CaselessLiteral('Chr')
+            + Optional(CaselessLiteral('B') | CaselessLiteral('W')) + Optional('$'))
+            + '(') + vba_expr_int + Suppress(')')
+vba_chr.setParseAction(lambda t: VbaExpressionString(chr(t[0])))
+
+
+# --- ASC --------------------------------------------------------------------
+
+# Asc(char) => int
+#TODO: see MS-VBAL 6.1.2.11.1.1 page 240 => AscB, AscW
+vba_asc = Suppress(CaselessKeyword('Asc') + '(') + vba_expr_str + Suppress(')')
+vba_asc.setParseAction(lambda t: ord(t[0]))
+
+
+# --- VAL --------------------------------------------------------------------
+
+# Val(string) => int
+# TODO: make sure the behavior of VBA's val is fully covered
+vba_val = Suppress(CaselessKeyword('Val') + '(') + vba_expr_str + Suppress(')')
+vba_val.setParseAction(lambda t: int(t[0].strip()))
+
+
+# --- StrReverse() --------------------------------------------------------------------
+
+# StrReverse(string) => string
+strReverse = Suppress(CaselessKeyword('StrReverse') + '(') + vba_expr_str + Suppress(')')
+strReverse.setParseAction(lambda t: VbaExpressionString(str(t[0])[::-1]))
+
+
+# --- ENVIRON() --------------------------------------------------------------------
+
+# Environ("name") => just translated to "%name%", that is enough for malware analysis
+environ = Suppress(CaselessKeyword('Environ') + '(') + vba_expr_str + Suppress(')')
+environ.setParseAction(lambda t: VbaExpressionString('%%%s%%' % t[0]))
+
+
+# ---STRING EXPRESSION -------------------------------------------------------
+
+def concat_strings_list(tokens):
+    """
+    parse action to concatenate strings in a VBA expression with operators '+' or '&'
+    """
+    # extract argument from the tokens:
+    # expected to be a tuple containing a list of strings such as [a,'&',b,'&',c,...]
+    strings = tokens[0][::2]
+    return VbaExpressionString(''.join(strings))
+
+
+vba_expr_str_item = (vba_chr | strReverse | environ | quoted_string)
+
+vba_expr_str <<= infixNotation(vba_expr_str_item,
+    [
+        ("+", 2, opAssoc.LEFT, concat_strings_list),
+        ("&", 2, opAssoc.LEFT, concat_strings_list),
+    ])
+
+
+# ---STRING EXPRESSION -------------------------------------------------------
+
+def sum_ints_list(tokens):
+    """
+    parse action to sum integers in a VBA expression with operator '+'
+    """
+    # extract argument from the tokens:
+    # expected to be a tuple containing a list of integers such as [a,'&',b,'&',c,...]
+    integers = tokens[0][::2]
+    return sum(integers)
+
+
+vba_expr_int_item = (vba_asc | vba_val | integer)
+
+vba_expr_int <<= infixNotation(vba_expr_int_item,
+    [
+        ("+", 2, opAssoc.LEFT, sum_ints_list),
+    ])
+
+
+# see detect_vba_strings for the deobfuscation code using this grammar
 
 # === MSO/ActiveMime files parsing ===========================================
 
@@ -1186,6 +1350,41 @@ def detect_dridex_strings(vba_code):
     return results
 
 
+def detect_vba_strings(vba_code):
+    """
+    Detect if the VBA code contains strings obfuscated with VBA expressions
+    using keywords such as Chr, Asc, Val, StrReverse, etc.
+
+    :param vba_code: str, VBA source code
+    :return: list of str tuples (encoded string, decoded string)
+    """
+    # TODO: handle exceptions
+    results = []
+    found = set()
+    # IMPORTANT: to extract the actual VBA expressions found in the code,
+    #            we must expand tabs to have the same string as pyparsing.
+    #            Otherwise, start and end offsets are incorrect.
+    vba_code = vba_code.expandtabs()
+    for tokens, start, end in vba_expr_str.scanString(vba_code):
+        encoded = vba_code[start:end]
+        decoded = tokens[0]
+        if isinstance(decoded, VbaExpressionString):
+            # This is a VBA expression, not a simple string
+            # print 'VBA EXPRESSION: encoded=%r => decoded=%r' % (encoded, decoded)
+            # remove parentheses and quotes from original string:
+            # if encoded.startswith('(') and encoded.endswith(')'):
+            #     encoded = encoded[1:-1]
+            # if encoded.startswith('"') and encoded.endswith('"'):
+            #     encoded = encoded[1:-1]
+            # avoid duplicates and simple strings:
+            if encoded not in found and decoded != encoded:
+                results.append((encoded, decoded))
+                found.add(encoded)
+        # else:
+            # print 'VBA STRING: encoded=%r => decoded=%r' % (encoded, decoded)
+    return results
+
+
 class VBA_Scanner(object):
     """
     Class to scan the source code of a VBA module to find obfuscated strings,
@@ -1204,6 +1403,7 @@ class VBA_Scanner(object):
         self.code_rev_hex = ''
         self.code_base64 = ''
         self.code_dridex = ''
+        self.code_vba = ''
 
 
     def scan(self, include_decoded_strings=False):
@@ -1240,6 +1440,10 @@ class VBA_Scanner(object):
         self.dridex_strings = detect_dridex_strings(self.code)
         for encoded, decoded in self.dridex_strings:
             self.code_dridex += '\n' + decoded
+        # Detect obfuscated strings in VBA expressions
+        self.vba_strings = detect_vba_strings(self.code)
+        for encoded, decoded in self.vba_strings:
+            self.code_vba += '\n' + decoded
         results = []
         self.autoexec_keywords = []
         self.suspicious_keywords = []
@@ -1252,6 +1456,7 @@ class VBA_Scanner(object):
                 (self.code_rev_hex, 'StrReverse+Hex'),
                 (self.code_base64, 'Base64'),
                 (self.code_dridex, 'Dridex'),
+                (self.code_vba, 'VBA expression'),
         ):
             self.autoexec_keywords += detect_autoexec(code, obfuscation)
             self.suspicious_keywords += detect_suspicious(code, obfuscation)
@@ -1267,6 +1472,9 @@ class VBA_Scanner(object):
         if self.dridex_strings:
             self.suspicious_keywords.append(('Dridex Strings',
                                              'Dridex-encoded strings were detected, may be used to obfuscate strings (option --decode to see all)'))
+        if self.vba_strings:
+            self.suspicious_keywords.append(('VBA obfuscated Strings',
+                                             'VBA string expressions were detected, may be used to obfuscate strings (option --decode to see all)'))
         for keyword, description in self.autoexec_keywords:
             results.append(('AutoExec', keyword, description))
         for keyword, description in self.suspicious_keywords:
@@ -1275,11 +1483,13 @@ class VBA_Scanner(object):
             results.append(('IOC', value, pattern_type))
         if include_decoded_strings:
             for encoded, decoded in self.hex_strings:
-                results.append(('Hex String', repr(decoded), encoded))
+                results.append(('Hex String', repr(decoded), repr(encoded)))
             for encoded, decoded in self.base64_strings:
-                results.append(('Base64 String', repr(decoded), encoded))
+                results.append(('Base64 String', repr(decoded), repr(encoded)))
             for encoded, decoded in self.dridex_strings:
-                results.append(('Dridex string', repr(decoded), encoded))
+                results.append(('Dridex string', repr(decoded), repr(encoded)))
+            for encoded, decoded in self.vba_strings:
+                results.append(('VBA string', repr(decoded), repr(encoded)))
         return results
 
     def scan_summary(self):
@@ -1821,7 +2031,9 @@ def main():
     parser.add_option("-i", "--input", dest='input', type='str', default=None,
                       help='input file containing VBA source code to be analyzed (no parsing)')
     parser.add_option("--decode", action="store_true", dest="show_decoded_strings",
-                      help='display all the obfuscated strings with their decoded content (Hex, Base64, StrReverse, Dridex).')
+                      help='display all the obfuscated strings with their decoded content (Hex, Base64, StrReverse, Dridex, VBA).')
+
+    # TODO: --novba to disable VBA expressions parsing
 
     (options, args) = parser.parse_args()
 
