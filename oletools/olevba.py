@@ -208,9 +208,7 @@ except ImportError:
 import thirdparty.olefile as olefile
 from thirdparty.prettytable import prettytable
 from thirdparty.xglob import xglob
-
-# TODO: move to thirdparty
-from pyparsing import *
+from thirdparty.pyparsing.pyparsing import *
 
 
 

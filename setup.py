@@ -15,6 +15,7 @@ to install this package.
 # 2015-01-05 v0.07: - added xglob, prettytable
 # 2015-02-08 v0.08: - added DridexUrlDecoder
 # 2015-03-23 v0.09: - updated description and classifiers, added shebang line
+# 2015-06-16 v0.10: - added pyparsing
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -36,7 +37,7 @@ import sys, os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.11'
+version      = '0.12'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       ="Philippe Lagadec"
@@ -74,6 +75,7 @@ packages=[
     'oletools.thirdparty.prettytable',
     'oletools.thirdparty.xglob',
     'oletools.thirdparty.DridexUrlDecoder',
+    'oletools.thirdparty.pyparsing',
 ]
 ##setupdir = '.'
 ##package_dir={'': setupdir}
@@ -167,6 +169,9 @@ package_data={
         ],
     'oletools.thirdparty.DridexUrlDecoder': [
         'LICENSE.txt',
+        ],
+    'oletools.thirdparty.pyparsing': [
+        'LICENSE', 'README',
         ],
     }
 
