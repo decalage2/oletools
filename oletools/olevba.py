@@ -1497,12 +1497,12 @@ class VBA_Scanner(object):
         such as hex-encoded strings.
 
         :return: tuple with the number of items found for each category:
-            (autoexec, suspicious, IOCs, hex, base64, dridex)
+            (autoexec, suspicious, IOCs, hex, base64, dridex, vba)
         """
         self.scan()
         return (len(self.autoexec_keywords), len(self.suspicious_keywords),
                 len(self.iocs), len(self.hex_strings), len(self.base64_strings),
-                len(self.dridex_strings))
+                len(self.dridex_strings), len(self.vba_strings))
 
 
 def scan_vba(vba_code, include_decoded_strings):
@@ -1925,6 +1925,7 @@ def process_file_triage(container, filename, data):
     nb_hexstrings = 0
     nb_base64strings = 0
     nb_dridexstrings = 0
+    nb_vbastrings = 0
     # ftype = 'Other'
     message = ''
     try:
@@ -1936,13 +1937,14 @@ def process_file_triage(container, filename, data):
                 if vba_code.strip() != '':
                     # analyse the whole code, filtered to avoid false positives:
                     scanner = VBA_Scanner(filter_vba(vba_code))
-                    autoexec, suspicious, iocs, hexstrings, base64strings, dridex = scanner.scan_summary()
+                    autoexec, suspicious, iocs, hexstrings, base64strings, dridex, vbastrings = scanner.scan_summary()
                     nb_autoexec += autoexec
                     nb_suspicious += suspicious
                     nb_iocs += iocs
                     nb_hexstrings += hexstrings
                     nb_base64strings += base64strings
                     nb_dridexstrings += dridex
+                    nb_vbastrings += vbastrings
         if vba.type == TYPE_OLE:
             flags = 'OLE:'
         elif vba.type == TYPE_OpenXML:
@@ -1951,7 +1953,7 @@ def process_file_triage(container, filename, data):
             flags = 'XML:'
         elif vba.type == TYPE_MHTML:
             flags = 'MHT:'
-        macros = autoexec = suspicious = iocs = hexstrings = base64obf = dridex = '-'
+        macros = autoexec = suspicious = iocs = hexstrings = base64obf = dridex = vba_obf = '-'
         if nb_macros: macros = 'M'
         if nb_autoexec: autoexec = 'A'
         if nb_suspicious: suspicious = 'S'
@@ -1959,8 +1961,9 @@ def process_file_triage(container, filename, data):
         if nb_hexstrings: hexstrings = 'H'
         if nb_base64strings: base64obf = 'B'
         if nb_dridexstrings: dridex = 'D'
-        flags += '%s%s%s%s%s%s%s' % (macros, autoexec, suspicious, iocs, hexstrings,
-                                     base64obf, dridex)
+        if nb_vbastrings: vba_obf = 'V'
+        flags += '%s%s%s%s%s%s%s%s' % (macros, autoexec, suspicious, iocs, hexstrings,
+                                     base64obf, dridex, vba_obf)
 
         # macros = autoexec = suspicious = iocs = hexstrings = 'no'
         # if nb_macros: macros = 'YES:%d' % nb_macros
@@ -1981,7 +1984,7 @@ def process_file_triage(container, filename, data):
         #TODO: distinguish real errors from incorrect file types
         flags = '!ERROR'
         message = sys.exc_value
-    line = '%-11s %s' % (flags, filename)
+    line = '%-12s %s' % (flags, filename)
     if message:
         line += ' - %s' % message
     print line
@@ -2059,8 +2062,8 @@ def main():
     # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('Type', 'Macros', 'AutoEx', 'Susp.', 'IOCs', 'HexStr')
     # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('-'*8, '-'*7, '-'*7, '-'*7, '-'*7, '-'*7)
     if not options.detailed_mode or options.triage_mode:
-        print '%-11s %-65s' % ('Flags', 'Filename')
-        print '%-11s %-65s' % ('-' * 11, '-' * 65)
+        print '%-12s %-65s' % ('Flags', 'Filename')
+        print '%-12s %-65s' % ('-' * 11, '-' * 65)
     previous_container = None
     count = 0
     container = filename = data = None
@@ -2082,7 +2085,9 @@ def main():
             process_file_triage(container, filename, data)
         count += 1
     if not options.detailed_mode or options.triage_mode:
-        print '\n(Flags: OpX=OpenXML, XML=Word2003XML, MHT=MHTML, M=Macros, A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex strings, B=Base64 strings, D=Dridex strings, ?=Unknown)\n'
+        print '\n(Flags: OpX=OpenXML, XML=Word2003XML, MHT=MHTML, M=Macros, ' \
+              'A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex strings, ' \
+              'B=Base64 strings, D=Dridex strings, V=VBA strings, ?=Unknown)\n'
 
     if count == 1 and not options.triage_mode and not options.detailed_mode:
         # if options -t and -d were not specified and it's a single file, print details:
