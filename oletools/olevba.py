@@ -1844,6 +1844,7 @@ def print_analysis(vba_code, show_decoded_strings=False):
     :param show_decoded_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
     :return: None
     """
+    sys.stderr.write('Analysis...\r')
     results = scan_vba(vba_code, show_decoded_strings)
     if results:
         t = prettytable.PrettyTable(('Type', 'Keyword', 'Description'))
@@ -1957,6 +1958,7 @@ def process_file_triage(container, filename, data):
                 nb_macros += 1
                 if vba_code.strip() != '':
                     # analyse the whole code, filtered to avoid false positives:
+                    sys.stderr.write('Analysis...\r')
                     scanner = VBA_Scanner(filter_vba(vba_code))
                     autoexec, suspicious, iocs, hexstrings, base64strings, dridex, vbastrings = scanner.scan_summary()
                     nb_autoexec += autoexec
