@@ -139,6 +139,7 @@ https://github.com/unixfreak0037/officeparser
 # 2015-05-29 v0.30 PL: - added suspicious keywords suggested by @ozhermit,
 #                        Davy Douhine (issue #9), issue #13
 # 2015-06-16 v0.31 PL: - added generic VBA expression deobfuscation (chr,asc,etc)
+# 2015-06-19       PL: - added options -a, -c, --each, --attr
 
 __version__ = '0.31'
 
@@ -1857,7 +1858,9 @@ def print_analysis(vba_code, show_decoded_strings=False):
         print 'No suspicious keyword or IOC found.'
 
 
-def process_file(container, filename, data, show_decoded_strings=False):
+def process_file(container, filename, data, show_decoded_strings=False,
+                 display_code=True, global_analysis=True, hide_attributes=True,
+                 vba_code_only=False):
     """
     Process a single file
 
@@ -1866,8 +1869,15 @@ def process_file(container, filename, data, show_decoded_strings=False):
     :param filename: str, path and filename of file on disk, or within the container.
     :param data: bytes, content of the file if it is in a container, None if it is a file on disk.
     :param show_decoded_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
+    :param display_code: bool, if False VBA source code is not displayed (default True)
+    :param global_analysis: bool, if True all modules are merged for a single analysis (default),
+                            otherwise each module is analyzed separately (old behaviour)
+    :param hide_attributes: bool, if True the first lines starting with "Attribute VB" are hidden (default)
     """
     #TODO: replace print by writing to a provided output file (sys.stdout by default)
+    # fix conflicting parameters:
+    if vba_code_only and not display_code:
+        display_code = True
     if container:
         display_filename = '%s in %s' % (filename, container)
     else:
@@ -1880,23 +1890,34 @@ def process_file(container, filename, data, show_decoded_strings=False):
         print 'Type:', vba.type
         if vba.detect_vba_macros():
             #print 'Contains VBA Macros:'
+            # variable to merge source code from all modules:
+            vba_code_all_modules = ''
             for (subfilename, stream_path, vba_filename, vba_code) in vba.extract_macros():
-                # hide attribute lines:
-                #TODO: option to disable attribute filtering
-                vba_code_filtered = filter_vba(vba_code)
+                if hide_attributes:
+                    # hide attribute lines:
+                    vba_code_filtered = filter_vba(vba_code)
+                else:
+                    vba_code_filtered = vba_code
                 print '-' * 79
                 print 'VBA MACRO %s ' % vba_filename
                 print 'in file: %s - OLE stream: %s' % (subfilename, repr(stream_path))
-                print '- ' * 39
-                # detect empty macros:
-                if vba_code_filtered.strip() == '':
-                    print '(empty macro)'
-                else:
-                    print vba_code_filtered
+                if display_code:
+                    print '- ' * 39
+                    # detect empty macros:
+                    if vba_code_filtered.strip() == '':
+                        print '(empty macro)'
+                    else:
+                        print vba_code_filtered
+                if not global_analysis and not vba_code_only:
                     print '- ' * 39
                     print 'ANALYSIS:'
-                    # analyse the whole code, filtered to avoid false positives:
+                    # analyse each module's code, filtered to avoid false positives:
                     print_analysis(vba_code_filtered, show_decoded_strings)
+                else:
+                    vba_code_all_modules += vba_code_filtered + '\n'
+            if global_analysis and not vba_code_only:
+                # analyse the code from all modules at once:
+                print_analysis(vba_code_all_modules, show_decoded_strings)
         else:
             print 'No VBA macros found.'
     except:  #TypeError:
@@ -2025,14 +2046,22 @@ def main():
                       help='if the file is a zip archive, open first file from it, using the provided password (requires Python 2.6+)')
     parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
                       help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
-    parser.add_option("-t", action="store_true", dest="triage_mode",
+    parser.add_option("-t", '--triage', action="store_true", dest="triage_mode",
                       help='triage mode, display results as a summary table (default for multiple files)')
-    parser.add_option("-d", action="store_true", dest="detailed_mode",
+    parser.add_option("-d", '--detailed', action="store_true", dest="detailed_mode",
                       help='detailed mode, display full results (default for single file)')
+    parser.add_option("-a", '--analysis', action="store_false", dest="display_code", default=True,
+                      help='display only analysis results, not the macro source code')
+    parser.add_option("-c", '--code', action="store_true", dest="vba_code_only", default=False,
+                      help='display only VBA source code, do not analyze it')
     parser.add_option("-i", "--input", dest='input', type='str', default=None,
                       help='input file containing VBA source code to be analyzed (no parsing)')
     parser.add_option("--decode", action="store_true", dest="show_decoded_strings",
                       help='display all the obfuscated strings with their decoded content (Hex, Base64, StrReverse, Dridex, VBA).')
+    parser.add_option("--attr", action="store_false", dest="hide_attributes", default=True,
+                      help='display the attribute lines at the beginning of VBA source code')
+    parser.add_option("--each", action="store_false", dest="global_analysis", default=True,
+                      help='analyze each VBA module separately')
 
     # TODO: --novba to disable VBA expressions parsing
 
@@ -2074,7 +2103,9 @@ def main():
             continue
         if options.detailed_mode and not options.triage_mode:
             # fully detailed output
-            process_file(container, filename, data, show_decoded_strings=options.show_decoded_strings)
+            process_file(container, filename, data, show_decoded_strings=options.show_decoded_strings,
+                         display_code=options.display_code, global_analysis=options.global_analysis,
+                         hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only)
         else:
             # print container name when it changes:
             if container != previous_container:
@@ -2092,7 +2123,9 @@ def main():
     if count == 1 and not options.triage_mode and not options.detailed_mode:
         # if options -t and -d were not specified and it's a single file, print details:
         #TODO: avoid doing the analysis twice by storing results
-        process_file(container, filename, data, show_decoded_strings=options.show_decoded_strings)
+        process_file(container, filename, data, show_decoded_strings=options.show_decoded_strings,
+                         display_code=options.display_code, global_analysis=options.global_analysis,
+                         hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only)
 
 
 if __name__ == '__main__':
