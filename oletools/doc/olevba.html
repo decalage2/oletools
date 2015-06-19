@@ -6,7 +6,7 @@
 <p>VBA keywords** used by malware, anti-sandboxing and anti-virtualization techniques,</p>
 <p>and potential <strong>IOCs</strong> (IP addresses, URLs, executable filenames, etc).</p>
 <p>It also detects and decodes several common **obfuscation methods including Hex encoding,</p>
-<p>StrReverse, Base64, Dridex**, and extracts IOCs from decoded strings.</p>
+<p>StrReverse, Base64, Dridex, VBA expressions**, and extracts IOCs from decoded strings.</p>
 <p>It can be used either as a command-line tool, or as a python module from your own applications.</p>
 <p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
 <p>olevba is based on source code from <a href="https://github.com/unixfreak0037/officeparser">officeparser</a></p>
@@ -29,6 +29,10 @@
 <li><p>Detect suspicious VBA keywords often used by malware</p></li>
 <li><p>Detect anti-sandboxing and anti-virtualization techniques</p></li>
 <li><p>Detect and decodes strings obfuscated with Hex/Base64/StrReverse/Dridex</p></li>
+<li><p>Deobfuscates VBA expressions with any combination of Chr, Asc, Val, StrReverse, Environ, +, &amp;, using a VBA parser built with</p></li>
+</ul>
+<p><a href="http://pyparsing.wikispaces.com">pyparsing</a></p>
+<ul>
 <li><p>Extract IOCs/patterns of interest such as IP addresses, URLs, e-mail addresses and executable file names</p></li>
 <li><p>Scan multiple files and sample collections (wildcards, recursive)</p></li>
 <li><p>Triage mode for a summary view of multiple files</p></li>
@@ -43,11 +47,11 @@
 <h2 id="how-it-works">How it works</h2>
 <ol style="list-style-type: decimal">
 <li><p>olevba checks the file type: If it is an OLE file (i.e MS Office 97-2003), it is parsed right away.</p></li>
-<li><p>If it is a zip file (i.e. MS Office 2007+), olevba looks for all OLE files stored in it (e.g. vbaProject.bin), and opens them.</p></li>
+<li><p>If it is a zip file (i.e. MS Office 2007+), XML or MHTML, olevba looks for all OLE files stored in it (e.g. vbaProject.bin, editdata.mso), and opens them.</p></li>
 <li><p>olevba identifies all the VBA projects stored in the OLE structure.</p></li>
 <li><p>Each VBA project is parsed to find the corresponding OLE streams containing macro code.</p></li>
 <li><p>In each of these OLE streams, the VBA macro source code is extracted and decompressed (RLE compression).</p></li>
-<li><p>olevba looks for specific strings obfuscated with various algorithms (Hex, Base64, StrReverse, Dridex).</p></li>
+<li><p>olevba looks for specific strings obfuscated with various algorithms (Hex, Base64, StrReverse, Dridex, VBA expressions).</p></li>
 <li><p>olevba scans the macro source code and the deobfuscated strings to find suspicious keywords, auto-executable macros</p></li>
 </ol>
 <p>and potential IOCs (URLs, IP addresses, e-mail addresses, executable filenames, etc).</p>
@@ -76,13 +80,19 @@ Options:
 
                         (default:*)
 
-  -t                    triage mode, display results as a summary table
+  -t, --triage          triage mode, display results as a summary table
 
                         (default for multiple files)
 
-  -d                    detailed mode, display full results (default for
+  -d, --detailed        detailed mode, display full results (default for
 
                         single file)
+
+  -a, --analysis        display only analysis results, not the macro source
+
+                        code
+
+  -c, --code            display only VBA source code, do not analyze it
 
   -i INPUT, --input=INPUT
 
@@ -92,7 +102,13 @@ Options:
 
   --decode              display all the obfuscated strings with their decoded
 
-                        content (Hex, Base64, StrReverse, Dridex).          </code></pre>
+                        content (Hex, Base64, StrReverse, Dridex, VBA).
+
+  --attr                display the attribute lines at the beginning of VBA
+
+                        source code
+
+  --each                analyze each VBA module separately</code></pre>
 <h3 id="examples">Examples</h3>
 <p>Scan a single file:</p>
 <pre><code>olevba.py file.doc</code></pre>
@@ -249,6 +265,7 @@ ANALYSIS:
 <li><p><strong>H</strong>: hex-encoded strings (potential obfuscation)</p></li>
 <li><p><strong>B</strong>: Base64-encoded strings (potential obfuscation)</p></li>
 <li><p><strong>D</strong>: Dridex-encoded strings (potential obfuscation)</p></li>
+<li><p><strong>V</strong>: VBA string expressions (potential obfuscation)</p></li>
 </ul>
 <p>Here is an example:</p>
 <pre><code>c:\&gt;olevba.py \MalwareZoo\VBA\samples\*

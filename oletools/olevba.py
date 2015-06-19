@@ -145,6 +145,7 @@ __version__ = '0.31'
 
 #------------------------------------------------------------------------------
 # TODO:
+# + option --fast to disable VBA expressions parsing
 # + do not use logging, but a provided logger (null logger by default)
 # + setup logging (common with other oletools)
 # + add xor bruteforcing like bbharvest

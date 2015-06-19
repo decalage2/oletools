@@ -26,9 +26,15 @@ Software.
 News
 ----
 
--  **2015-05-29 v0.11**: Improved parsing of MHTML and ActiveMime/MSO
-   files in
-   `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`__,
+-  **2015-06-19 v0.12**:
+   `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`__ can
+   now deobfuscate VBA expressions with any combination of Chr, Asc,
+   Val, StrReverse, Environ, +, &, using a VBA parser built with
+   `pyparsing <http://pyparsing.wikispaces.com>`__. New options to
+   display only the analysis results or only the macros source code. The
+   analysis is now done on all the VBA modules at once.
+-  2015-05-29 v0.11: Improved parsing of MHTML and ActiveMime/MSO files
+   in `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`__,
    added several suspicious keywords to VBA scanner (thanks to @ozhermit
    and Davy Douhine for the suggestions)
 -  2015-05-06 v0.10:

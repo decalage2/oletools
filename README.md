@@ -22,7 +22,11 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2015-05-29 v0.11**: Improved parsing of MHTML and ActiveMime/MSO files in 
+- **2015-06-19 v0.12**: [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) can now deobfuscate VBA 
+expressions with any combination of Chr, Asc, Val, StrReverse, Environ, +, \&, using a VBA parser built with
+[pyparsing](http://pyparsing.wikispaces.com). New options to display only the analysis results or only the macros source code. 
+The analysis is now done on all the VBA modules at once.
+- 2015-05-29 v0.11: Improved parsing of MHTML and ActiveMime/MSO files in 
 [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba), added several suspicious keywords to VBA scanner
 (thanks to @ozhermit and Davy Douhine for the suggestions) 
 - 2015-05-06 v0.10: [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) now supports Word MHTML files
