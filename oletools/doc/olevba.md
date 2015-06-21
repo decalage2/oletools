@@ -34,7 +34,7 @@ by John William Davison, with significant modifications.
 - Detect suspicious VBA keywords often used by malware
 - Detect anti-sandboxing and anti-virtualization techniques
 - Detect and decodes strings obfuscated with Hex/Base64/StrReverse/Dridex
-- Deobfuscates VBA expressions with any combination of Chr, Asc, Val, StrReverse, Environ, +, \&, using a VBA parser built with
+- Deobfuscates VBA expressions with any combination of Chr, Asc, Val, StrReverse, Environ, +, &, using a VBA parser built with
 [pyparsing](http://pyparsing.wikispaces.com)
 - Extract IOCs/patterns of interest such as IP addresses, URLs, e-mail addresses and executable file names
 - Scan multiple files and sample collections (wildcards, recursive)

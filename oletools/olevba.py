@@ -140,8 +140,10 @@ https://github.com/unixfreak0037/officeparser
 #                        Davy Douhine (issue #9), issue #13
 # 2015-06-16 v0.31 PL: - added generic VBA expression deobfuscation (chr,asc,etc)
 # 2015-06-19       PL: - added options -a, -c, --each, --attr
+# 2015-06-21 v0.32 PL: - always display decoded strings which are printable
+#                      - fix VBA_Scanner.scan to return raw strings, not repr()
 
-__version__ = '0.31'
+__version__ = '0.32'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -189,6 +191,7 @@ import base64
 import traceback
 import zlib
 import email  # for MHTML parsing
+import string # for printable
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -649,6 +652,22 @@ def mso_file_extract(data):
 
 
 #--- FUNCTIONS ----------------------------------------------------------------
+
+# set of printable characters, for is_printable
+_PRINTABLE_SET = set(string.printable)
+
+def is_printable(s):
+    """
+    returns True if string s only contains printable ASCII characters
+    (i.e. contained in string.printable)
+    This is similar to Python 3's str.isprintable, for Python 2.x.
+    :param s: str
+    :return: bool
+    """
+    # inspired from http://stackoverflow.com/questions/3636928/test-if-a-python-string-is-printable
+    # check if the set of chars from s is contained into the set of printable chars:
+    return set(s).issubset(_PRINTABLE_SET)
+
 
 def copytoken_help(decompressed_current, decompressed_chunk_start):
     """
@@ -1481,15 +1500,19 @@ class VBA_Scanner(object):
             results.append(('Suspicious', keyword, description))
         for pattern_type, value in self.iocs:
             results.append(('IOC', value, pattern_type))
-        if include_decoded_strings:
-            for encoded, decoded in self.hex_strings:
-                results.append(('Hex String', repr(decoded), repr(encoded)))
-            for encoded, decoded in self.base64_strings:
-                results.append(('Base64 String', repr(decoded), repr(encoded)))
-            for encoded, decoded in self.dridex_strings:
-                results.append(('Dridex string', repr(decoded), repr(encoded)))
-            for encoded, decoded in self.vba_strings:
-                results.append(('VBA string', repr(decoded), repr(encoded)))
+        # include decoded strings only if they are printable or if --decode option:
+        for encoded, decoded in self.hex_strings:
+            if include_decoded_strings or is_printable(decoded):
+                results.append(('Hex String', decoded, encoded))
+        for encoded, decoded in self.base64_strings:
+            if include_decoded_strings or is_printable(decoded):
+                results.append(('Base64 String', decoded, encoded))
+        for encoded, decoded in self.dridex_strings:
+            if include_decoded_strings or is_printable(decoded):
+                results.append(('Dridex string', decoded, encoded))
+        for encoded, decoded in self.vba_strings:
+            if include_decoded_strings or is_printable(decoded):
+                results.append(('VBA string', decoded, encoded))
         return results
 
     def scan_summary(self):
@@ -1854,6 +1877,11 @@ def print_analysis(vba_code, show_decoded_strings=False):
         t.max_width['Keyword'] = 20
         t.max_width['Description'] = 39
         for kw_type, keyword, description in results:
+            # handle non printable strings:
+            if not is_printable(keyword):
+                keyword = repr(keyword)
+            if not is_printable(description):
+                description = repr(description)
             t.add_row((kw_type, keyword, description))
         print t
     else:
