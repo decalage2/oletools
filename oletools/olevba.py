@@ -143,6 +143,7 @@ https://github.com/unixfreak0037/officeparser
 # 2015-06-21 v0.32 PL: - always display decoded strings which are printable
 #                      - fix VBA_Scanner.scan to return raw strings, not repr()
 # 2015-07-09 v0.33 PL: - removed usage of sys.stderr which causes issues
+# 2015-07-12       PL: - added Hex function decoding to VBA Parser
 
 __version__ = '0.33'
 
@@ -544,6 +545,28 @@ environ = Suppress(CaselessKeyword('Environ') + '(') + vba_expr_str + Suppress('
 environ.setParseAction(lambda t: VbaExpressionString('%%%s%%' % t[0]))
 
 
+# --- IDENTIFIER -------------------------------------------------------------
+
+#TODO: see MS-VBAL 3.3.5 page 33
+# 3.3.5 Identifier Tokens
+# Latin-identifier = first-Latin-identifier-character *subsequent-Latin-identifier-character
+# first-Latin-identifier-character = (%x0041-005A / %x0061-007A) ; A-Z / a-z
+# subsequent-Latin-identifier-character = first-Latin-identifier-character / DIGIT / %x5F ; underscore
+latin_identifier = Word(initChars=alphas, bodyChars=alphanums + '_')
+
+# --- HEX FUNCTION -----------------------------------------------------------
+
+# match any custom function name with a hex string as argument:
+
+# quoted string of at least two hexadecimal numbers of two digits:
+quoted_hex_string = Suppress('"') + Combine(Word(hexnums, exact=2) * (2, None)) + Suppress('"')
+quoted_hex_string.setParseAction(lambda t: str(t[0]))
+
+hex_function_call = Suppress(latin_identifier) + Suppress('(') + \
+                    quoted_hex_string('hex_string') + Suppress(')')
+hex_function_call.setParseAction(lambda t: binascii.a2b_hex(t.hex_string))
+
+
 # ---STRING EXPRESSION -------------------------------------------------------
 
 def concat_strings_list(tokens):
@@ -556,7 +579,7 @@ def concat_strings_list(tokens):
     return VbaExpressionString(''.join(strings))
 
 
-vba_expr_str_item = (vba_chr | strReverse | environ | quoted_string)
+vba_expr_str_item = (vba_chr | strReverse | environ | quoted_string | hex_function_call)
 
 vba_expr_str <<= infixNotation(vba_expr_str_item,
     [
