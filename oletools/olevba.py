@@ -144,11 +144,13 @@ https://github.com/unixfreak0037/officeparser
 #                      - fix VBA_Scanner.scan to return raw strings, not repr()
 # 2015-07-09 v0.33 PL: - removed usage of sys.stderr which causes issues
 # 2015-07-12       PL: - added Hex function decoding to VBA Parser
+# 2015-07-13       PL: - added Base64 function decoding to VBA Parser
 
 __version__ = '0.33'
 
 #------------------------------------------------------------------------------
 # TODO:
+# + dedup deobfuscation results
 # + option --fast to disable VBA expressions parsing
 # + do not use logging, but a provided logger (null logger by default)
 # + setup logging (common with other oletools)
@@ -419,8 +421,9 @@ re_hex_string = re.compile(r'(?:[0-9A-Fa-f]{2}){4,}')
 # regex to detect strings encoded in base64
 #re_base64_string = re.compile(r'"(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?"')
 # better version from balbuzard, less false positives:
-re_base64_string = re.compile(
-    r'"(?:[A-Za-z0-9+/]{4}){1,}(?:[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=|[A-Za-z0-9+/][AQgw]==)?"')
+# (plain version without double quotes, used also below in quoted_base64_string)
+BASE64_RE = r'(?:[A-Za-z0-9+/]{4}){1,}(?:[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=|[A-Za-z0-9+/][AQgw]==)?'
+re_base64_string = re.compile('"' + BASE64_RE + '"')
 # white list of common strings matching the base64 regex, but which are not base64 strings (all lowercase):
 BASE64_WHITELIST = set(['thisdocument', 'thisworkbook', 'test', 'temp', 'http', 'open', 'exit'])
 
@@ -437,6 +440,9 @@ re_nothex_check = re.compile(r'[G-Zg-z]')
 # - [MS-VBAL]: VBA Language Specification
 #   https://msdn.microsoft.com/en-us/library/dd361851.aspx
 # - pyparsing: http://pyparsing.wikispaces.com/
+
+# TODO: set whitespaces according to VBA
+# TODO: merge extended lines before parsing
 
 # VBA identifier chars (from MS-VBAL 3.3.5)
 vba_identifier_chars = alphanums + '_'
@@ -557,6 +563,7 @@ latin_identifier = Word(initChars=alphas, bodyChars=alphanums + '_')
 # --- HEX FUNCTION -----------------------------------------------------------
 
 # match any custom function name with a hex string as argument:
+# TODO: accept vba_expr_str_item as argument, check if it is a hex or base64 string at runtime
 
 # quoted string of at least two hexadecimal numbers of two digits:
 quoted_hex_string = Suppress('"') + Combine(Word(hexnums, exact=2) * (2, None)) + Suppress('"')
@@ -564,7 +571,21 @@ quoted_hex_string.setParseAction(lambda t: str(t[0]))
 
 hex_function_call = Suppress(latin_identifier) + Suppress('(') + \
                     quoted_hex_string('hex_string') + Suppress(')')
-hex_function_call.setParseAction(lambda t: binascii.a2b_hex(t.hex_string))
+hex_function_call.setParseAction(lambda t: VbaExpressionString(binascii.a2b_hex(t.hex_string)))
+
+
+# --- BASE64 FUNCTION -----------------------------------------------------------
+
+# match any custom function name with a Base64 string as argument:
+# TODO: accept vba_expr_str_item as argument, check if it is a hex or base64 string at runtime
+
+# quoted string of at least two hexadecimal numbers of two digits:
+quoted_base64_string = Suppress('"') + Regex(BASE64_RE) + Suppress('"')
+quoted_base64_string.setParseAction(lambda t: str(t[0]))
+
+base64_function_call = Suppress(latin_identifier) + Suppress('(') + \
+                    quoted_base64_string('base64_string') + Suppress(')')
+base64_function_call.setParseAction(lambda t: VbaExpressionString(binascii.a2b_base64(t.base64_string)))
 
 
 # ---STRING EXPRESSION -------------------------------------------------------
@@ -579,7 +600,7 @@ def concat_strings_list(tokens):
     return VbaExpressionString(''.join(strings))
 
 
-vba_expr_str_item = (vba_chr | strReverse | environ | quoted_string | hex_function_call)
+vba_expr_str_item = (vba_chr | strReverse | environ | quoted_string | hex_function_call | base64_function_call)
 
 vba_expr_str <<= infixNotation(vba_expr_str_item,
     [
