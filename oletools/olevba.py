@@ -145,6 +145,7 @@ https://github.com/unixfreak0037/officeparser
 # 2015-07-09 v0.33 PL: - removed usage of sys.stderr which causes issues
 # 2015-07-12       PL: - added Hex function decoding to VBA Parser
 # 2015-07-13       PL: - added Base64 function decoding to VBA Parser
+# 2015-09-06       PL: - improved VBA_Parser, refactored the main functions
 
 __version__ = '0.33'
 
@@ -1468,6 +1469,16 @@ class VBA_Scanner(object):
         self.code_base64 = ''
         self.code_dridex = ''
         self.code_vba = ''
+        self.strReverse = None
+        # results = None before scanning, then a list of tuples after scanning
+        self.results = None
+        self.autoexec_keywords = None
+        self.suspicious_keywords = None
+        self.iocs = None
+        self.hex_strings = None
+        self.base64_strings = None
+        self.dridex_strings = None
+        self.vba_strings = None
 
 
     def scan(self, include_decoded_strings=False):
@@ -1558,6 +1569,7 @@ class VBA_Scanner(object):
         for encoded, decoded in self.vba_strings:
             if include_decoded_strings or is_printable(decoded):
                 results.append(('VBA string', decoded, encoded))
+        self.results = results
         return results
 
     def scan_summary(self):
@@ -1569,7 +1581,9 @@ class VBA_Scanner(object):
         :return: tuple with the number of items found for each category:
             (autoexec, suspicious, IOCs, hex, base64, dridex, vba)
         """
-        self.scan()
+        # avoid scanning the same code twice:
+        if self.results is None:
+            self.scan()
         return (len(self.autoexec_keywords), len(self.suspicious_keywords),
                 len(self.iocs), len(self.hex_strings), len(self.base64_strings),
                 len(self.dridex_strings), len(self.vba_strings))
@@ -1630,6 +1644,22 @@ class VBA_Parser(object):
         self.filename = filename
         self.type = None
         self.vba_projects = None
+        self.contains_macros = None # will be set to True or False by detect_macros
+        self.vba_code_all_modules = None # to store the source code of all modules
+        # list of tuples for each module: (subfilename, stream_path, vba_filename, vba_code)
+        self.modules = None
+        # Analysis results: list of tuples (type, keyword, description) - See VBA_Scanner
+        self.analysis_results = None
+        # statistics for the scan summary and flags
+        self.nb_macros = 0
+        self.nb_autoexec = 0
+        self.nb_suspicious = 0
+        self.nb_iocs = 0
+        self.nb_hexstrings = 0
+        self.nb_base64strings = 0
+        self.nb_dridexstrings = 0
+        self.nb_vbastrings = 0
+
         # if filename is None:
         #     if isinstance(_file, basestring):
         #         if len(_file) < olefile.MINIMAL_OLEFILE_SIZE:
@@ -1857,19 +1887,25 @@ class VBA_Parser(object):
         """
         #TODO: return None or raise exception if format not supported like PPT 97-2003
         #TODO: return the number of VBA projects found instead of True/False?
+        # if this method was already called, return the previous result:
+        if self.contains_macros is not None:
+            return self.contains_macros
         # if OpenXML, check all the OLE subfiles:
         if self.ole_file is None:
             for ole_subfile in self.ole_subfiles:
                 if ole_subfile.detect_vba_macros():
+                    self.contains_macros = True
                     return True
+            # otherwise, no macro found:
+            self.contains_macros = False
             return False
         # otherwise it's an OLE file, find VBA projects:
         vba_projects = self.find_vba_projects()
         if len(vba_projects) == 0:
-            return False
+            self.contains_macros = False
         else:
-            return True
-
+            self.contains_macros = True
+        return self.contains_macros
 
     def extract_macros(self):
         """
@@ -1893,6 +1929,52 @@ class VBA_Parser(object):
                     yield (self.filename, stream_path, vba_filename, vba_code)
 
 
+    def extract_all_macros(self):
+        """
+        Extract and decompress source code for each VBA macro found in the file
+        by calling extract_macros(), store the results as a list of tuples
+        (filename, stream_path, vba_filename, vba_code) in self.modules.
+        See extract_macros for details.
+        """
+        if self.modules is None:
+            self.modules = []
+            for (subfilename, stream_path, vba_filename, vba_code) in self.extract_macros():
+                self.modules.append((subfilename, stream_path, vba_filename, vba_code))
+        self.nb_macros = len(self.modules)
+        return self.modules
+
+
+
+    def analyze_macros(self, show_decoded_strings=False):
+        """
+        runs extract_macros and analyze the source code of all VBA macros
+        found in the file.
+        """
+        if self.detect_vba_macros():
+            # variable to merge source code from all modules:
+            if self.vba_code_all_modules is None:
+                self.vba_code_all_modules = ''
+                for (subfilename, stream_path, vba_filename, vba_code) in self.extract_all_macros():
+                    #TODO: filter code? (each module)
+                    self.vba_code_all_modules += vba_code + '\n'
+            # Analyze the whole code at once:
+            scanner = VBA_Scanner(self.vba_code_all_modules)
+            self.analysis_results = scanner.scan(show_decoded_strings)
+            autoexec, suspicious, iocs, hexstrings, base64strings, dridex, vbastrings = scanner.scan_summary()
+            self.nb_autoexec += autoexec
+            self.nb_suspicious += suspicious
+            self.nb_iocs += iocs
+            self.nb_hexstrings += hexstrings
+            self.nb_base64strings += base64strings
+            self.nb_dridexstrings += dridex
+            self.nb_vbastrings += vbastrings
+
+        return self.analysis_results
+
+
+
+
+
     def close(self):
         """
         Close all the open files. This method must be called after usage, if
@@ -1905,7 +1987,7 @@ class VBA_Parser(object):
             self.ole_file.close()
 
 
-def print_analysis(vba_code, show_decoded_strings=False):
+def print_analysis(vba_parser, show_decoded_strings=False):
     """
     Analyze the provided VBA code, and print the results in a table
 
@@ -1916,7 +1998,8 @@ def print_analysis(vba_code, show_decoded_strings=False):
     # print a waiting message only if the output is not redirected to a file:
     if sys.stdout.isatty():
         print 'Analysis...\r',
-    results = scan_vba(vba_code, show_decoded_strings)
+        sys.stdout.flush()
+    results = vba_parser.analyze_macros(show_decoded_strings)
     if results:
         t = prettytable.PrettyTable(('Type', 'Keyword', 'Description'))
         t.align = 'l'
@@ -1967,9 +2050,7 @@ def process_file(container, filename, data, show_decoded_strings=False,
         print 'Type:', vba.type
         if vba.detect_vba_macros():
             #print 'Contains VBA Macros:'
-            # variable to merge source code from all modules:
-            vba_code_all_modules = ''
-            for (subfilename, stream_path, vba_filename, vba_code) in vba.extract_macros():
+            for (subfilename, stream_path, vba_filename, vba_code) in vba.extract_all_macros():
                 if hide_attributes:
                     # hide attribute lines:
                     vba_code_filtered = filter_vba(vba_code)
@@ -1986,15 +2067,15 @@ def process_file(container, filename, data, show_decoded_strings=False,
                     else:
                         print vba_code_filtered
                 if not global_analysis and not vba_code_only:
+                    #TODO: remove this option
+                    raise NotImplementedError
                     print '- ' * 39
                     print 'ANALYSIS:'
                     # analyse each module's code, filtered to avoid false positives:
-                    print_analysis(vba_code_filtered, show_decoded_strings)
-                else:
-                    vba_code_all_modules += vba_code_filtered + '\n'
+                    print_analysis(vba, show_decoded_strings)
             if global_analysis and not vba_code_only:
                 # analyse the code from all modules at once:
-                print_analysis(vba_code_all_modules, show_decoded_strings)
+                print_analysis(vba, show_decoded_strings)
         else:
             print 'No VBA macros found.'
     except:  #TypeError:
@@ -2005,6 +2086,13 @@ def process_file(container, filename, data, show_decoded_strings=False,
         traceback.print_exc()
     print ''
 
+# short tag to display file types in triage mode:
+TYPE2TAG = {
+    TYPE_OLE: 'OLE:',
+    TYPE_OpenXML: 'OpX:',
+    TYPE_Word2003_XML: 'XML:',
+    TYPE_MHTML: 'MHT:',
+}
 
 def process_file_triage(container, filename, data):
     """
@@ -2016,56 +2104,30 @@ def process_file_triage(container, filename, data):
     :param data: bytes, content of the file if it is in a container, None if it is a file on disk.
     """
     #TODO: replace print by writing to a provided output file (sys.stdout by default)
-    nb_macros = 0
-    nb_autoexec = 0
-    nb_suspicious = 0
-    nb_iocs = 0
-    nb_hexstrings = 0
-    nb_base64strings = 0
-    nb_dridexstrings = 0
-    nb_vbastrings = 0
     # ftype = 'Other'
     message = ''
     try:
         #TODO: handle olefile errors, when an OLE file is malformed
         vba = VBA_Parser(filename, data)
         if vba.detect_vba_macros():
-            for (subfilename, stream_path, vba_filename, vba_code) in vba.extract_macros():
-                nb_macros += 1
-                if vba_code.strip() != '':
-                    # print a waiting message only if the output is not redirected to a file:
-                    if sys.stdout.isatty():
-                        print 'Analysis...\r',
-                    # analyse the whole code, filtered to avoid false positives:
-                    scanner = VBA_Scanner(filter_vba(vba_code))
-                    autoexec, suspicious, iocs, hexstrings, base64strings, dridex, vbastrings = scanner.scan_summary()
-                    nb_autoexec += autoexec
-                    nb_suspicious += suspicious
-                    nb_iocs += iocs
-                    nb_hexstrings += hexstrings
-                    nb_base64strings += base64strings
-                    nb_dridexstrings += dridex
-                    nb_vbastrings += vbastrings
-        if vba.type == TYPE_OLE:
-            flags = 'OLE:'
-        elif vba.type == TYPE_OpenXML:
-            flags = 'OpX:'
-        elif vba.type == TYPE_Word2003_XML:
-            flags = 'XML:'
-        elif vba.type == TYPE_MHTML:
-            flags = 'MHT:'
+            # print a waiting message only if the output is not redirected to a file:
+            if sys.stdout.isatty():
+                print 'Analysis...\r',
+                sys.stdout.flush()
+            vba.analyze_macros()
+        flags = TYPE2TAG[vba.type]
         macros = autoexec = suspicious = iocs = hexstrings = base64obf = dridex = vba_obf = '-'
-        if nb_macros: macros = 'M'
-        if nb_autoexec: autoexec = 'A'
-        if nb_suspicious: suspicious = 'S'
-        if nb_iocs: iocs = 'I'
-        if nb_hexstrings: hexstrings = 'H'
-        if nb_base64strings: base64obf = 'B'
-        if nb_dridexstrings: dridex = 'D'
-        if nb_vbastrings: vba_obf = 'V'
+        if vba.nb_macros: macros = 'M'
+        if vba.nb_autoexec: autoexec = 'A'
+        if vba.nb_suspicious: suspicious = 'S'
+        if vba.nb_iocs: iocs = 'I'
+        if vba.nb_hexstrings: hexstrings = 'H'
+        if vba.nb_base64strings: base64obf = 'B'
+        if vba.nb_dridexstrings: dridex = 'D'
+        if vba.nb_vbastrings: vba_obf = 'V'
         flags += '%s%s%s%s%s%s%s%s' % (macros, autoexec, suspicious, iocs, hexstrings,
                                      base64obf, dridex, vba_obf)
-
+        # old table display:
         # macros = autoexec = suspicious = iocs = hexstrings = 'no'
         # if nb_macros: macros = 'YES:%d' % nb_macros
         # if nb_autoexec: autoexec = 'YES:%d' % nb_autoexec
@@ -2123,7 +2185,7 @@ def main():
     parser.add_option("-r", action="store_true", dest="recursive",
                       help='find files recursively in subdirectories.')
     parser.add_option("-z", "--zip", dest='zip_password', type='str', default=None,
-                      help='if the file is a zip archive, open first file from it, using the provided password (requires Python 2.6+)')
+                      help='if the file is a zip archive, open all files from it, using the provided password (requires Python 2.6+)')
     parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
                       help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
     parser.add_option("-t", '--triage', action="store_true", dest="triage_mode",
@@ -2162,17 +2224,23 @@ def main():
     logging.disable(logging.CRITICAL)
 
     if options.input:
+        #TODO: remove this option
+        raise NotImplementedError
         # input file provided with VBA source code to be analyzed directly:
         print 'Analysis of VBA source code from %s:' % options.input
         vba_code = open(options.input).read()
         print_analysis(vba_code, show_decoded_strings=options.show_decoded_strings)
         sys.exit()
 
+    # Old display with number of items detected:
     # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('Type', 'Macros', 'AutoEx', 'Susp.', 'IOCs', 'HexStr')
     # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('-'*8, '-'*7, '-'*7, '-'*7, '-'*7, '-'*7)
+
+    # Column headers (except if detailed mode)
     if not options.detailed_mode or options.triage_mode:
         print '%-12s %-65s' % ('Flags', 'Filename')
         print '%-12s %-65s' % ('-' * 11, '-' * 65)
+
     previous_container = None
     count = 0
     container = filename = data = None
@@ -2203,6 +2271,7 @@ def main():
     if count == 1 and not options.triage_mode and not options.detailed_mode:
         # if options -t and -d were not specified and it's a single file, print details:
         #TODO: avoid doing the analysis twice by storing results
+        #TODO: all the cli functions should be methods of a class VBA_Parser_CLI
         process_file(container, filename, data, show_decoded_strings=options.show_decoded_strings,
                          display_code=options.display_code, global_analysis=options.global_analysis,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only)
