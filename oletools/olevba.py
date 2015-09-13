@@ -146,6 +146,8 @@ https://github.com/unixfreak0037/officeparser
 # 2015-07-12       PL: - added Hex function decoding to VBA Parser
 # 2015-07-13       PL: - added Base64 function decoding to VBA Parser
 # 2015-09-06       PL: - improved VBA_Parser, refactored the main functions
+# 2015-09-13       PL: - moved main functions to a class VBA_Parser_CLI
+#                      - fixed issue when analysis was done twice
 
 __version__ = '0.33'
 
@@ -233,6 +235,15 @@ TYPE_OLE = 'OLE'
 TYPE_OpenXML = 'OpenXML'
 TYPE_Word2003_XML = 'Word2003_XML'
 TYPE_MHTML = 'MHTML'
+
+# short tag to display file types in triage mode:
+TYPE2TAG = {
+    TYPE_OLE: 'OLE:',
+    TYPE_OpenXML: 'OpX:',
+    TYPE_Word2003_XML: 'XML:',
+    TYPE_MHTML: 'MHT:',
+}
+
 
 # MSO files ActiveMime header magic
 MSO_ACTIVEMIME_HEADER = 'ActiveMime'
@@ -1619,7 +1630,7 @@ class VBA_Parser(object):
     - PowerPoint 2007+ (.pptm, .ppsm)
     """
 
-    def __init__(self, filename, data=None):
+    def __init__(self, filename, data=None, container=None):
         """
         Constructor for VBA_Parser
 
@@ -1628,6 +1639,9 @@ class VBA_Parser(object):
         :param data: None or bytes str, if None the file will be read from disk (or from the file-like object).
         If data is provided as a bytes string, it will be parsed as the content of the file in memory,
         and not read from disk. Note: files must be read in binary mode, i.e. open(f, 'rb').
+
+        :param container: str, path and filename of container if the file is within
+        a zip archive, None otherwise.
         """
         #TODO: filename should only be a string, data should be used for the file-like object
         #TODO: filename should be mandatory, optional data is a string or file-like object
@@ -1642,6 +1656,7 @@ class VBA_Parser(object):
         self.ole_file = None
         self.ole_subfiles = []
         self.filename = filename
+        self.container = container
         self.type = None
         self.vba_projects = None
         self.contains_macros = None # will be set to True or False by detect_macros
@@ -1951,6 +1966,9 @@ class VBA_Parser(object):
         found in the file.
         """
         if self.detect_vba_macros():
+            # if the analysis was already done, avoid doing it twice:
+            if self.analysis_results is not None:
+                return self.analysis_results
             # variable to merge source code from all modules:
             if self.vba_code_all_modules is None:
                 self.vba_code_all_modules = ''
@@ -1987,187 +2005,197 @@ class VBA_Parser(object):
             self.ole_file.close()
 
 
-def print_analysis(vba_parser, show_decoded_strings=False):
-    """
-    Analyze the provided VBA code, and print the results in a table
 
-    :param vba_code: str, VBA source code to be analyzed
-    :param show_decoded_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
-    :return: None
+class VBA_Parser_CLI(VBA_Parser):
     """
-    # print a waiting message only if the output is not redirected to a file:
-    if sys.stdout.isatty():
-        print 'Analysis...\r',
-        sys.stdout.flush()
-    results = vba_parser.analyze_macros(show_decoded_strings)
-    if results:
-        t = prettytable.PrettyTable(('Type', 'Keyword', 'Description'))
-        t.align = 'l'
-        t.max_width['Type'] = 10
-        t.max_width['Keyword'] = 20
-        t.max_width['Description'] = 39
-        for kw_type, keyword, description in results:
-            # handle non printable strings:
-            if not is_printable(keyword):
-                keyword = repr(keyword)
-            if not is_printable(description):
-                description = repr(description)
-            t.add_row((kw_type, keyword, description))
-        print t
-    else:
-        print 'No suspicious keyword or IOC found.'
+    VBA parser and analyzer, adding methods for the command line interface
+    of olevba. (see VBA_Parser)
+    """
+
+    def __init__(self, filename, data=None, container=None):
+        """
+        Constructor for VBA_Parser_CLI.
+        Calls __init__ from VBA_Parser, but handles the TypeError exception
+        when the file type is not supported.
+
+        :param filename: filename or path of file to parse, or file-like object
+
+        :param data: None or bytes str, if None the file will be read from disk (or from the file-like object).
+        If data is provided as a bytes string, it will be parsed as the content of the file in memory,
+        and not read from disk. Note: files must be read in binary mode, i.e. open(f, 'rb').
+
+        :param container: str, path and filename of container if the file is within
+        a zip archive, None otherwise.
+        """
+        try:
+            VBA_Parser.__init__(self, filename, data=data, container=container)
+        except TypeError:
+            # in that case, self.type=None
+            pass
 
 
-def process_file(container, filename, data, show_decoded_strings=False,
-                 display_code=True, global_analysis=True, hide_attributes=True,
-                 vba_code_only=False):
-    """
-    Process a single file
+    def print_analysis(self, show_decoded_strings=False):
+        """
+        Analyze the provided VBA code, and print the results in a table
 
-    :param container: str, path and filename of container if the file is within
-    a zip archive, None otherwise.
-    :param filename: str, path and filename of file on disk, or within the container.
-    :param data: bytes, content of the file if it is in a container, None if it is a file on disk.
-    :param show_decoded_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
-    :param display_code: bool, if False VBA source code is not displayed (default True)
-    :param global_analysis: bool, if True all modules are merged for a single analysis (default),
-                            otherwise each module is analyzed separately (old behaviour)
-    :param hide_attributes: bool, if True the first lines starting with "Attribute VB" are hidden (default)
-    """
-    #TODO: replace print by writing to a provided output file (sys.stdout by default)
-    # fix conflicting parameters:
-    if vba_code_only and not display_code:
-        display_code = True
-    if container:
-        display_filename = '%s in %s' % (filename, container)
-    else:
-        display_filename = filename
-    print '=' * 79
-    print 'FILE:', display_filename
-    try:
-        #TODO: handle olefile errors, when an OLE file is malformed
-        vba = VBA_Parser(filename, data)
-        print 'Type:', vba.type
-        if vba.detect_vba_macros():
-            #print 'Contains VBA Macros:'
-            for (subfilename, stream_path, vba_filename, vba_code) in vba.extract_all_macros():
-                if hide_attributes:
-                    # hide attribute lines:
-                    vba_code_filtered = filter_vba(vba_code)
-                else:
-                    vba_code_filtered = vba_code
-                print '-' * 79
-                print 'VBA MACRO %s ' % vba_filename
-                print 'in file: %s - OLE stream: %s' % (subfilename, repr(stream_path))
-                if display_code:
-                    print '- ' * 39
-                    # detect empty macros:
-                    if vba_code_filtered.strip() == '':
-                        print '(empty macro)'
-                    else:
-                        print vba_code_filtered
-                if not global_analysis and not vba_code_only:
-                    #TODO: remove this option
-                    raise NotImplementedError
-                    print '- ' * 39
-                    print 'ANALYSIS:'
-                    # analyse each module's code, filtered to avoid false positives:
-                    print_analysis(vba, show_decoded_strings)
-            if global_analysis and not vba_code_only:
-                # analyse the code from all modules at once:
-                print_analysis(vba, show_decoded_strings)
+        :param vba_code: str, VBA source code to be analyzed
+        :param show_decoded_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
+        :return: None
+        """
+        # print a waiting message only if the output is not redirected to a file:
+        if sys.stdout.isatty():
+            print 'Analysis...\r',
+            sys.stdout.flush()
+        results = self.analyze_macros(show_decoded_strings)
+        if results:
+            t = prettytable.PrettyTable(('Type', 'Keyword', 'Description'))
+            t.align = 'l'
+            t.max_width['Type'] = 10
+            t.max_width['Keyword'] = 20
+            t.max_width['Description'] = 39
+            for kw_type, keyword, description in results:
+                # handle non printable strings:
+                if not is_printable(keyword):
+                    keyword = repr(keyword)
+                if not is_printable(description):
+                    description = repr(description)
+                t.add_row((kw_type, keyword, description))
+            print t
         else:
-            print 'No VBA macros found.'
-    except:  #TypeError:
-        #raise
-        #TODO: print more info if debug mode
-        #print sys.exc_value
-        # display the exception with full stack trace for debugging, but do not stop:
-        traceback.print_exc()
-    print ''
-
-# short tag to display file types in triage mode:
-TYPE2TAG = {
-    TYPE_OLE: 'OLE:',
-    TYPE_OpenXML: 'OpX:',
-    TYPE_Word2003_XML: 'XML:',
-    TYPE_MHTML: 'MHT:',
-}
-
-def process_file_triage(container, filename, data):
-    """
-    Process a single file
-
-    :param container: str, path and filename of container if the file is within
-    a zip archive, None otherwise.
-    :param filename: str, path and filename of file on disk, or within the container.
-    :param data: bytes, content of the file if it is in a container, None if it is a file on disk.
-    """
-    #TODO: replace print by writing to a provided output file (sys.stdout by default)
-    # ftype = 'Other'
-    message = ''
-    try:
-        #TODO: handle olefile errors, when an OLE file is malformed
-        vba = VBA_Parser(filename, data)
-        if vba.detect_vba_macros():
-            # print a waiting message only if the output is not redirected to a file:
-            if sys.stdout.isatty():
-                print 'Analysis...\r',
-                sys.stdout.flush()
-            vba.analyze_macros()
-        flags = TYPE2TAG[vba.type]
-        macros = autoexec = suspicious = iocs = hexstrings = base64obf = dridex = vba_obf = '-'
-        if vba.nb_macros: macros = 'M'
-        if vba.nb_autoexec: autoexec = 'A'
-        if vba.nb_suspicious: suspicious = 'S'
-        if vba.nb_iocs: iocs = 'I'
-        if vba.nb_hexstrings: hexstrings = 'H'
-        if vba.nb_base64strings: base64obf = 'B'
-        if vba.nb_dridexstrings: dridex = 'D'
-        if vba.nb_vbastrings: vba_obf = 'V'
-        flags += '%s%s%s%s%s%s%s%s' % (macros, autoexec, suspicious, iocs, hexstrings,
-                                     base64obf, dridex, vba_obf)
-        # old table display:
-        # macros = autoexec = suspicious = iocs = hexstrings = 'no'
-        # if nb_macros: macros = 'YES:%d' % nb_macros
-        # if nb_autoexec: autoexec = 'YES:%d' % nb_autoexec
-        # if nb_suspicious: suspicious = 'YES:%d' % nb_suspicious
-        # if nb_iocs: iocs = 'YES:%d' % nb_iocs
-        # if nb_hexstrings: hexstrings = 'YES:%d' % nb_hexstrings
-        # # 2nd line = info
-        # print '%-8s %-7s %-7s %-7s %-7s %-7s' % (vba.type, macros, autoexec, suspicious, iocs, hexstrings)
-    except TypeError:
-        # file type not OLE nor OpenXML
-        flags = '?'
-        message = 'File format not supported'
-    except:
-        # another error occurred
-        #raise
-        #TODO: print more info if debug mode
-        #TODO: distinguish real errors from incorrect file types
-        flags = '!ERROR'
-        message = sys.exc_value
-    line = '%-12s %s' % (flags, filename)
-    if message:
-        line += ' - %s' % message
-    print line
-
-    # t = prettytable.PrettyTable(('filename', 'type', 'macros', 'autoexec', 'suspicious', 'ioc', 'hexstrings'),
-    #     header=False, border=False)
-    # t.align = 'l'
-    # t.max_width['filename'] = 30
-    # t.max_width['type'] = 10
-    # t.max_width['macros'] = 6
-    # t.max_width['autoexec'] = 6
-    # t.max_width['suspicious'] = 6
-    # t.max_width['ioc'] = 6
-    # t.max_width['hexstrings'] = 6
-    # t.add_row((filename, ftype, macros, autoexec, suspicious, iocs, hexstrings))
-    # print t
+            print 'No suspicious keyword or IOC found.'
 
 
-def main_triage_quick():
-    pass
+    def process_file(self, show_decoded_strings=False,
+                     display_code=True, global_analysis=True, hide_attributes=True,
+                     vba_code_only=False):
+        """
+        Process a single file
+
+        :param filename: str, path and filename of file on disk, or within the container.
+        :param data: bytes, content of the file if it is in a container, None if it is a file on disk.
+        :param show_decoded_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
+        :param display_code: bool, if False VBA source code is not displayed (default True)
+        :param global_analysis: bool, if True all modules are merged for a single analysis (default),
+                                otherwise each module is analyzed separately (old behaviour)
+        :param hide_attributes: bool, if True the first lines starting with "Attribute VB" are hidden (default)
+        """
+        #TODO: replace print by writing to a provided output file (sys.stdout by default)
+        # fix conflicting parameters:
+        if vba_code_only and not display_code:
+            display_code = True
+        if self.container:
+            display_filename = '%s in %s' % (self.filename, self.container)
+        else:
+            display_filename = self.filename
+        print '=' * 79
+        print 'FILE:', display_filename
+        try:
+            #TODO: handle olefile errors, when an OLE file is malformed
+            print 'Type:', self.type
+            if self.detect_vba_macros():
+                #print 'Contains VBA Macros:'
+                for (subfilename, stream_path, vba_filename, vba_code) in self.extract_all_macros():
+                    if hide_attributes:
+                        # hide attribute lines:
+                        vba_code_filtered = filter_vba(vba_code)
+                    else:
+                        vba_code_filtered = vba_code
+                    print '-' * 79
+                    print 'VBA MACRO %s ' % vba_filename
+                    print 'in file: %s - OLE stream: %s' % (subfilename, repr(stream_path))
+                    if display_code:
+                        print '- ' * 39
+                        # detect empty macros:
+                        if vba_code_filtered.strip() == '':
+                            print '(empty macro)'
+                        else:
+                            print vba_code_filtered
+                    if not global_analysis and not vba_code_only:
+                        #TODO: remove this option
+                        raise NotImplementedError
+                        print '- ' * 39
+                        print 'ANALYSIS:'
+                        # analyse each module's code, filtered to avoid false positives:
+                        self.print_analysis(show_decoded_strings)
+                if global_analysis and not vba_code_only:
+                    # analyse the code from all modules at once:
+                    self.print_analysis(show_decoded_strings)
+            else:
+                print 'No VBA macros found.'
+        except:  #TypeError:
+            #raise
+            #TODO: print more info if debug mode
+            #print sys.exc_value
+            # display the exception with full stack trace for debugging, but do not stop:
+            traceback.print_exc()
+        print ''
+
+
+    def process_file_triage(self):
+        """
+        Process a file in triage mode, showing only summary results on one line.
+        """
+        #TODO: replace print by writing to a provided output file (sys.stdout by default)
+        message = ''
+        try:
+            if self.type is not None:
+                #TODO: handle olefile errors, when an OLE file is malformed
+                if self.detect_vba_macros():
+                    # print a waiting message only if the output is not redirected to a file:
+                    if sys.stdout.isatty():
+                        print 'Analysis...\r',
+                        sys.stdout.flush()
+                    self.analyze_macros()
+                flags = TYPE2TAG[self.type]
+                macros = autoexec = suspicious = iocs = hexstrings = base64obf = dridex = vba_obf = '-'
+                if self.nb_macros: macros = 'M'
+                if self.nb_autoexec: autoexec = 'A'
+                if self.nb_suspicious: suspicious = 'S'
+                if self.nb_iocs: iocs = 'I'
+                if self.nb_hexstrings: hexstrings = 'H'
+                if self.nb_base64strings: base64obf = 'B'
+                if self.nb_dridexstrings: dridex = 'D'
+                if self.nb_vbastrings: vba_obf = 'V'
+                flags += '%s%s%s%s%s%s%s%s' % (macros, autoexec, suspicious, iocs, hexstrings,
+                                             base64obf, dridex, vba_obf)
+                # old table display:
+                # macros = autoexec = suspicious = iocs = hexstrings = 'no'
+                # if nb_macros: macros = 'YES:%d' % nb_macros
+                # if nb_autoexec: autoexec = 'YES:%d' % nb_autoexec
+                # if nb_suspicious: suspicious = 'YES:%d' % nb_suspicious
+                # if nb_iocs: iocs = 'YES:%d' % nb_iocs
+                # if nb_hexstrings: hexstrings = 'YES:%d' % nb_hexstrings
+                # # 2nd line = info
+                # print '%-8s %-7s %-7s %-7s %-7s %-7s' % (self.type, macros, autoexec, suspicious, iocs, hexstrings)
+            else:
+                # self.type==None
+                # file type not OLE nor OpenXML
+                flags = '?'
+                message = 'File format not supported'
+        except:
+            # another error occurred
+            #raise
+            #TODO: print more info if debug mode
+            #TODO: distinguish real errors from incorrect file types
+            flags = '!ERROR'
+            message = sys.exc_value
+        line = '%-12s %s' % (flags, self.filename)
+        if message:
+            line += ' - %s' % message
+        print line
+
+        # t = prettytable.PrettyTable(('filename', 'type', 'macros', 'autoexec', 'suspicious', 'ioc', 'hexstrings'),
+        #     header=False, border=False)
+        # t.align = 'l'
+        # t.max_width['filename'] = 30
+        # t.max_width['type'] = 10
+        # t.max_width['macros'] = 6
+        # t.max_width['autoexec'] = 6
+        # t.max_width['suspicious'] = 6
+        # t.max_width['ioc'] = 6
+        # t.max_width['hexstrings'] = 6
+        # t.add_row((filename, ftype, macros, autoexec, suspicious, iocs, hexstrings))
+        # print t
 
 
 #=== MAIN =====================================================================
@@ -2244,14 +2272,17 @@ def main():
     previous_container = None
     count = 0
     container = filename = data = None
+    vba_parser = None
     for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
                                                       zip_password=options.zip_password, zip_fname=options.zip_fname):
         # ignore directory names stored in zip files:
         if container and filename.endswith('/'):
             continue
+        # Open the file
+        vba_parser = VBA_Parser_CLI(filename, data=data, container=container)
         if options.detailed_mode and not options.triage_mode:
             # fully detailed output
-            process_file(container, filename, data, show_decoded_strings=options.show_decoded_strings,
+            vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
                          display_code=options.display_code, global_analysis=options.global_analysis,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only)
         else:
@@ -2261,7 +2292,7 @@ def main():
                     print '\nFiles in %s:' % container
                 previous_container = container
             # summarized output for triage:
-            process_file_triage(container, filename, data)
+            vba_parser.process_file_triage()
         count += 1
     if not options.detailed_mode or options.triage_mode:
         print '\n(Flags: OpX=OpenXML, XML=Word2003XML, MHT=MHTML, M=Macros, ' \
@@ -2270,9 +2301,7 @@ def main():
 
     if count == 1 and not options.triage_mode and not options.detailed_mode:
         # if options -t and -d were not specified and it's a single file, print details:
-        #TODO: avoid doing the analysis twice by storing results
-        #TODO: all the cli functions should be methods of a class VBA_Parser_CLI
-        process_file(container, filename, data, show_decoded_strings=options.show_decoded_strings,
+        vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
                          display_code=options.display_code, global_analysis=options.global_analysis,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only)
 
@@ -2280,4 +2309,4 @@ def main():
 if __name__ == '__main__':
     main()
 
-    # This was coded while listening to "Dust" from I Love You But I've Chosen Darkness
+# This was coded while listening to "Dust" from I Love You But I've Chosen Darkness
