@@ -148,12 +148,12 @@ https://github.com/unixfreak0037/officeparser
 # 2015-09-06       PL: - improved VBA_Parser, refactored the main functions
 # 2015-09-13       PL: - moved main functions to a class VBA_Parser_CLI
 #                      - fixed issue when analysis was done twice
+# 2015-09-15       PL: - remove duplicate IOCs from results
 
 __version__ = '0.33'
 
 #------------------------------------------------------------------------------
 # TODO:
-# + dedup deobfuscation results
 # + option --fast to disable VBA expressions parsing
 # + do not use logging, but a provided logger (null logger by default)
 # + setup logging (common with other oletools)
@@ -1561,12 +1561,23 @@ class VBA_Scanner(object):
         if self.vba_strings:
             self.suspicious_keywords.append(('VBA obfuscated Strings',
                                              'VBA string expressions were detected, may be used to obfuscate strings (option --decode to see all)'))
+        # use a set to avoid duplicate keywords
+        keyword_set = set()
         for keyword, description in self.autoexec_keywords:
-            results.append(('AutoExec', keyword, description))
+            if keyword not in keyword_set:
+                results.append(('AutoExec', keyword, description))
+                keyword_set.add(keyword)
+        keyword_set = set()
         for keyword, description in self.suspicious_keywords:
-            results.append(('Suspicious', keyword, description))
+            if keyword not in keyword_set:
+                results.append(('Suspicious', keyword, description))
+                keyword_set.add(keyword)
+        keyword_set = set()
         for pattern_type, value in self.iocs:
-            results.append(('IOC', value, pattern_type))
+            if value not in keyword_set:
+                results.append(('IOC', value, pattern_type))
+                keyword_set.add(value)
+
         # include decoded strings only if they are printable or if --decode option:
         for encoded, decoded in self.hex_strings:
             if include_decoded_strings or is_printable(decoded):
