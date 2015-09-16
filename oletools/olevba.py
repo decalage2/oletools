@@ -160,6 +160,7 @@ __version__ = '0.40'
 # + do not use logging, but a provided logger (null logger by default)
 # + setup logging (common with other oletools)
 # + add xor bruteforcing like bbharvest
+# + options -a and -c should imply -d
 
 # TODO later:
 # + performance improvement: instead of searching each keyword separately,
