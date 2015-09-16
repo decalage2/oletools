@@ -142,15 +142,17 @@ https://github.com/unixfreak0037/officeparser
 # 2015-06-19       PL: - added options -a, -c, --each, --attr
 # 2015-06-21 v0.32 PL: - always display decoded strings which are printable
 #                      - fix VBA_Scanner.scan to return raw strings, not repr()
-# 2015-07-09 v0.33 PL: - removed usage of sys.stderr which causes issues
+# 2015-07-09 v0.40 PL: - removed usage of sys.stderr which causes issues
 # 2015-07-12       PL: - added Hex function decoding to VBA Parser
 # 2015-07-13       PL: - added Base64 function decoding to VBA Parser
 # 2015-09-06       PL: - improved VBA_Parser, refactored the main functions
 # 2015-09-13       PL: - moved main functions to a class VBA_Parser_CLI
 #                      - fixed issue when analysis was done twice
 # 2015-09-15       PL: - remove duplicate IOCs from results
+# 2015-09-16       PL: - join long VBA lines ending with underscore before scan
+#                      - disabled unused option --each
 
-__version__ = '0.33'
+__version__ = '0.40'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -1256,6 +1258,21 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
     return
 
 
+def vba_collapse_long_lines(vba_code):
+    """
+    Parse a VBA module code to detect continuation line characters (underscore) and
+    collapse split lines. Continuation line characters are replaced by spaces.
+
+    :param vba_code: str, VBA module code
+    :return: str, VBA module code with long lines collapsed
+    """
+    # TODO: use a regex instead, to allow whitespaces after the underscore?
+    vba_code = vba_code.replace(' _\r\n', ' ')
+    vba_code = vba_code.replace(' _\r', ' ')
+    vba_code = vba_code.replace(' _\n', ' ')
+    return vba_code
+
+
 def filter_vba(vba_code):
     """
     Filter VBA source code to remove the first lines starting with "Attribute VB_",
@@ -1473,7 +1490,8 @@ class VBA_Scanner(object):
 
         :param vba_code: str, VBA source code to be analyzed
         """
-        self.code = vba_code
+        # join long lines ending with " _":
+        self.code = vba_collapse_long_lines(vba_code)
         self.code_hex = ''
         self.code_hex_rev = ''
         self.code_rev_hex = ''
@@ -2241,8 +2259,10 @@ def main():
                       help='display all the obfuscated strings with their decoded content (Hex, Base64, StrReverse, Dridex, VBA).')
     parser.add_option("--attr", action="store_false", dest="hide_attributes", default=True,
                       help='display the attribute lines at the beginning of VBA source code')
-    parser.add_option("--each", action="store_false", dest="global_analysis", default=True,
-                      help='analyze each VBA module separately')
+
+    # Disabled options:
+    # parser.add_option("--each", action="store_false", dest="global_analysis", default=True,
+    #                   help='analyze each VBA module separately')
 
     # TODO: --novba to disable VBA expressions parsing
 
@@ -2294,7 +2314,7 @@ def main():
         if options.detailed_mode and not options.triage_mode:
             # fully detailed output
             vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
-                         display_code=options.display_code, global_analysis=options.global_analysis,
+                         display_code=options.display_code, global_analysis=True, #options.global_analysis,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only)
         else:
             # print container name when it changes:
@@ -2313,7 +2333,7 @@ def main():
     if count == 1 and not options.triage_mode and not options.detailed_mode:
         # if options -t and -d were not specified and it's a single file, print details:
         vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
-                         display_code=options.display_code, global_analysis=options.global_analysis,
+                         display_code=options.display_code, global_analysis=True, #options.global_analysis,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only)
 
 
