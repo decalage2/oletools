@@ -22,7 +22,11 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2015-06-19 v0.12**: [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) can now deobfuscate VBA 
+- **2015-09-17 v0.40**: Improved macro deobfuscation in [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba),
+to decode Hex and Base64 within VBA expressions. Display printable deobfuscated strings by 
+default. Improved the VBA_Parser API. Improved performance. 
+Fixed [issue #23](https://bitbucket.org/decalage/oletools/issue/23) with sys.stderr.
+- 2015-06-19 v0.12: [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba) can now deobfuscate VBA 
 expressions with any combination of Chr, Asc, Val, StrReverse, Environ, +, &, using a VBA parser built with
 [pyparsing](http://pyparsing.wikispaces.com). New options to display only the analysis results or only the macros source code. 
 The analysis is now done on all the VBA modules at once.
@@ -78,6 +82,9 @@ To get the latest development version, click on "Download repository" on the
 If you plan to use python-oletools with other Python applications or your own scripts, then the simplest solution is to 
 use "**pip install oletools**" or "**easy_install oletools**" to download and install in one go. Otherwise you may 
 download/extract the zip archive and run "**setup.py install**". 
+
+**Important: to update oletools** if it is already installed, you must run **"pip install -U oletools"**, otherwise pip
+will not update it.
 
 Documentation:
 --------------
