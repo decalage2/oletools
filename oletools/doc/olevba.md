@@ -35,7 +35,7 @@ by John William Davison, with significant modifications.
 - Detect anti-sandboxing and anti-virtualization techniques
 - Detect and decodes strings obfuscated with Hex/Base64/StrReverse/Dridex
 - Deobfuscates VBA expressions with any combination of Chr, Asc, Val, StrReverse, Environ, +, &, using a VBA parser built with
-[pyparsing](http://pyparsing.wikispaces.com)
+[pyparsing](http://pyparsing.wikispaces.com), including custom Hex and Base64 encodings
 - Extract IOCs/patterns of interest such as IP addresses, URLs, e-mail addresses and executable file names
 - Scan multiple files and sample collections (wildcards, recursive)
 - Triage mode for a summary view of multiple files
@@ -71,7 +71,7 @@ and potential IOCs (URLs, IP addresses, e-mail addresses, executable filenames, 
       -h, --help            show this help message and exit
       -r                    find files recursively in subdirectories.
       -z ZIP_PASSWORD, --zip=ZIP_PASSWORD
-                            if the file is a zip archive, open first file from it,
+                            if the file is a zip archive, open all files from it,
                             using the provided password (requires Python 2.6+)
       -f ZIP_FNAME, --zipfname=ZIP_FNAME
                             if the file is a zip archive, file(s) to be opened
@@ -91,7 +91,6 @@ and potential IOCs (URLs, IP addresses, e-mail addresses, executable filenames, 
                             content (Hex, Base64, StrReverse, Dridex, VBA).
       --attr                display the attribute lines at the beginning of VBA
                             source code
-      --each                analyze each VBA module separately
                                               
 ### Examples
 
@@ -249,7 +248,7 @@ IMPORTANT: olevba is currently under active development, therefore this API is l
 First, import the **oletools.olevba** package, using at least the VBA_Parser and VBA_Scanner classes:
 
     :::python
-    from oletools.olevba import VBA_Parser, VBA_Scanner
+    from oletools.olevba import VBA_Parser, TYPE_OLE, TYPE_OpenXML, TYPE_Word2003_XML, TYPE_MHTML 
     
 ### Parse a MS Office file 
 
@@ -257,7 +256,7 @@ To parse a file on disk, create an instance of the **VBA_Parser** class, providi
 For example:
 
     :::python
-    vba = VBA_Parser('my_file_with_macros.doc')
+    vbaparser = VBA_Parser('my_file_with_macros.doc')
 
 The file may also be provided as a bytes string containing its data. In that case, the actual 
 filename must be provided for reference, and the file content with the data parameter. For example:
@@ -265,10 +264,13 @@ filename must be provided for reference, and the file content with the data para
     :::python
     myfile = 'my_file_with_macros.doc'
     filedata = open(myfile, 'rb').read()
-    vba = VBA_Parser(myfile, data=filedata)
+    vbaparser = VBA_Parser(myfile, data=filedata)
     
-VBA_Parser will raise an exception if the file is not a supported format, either OLE (MS Office 97-2003) or OpenXML 
-(MS Office 2007+). 
+VBA_Parser will raise an exception if the file is not a supported format, such as OLE (MS Office 97-2003), OpenXML 
+(MS Office 2007+), MHTML or Word 2003 XML.
+ 
+After parsing the file, the attribute **VBA_Parser.type** is a string indicating the file type.
+It can be either TYPE_OLE, TYPE_OpenXML, TYPE_Word2003_XML or TYPE_MHTML. (constants defined in the olevba module)
 
 ### Detect VBA macros
 
@@ -276,7 +278,7 @@ The method **detect_vba_macros** of a VBA_Parser object returns True if VBA macr
 False otherwise.
 
     :::python
-    if vba.detect_vba_macros():
+    if vbaparser.detect_vba_macros():
         print 'VBA Macros found'
     else:
         print 'No VBA Macros found'
@@ -304,15 +306,65 @@ for each VBA macro found.
 Example:
 
     :::python
-    for (filename, stream_path, vba_filename, vba_code) in vba.extract_macros():
+    for (filename, stream_path, vba_filename, vba_code) in vbaparser.extract_macros():
         print '-'*79
         print 'Filename    :', filename
         print 'OLE stream  :', stream_path
         print 'VBA filename:', vba_filename
         print '- '*39
         print vba_code
+        
+Alternatively, the VBA_Parser method **extract_all_macros** returns the same results as a list of tuples.
 
 ### Analyze VBA Source Code
+
+Since version 0.40, the VBA_Parser class provides simpler methods than VBA_Scanner to analyze all macros contained
+in a file:
+
+The methods **scan** or **scan_summary** from the class **VBA_Parser** can be used to scan the source code of all 
+VBA modules to find obfuscated strings, suspicious keywords, IOCs, auto-executable macros, etc.
+
+scan() takes an optional argument include_decoded_strings: if set to True, the results will contain all the encoded
+strings found in the code (Hex, Base64, Dridex) with their decoded value.
+By default, it will include the strings which contain printable characters only.
+
+**VBA_Parser.scan()** returns a list of tuples (type, keyword, description), one for each item in the results. 
+
+- type may be either 'AutoExec', 'Suspicious', 'IOC', 'Hex String', 'Base64 String', 'Dridex String' or 
+  'VBA obfuscated Strings'.
+- keyword is the string found for auto-executable macros, suspicious keywords or IOCs. For obfuscated strings, it is
+  the decoded value of the string.
+- description provides a description of the keyword. For obfuscated strings, it is the encoded value of the string.
+
+Example:
+
+    :::python
+    results = vbaparser.scan()
+    for kw_type, keyword, description in results:
+        print 'type=%s - keyword=%s - description=%s' % (kw_type, keyword, description)
+        
+**VBA_Parser.scan_summary()** returns a tuple with the number of items found for each category: 
+(autoexec, suspicious, IOCs, hex, base64, dridex, vbastrings).
+
+
+
+### Close the VBA_Parser
+
+After usage, it is better to call the **close** method of the VBA_Parser object, to make sure the file is closed, 
+especially if your application is parsing many files.
+
+    :::python
+    vbaparser.close()
+
+
+--------------------------------------------------------------------------
+
+## Deprecated API
+
+The following methods and functions are still functional, but their usage is not recommended
+since they have been replaced by better solutions.
+
+### VBA_Scanner (deprecated)
 
 Note: this API is under active development and may change in the future.
 
@@ -422,16 +474,6 @@ Sample usage:
     else:
         print 'Patterns: None found'
 
-
-### Close the VBA_Parser
-
-After usage, it is better to call the **close** method of the VBA_Parser object, to make sure the file is closed, 
-especially if your application is parsing many files.
-
-    :::python
-    vba.close()
-
-        
 
 --------------------------------------------------------------------------
 
