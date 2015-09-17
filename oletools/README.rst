@@ -26,7 +26,14 @@ Software.
 News
 ----
 
--  **2015-06-19 v0.12**:
+-  **2015-09-17 v0.40**: Improved macro deobfuscation in
+   `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`__, to
+   decode Hex and Base64 within VBA expressions. Display printable
+   deobfuscated strings by default. Improved the VBA\_Parser API.
+   Improved performance. Fixed `issue
+   #23 <https://bitbucket.org/decalage/oletools/issue/23>`__ with
+   sys.stderr.
+-  2015-06-19 v0.12:
    `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`__ can
    now deobfuscate VBA expressions with any combination of Chr, Asc,
    Val, StrReverse, Environ, +, &, using a VBA parser built with
@@ -121,6 +128,9 @@ your own scripts, then the simplest solution is to use "**pip install
 oletools**\ " or "**easy\_install oletools**\ " to download and install
 in one go. Otherwise you may download/extract the zip archive and run
 "**setup.py install**\ ".
+
+**Important: to update oletools** if it is already installed, you must
+run **"pip install -U oletools"**, otherwise pip will not update it.
 
 Documentation:
 --------------
