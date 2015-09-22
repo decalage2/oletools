@@ -22,7 +22,9 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2015-09-17 v0.40**: Improved macro deobfuscation in [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba),
+- **2015-09-22 v0.41**: added new --reveal option to [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba),
+to show the macro code with VBA strings deobfuscated.
+- 2015-09-17 v0.40: Improved macro deobfuscation in [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba),
 to decode Hex and Base64 within VBA expressions. Display printable deobfuscated strings by 
 default. Improved the VBA_Parser API. Improved performance. 
 Fixed [issue #23](https://bitbucket.org/decalage/oletools/issue/23) with sys.stderr.
