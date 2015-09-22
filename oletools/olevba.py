@@ -151,8 +151,9 @@ https://github.com/unixfreak0037/officeparser
 # 2015-09-15       PL: - remove duplicate IOCs from results
 # 2015-09-16       PL: - join long VBA lines ending with underscore before scan
 #                      - disabled unused option --each
+# 2015-09-22 v0.41 PL: - added new option --reveal
 
-__version__ = '0.40'
+__version__ = '0.41'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -2095,9 +2096,30 @@ class VBA_Parser_CLI(VBA_Parser):
             print 'No suspicious keyword or IOC found.'
 
 
+    def reveal(self):
+        print 'MACRO SOURCE CODE WITH DEOBFUSCATED VBA STRINGS (EXPERIMENTAL):\n'
+        # we only want printable strings:
+        analysis = self.analyze_macros(show_decoded_strings=False)
+        # to avoid replacing short strings contained into longer strings, we sort the analysis results
+        # based on the length of the encoded string, in reverse order:
+        analysis = sorted(analysis, key=lambda type_decoded_encoded: len(type_decoded_encoded[2]), reverse=True)
+        # normally now self.vba_code_all_modules contains source code from all modules
+        deobf_code = self.vba_code_all_modules
+        for kw_type, decoded, encoded in analysis:
+            if kw_type == 'VBA string':
+                #print '%3d occurences: %r => %r' % (deobf_code.count(encoded), encoded, decoded)
+                # need to add double quotes around the decoded strings
+                # after escaping double-quotes as double-double-quotes for VBA:
+                decoded = decoded.replace('"', '""')
+                deobf_code = deobf_code.replace(encoded, '"%s"' % decoded)
+        print ''
+        print deobf_code
+        #TODO: repasser l'analyse plusieurs fois si des chaines hex ou base64 sont revelees
+
+
     def process_file(self, show_decoded_strings=False,
                      display_code=True, global_analysis=True, hide_attributes=True,
-                     vba_code_only=False):
+                     vba_code_only=False, show_deobfuscated_code=False):
         """
         Process a single file
 
@@ -2150,6 +2172,8 @@ class VBA_Parser_CLI(VBA_Parser):
                 if global_analysis and not vba_code_only:
                     # analyse the code from all modules at once:
                     self.print_analysis(show_decoded_strings)
+                if show_deobfuscated_code:
+                    self.reveal()
             else:
                 print 'No VBA macros found.'
         except:  #TypeError:
@@ -2260,6 +2284,8 @@ def main():
                       help='display all the obfuscated strings with their decoded content (Hex, Base64, StrReverse, Dridex, VBA).')
     parser.add_option("--attr", action="store_false", dest="hide_attributes", default=True,
                       help='display the attribute lines at the beginning of VBA source code')
+    parser.add_option("--reveal", action="store_true", dest="show_deobfuscated_code",
+                      help='display the macro source code after replacing all the obfuscated strings by their decoded content.')
 
     # Disabled options:
     # parser.add_option("--each", action="store_false", dest="global_analysis", default=True,
@@ -2316,7 +2342,8 @@ def main():
             # fully detailed output
             vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
                          display_code=options.display_code, global_analysis=True, #options.global_analysis,
-                         hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only)
+                         hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
+                         show_deobfuscated_code=options.show_deobfuscated_code)
         else:
             # print container name when it changes:
             if container != previous_container:
@@ -2335,7 +2362,8 @@ def main():
         # if options -t and -d were not specified and it's a single file, print details:
         vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
                          display_code=options.display_code, global_analysis=True, #options.global_analysis,
-                         hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only)
+                         hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
+                         show_deobfuscated_code=options.show_deobfuscated_code)
 
 
 if __name__ == '__main__':
