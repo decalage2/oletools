@@ -2100,6 +2100,7 @@ class VBA_Parser_CLI(VBA_Parser):
 
 
     def reveal(self):
+        #TODO: move this code to the VBA_Parser class (without print)
         print 'MACRO SOURCE CODE WITH DEOBFUSCATED VBA STRINGS (EXPERIMENTAL):\n'
         # we only want printable strings:
         analysis = self.analyze_macros(show_decoded_strings=False)

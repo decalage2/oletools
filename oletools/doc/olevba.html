@@ -106,7 +106,11 @@ Options:
 
   --attr                display the attribute lines at the beginning of VBA
 
-                        source code</code></pre>
+                        source code
+
+  --reveal              display the macro source code after replacing all the
+
+                        obfuscated strings by their decoded content.</code></pre>
 <h3 id="examples">Examples</h3>
 <p>Scan a single file:</p>
 <pre><code>olevba.py file.doc</code></pre>
@@ -114,6 +118,8 @@ Options:
 <pre><code>olevba.py malicious_file.xls.zip -z infected</code></pre>
 <p>Scan a single file, showing all obfuscated strings decoded:</p>
 <pre><code>olevba.py file.doc --decode</code></pre>
+<p>Scan a single file, showing the macro source code with VBA strings deobfuscated:</p>
+<pre><code>olevba.py file.doc --reveal</code></pre>
 <p>Scan VBA source code extracted into a text file:</p>
 <pre><code>olevba.py -i source_code.vba</code></pre>
 <p>Scan a collection of files stored in a folder:</p>

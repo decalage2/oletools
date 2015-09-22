@@ -91,7 +91,9 @@ and potential IOCs (URLs, IP addresses, e-mail addresses, executable filenames, 
                             content (Hex, Base64, StrReverse, Dridex, VBA).
       --attr                display the attribute lines at the beginning of VBA
                             source code
-                                              
+      --reveal              display the macro source code after replacing all the
+                            obfuscated strings by their decoded content.
+
 ### Examples
 
 Scan a single file:
@@ -109,6 +111,11 @@ Scan a single file, showing all obfuscated strings decoded:
     :::text
     olevba.py file.doc --decode
     
+Scan a single file, showing the macro source code with VBA strings deobfuscated:
+
+    :::text
+    olevba.py file.doc --reveal
+
 Scan VBA source code extracted into a text file:
 
     :::text
