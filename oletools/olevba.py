@@ -152,6 +152,7 @@ https://github.com/unixfreak0037/officeparser
 # 2015-09-16       PL: - join long VBA lines ending with underscore before scan
 #                      - disabled unused option --each
 # 2015-09-22 v0.41 PL: - added new option --reveal
+#                      - added suspicious strings for PowerShell.exe options
 
 __version__ = '0.41'
 
@@ -314,7 +315,9 @@ SUSPICIOUS_KEYWORDS = {
     #WScript.Shell+Run sample: http://pastebin.com/Z4TMyuq6
     'May run PowerShell commands':
     #sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
-        ('PowerShell', ),
+    #also: https://bitbucket.org/decalage/oletools/issues/14/olevba-library-update-ioc
+    #TODO: add support for keywords starting with a non-alpha character, such as "-noexit"
+        ('PowerShell', 'noexit', 'ExecutionPolicy', 'noprofile'),
     'May hide the application':
         ('Application.Visible', 'ShowWindow', 'SW_HIDE'),
     'May create a directory':
