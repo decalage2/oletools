@@ -26,7 +26,10 @@ Software.
 News
 ----
 
--  **2015-09-17 v0.40**: Improved macro deobfuscation in
+-  **2015-09-22 v0.41**: added new --reveal option to
+   `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`__, to
+   show the macro code with VBA strings deobfuscated.
+-  2015-09-17 v0.40: Improved macro deobfuscation in
    `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`__, to
    decode Hex and Base64 within VBA expressions. Display printable
    deobfuscated strings by default. Improved the VBA\_Parser API.
