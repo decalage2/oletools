@@ -153,8 +153,9 @@ https://github.com/unixfreak0037/officeparser
 #                      - disabled unused option --each
 # 2015-09-22 v0.41 PL: - added new option --reveal
 #                      - added suspicious strings for PowerShell.exe options
+# 2015-10-09 v0.42 PL: - VBA_Parser: split each format into a separate method
 
-__version__ = '0.41'
+__version__ = '0.42'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -1719,19 +1720,67 @@ class VBA_Parser(object):
         #         self.filename = '<file-like object>'
         if olefile.isOleFile(_file):
             # This looks like an OLE file
-            logging.info('Opening OLE file %s' % self.filename)
+            self.open_ole(_file)
+        elif zipfile.is_zipfile(_file):
+            # Zip file, which may be an OpenXML document
+            self.open_openxml(_file)
+        else:
+            # read file from disk, check if it is a Word 2003 XML file (WordProcessingML), Excel 2003 XML,
+            # or a plain text file containing VBA code
+            if data is None:
+                data = open(filename, 'rb').read()
+            # store a lowercase version for some tests:
+            data_lowercase = data.lower()
+            # check if it is a Word 2003 XML file (WordProcessingML): must contain the namespace
+            if 'http://schemas.microsoft.com/office/word/2003/wordml' in data:
+                self.open_word2003xml(data)
+            # check if it is a MHT file (MIME HTML, Word or Excel saved as "Single File Web Page"):
+            # According to my tests, these files usually start with "MIME-Version: 1.0" on the 1st line
+            # BUT Word accepts a blank line or other MIME headers inserted before,
+            # and even whitespaces in between "MIME", "-", "Version" and ":". The version number is ignored.
+            # And the line is case insensitive.
+            # so we'll just check the presence of mime, version and multipart anywhere:
+            if self.type is None and 'mime' in data_lowercase and 'version' in data_lowercase and 'multipart' in data_lowercase:
+                self.open_mht(data)
+        #TODO: handle exceptions
+        #TODO: Excel 2003 XML
+        #TODO: plain text VBA file
+        if self.type is None:
+            msg = '%s is not a supported file type, cannot extract VBA Macros.' % self.filename
+            logging.error(msg)
+            raise TypeError(msg)
+
+    def open_ole(self, _file):
+        """
+        Open an OLE file
+        :param _file: filename or file contents in a file object
+        :return: nothing
+        """
+        logging.info('Opening OLE file %s' % self.filename)
+        try:
             # Open and parse the OLE file, using unicode for path names:
-            self.type = TYPE_OLE
-            # TODO: handle OLE parsing exceptions
             self.ole_file = olefile.OleFileIO(_file, path_encoding=None)
             # TODO: raise TypeError if this is a Powerpoint 97 file, since VBA macros cannot be detected yet
-        elif zipfile.is_zipfile(_file):
-            # This looks like a zip file, need to look for vbaProject.bin inside
-            # It can be any OLE file inside the archive
-            #...because vbaProject.bin can be renamed:
-            # see http://www.decalage.info/files/JCV07_Lagadec_OpenDocument_OpenXML_v4_decalage.pdf#page=18
-            logging.info('Opening ZIP/OpenXML file %s' % self.filename)
-            self.type = TYPE_OpenXML
+            # set type only if parsing succeeds
+            self.type = TYPE_OLE
+        except:
+            # TODO: handle OLE parsing exceptions
+            logging.exception('Failed OLE parsing for file %r' % self.filename)
+            pass
+
+
+    def open_openxml(self, _file):
+        """
+        Open an OpenXML file
+        :param _file: filename or file contents in a file object
+        :return: nothing
+        """
+        # This looks like a zip file, need to look for vbaProject.bin inside
+        # It can be any OLE file inside the archive
+        #...because vbaProject.bin can be renamed:
+        # see http://www.decalage.info/files/JCV07_Lagadec_OpenDocument_OpenXML_v4_decalage.pdf#page=18
+        logging.info('Opening ZIP/OpenXML file %s' % self.filename)
+        try:
             z = zipfile.ZipFile(_file)
             #TODO: check if this is actually an OpenXML file
             #TODO: if the zip file is encrypted, suggest to use the -z option, or try '-z infected' automatically
@@ -1747,97 +1796,94 @@ class VBA_Parser(object):
                         logging.debug('%s is not a valid OLE file' % subfile)
                         continue
             z.close()
-        else:
-            # read file from disk, check if it is a Word 2003 XML file (WordProcessingML), Excel 2003 XML,
-            # or a plain text file containing VBA code
-            if data is None:
-                data = open(filename, 'rb').read()
-            # store a lowercase version for some tests:
-            data_lowercase = data.lower()
-            # TODO: move each format parser to a separate method
-            # check if it is a Word 2003 XML file (WordProcessingML): must contain the namespace
-            if 'http://schemas.microsoft.com/office/word/2003/wordml' in data:
-                logging.info('Opening Word 2003 XML file %s' % self.filename)
-                try:
-                    # parse the XML content
-                    # TODO: handle XML parsing exceptions
-                    et = ET.fromstring(data)
-                    # set type only if parsing succeeds
-                    self.type = TYPE_Word2003_XML
-                    # find all the binData elements:
-                    for bindata in et.getiterator(TAG_BINDATA):
-                        # the binData content is an OLE container for the VBA project, compressed
-                        # using the ActiveMime/MSO format (zlib-compressed), and Base64 encoded.
-                        # get the filename:
-                        fname = bindata.get(ATTR_NAME, 'noname.mso')
-                        # decode the base64 activemime
-                        mso_data = binascii.a2b_base64(bindata.text)
-                        if is_mso_file(mso_data):
-                            # decompress the zlib data stored in the MSO file, which is the OLE container:
-                            # TODO: handle different offsets => separate function
-                            ole_data = mso_file_extract(mso_data)
-                            try:
-                                self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
-                            except:
-                                logging.error('%s does not contain a valid OLE file' % fname)
-                        else:
-                            logging.error('%s is not a valid MSO file' % fname)
-                except:
-                    # TODO: differentiate exceptions for each parsing stage
-                    logging.exception('Failed XML parsing for file %r' % self.filename)
-                    pass
-            # check if it is a MHT file (MIME HTML, Word or Excel saved as "Single File Web Page"):
-            # According to my tests, these files usually start with "MIME-Version: 1.0" on the 1st line
-            # BUT Word accepts a blank line or other MIME headers inserted before,
-            # and even whitespaces in between "MIME", "-", "Version" and ":". The version number is ignored.
-            # And the line is case insensitive.
-            # so we'll just check the presence of mime, version and multipart anywhere:
-            if self.type is None and 'mime' in data_lowercase and 'version' in data_lowercase and 'multipart' in data_lowercase:
-                logging.info('Opening MHTML file %s' % self.filename)
-                try:
-                    # parse the MIME content
-                    # remove any leading whitespace or newline (workaround for issue in email package)
-                    stripped_data = data.lstrip('\r\n\t ')
-                    mhtml = email.message_from_string(stripped_data)
-                    self.type = TYPE_MHTML
-                    # find all the attached files:
-                    for part in mhtml.walk():
-                        content_type = part.get_content_type()  # always returns a value
-                        fname = part.get_filename(None)  # returns None if it fails
-                        # TODO: get content-location if no filename
-                        logging.debug('MHTML part: filename=%r, content-type=%r' % (fname, content_type))
-                        part_data = part.get_payload(decode=True)
-                        # VBA macros are stored in a binary file named "editdata.mso".
-                        # the data content is an OLE container for the VBA project, compressed
-                        # using the ActiveMime/MSO format (zlib-compressed), and Base64 encoded.
-                        # decompress the zlib data starting at offset 0x32, which is the OLE container:
-                        # check ActiveMime header:
-                        if isinstance(part_data, str) and is_mso_file(part_data):
-                            logging.debug('Found ActiveMime header, decompressing MSO container')
-                            try:
-                                ole_data = mso_file_extract(part_data)
-                                try:
-                                    # TODO: check if it is actually an OLE file
-                                    # TODO: get the MSO filename from content_location?
-                                    self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
-                                except:
-                                    logging.debug('%s does not contain a valid OLE file' % fname)
-                            except:
-                                logging.exception('Failed decompressing an MSO container in %r - %s'
-                                              % (fname, MSG_OLEVBA_ISSUES))
-                                # TODO: bug here - need to split in smaller functions/classes?
-                except:
-                    logging.exception('Failed MIME parsing for file %r - %s'
-                                      % (self.filename, MSG_OLEVBA_ISSUES))
-                    pass
+            # set type only if parsing succeeds
+            self.type = TYPE_OpenXML
+        except:
+            # TODO: handle parsing exceptions
+            logging.exception('Failed Zip/OpenXML parsing for file %r' % self.filename)
+            pass
 
-        #TODO: handle exceptions
-        #TODO: Excel 2003 XML
-        #TODO: plain text VBA file
-        if self.type is None:
-            msg = '%s is not a supported file type, cannot extract VBA Macros.' % self.filename
-            logging.error(msg)
-            raise TypeError(msg)
+    def open_word2003xml(self, data):
+        """
+        Open a Word 2003 XML file
+        :param data: file contents in a string or bytes
+        :return: nothing
+        """
+        logging.info('Opening Word 2003 XML file %s' % self.filename)
+        try:
+            # parse the XML content
+            # TODO: handle XML parsing exceptions
+            et = ET.fromstring(data)
+            # find all the binData elements:
+            for bindata in et.getiterator(TAG_BINDATA):
+                # the binData content is an OLE container for the VBA project, compressed
+                # using the ActiveMime/MSO format (zlib-compressed), and Base64 encoded.
+                # get the filename:
+                fname = bindata.get(ATTR_NAME, 'noname.mso')
+                # decode the base64 activemime
+                mso_data = binascii.a2b_base64(bindata.text)
+                if is_mso_file(mso_data):
+                    # decompress the zlib data stored in the MSO file, which is the OLE container:
+                    # TODO: handle different offsets => separate function
+                    ole_data = mso_file_extract(mso_data)
+                    try:
+                        self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
+                    except:
+                        logging.error('%s does not contain a valid OLE file' % fname)
+                else:
+                    logging.error('%s is not a valid MSO file' % fname)
+            # set type only if parsing succeeds
+            self.type = TYPE_Word2003_XML
+        except:
+            # TODO: differentiate exceptions for each parsing stage
+            logging.exception('Failed XML parsing for file %r' % self.filename)
+            pass
+
+    def open_mht(self, data):
+        """
+        Open a MHTML file
+        :param data: file contents in a string or bytes
+        :return: nothing
+        """
+        logging.info('Opening MHTML file %s' % self.filename)
+        try:
+            # parse the MIME content
+            # remove any leading whitespace or newline (workaround for issue in email package)
+            stripped_data = data.lstrip('\r\n\t ')
+            mhtml = email.message_from_string(stripped_data)
+            # find all the attached files:
+            for part in mhtml.walk():
+                content_type = part.get_content_type()  # always returns a value
+                fname = part.get_filename(None)  # returns None if it fails
+                # TODO: get content-location if no filename
+                logging.debug('MHTML part: filename=%r, content-type=%r' % (fname, content_type))
+                part_data = part.get_payload(decode=True)
+                # VBA macros are stored in a binary file named "editdata.mso".
+                # the data content is an OLE container for the VBA project, compressed
+                # using the ActiveMime/MSO format (zlib-compressed), and Base64 encoded.
+                # decompress the zlib data starting at offset 0x32, which is the OLE container:
+                # check ActiveMime header:
+                if isinstance(part_data, str) and is_mso_file(part_data):
+                    logging.debug('Found ActiveMime header, decompressing MSO container')
+                    try:
+                        ole_data = mso_file_extract(part_data)
+                        try:
+                            # TODO: check if it is actually an OLE file
+                            # TODO: get the MSO filename from content_location?
+                            self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
+                        except:
+                            logging.debug('%s does not contain a valid OLE file' % fname)
+                    except:
+                        logging.exception('Failed decompressing an MSO container in %r - %s'
+                                      % (fname, MSG_OLEVBA_ISSUES))
+                        # TODO: bug here - need to split in smaller functions/classes?
+            # set type only if parsing succeeds
+            self.type = TYPE_MHTML
+        except:
+            logging.exception('Failed MIME parsing for file %r - %s'
+                              % (self.filename, MSG_OLEVBA_ISSUES))
+            pass
+
 
     def find_vba_projects(self):
         """
