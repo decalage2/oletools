@@ -154,6 +154,7 @@ https://github.com/unixfreak0037/officeparser
 # 2015-09-22 v0.41 PL: - added new option --reveal
 #                      - added suspicious strings for PowerShell.exe options
 # 2015-10-09 v0.42 PL: - VBA_Parser: split each format into a separate method
+# 2015-10-10       PL: - added support for text files with VBA source code
 
 __version__ = '0.42'
 
@@ -241,6 +242,7 @@ TYPE_OLE = 'OLE'
 TYPE_OpenXML = 'OpenXML'
 TYPE_Word2003_XML = 'Word2003_XML'
 TYPE_MHTML = 'MHTML'
+TYPE_TEXT = 'Text'
 
 # short tag to display file types in triage mode:
 TYPE2TAG = {
@@ -248,6 +250,7 @@ TYPE2TAG = {
     TYPE_OpenXML: 'OpX:',
     TYPE_Word2003_XML: 'XML:',
     TYPE_MHTML: 'MHT:',
+    TYPE_TEXT: 'TXT:',
 }
 
 
@@ -1721,31 +1724,36 @@ class VBA_Parser(object):
         if olefile.isOleFile(_file):
             # This looks like an OLE file
             self.open_ole(_file)
-        elif zipfile.is_zipfile(_file):
+        if self.type is None and zipfile.is_zipfile(_file):
             # Zip file, which may be an OpenXML document
             self.open_openxml(_file)
-        else:
+        if self.type is None:
             # read file from disk, check if it is a Word 2003 XML file (WordProcessingML), Excel 2003 XML,
             # or a plain text file containing VBA code
             if data is None:
                 data = open(filename, 'rb').read()
-            # store a lowercase version for some tests:
-            data_lowercase = data.lower()
             # check if it is a Word 2003 XML file (WordProcessingML): must contain the namespace
             if 'http://schemas.microsoft.com/office/word/2003/wordml' in data:
                 self.open_word2003xml(data)
+            # store a lowercase version for the next tests:
+            data_lowercase = data.lower()
             # check if it is a MHT file (MIME HTML, Word or Excel saved as "Single File Web Page"):
             # According to my tests, these files usually start with "MIME-Version: 1.0" on the 1st line
             # BUT Word accepts a blank line or other MIME headers inserted before,
             # and even whitespaces in between "MIME", "-", "Version" and ":". The version number is ignored.
             # And the line is case insensitive.
             # so we'll just check the presence of mime, version and multipart anywhere:
-            if self.type is None and 'mime' in data_lowercase and 'version' in data_lowercase and 'multipart' in data_lowercase:
+            if self.type is None and 'mime' in data_lowercase and 'version' in data_lowercase \
+                and 'multipart' in data_lowercase:
                 self.open_mht(data)
         #TODO: handle exceptions
         #TODO: Excel 2003 XML
-        #TODO: plain text VBA file
+            # Check if this is a plain text VBA or VBScript file:
+            # To avoid scanning binary files, we simply check for some control chars:
+            if self.type is None and '\x00' not in data:
+                self.open_text(data)
         if self.type is None:
+            # At this stage, could not match a known format:
             msg = '%s is not a supported file type, cannot extract VBA Macros.' % self.filename
             logging.error(msg)
             raise TypeError(msg)
@@ -1885,6 +1893,25 @@ class VBA_Parser(object):
             pass
 
 
+    def open_text(self, data):
+        """
+        Open a text file containing VBA or VBScript source code
+        :param data: file contents in a string or bytes
+        :return: nothing
+        """
+        logging.info('Opening text file %s' % self.filename)
+        try:
+            # directly store the source code:
+            self.vba_code_all_modules = data
+            self.contains_macros = True
+            # set type only if parsing succeeds
+            self.type = TYPE_TEXT
+        except:
+            logging.exception('Failed text parsing for file %r - %s'
+                              % (self.filename, MSG_OLEVBA_ISSUES))
+            pass
+
+
     def find_vba_projects(self):
         """
         Finds all the VBA projects stored in an OLE file.
@@ -2012,10 +2039,17 @@ class VBA_Parser(object):
         within the zip archive, e.g. word/vbaProject.bin.
         """
         if self.ole_file is None:
-            for ole_subfile in self.ole_subfiles:
-                for results in ole_subfile.extract_macros():
-                    yield results
+            # This may be either an OpenXML or a text file:
+            if self.type == TYPE_TEXT:
+                # This is a text file, yield the full code:
+                yield (self.filename, '', self.filename, self.vba_code_all_modules)
+            else:
+                # OpenXML: recursively yield results from each OLE subfile:
+                for ole_subfile in self.ole_subfiles:
+                    for results in ole_subfile.extract_macros():
+                        yield results
         else:
+            # This is an OLE file:
             self.find_vba_projects()
             for vba_root, project_path, dir_path in self.vba_projects:
                 # extract all VBA macros from that VBA root storage:
@@ -2079,8 +2113,9 @@ class VBA_Parser(object):
         the application is opening many files.
         """
         if self.ole_file is None:
-            for ole_subfile in self.ole_subfiles:
-                ole_subfile.close()
+            if self.ole_subfiles is not None:
+                for ole_subfile in self.ole_subfiles:
+                    ole_subfile.close()
         else:
             self.ole_file.close()
 
@@ -2252,7 +2287,7 @@ class VBA_Parser_CLI(VBA_Parser):
                     self.analyze_macros()
                 flags = TYPE2TAG[self.type]
                 macros = autoexec = suspicious = iocs = hexstrings = base64obf = dridex = vba_obf = '-'
-                if self.nb_macros: macros = 'M'
+                if self.contains_macros: macros = 'M'
                 if self.nb_autoexec: autoexec = 'A'
                 if self.nb_suspicious: suspicious = 'S'
                 if self.nb_iocs: iocs = 'I'
@@ -2404,7 +2439,7 @@ def main():
             vba_parser.process_file_triage()
         count += 1
     if not options.detailed_mode or options.triage_mode:
-        print '\n(Flags: OpX=OpenXML, XML=Word2003XML, MHT=MHTML, M=Macros, ' \
+        print '\n(Flags: OpX=OpenXML, XML=Word2003XML, MHT=MHTML, TXT=Text, M=Macros, ' \
               'A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex strings, ' \
               'B=Base64 strings, D=Dridex strings, V=VBA strings, ?=Unknown)\n'
 
