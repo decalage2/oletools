@@ -155,6 +155,7 @@ https://github.com/unixfreak0037/officeparser
 #                      - added suspicious strings for PowerShell.exe options
 # 2015-10-09 v0.42 PL: - VBA_Parser: split each format into a separate method
 # 2015-10-10       PL: - added support for text files with VBA source code
+# 2015-11-17       PL: - fixed bug with --decode option
 
 __version__ = '0.42'
 
@@ -632,7 +633,7 @@ vba_expr_str <<= infixNotation(vba_expr_str_item,
     ])
 
 
-# ---STRING EXPRESSION -------------------------------------------------------
+# --- INTEGER EXPRESSION -------------------------------------------------------
 
 def sum_ints_list(tokens):
     """
@@ -644,11 +645,47 @@ def sum_ints_list(tokens):
     return sum(integers)
 
 
+def subtract_ints_list(tokens):
+    """
+    parse action to subtract integers in a VBA expression with operator '-'
+    """
+    # extract argument from the tokens:
+    # expected to be a tuple containing a list of integers such as [a,'&',b,'&',c,...]
+    integers = tokens[0][::2]
+    return reduce(lambda x,y:x-y, integers)
+
+
+def multiply_ints_list(tokens):
+    """
+    parse action to multiply integers in a VBA expression with operator '*'
+    """
+    # extract argument from the tokens:
+    # expected to be a tuple containing a list of integers such as [a,'&',b,'&',c,...]
+    integers = tokens[0][::2]
+    return reduce(lambda x,y:x*y, integers)
+
+
+def divide_ints_list(tokens):
+    """
+    parse action to divide integers in a VBA expression with operator '/'
+    """
+    # extract argument from the tokens:
+    # expected to be a tuple containing a list of integers such as [a,'&',b,'&',c,...]
+    integers = tokens[0][::2]
+    return reduce(lambda x,y:x/y, integers)
+
+
 vba_expr_int_item = (vba_asc | vba_val | integer)
+
+# operators associativity:
+# https://en.wikipedia.org/wiki/Operator_associativity
 
 vba_expr_int <<= infixNotation(vba_expr_int_item,
     [
+        ("*", 2, opAssoc.LEFT, multiply_ints_list),
+        ("/", 2, opAssoc.LEFT, divide_ints_list),
         ("+", 2, opAssoc.LEFT, sum_ints_list),
+        ("-", 2, opAssoc.LEFT, subtract_ints_list),
     ])
 
 
@@ -2270,7 +2307,7 @@ class VBA_Parser_CLI(VBA_Parser):
         print ''
 
 
-    def process_file_triage(self):
+    def process_file_triage(self, show_decoded_strings=False):
         """
         Process a file in triage mode, showing only summary results on one line.
         """
@@ -2284,7 +2321,7 @@ class VBA_Parser_CLI(VBA_Parser):
                     if sys.stdout.isatty():
                         print 'Analysis...\r',
                         sys.stdout.flush()
-                    self.analyze_macros()
+                    self.analyze_macros(show_decoded_strings=show_decoded_strings)
                 flags = TYPE2TAG[self.type]
                 macros = autoexec = suspicious = iocs = hexstrings = base64obf = dridex = vba_obf = '-'
                 if self.contains_macros: macros = 'M'
@@ -2363,8 +2400,6 @@ def main():
                       help='display only analysis results, not the macro source code')
     parser.add_option("-c", '--code', action="store_true", dest="vba_code_only", default=False,
                       help='display only VBA source code, do not analyze it')
-    parser.add_option("-i", "--input", dest='input', type='str', default=None,
-                      help='input file containing VBA source code to be analyzed (no parsing)')
     parser.add_option("--decode", action="store_true", dest="show_decoded_strings",
                       help='display all the obfuscated strings with their decoded content (Hex, Base64, StrReverse, Dridex, VBA).')
     parser.add_option("--attr", action="store_false", dest="hide_attributes", default=True,
@@ -2375,6 +2410,8 @@ def main():
     # Disabled options:
     # parser.add_option("--each", action="store_false", dest="global_analysis", default=True,
     #                   help='analyze each VBA module separately')
+    # parser.add_option("-i", "--input", dest='input', type='str', default=None,
+    #                   help='input file containing VBA source code to be analyzed (no parsing)')
 
     # TODO: --novba to disable VBA expressions parsing
 
@@ -2394,14 +2431,14 @@ def main():
     # For now, all logging is disabled:
     logging.disable(logging.CRITICAL)
 
-    if options.input:
-        #TODO: remove this option
-        raise NotImplementedError
-        # input file provided with VBA source code to be analyzed directly:
-        print 'Analysis of VBA source code from %s:' % options.input
-        vba_code = open(options.input).read()
-        print_analysis(vba_code, show_decoded_strings=options.show_decoded_strings)
-        sys.exit()
+    # if options.input:
+    #     #TODO: remove this option
+    #     raise NotImplementedError
+    #     # input file provided with VBA source code to be analyzed directly:
+    #     print 'Analysis of VBA source code from %s:' % options.input
+    #     vba_code = open(options.input).read()
+    #     print_analysis(vba_code, show_decoded_strings=options.show_decoded_strings)
+    #     sys.exit()
 
     # Old display with number of items detected:
     # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('Type', 'Macros', 'AutoEx', 'Susp.', 'IOCs', 'HexStr')
@@ -2436,7 +2473,7 @@ def main():
                     print '\nFiles in %s:' % container
                 previous_container = container
             # summarized output for triage:
-            vba_parser.process_file_triage()
+            vba_parser.process_file_triage(show_decoded_strings=options.show_decoded_strings)
         count += 1
     if not options.detailed_mode or options.triage_mode:
         print '\n(Flags: OpX=OpenXML, XML=Word2003XML, MHT=MHTML, TXT=Text, M=Macros, ' \
