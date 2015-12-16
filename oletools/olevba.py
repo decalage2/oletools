@@ -156,6 +156,7 @@ https://github.com/unixfreak0037/officeparser
 # 2015-10-09 v0.42 PL: - VBA_Parser: split each format into a separate method
 # 2015-10-10       PL: - added support for text files with VBA source code
 # 2015-11-17       PL: - fixed bug with --decode option
+# 2015-12-16       PL: - fixed bug in main (no options input anymore)
 
 __version__ = '0.42'
 
@@ -2418,7 +2419,7 @@ def main():
     (options, args) = parser.parse_args()
 
     # Print help if no arguments are passed
-    if len(args) == 0 and not options.input:
+    if len(args) == 0:
         print __doc__
         parser.print_help()
         sys.exit()
