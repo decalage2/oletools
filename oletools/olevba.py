@@ -2142,7 +2142,23 @@ class VBA_Parser(object):
         return self.analysis_results
 
 
-
+    def reveal(self):
+        # we only want printable strings:
+        analysis = self.analyze_macros(show_decoded_strings=False)
+        # to avoid replacing short strings contained into longer strings, we sort the analysis results
+        # based on the length of the encoded string, in reverse order:
+        analysis = sorted(analysis, key=lambda type_decoded_encoded: len(type_decoded_encoded[2]), reverse=True)
+        # normally now self.vba_code_all_modules contains source code from all modules
+        deobf_code = self.vba_code_all_modules
+        for kw_type, decoded, encoded in analysis:
+            if kw_type == 'VBA string':
+                #print '%3d occurences: %r => %r' % (deobf_code.count(encoded), encoded, decoded)
+                # need to add double quotes around the decoded strings
+                # after escaping double-quotes as double-double-quotes for VBA:
+                decoded = decoded.replace('"', '""')
+                deobf_code = deobf_code.replace(encoded, '"%s"' % decoded)
+        return deobf_code
+        #TODO: repasser l'analyse plusieurs fois si des chaines hex ou base64 sont revelees
 
 
     def close(self):
@@ -2218,28 +2234,6 @@ class VBA_Parser_CLI(VBA_Parser):
             print 'No suspicious keyword or IOC found.'
 
 
-    def reveal(self):
-        #TODO: move this code to the VBA_Parser class (without print)
-        print 'MACRO SOURCE CODE WITH DEOBFUSCATED VBA STRINGS (EXPERIMENTAL):\n'
-        # we only want printable strings:
-        analysis = self.analyze_macros(show_decoded_strings=False)
-        # to avoid replacing short strings contained into longer strings, we sort the analysis results
-        # based on the length of the encoded string, in reverse order:
-        analysis = sorted(analysis, key=lambda type_decoded_encoded: len(type_decoded_encoded[2]), reverse=True)
-        # normally now self.vba_code_all_modules contains source code from all modules
-        deobf_code = self.vba_code_all_modules
-        for kw_type, decoded, encoded in analysis:
-            if kw_type == 'VBA string':
-                #print '%3d occurences: %r => %r' % (deobf_code.count(encoded), encoded, decoded)
-                # need to add double quotes around the decoded strings
-                # after escaping double-quotes as double-double-quotes for VBA:
-                decoded = decoded.replace('"', '""')
-                deobf_code = deobf_code.replace(encoded, '"%s"' % decoded)
-        print ''
-        print deobf_code
-        #TODO: repasser l'analyse plusieurs fois si des chaines hex ou base64 sont revelees
-
-
     def process_file(self, show_decoded_strings=False,
                      display_code=True, global_analysis=True, hide_attributes=True,
                      vba_code_only=False, show_deobfuscated_code=False):
@@ -2296,7 +2290,8 @@ class VBA_Parser_CLI(VBA_Parser):
                     # analyse the code from all modules at once:
                     self.print_analysis(show_decoded_strings)
                 if show_deobfuscated_code:
-                    self.reveal()
+                    print 'MACRO SOURCE CODE WITH DEOBFUSCATED VBA STRINGS (EXPERIMENTAL):\n\n'
+                    print self.reveal()
             else:
                 print 'No VBA macros found.'
         except:  #TypeError:
