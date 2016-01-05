@@ -323,6 +323,16 @@ Example:
         
 Alternatively, the VBA_Parser method **extract_all_macros** returns the same results as a list of tuples.
 
+### Extract Experimental Deobfuscated VBA Macro Source Code
+
+The method **reveal** extracts, decompresses, and deofuscates VBA source code into a single string.
+
+Example:
+    
+    :::python
+    print vbaparser.reveal()
+
+
 ### Analyze VBA Source Code
 
 Since version 0.40, the VBA_Parser class provides simpler methods than VBA_Scanner to analyze all macros contained
