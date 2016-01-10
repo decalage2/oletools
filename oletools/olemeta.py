@@ -43,8 +43,9 @@ http://www.decalage.info/python/oletools
 # 2013-07-24 v0.01 PL: - first version
 # 2014-11-29 v0.02 PL: - use olefile instead of OleFileIO_PL
 #                      - improved usage display
+# 2015-12-29 v0.03 PL: - only display properties present in the file
 
-__version__ = '0.02'
+__version__ = '0.03'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -68,6 +69,20 @@ except IndexError:
 
 # parse and display metadata:
 meta = ole.get_metadata()
-meta.dump()
+
+print('Properties from SummaryInformation stream:')
+for prop in meta.SUMMARY_ATTRIBS:
+    value = getattr(meta, prop)
+    if value is not None:
+        # TODO: pretty printing for strings, dates, numbers
+        print('- %s: %s' % (prop, value))
+print ''
+print('Properties from DocumentSummaryInformation stream:')
+for prop in meta.DOCSUM_ATTRIBS:
+    value = getattr(meta, prop)
+    if value is not None:
+        # TODO: pretty printing for strings, dates, numbers
+        print('- %s: %s' % (prop, value))
+
 
 ole.close()
