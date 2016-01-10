@@ -157,6 +157,7 @@ https://github.com/unixfreak0037/officeparser
 # 2015-10-10       PL: - added support for text files with VBA source code
 # 2015-11-17       PL: - fixed bug with --decode option
 # 2015-12-16       PL: - fixed bug in main (no options input anymore)
+#                      - improved logging, added -l option
 
 __version__ = '0.42'
 
@@ -231,6 +232,48 @@ from thirdparty.prettytable import prettytable
 from thirdparty.xglob import xglob
 from thirdparty.pyparsing.pyparsing import *
 
+
+
+# === LOGGING =================================================================
+
+class NullHandler(logging.Handler):
+    """
+    Log Handler without output, to avoid printing messages if logging is not
+    configured by the main application.
+    Python 2.7 has logging.NullHandler, but this is necessary for 2.6:
+    see https://docs.python.org/2.6/library/logging.html#configuring-logging-for-a-library
+    """
+    def emit(self, record):
+        pass
+
+def get_logger(name, level=logging.CRITICAL+1):
+    """
+    Create a suitable logger object for this module.
+    The goal is not to change settings of the root logger, to avoid getting
+    other modules' logs on the screen.
+    If a logger exists with same name, reuse it. (Else it would have duplicate
+    handlers and messages would be doubled.)
+    The level is set to CRITICAL+1 by default, to avoid any logging.
+    """
+    # First, test if there is already a logger with the same name, else it
+    # will generate duplicate messages (due to duplicate handlers):
+    if name in logging.Logger.manager.loggerDict:
+        #NOTE: another less intrusive but more "hackish" solution would be to
+        # use getLogger then test if its effective level is not default.
+        logger = logging.getLogger(name)
+        # make sure level is OK:
+        logger.setLevel(level)
+        return logger
+    # get a new logger:
+    logger = logging.getLogger(name)
+    # only add a NullHandler for this logger, it is up to the application
+    # to configure its own logging:
+    logger.addHandler(NullHandler())
+    logger.setLevel(level)
+    return logger
+
+# a global logger object used for debugging:
+log = get_logger('olevba')
 
 
 #--- CONSTANTS ----------------------------------------------------------------
@@ -728,9 +771,9 @@ def mso_file_extract(data):
     # at offset 0x1E (little endian) + add 46:
     try:
         offset = struct.unpack_from('<H', data, offset=0x1E)[0] + 46
-        logging.debug('Parsing MSO file: data offset = 0x%X' % offset)
+        log.debug('Parsing MSO file: data offset = 0x%X' % offset)
     except:
-        logging.exception('Unable to parse MSO/ActiveMime file header')
+        log.exception('Unable to parse MSO/ActiveMime file header')
         raise RuntimeError('Unable to parse MSO/ActiveMime file header')
     # In all the samples seen so far, Word always uses an offset of 0x32,
     # and Excel 0x22A. But we read the offset from the header to be more
@@ -738,22 +781,22 @@ def mso_file_extract(data):
     # Let's try that offset, then 0x32 and 0x22A, just in case:
     for start in (offset, 0x32, 0x22A):
         try:
-            logging.debug('Attempting zlib decompression from MSO file offset 0x%X' % start)
+            log.debug('Attempting zlib decompression from MSO file offset 0x%X' % start)
             extracted_data = zlib.decompress(data[start:])
             return extracted_data
         except:
-            logging.exception('zlib decompression failed')
+            log.exception('zlib decompression failed')
     # None of the guessed offsets worked, let's try brute-forcing by looking
     # for potential zlib-compressed blocks starting with 0x78:
-    logging.debug('Looking for potential zlib-compressed blocks in MSO file')
+    log.debug('Looking for potential zlib-compressed blocks in MSO file')
     for match in re_zlib_header.finditer(data):
         start = match.start()
         try:
-            logging.debug('Attempting zlib decompression from MSO file offset 0x%X' % start)
+            log.debug('Attempting zlib decompression from MSO file offset 0x%X' % start)
             extracted_data = zlib.decompress(data[start:])
             return extracted_data
         except:
-            logging.exception('zlib decompression failed')
+            log.exception('zlib decompression failed')
     raise RuntimeError('Unable to decompress data from a MSO/ActiveMime file')
 
 
@@ -844,7 +887,7 @@ def decompress_stream(compressed_container):
             raise ValueError('Invalid CompressedChunkSignature in VBA compressed stream')
         # chunk flag = next bit - 1 == compressed, 0 == uncompressed
         chunk_flag = (compressed_chunk_header >> 15) & 0x01
-        logging.debug("chunk size = {0}, compressed flag = {1}".format(chunk_size, chunk_flag))
+        log.debug("chunk size = {0}, compressed flag = {1}".format(chunk_size, chunk_flag))
 
         #MS-OVBA 2.4.1.3.12: the maximum size of a chunk including its header is 4098 bytes (header 2 + data 4096)
         # The minimum size is 3 bytes
@@ -859,7 +902,7 @@ def decompress_stream(compressed_container):
         # check if chunk_size goes beyond the compressed data, instead of silently cutting it:
         #TODO: raise an exception?
         if compressed_chunk_start + chunk_size > len(compressed_container):
-            logging.warning('Chunk size is larger than remaining compressed data')
+            log.warning('Chunk size is larger than remaining compressed data')
         compressed_end = min([len(compressed_container), compressed_chunk_start + chunk_size])
         # read after chunk header:
         compressed_current = compressed_chunk_start + 2
@@ -876,19 +919,19 @@ def decompress_stream(compressed_container):
             decompressed_chunk_start = len(decompressed_container)
             while compressed_current < compressed_end:
                 # MS-OVBA 2.4.1.3.4 Decompressing a TokenSequence
-                # logging.debug('compressed_current = %d / compressed_end = %d' % (compressed_current, compressed_end))
+                # log.debug('compressed_current = %d / compressed_end = %d' % (compressed_current, compressed_end))
                 # FlagByte: 8 bits indicating if the following 8 tokens are either literal (1 byte of plain text) or
                 # copy tokens (reference to a previous literal token)
                 flag_byte = ord(compressed_container[compressed_current])
                 compressed_current += 1
                 for bit_index in xrange(0, 8):
-                    # logging.debug('bit_index=%d / compressed_current=%d / compressed_end=%d' % (bit_index, compressed_current, compressed_end))
+                    # log.debug('bit_index=%d / compressed_current=%d / compressed_end=%d' % (bit_index, compressed_current, compressed_end))
                     if compressed_current >= compressed_end:
                         break
                     # MS-OVBA 2.4.1.3.5 Decompressing a Token
                     # MS-OVBA 2.4.1.3.17 Extract FlagBit
                     flag_bit = (flag_byte >> bit_index) & 1
-                    #logging.debug('bit_index=%d: flag_bit=%d' % (bit_index, flag_bit))
+                    #log.debug('bit_index=%d: flag_bit=%d' % (bit_index, flag_bit))
                     if flag_bit == 0:  # LiteralToken
                         # copy one byte directly to output
                         decompressed_container += compressed_container[compressed_current]
@@ -904,7 +947,7 @@ def decompress_stream(compressed_container):
                         temp1 = copy_token & offset_mask
                         temp2 = 16 - bit_count
                         offset = (temp1 >> temp2) + 1
-                        #logging.debug('offset=%d length=%d' % (offset, length))
+                        #log.debug('offset=%d length=%d' % (offset, length))
                         copy_source = len(decompressed_container) - offset
                         for index in xrange(copy_source, copy_source + length):
                             decompressed_container += decompressed_container[index]
@@ -972,7 +1015,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
 
     def check_value(name, expected, value):
         if expected != value:
-            logging.error("invalid value for {0} expected {1:04X} got {2:04X}".format(name, expected, value))
+            log.error("invalid value for {0} expected {1:04X} got {2:04X}".format(name, expected, value))
 
     dir_stream = cStringIO.StringIO(decompress_stream(dir_compressed))
 
@@ -983,15 +1026,15 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
     check_value('PROJECTSYSKIND_Size', 0x0004, PROJECTSYSKIND_Size)
     PROJECTSYSKIND_SysKind = struct.unpack("<L", dir_stream.read(4))[0]
     if PROJECTSYSKIND_SysKind == 0x00:
-        logging.debug("16-bit Windows")
+        log.debug("16-bit Windows")
     elif PROJECTSYSKIND_SysKind == 0x01:
-        logging.debug("32-bit Windows")
+        log.debug("32-bit Windows")
     elif PROJECTSYSKIND_SysKind == 0x02:
-        logging.debug("Macintosh")
+        log.debug("Macintosh")
     elif PROJECTSYSKIND_SysKind == 0x03:
-        logging.debug("64-bit Windows")
+        log.debug("64-bit Windows")
     else:
-        logging.error("invalid PROJECTSYSKIND_SysKind {0:04X}".format(PROJECTSYSKIND_SysKind))
+        log.error("invalid PROJECTSYSKIND_SysKind {0:04X}".format(PROJECTSYSKIND_SysKind))
 
     # PROJECTLCID Record
     PROJECTLCID_Id = struct.unpack("<H", dir_stream.read(2))[0]
@@ -1021,7 +1064,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
     check_value('PROJECTNAME_Id', 0x0004, PROJECTNAME_Id)
     PROJECTNAME_SizeOfProjectName = struct.unpack("<L", dir_stream.read(4))[0]
     if PROJECTNAME_SizeOfProjectName < 1 or PROJECTNAME_SizeOfProjectName > 128:
-        logging.error("PROJECTNAME_SizeOfProjectName value not in range: {0}".format(PROJECTNAME_SizeOfProjectName))
+        log.error("PROJECTNAME_SizeOfProjectName value not in range: {0}".format(PROJECTNAME_SizeOfProjectName))
     PROJECTNAME_ProjectName = dir_stream.read(PROJECTNAME_SizeOfProjectName)
 
     # PROJECTDOCSTRING Record
@@ -1029,14 +1072,14 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
     check_value('PROJECTDOCSTRING_Id', 0x0005, PROJECTDOCSTRING_Id)
     PROJECTDOCSTRING_SizeOfDocString = struct.unpack("<L", dir_stream.read(4))[0]
     if PROJECTNAME_SizeOfProjectName > 2000:
-        logging.error(
+        log.error(
             "PROJECTDOCSTRING_SizeOfDocString value not in range: {0}".format(PROJECTDOCSTRING_SizeOfDocString))
     PROJECTDOCSTRING_DocString = dir_stream.read(PROJECTDOCSTRING_SizeOfDocString)
     PROJECTDOCSTRING_Reserved = struct.unpack("<H", dir_stream.read(2))[0]
     check_value('PROJECTDOCSTRING_Reserved', 0x0040, PROJECTDOCSTRING_Reserved)
     PROJECTDOCSTRING_SizeOfDocStringUnicode = struct.unpack("<L", dir_stream.read(4))[0]
     if PROJECTDOCSTRING_SizeOfDocStringUnicode % 2 != 0:
-        logging.error("PROJECTDOCSTRING_SizeOfDocStringUnicode is not even")
+        log.error("PROJECTDOCSTRING_SizeOfDocStringUnicode is not even")
     PROJECTDOCSTRING_DocStringUnicode = dir_stream.read(PROJECTDOCSTRING_SizeOfDocStringUnicode)
 
     # PROJECTHELPFILEPATH Record - MS-OVBA 2.3.4.2.1.7
@@ -1044,17 +1087,17 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
     check_value('PROJECTHELPFILEPATH_Id', 0x0006, PROJECTHELPFILEPATH_Id)
     PROJECTHELPFILEPATH_SizeOfHelpFile1 = struct.unpack("<L", dir_stream.read(4))[0]
     if PROJECTHELPFILEPATH_SizeOfHelpFile1 > 260:
-        logging.error(
+        log.error(
             "PROJECTHELPFILEPATH_SizeOfHelpFile1 value not in range: {0}".format(PROJECTHELPFILEPATH_SizeOfHelpFile1))
     PROJECTHELPFILEPATH_HelpFile1 = dir_stream.read(PROJECTHELPFILEPATH_SizeOfHelpFile1)
     PROJECTHELPFILEPATH_Reserved = struct.unpack("<H", dir_stream.read(2))[0]
     check_value('PROJECTHELPFILEPATH_Reserved', 0x003D, PROJECTHELPFILEPATH_Reserved)
     PROJECTHELPFILEPATH_SizeOfHelpFile2 = struct.unpack("<L", dir_stream.read(4))[0]
     if PROJECTHELPFILEPATH_SizeOfHelpFile2 != PROJECTHELPFILEPATH_SizeOfHelpFile1:
-        logging.error("PROJECTHELPFILEPATH_SizeOfHelpFile1 does not equal PROJECTHELPFILEPATH_SizeOfHelpFile2")
+        log.error("PROJECTHELPFILEPATH_SizeOfHelpFile1 does not equal PROJECTHELPFILEPATH_SizeOfHelpFile2")
     PROJECTHELPFILEPATH_HelpFile2 = dir_stream.read(PROJECTHELPFILEPATH_SizeOfHelpFile2)
     if PROJECTHELPFILEPATH_HelpFile2 != PROJECTHELPFILEPATH_HelpFile1:
-        logging.error("PROJECTHELPFILEPATH_HelpFile1 does not equal PROJECTHELPFILEPATH_HelpFile2")
+        log.error("PROJECTHELPFILEPATH_HelpFile1 does not equal PROJECTHELPFILEPATH_HelpFile2")
 
     # PROJECTHELPCONTEXT Record
     PROJECTHELPCONTEXT_Id = struct.unpack("<H", dir_stream.read(2))[0]
@@ -1084,21 +1127,21 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
     check_value('PROJECTCONSTANTS_Id', 0x000C, PROJECTCONSTANTS_Id)
     PROJECTCONSTANTS_SizeOfConstants = struct.unpack("<L", dir_stream.read(4))[0]
     if PROJECTCONSTANTS_SizeOfConstants > 1015:
-        logging.error(
+        log.error(
             "PROJECTCONSTANTS_SizeOfConstants value not in range: {0}".format(PROJECTCONSTANTS_SizeOfConstants))
     PROJECTCONSTANTS_Constants = dir_stream.read(PROJECTCONSTANTS_SizeOfConstants)
     PROJECTCONSTANTS_Reserved = struct.unpack("<H", dir_stream.read(2))[0]
     check_value('PROJECTCONSTANTS_Reserved', 0x003C, PROJECTCONSTANTS_Reserved)
     PROJECTCONSTANTS_SizeOfConstantsUnicode = struct.unpack("<L", dir_stream.read(4))[0]
     if PROJECTCONSTANTS_SizeOfConstantsUnicode % 2 != 0:
-        logging.error("PROJECTCONSTANTS_SizeOfConstantsUnicode is not even")
+        log.error("PROJECTCONSTANTS_SizeOfConstantsUnicode is not even")
     PROJECTCONSTANTS_ConstantsUnicode = dir_stream.read(PROJECTCONSTANTS_SizeOfConstantsUnicode)
 
     # array of REFERENCE records
     check = None
     while True:
         check = struct.unpack("<H", dir_stream.read(2))[0]
-        logging.debug("reference type = {0:04X}".format(check))
+        log.debug("reference type = {0:04X}".format(check))
         if check == 0x000F:
             break
 
@@ -1181,7 +1224,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
             REFERENCEPROJECT_MinorVersion = struct.unpack("<H", dir_stream.read(2))[0]
             continue
 
-        logging.error('invalid or unknown check Id {0:04X}'.format(check))
+        log.error('invalid or unknown check Id {0:04X}'.format(check))
         sys.exit(0)
 
     PROJECTMODULES_Id = check  #struct.unpack("<H", dir_stream.read(2))[0]
@@ -1195,7 +1238,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
     check_value('PROJECTMODULES_ProjectCookieRecord_Size', 0x0002, PROJECTMODULES_ProjectCookieRecord_Size)
     PROJECTMODULES_ProjectCookieRecord_Cookie = struct.unpack("<H", dir_stream.read(2))[0]
 
-    logging.debug("parsing {0} modules".format(PROJECTMODULES_Count))
+    log.debug("parsing {0} modules".format(PROJECTMODULES_Count))
     for x in xrange(0, PROJECTMODULES_Count):
         MODULENAME_Id = struct.unpack("<H", dir_stream.read(2))[0]
         check_value('MODULENAME_Id', 0x0019, MODULENAME_Id)
@@ -1269,23 +1312,23 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
             check_value('MODULE_Reserved', 0x0000, MODULE_Reserved)
             section_id = None
         if section_id != None:
-            logging.warning('unknown or invalid module section id {0:04X}'.format(section_id))
+            log.warning('unknown or invalid module section id {0:04X}'.format(section_id))
 
-        logging.debug('Project CodePage = %d' % PROJECTCODEPAGE_CodePage)
+        log.debug('Project CodePage = %d' % PROJECTCODEPAGE_CodePage)
         vba_codec = 'cp%d' % PROJECTCODEPAGE_CodePage
-        logging.debug("ModuleName = {0}".format(MODULENAME_ModuleName))
-        logging.debug("StreamName = {0}".format(repr(MODULESTREAMNAME_StreamName)))
+        log.debug("ModuleName = {0}".format(MODULENAME_ModuleName))
+        log.debug("StreamName = {0}".format(repr(MODULESTREAMNAME_StreamName)))
         streamname_unicode = MODULESTREAMNAME_StreamName.decode(vba_codec)
-        logging.debug("StreamName.decode('%s') = %s" % (vba_codec, repr(streamname_unicode)))
-        logging.debug("StreamNameUnicode = {0}".format(repr(MODULESTREAMNAME_StreamNameUnicode)))
-        logging.debug("TextOffset = {0}".format(MODULEOFFSET_TextOffset))
+        log.debug("StreamName.decode('%s') = %s" % (vba_codec, repr(streamname_unicode)))
+        log.debug("StreamNameUnicode = {0}".format(repr(MODULESTREAMNAME_StreamNameUnicode)))
+        log.debug("TextOffset = {0}".format(MODULEOFFSET_TextOffset))
 
         code_path = vba_root + u'VBA/' + streamname_unicode
         #TODO: test if stream exists
-        logging.debug('opening VBA code stream %s' % repr(code_path))
+        log.debug('opening VBA code stream %s' % repr(code_path))
         code_data = ole.openstream(code_path).read()
-        logging.debug("length of code_data = {0}".format(len(code_data)))
-        logging.debug("offset of code_data = {0}".format(MODULEOFFSET_TextOffset))
+        log.debug("length of code_data = {0}".format(len(code_data)))
+        log.debug("offset of code_data = {0}".format(MODULEOFFSET_TextOffset))
         code_data = code_data[MODULEOFFSET_TextOffset:]
         if len(code_data) > 0:
             code_data = decompress_stream(code_data)
@@ -1299,9 +1342,9 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
             # print ''
             # print code_data
             # print ''
-            logging.debug('extracted file {0}'.format(filename))
+            log.debug('extracted file {0}'.format(filename))
         else:
-            logging.warning("module stream {0} has code data length 0".format(MODULESTREAMNAME_StreamName))
+            log.warning("module stream {0} has code data length 0".format(MODULESTREAMNAME_StreamName))
     return
 
 
@@ -1793,7 +1836,7 @@ class VBA_Parser(object):
         if self.type is None:
             # At this stage, could not match a known format:
             msg = '%s is not a supported file type, cannot extract VBA Macros.' % self.filename
-            logging.error(msg)
+            log.error(msg)
             raise TypeError(msg)
 
     def open_ole(self, _file):
@@ -1802,7 +1845,7 @@ class VBA_Parser(object):
         :param _file: filename or file contents in a file object
         :return: nothing
         """
-        logging.info('Opening OLE file %s' % self.filename)
+        log.info('Opening OLE file %s' % self.filename)
         try:
             # Open and parse the OLE file, using unicode for path names:
             self.ole_file = olefile.OleFileIO(_file, path_encoding=None)
@@ -1811,7 +1854,7 @@ class VBA_Parser(object):
             self.type = TYPE_OLE
         except:
             # TODO: handle OLE parsing exceptions
-            logging.exception('Failed OLE parsing for file %r' % self.filename)
+            log.exception('Failed OLE parsing for file %r' % self.filename)
             pass
 
 
@@ -1825,7 +1868,7 @@ class VBA_Parser(object):
         # It can be any OLE file inside the archive
         #...because vbaProject.bin can be renamed:
         # see http://www.decalage.info/files/JCV07_Lagadec_OpenDocument_OpenXML_v4_decalage.pdf#page=18
-        logging.info('Opening ZIP/OpenXML file %s' % self.filename)
+        log.info('Opening ZIP/OpenXML file %s' % self.filename)
         try:
             z = zipfile.ZipFile(_file)
             #TODO: check if this is actually an OpenXML file
@@ -1834,19 +1877,19 @@ class VBA_Parser(object):
             for subfile in z.namelist():
                 magic = z.open(subfile).read(len(olefile.MAGIC))
                 if magic == olefile.MAGIC:
-                    logging.debug('Opening OLE file %s within zip' % subfile)
+                    log.debug('Opening OLE file %s within zip' % subfile)
                     ole_data = z.open(subfile).read()
                     try:
                         self.ole_subfiles.append(VBA_Parser(filename=subfile, data=ole_data))
                     except:
-                        logging.debug('%s is not a valid OLE file' % subfile)
+                        log.debug('%s is not a valid OLE file' % subfile)
                         continue
             z.close()
             # set type only if parsing succeeds
             self.type = TYPE_OpenXML
         except:
             # TODO: handle parsing exceptions
-            logging.exception('Failed Zip/OpenXML parsing for file %r' % self.filename)
+            log.exception('Failed Zip/OpenXML parsing for file %r' % self.filename)
             pass
 
     def open_word2003xml(self, data):
@@ -1855,7 +1898,7 @@ class VBA_Parser(object):
         :param data: file contents in a string or bytes
         :return: nothing
         """
-        logging.info('Opening Word 2003 XML file %s' % self.filename)
+        log.info('Opening Word 2003 XML file %s' % self.filename)
         try:
             # parse the XML content
             # TODO: handle XML parsing exceptions
@@ -1875,14 +1918,14 @@ class VBA_Parser(object):
                     try:
                         self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
                     except:
-                        logging.error('%s does not contain a valid OLE file' % fname)
+                        log.error('%s does not contain a valid OLE file' % fname)
                 else:
-                    logging.error('%s is not a valid MSO file' % fname)
+                    log.error('%s is not a valid MSO file' % fname)
             # set type only if parsing succeeds
             self.type = TYPE_Word2003_XML
         except:
             # TODO: differentiate exceptions for each parsing stage
-            logging.exception('Failed XML parsing for file %r' % self.filename)
+            log.exception('Failed XML parsing for file %r' % self.filename)
             pass
 
     def open_mht(self, data):
@@ -1891,7 +1934,7 @@ class VBA_Parser(object):
         :param data: file contents in a string or bytes
         :return: nothing
         """
-        logging.info('Opening MHTML file %s' % self.filename)
+        log.info('Opening MHTML file %s' % self.filename)
         try:
             # parse the MIME content
             # remove any leading whitespace or newline (workaround for issue in email package)
@@ -1902,7 +1945,7 @@ class VBA_Parser(object):
                 content_type = part.get_content_type()  # always returns a value
                 fname = part.get_filename(None)  # returns None if it fails
                 # TODO: get content-location if no filename
-                logging.debug('MHTML part: filename=%r, content-type=%r' % (fname, content_type))
+                log.debug('MHTML part: filename=%r, content-type=%r' % (fname, content_type))
                 part_data = part.get_payload(decode=True)
                 # VBA macros are stored in a binary file named "editdata.mso".
                 # the data content is an OLE container for the VBA project, compressed
@@ -1910,7 +1953,7 @@ class VBA_Parser(object):
                 # decompress the zlib data starting at offset 0x32, which is the OLE container:
                 # check ActiveMime header:
                 if isinstance(part_data, str) and is_mso_file(part_data):
-                    logging.debug('Found ActiveMime header, decompressing MSO container')
+                    log.debug('Found ActiveMime header, decompressing MSO container')
                     try:
                         ole_data = mso_file_extract(part_data)
                         try:
@@ -1918,15 +1961,15 @@ class VBA_Parser(object):
                             # TODO: get the MSO filename from content_location?
                             self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
                         except:
-                            logging.debug('%s does not contain a valid OLE file' % fname)
+                            log.debug('%s does not contain a valid OLE file' % fname)
                     except:
-                        logging.exception('Failed decompressing an MSO container in %r - %s'
+                        log.exception('Failed decompressing an MSO container in %r - %s'
                                       % (fname, MSG_OLEVBA_ISSUES))
                         # TODO: bug here - need to split in smaller functions/classes?
             # set type only if parsing succeeds
             self.type = TYPE_MHTML
         except:
-            logging.exception('Failed MIME parsing for file %r - %s'
+            log.exception('Failed MIME parsing for file %r - %s'
                               % (self.filename, MSG_OLEVBA_ISSUES))
             pass
 
@@ -1937,7 +1980,7 @@ class VBA_Parser(object):
         :param data: file contents in a string or bytes
         :return: nothing
         """
-        logging.info('Opening text file %s' % self.filename)
+        log.info('Opening text file %s' % self.filename)
         try:
             # directly store the source code:
             self.vba_code_all_modules = data
@@ -1945,7 +1988,7 @@ class VBA_Parser(object):
             # set type only if parsing succeeds
             self.type = TYPE_TEXT
         except:
-            logging.exception('Failed text parsing for file %r - %s'
+            log.exception('Failed text parsing for file %r - %s'
                               % (self.filename, MSG_OLEVBA_ISSUES))
             pass
 
@@ -1968,6 +2011,7 @@ class VBA_Parser(object):
         :return: None if OpenXML file, list of tuples (vba_root, project_path, dir_path)
         for each VBA project found if OLE file
         """
+        log.debug('VBA_Parser.find_vba_projects')
         # if the file is not OLE but OpenXML, return None:
         if self.ole_file is None:
             return None
@@ -1995,23 +2039,24 @@ class VBA_Parser(object):
         # Look for any storage containing those storage/streams:
         ole = self.ole_file
         for storage in ole.listdir(streams=False, storages=True):
+            log.debug('Checking storage %r' % storage)
             # Look for a storage ending with "VBA":
             if storage[-1].upper() == 'VBA':
-                logging.debug('Found VBA storage: %s' % ('/'.join(storage)))
+                log.debug('Found VBA storage: %s' % ('/'.join(storage)))
                 vba_root = '/'.join(storage[:-1])
                 # Add a trailing slash to vba_root, unless it is the root of the OLE file:
                 # (used later to append all the child streams/storages)
                 if vba_root != '':
                     vba_root += '/'
-                logging.debug('Checking vba_root="%s"' % vba_root)
+                log.debug('Checking vba_root="%s"' % vba_root)
 
                 def check_vba_stream(ole, vba_root, stream_path):
                     full_path = vba_root + stream_path
                     if ole.exists(full_path) and ole.get_type(full_path) == olefile.STGTY_STREAM:
-                        logging.debug('Found %s stream: %s' % (stream_path, full_path))
+                        log.debug('Found %s stream: %s' % (stream_path, full_path))
                         return full_path
                     else:
-                        logging.debug('Missing %s stream, this is not a valid VBA project structure' % stream_path)
+                        log.debug('Missing %s stream, this is not a valid VBA project structure' % stream_path)
                         return False
 
                 # Check if the VBA root storage also contains a PROJECT stream:
@@ -2024,7 +2069,7 @@ class VBA_Parser(object):
                 dir_path = check_vba_stream(ole, vba_root, 'VBA/dir')
                 if not dir_path: continue
                 # Now we are pretty sure it is a VBA project structure
-                logging.debug('VBA root storage: "%s"' % vba_root)
+                log.debug('VBA root storage: "%s"' % vba_root)
                 # append the results to the list as a tuple for later use:
                 self.vba_projects.append((vba_root, project_path, dir_path))
         return self.vba_projects
@@ -2381,6 +2426,16 @@ def main():
     """
     Main function, called when olevba is run from the command line
     """
+    global log
+    DEFAULT_LOG_LEVEL = "warning" # Default log level
+    LOG_LEVELS = {
+        'debug':    logging.DEBUG,
+        'info':     logging.INFO,
+        'warning':  logging.WARNING,
+        'error':    logging.ERROR,
+        'critical': logging.CRITICAL
+        }
+
     usage = 'usage: %prog [options] <filename> [filename2 ...]'
     parser = optparse.OptionParser(usage=usage)
     # parser.add_option('-o', '--outfile', dest='outfile',
@@ -2407,6 +2462,8 @@ def main():
                       help='display the attribute lines at the beginning of VBA source code')
     parser.add_option("--reveal", action="store_true", dest="show_deobfuscated_code",
                       help='display the macro source code after replacing all the obfuscated strings by their decoded content.')
+    parser.add_option('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
+                            help="logging level debug/info/warning/error/critical (default=%default)")
 
     # Disabled options:
     # parser.add_option("--each", action="store_false", dest="global_analysis", default=True,
@@ -2427,10 +2484,9 @@ def main():
     # print banner with version
     print 'olevba %s - http://decalage.info/python/oletools' % __version__
 
-    # TODO: option to set logging level, none by default
-    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.WARNING)  #.DEBUG) #INFO)
-    # For now, all logging is disabled:
-    logging.disable(logging.CRITICAL)
+    logging.basicConfig(level=LOG_LEVELS[options.loglevel], format='%(levelname)-8s %(message)s')
+    # enable logging in the modules:
+    log.setLevel(logging.NOTSET)
 
     # if options.input:
     #     #TODO: remove this option
