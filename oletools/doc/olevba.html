@@ -20,6 +20,8 @@
 <li><p>Excel 97-2003 (.xls)</p></li>
 <li><p>Excel 2007+ (.xlsm, .xlsb)</p></li>
 <li><p>PowerPoint 2007+ (.pptm, .ppsm)</p></li>
+<li><p>Text file containing VBA or VBScript source code</p></li>
+<li><p>Password-protected Zip archive containing any of the above</p></li>
 </ul>
 <h2 id="main-features">Main Features</h2>
 <ul>
@@ -297,7 +299,7 @@ OLE:MA----- \MalwareZoo\VBA\samples\Word within Word macro auto.doc</code></pre>
 <h3 id="import-olevba">Import olevba</h3>
 <p>First, import the <strong>oletools.olevba</strong> package, using at least the VBA_Parser and VBA_Scanner classes:</p>
 <pre><code>from oletools.olevba import VBA_Parser, TYPE_OLE, TYPE_OpenXML, TYPE_Word2003_XML, TYPE_MHTML </code></pre>
-<h3 id="parse-a-ms-office-file">Parse a MS Office file</h3>
+<h3 id="parse-a-ms-office-file---vba_parser">Parse a MS Office file - VBA_Parser</h3>
 <p>To parse a file on disk, create an instance of the <strong>VBA_Parser</strong> class, providing the name of the file to open as parameter.</p>
 <p>For example:</p>
 <pre><code>vbaparser = VBA_Parser(&#39;my_file_with_macros.doc&#39;)</code></pre>
@@ -357,12 +359,12 @@ else:
 <h3 id="analyze-vba-source-code">Analyze VBA Source Code</h3>
 <p>Since version 0.40, the VBA_Parser class provides simpler methods than VBA_Scanner to analyze all macros contained</p>
 <p>in a file:</p>
-<p>The methods <strong>scan</strong> or <strong>scan_summary</strong> from the class <strong>VBA_Parser</strong> can be used to scan the source code of all</p>
+<p>The method <strong>analyze_macros</strong> from the class <strong>VBA_Parser</strong> can be used to scan the source code of all</p>
 <p>VBA modules to find obfuscated strings, suspicious keywords, IOCs, auto-executable macros, etc.</p>
-<p>scan() takes an optional argument include_decoded_strings: if set to True, the results will contain all the encoded</p>
+<p>analyze_macros() takes an optional argument show_decoded_strings: if set to True, the results will contain all the encoded</p>
 <p>strings found in the code (Hex, Base64, Dridex) with their decoded value.</p>
-<p>By default, it will include the strings which contain printable characters only.</p>
-<p><strong>VBA_Parser.scan()</strong> returns a list of tuples (type, keyword, description), one for each item in the results.</p>
+<p>By default, it will only include the strings which contain printable characters.</p>
+<p><strong>VBA_Parser.analyze_macros()</strong> returns a list of tuples (type, keyword, description), one for each item in the results.</p>
 <ul>
 <li>type may be either 'AutoExec', 'Suspicious', 'IOC', 'Hex String', 'Base64 String', 'Dridex String' or</li>
 </ul>
@@ -375,13 +377,31 @@ else:
 <li>description provides a description of the keyword. For obfuscated strings, it is the encoded value of the string.</li>
 </ul>
 <p>Example:</p>
-<pre><code>results = vbaparser.scan()
+<pre><code>results = vbaparser.analyze_macros()
 
 for kw_type, keyword, description in results:
 
     print &#39;type=%s - keyword=%s - description=%s&#39; % (kw_type, keyword, description)</code></pre>
-<p><strong>VBA_Parser.scan_summary()</strong> returns a tuple with the number of items found for each category:</p>
-<p>(autoexec, suspicious, IOCs, hex, base64, dridex, vbastrings).</p>
+<p>After calling analyze_macros, the following VBA_Parser attributes also provide the number</p>
+<p>of items found for each category:</p>
+<pre><code>print &#39;AutoExec keywords: %d&#39; % vbaparser.nb_autoexec
+
+print &#39;Suspicious keywords: %d&#39; % vbaparser.nb_suspicious
+
+print &#39;IOCs: %d&#39; % vbaparser.nb_iocs
+
+print &#39;Hex obfuscated strings: %d&#39; % vbaparser.nb_hexstrings
+
+print &#39;Base64 obfuscated strings: %d&#39; % vbaparser.nb_base64strings
+
+print &#39;Dridex obfuscated strings: %d&#39; % vbaparser.nb_dridexstrings
+
+print &#39;VBA obfuscated strings: %d&#39; % vbaparser.nb_vbastrings</code></pre>
+<h3 id="deobfuscate-vba-macro-source-code">Deobfuscate VBA Macro Source Code</h3>
+<p>The method <strong>reveal</strong> attempts to deobfuscate the macro source code by replacing all</p>
+<p>the obfuscated strings by their decoded content. Returns a single string.</p>
+<p>Example:</p>
+<pre><code>print vbaparser.reveal()</code></pre>
 <h3 id="close-the-vba_parser">Close the VBA_Parser</h3>
 <p>After usage, it is better to call the <strong>close</strong> method of the VBA_Parser object, to make sure the file is closed,</p>
 <p>especially if your application is parsing many files.</p>
@@ -391,7 +411,6 @@ for kw_type, keyword, description in results:
 <p>The following methods and functions are still functional, but their usage is not recommended</p>
 <p>since they have been replaced by better solutions.</p>
 <h3 id="vba_scanner-deprecated">VBA_Scanner (deprecated)</h3>
-<p>Note: this API is under active development and may change in the future.</p>
 <p>The class <strong>VBA_Scanner</strong> can be used to scan the source code of a VBA module to find obfuscated strings,</p>
 <p>suspicious keywords, IOCs, auto-executable macros, etc.</p>
 <p>First, create a VBA_Scanner object with a string containing the VBA source code (for example returned by the</p>
