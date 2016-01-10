@@ -1,0 +1,133 @@
+<p>olemeta</p>
+<p>=======</p>
+<p>olemeta is a script to parse OLE files such as MS Office documents (e.g. Word,</p>
+<p>Excel), to extract all standard properties present in the OLE file.</p>
+<p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
+<h2 id="usage">Usage</h2>
+<pre><code>olemeta.py &lt;file&gt;</code></pre>
+<h3 id="example">Example</h3>
+<p>Checking the malware sample <a href="https://malwr.com/analysis/M2I4YWRhM2IwY2QwNDljN2E3ZWFjYTg3ODk4NmZhYmE/">DIAN_caso-5415.doc</a>:</p>
+<pre><code>&gt;olemeta.py DIAN_caso-5415.doc
+
+
+
+Properties from SummaryInformation stream:
+
+- codepage: 1252
+
+- title: &#39;Gu\xeda MIPYME para ser emisor electr\xf3nico&#39;
+
+- subject: &#39;&#39;
+
+- author: &#39;OFEyDV&#39;
+
+- keywords: &#39;&#39;
+
+- comments: &#39;&#39;
+
+- template: &#39;Normal.dotm&#39;
+
+- last_saved_by: &#39;clein&#39;
+
+- revision_number: &#39;13&#39;
+
+- total_edit_time: 4800L
+
+- last_printed: datetime.datetime(2006, 6, 7, 14, 4)
+
+- create_time: datetime.datetime(2009, 3, 30, 14, 18)
+
+- last_saved_time: datetime.datetime(2014, 5, 14, 12, 45)
+
+- num_pages: 7
+
+- num_words: 269
+
+- num_chars: 1485
+
+- thumbnail: None
+
+- creating_application: &#39;Microsoft Office Word&#39;
+
+- security: 0
+
+
+
+Properties from DocumentSummaryInformation stream:
+
+- codepage_doc: 1252
+
+- category: None
+
+- presentation_target: None
+
+- bytes: None
+
+- lines: 12
+
+- paragraphs: 3
+
+- slides: None
+
+- notes: None
+
+- hidden_slides: None
+
+- mm_clips: None
+
+- scale_crop: False
+
+- heading_pairs: None
+
+- titles_of_parts: None
+
+- manager: None
+
+- company: &#39;Servicio de Impuestos Internos&#39;
+
+- links_dirty: False
+
+- chars_with_spaces: 1751
+
+- unused: None
+
+- shared_doc: False
+
+- link_base: None
+
+- hlinks: None
+
+- hlinks_changed: False
+
+- version: 786432
+
+- dig_sig: None
+
+- content_type: None
+
+- content_status: None
+
+- language: None
+
+- doc_version: None</code></pre>
+<h2 id="how-to-use-olemeta-in-python-applications">How to use olemeta in Python applications</h2>
+<p>TODO</p>
+<hr />
+<p>python-oletools documentation</p>
+<hr />
+<ul>
+<li><p><a href="Home.html">Home</a></p></li>
+<li><p><a href="License.html">License</a></p></li>
+<li><p><a href="Install.html">Install</a></p></li>
+<li><p><a href="Contribute.html">Contribute</a>, Suggest Improvements or Report Issues</p></li>
+<li><p>Tools:</p>
+<ul>
+<li><p><a href="olebrowse.html">olebrowse</a></p></li>
+<li><p><a href="oleid.html">oleid</a></p></li>
+<li><p><a href="olemeta.html">olemeta</a></p></li>
+<li><p><a href="oletimes.html">oletimes</a></p></li>
+<li><p><a href="olevba.html">olevba</a></p></li>
+<li><p><a href="pyxswf.html">pyxswf</a></p></li>
+<li><p><a href="rtfobj.html">rtfobj</a></p></li>
+</ul></li>
+</ul>

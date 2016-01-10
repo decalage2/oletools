@@ -1,0 +1,36 @@
+<p>rtfobj</p>
+<p>======</p>
+<p>rtfobj is a Python module to extract embedded objects from RTF files, such as</p>
+<p>OLE ojects. It can be used as a Python library or a command-line tool.</p>
+<p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
+<h2 id="usage">Usage</h2>
+<pre><code>rtfobj.py &lt;file.rtf&gt;</code></pre>
+<p>It extracts and decodes all the data blocks encoded as hexadecimal in the RTF document, and saves them as files named &quot;object_xxxx.bin&quot;, xxxx being the location of the object in the RTF file.</p>
+<h2 id="how-to-use-rtfobj-in-python-applications">How to use rtfobj in Python applications</h2>
+<p>Usage as a python module:</p>
+<p>rtf_iter_objects(filename) is an iterator which yields a tuple (index, object) providing the index of each hexadecimal stream in the RTF file, and the corresponding decoded object.</p>
+<p>Example:</p>
+<pre><code>import rtfobj    
+
+for index, data in rtfobj.rtf_iter_objects(&quot;myfile.rtf&quot;):
+
+    print &#39;found object size %d at index %08X&#39; % (len(data), index)</code></pre>
+<hr />
+<p>python-oletools documentation</p>
+<hr />
+<ul>
+<li><p><a href="Home.html">Home</a></p></li>
+<li><p><a href="License.html">License</a></p></li>
+<li><p><a href="Install.html">Install</a></p></li>
+<li><p><a href="Contribute.html">Contribute</a>, Suggest Improvements or Report Issues</p></li>
+<li><p>Tools:</p>
+<ul>
+<li><p><a href="olebrowse.html">olebrowse</a></p></li>
+<li><p><a href="oleid.html">oleid</a></p></li>
+<li><p><a href="olemeta.html">olemeta</a></p></li>
+<li><p><a href="oletimes.html">oletimes</a></p></li>
+<li><p><a href="olevba.html">olevba</a></p></li>
+<li><p><a href="pyxswf.html">pyxswf</a></p></li>
+<li><p><a href="rtfobj.html">rtfobj</a></p></li>
+</ul></li>
+</ul>

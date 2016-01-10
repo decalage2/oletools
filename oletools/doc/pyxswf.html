@@ -1,0 +1,108 @@
+<p>pyxswf</p>
+<p>======</p>
+<p>pyxswf is a script to detect, extract and analyze Flash objects (SWF files) that may</p>
+<p>be embedded in files such as MS Office documents (e.g. Word, Excel),</p>
+<p>which is especially useful for malware analysis.</p>
+<p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
+<p>pyxswf is an extension to <a href="http://hooked-on-mnemonics.blogspot.nl/2011/12/xxxswfpy.html">xxxswf.py</a> published by Alexander Hanel.</p>
+<p>Compared to xxxswf, it can extract streams from MS Office documents by parsing</p>
+<p>their OLE structure properly, which is necessary when streams are fragmented.</p>
+<p>Stream fragmentation is a known obfuscation technique, as explained on</p>
+<p><a href="http://www.breakingpointsystems.com/resources/blog/evasion-with-ole2-fragmentation/">http://www.breakingpointsystems.com/resources/blog/evasion-with-ole2-fragmentation/</a></p>
+<p>It can also extract Flash objects from RTF documents, by parsing embedded objects encoded in hexadecimal format (-f option).</p>
+<p>For this, simply add the -o option to work on OLE streams rather than raw files, or the -f option to work on RTF files.</p>
+<h2 id="usage">Usage</h2>
+<pre><code>Usage: pyxswf.py [options] &lt;file.bad&gt;
+
+
+
+Options:
+
+  -o, --ole             Parse an OLE file (e.g. Word, Excel) to look for SWF
+
+                        in each stream
+
+  -f, --rtf             Parse an RTF file to look for SWF in each embedded
+
+                        object
+
+  -x, --extract         Extracts the embedded SWF(s), names it MD5HASH.swf &amp;
+
+                        saves it in the working dir. No addition args needed
+
+  -h, --help            show this help message and exit
+
+  -y, --yara            Scans the SWF(s) with yara. If the SWF(s) is
+
+                        compressed it will be deflated. No addition args
+
+                        needed
+
+  -s, --md5scan         Scans the SWF(s) for MD5 signatures. Please see func
+
+                        checkMD5 to define hashes. No addition args needed
+
+  -H, --header          Displays the SWFs file header. No addition args needed
+
+  -d, --decompress      Deflates compressed SWFS(s)
+
+  -r PATH, --recdir=PATH
+
+                        Will recursively scan a directory for files that
+
+                        contain SWFs. Must provide path in quotes
+
+  -c, --compress        Compresses the SWF using Zlib</code></pre>
+<h3 id="example-1---detecting-and-extracting-a-swf-file-from-a-word-document-on-windows">Example 1 - detecting and extracting a SWF file from a Word document on Windows:</h3>
+<pre><code>C:\oletools&gt;pyxswf.py -o word_flash.doc
+
+OLE stream: &#39;Contents&#39;
+
+[SUMMARY] 1 SWF(s) in MD5:993664cc86f60d52d671b6610813cfd1:Contents
+
+        [ADDR] SWF 1 at 0x8  - FWS Header
+
+
+
+C:\oletools&gt;pyxswf.py -xo word_flash.doc
+
+OLE stream: &#39;Contents&#39;
+
+[SUMMARY] 1 SWF(s) in MD5:993664cc86f60d52d671b6610813cfd1:Contents
+
+        [ADDR] SWF 1 at 0x8  - FWS Header
+
+                [FILE] Carved SWF MD5: 2498e9c0701dc0e461ab4358f9102bc5.swf</code></pre>
+<h3 id="example-2---detecting-and-extracting-a-swf-file-from-a-rtf-document-on-windows">Example 2 - detecting and extracting a SWF file from a RTF document on Windows:</h3>
+<pre><code>C:\oletools&gt;pyxswf.py -xf &quot;rtf_flash.rtf&quot;
+
+RTF embedded object size 1498557 at index 000036DD
+
+[SUMMARY] 1 SWF(s) in MD5:46a110548007e04f4043785ac4184558:RTF_embedded_object_0
+
+00036DD
+
+        [ADDR] SWF 1 at 0xc40  - FWS Header
+
+                [FILE] Carved SWF MD5: 2498e9c0701dc0e461ab4358f9102bc5.swf</code></pre>
+<h2 id="how-to-use-pyxswf-in-python-applications">How to use pyxswf in Python applications</h2>
+<p>TODO</p>
+<hr />
+<p>python-oletools documentation</p>
+<hr />
+<ul>
+<li><p><a href="Home.html">Home</a></p></li>
+<li><p><a href="License.html">License</a></p></li>
+<li><p><a href="Install.html">Install</a></p></li>
+<li><p><a href="Contribute.html">Contribute</a>, Suggest Improvements or Report Issues</p></li>
+<li><p>Tools:</p>
+<ul>
+<li><p><a href="olebrowse.html">olebrowse</a></p></li>
+<li><p><a href="oleid.html">oleid</a></p></li>
+<li><p><a href="olemeta.html">olemeta</a></p></li>
+<li><p><a href="oletimes.html">oletimes</a></p></li>
+<li><p><a href="olevba.html">olevba</a></p></li>
+<li><p><a href="pyxswf.html">pyxswf</a></p></li>
+<li><p><a href="rtfobj.html">rtfobj</a></p></li>
+</ul></li>
+</ul>

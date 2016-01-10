@@ -1,0 +1,80 @@
+<p>oletimes</p>
+<p>========</p>
+<p>oletimes is a script to parse OLE files such as MS Office documents (e.g. Word,</p>
+<p>Excel), to extract creation and modification times of all streams and storages</p>
+<p>in the OLE file.</p>
+<p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
+<h2 id="usage">Usage</h2>
+<pre><code>oletimes.py &lt;file&gt;</code></pre>
+<h3 id="example">Example</h3>
+<p>Checking the malware sample <a href="https://malwr.com/analysis/M2I4YWRhM2IwY2QwNDljN2E3ZWFjYTg3ODk4NmZhYmE/">DIAN_caso-5415.doc</a>:</p>
+<pre><code>&gt;oletimes.py DIAN_caso-5415.doc
+
+
+
++----------------------------+---------------------+---------------------+
+
+| Stream/Storage name        | Modification Time   | Creation Time       |
+
++----------------------------+---------------------+---------------------+
+
+| Root                       | 2014-05-14 12:45:24 | None                |
+
+| &#39;\x01CompObj&#39;              | None                | None                |
+
+| &#39;\x05DocumentSummaryInform | None                | None                |
+
+| ation&#39;                     |                     |                     |
+
+| &#39;\x05SummaryInformation&#39;   | None                | None                |
+
+| &#39;1Table&#39;                   | None                | None                |
+
+| &#39;Data&#39;                     | None                | None                |
+
+| &#39;Macros&#39;                   | 2014-05-14 12:45:24 | 2014-05-14 12:45:24 |
+
+| &#39;Macros/PROJECT&#39;           | None                | None                |
+
+| &#39;Macros/PROJECTwm&#39;         | None                | None                |
+
+| &#39;Macros/VBA&#39;               | 2014-05-14 12:45:24 | 2014-05-14 12:45:24 |
+
+| &#39;Macros/VBA/ThisDocument&#39;  | None                | None                |
+
+| &#39;Macros/VBA/_VBA_PROJECT&#39;  | None                | None                |
+
+| &#39;Macros/VBA/__SRP_0&#39;       | None                | None                |
+
+| &#39;Macros/VBA/__SRP_1&#39;       | None                | None                |
+
+| &#39;Macros/VBA/__SRP_2&#39;       | None                | None                |
+
+| &#39;Macros/VBA/__SRP_3&#39;       | None                | None                |
+
+| &#39;Macros/VBA/dir&#39;           | None                | None                |
+
+| &#39;WordDocument&#39;             | None                | None                |
+
++----------------------------+---------------------+---------------------+</code></pre>
+<h2 id="how-to-use-oletimes-in-python-applications">How to use oletimes in Python applications</h2>
+<p>TODO</p>
+<hr />
+<p>python-oletools documentation</p>
+<hr />
+<ul>
+<li><p><a href="Home.html">Home</a></p></li>
+<li><p><a href="License.html">License</a></p></li>
+<li><p><a href="Install.html">Install</a></p></li>
+<li><p><a href="Contribute.html">Contribute</a>, Suggest Improvements or Report Issues</p></li>
+<li><p>Tools:</p>
+<ul>
+<li><p><a href="olebrowse.html">olebrowse</a></p></li>
+<li><p><a href="oleid.html">oleid</a></p></li>
+<li><p><a href="olemeta.html">olemeta</a></p></li>
+<li><p><a href="oletimes.html">oletimes</a></p></li>
+<li><p><a href="olevba.html">olevba</a></p></li>
+<li><p><a href="pyxswf.html">pyxswf</a></p></li>
+<li><p><a href="rtfobj.html">rtfobj</a></p></li>
+</ul></li>
+</ul>

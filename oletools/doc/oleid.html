@@ -1,0 +1,114 @@
+<p>oleid</p>
+<p>=====</p>
+<p>oleid is a script to analyze OLE files such as MS Office documents (e.g. Word,</p>
+<p>Excel), to detect specific characteristics usually found in malicious files (e.g. malware).</p>
+<p>For example it can detect VBA macros and embedded Flash objects.</p>
+<p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
+<h2 id="main-features">Main Features</h2>
+<ul>
+<li><p>Detect OLE file type from its internal structure (e.g. MS Word, Excel, PowerPoint, ...)</p></li>
+<li><p>Detect VBA Macros</p></li>
+<li><p>Detect embedded Flash objects</p></li>
+<li><p>Detect embedded OLE objects</p></li>
+<li><p>Detect MS Office encryption</p></li>
+<li><p>Can be used as a command-line tool</p></li>
+<li><p>Python API to integrate it in your applications</p></li>
+</ul>
+<p>Planned improvements:</p>
+<ul>
+<li><p>Extract the most important metadata fields</p></li>
+<li><p>Support for OpenXML files and embedded OLE files</p></li>
+<li><p>Generic VBA macros detection</p></li>
+<li><p>Detect auto-executable VBA macros</p></li>
+<li><p>Extended OLE file types detection</p></li>
+<li><p>Detect unusual OLE structures (fragmentation, unused sectors, etc)</p></li>
+<li><p>Options to scan multiple files</p></li>
+<li><p>Options to scan files from encrypted zip archives</p></li>
+<li><p>CSV output</p></li>
+</ul>
+<h2 id="usage">Usage</h2>
+<pre><code>oleid.py &lt;file&gt;</code></pre>
+<h3 id="example">Example</h3>
+<p>Analyzing a Word document containing a Flash object and VBA macros:</p>
+<pre><code>C:\oletools&gt;oleid.py word_flash_vba.doc
+
+
+
+Filename: word_flash_vba.doc
+
++-------------------------------+-----------------------+
+
+| Indicator                     | Value                 |
+
++-------------------------------+-----------------------+
+
+| OLE format                    | True                  |
+
+| Has SummaryInformation stream | True                  |
+
+| Application name              | Microsoft Office Word |
+
+| Encrypted                     | False                 |
+
+| Word Document                 | True                  |
+
+| VBA Macros                    | True                  |
+
+| Excel Workbook                | False                 |
+
+| PowerPoint Presentation       | False                 |
+
+| Visio Drawing                 | False                 |
+
+| ObjectPool                    | True                  |
+
+| Flash objects                 | 1                     |
+
++-------------------------------+-----------------------+</code></pre>
+<h2 id="how-to-use-oleid-in-your-python-applications">How to use oleid in your Python applications</h2>
+<p>First, import oletools.oleid, and create an <strong>OleID</strong> object to scan a file:</p>
+<pre><code>import oletools.oleid
+
+
+
+oid = oletools.oleid.OleID(filename)</code></pre>
+<p>Note: filename can be a filename, a file-like object, or a bytes string containing the file to be analyzed.</p>
+<p>Second, call the <strong>check()</strong> method. It returns a list of <strong>Indicator</strong> objects.</p>
+<p>Each Indicator object has the following attributes:</p>
+<ul>
+<li><p><strong>id</strong>: str, identifier for the indicator</p></li>
+<li><p><strong>name</strong>: str, name to display the indicator</p></li>
+<li><p><strong>description</strong>: str, long description of the indicator</p></li>
+<li><p><strong>type</strong>: class of the indicator (e.g. bool, str, int)</p></li>
+<li><p><strong>value</strong>: value of the indicator</p></li>
+</ul>
+<p>For example, the following code displays all the indicators:</p>
+<pre><code>indicators = oid.check()
+
+for i in indicators:
+
+    print &#39;Indicator id=%s name=&quot;%s&quot; type=%s value=%s&#39; % (i.id, i.name, i.type, repr(i.value))
+
+    print &#39;description:&#39;, i.description
+
+    print &#39;&#39;</code></pre>
+<p>See the source code of oleid.py for more details.</p>
+<hr />
+<p>python-oletools documentation</p>
+<hr />
+<ul>
+<li><p><a href="Home.html">Home</a></p></li>
+<li><p><a href="License.html">License</a></p></li>
+<li><p><a href="Install.html">Install</a></p></li>
+<li><p><a href="Contribute.html">Contribute</a>, Suggest Improvements or Report Issues</p></li>
+<li><p>Tools:</p>
+<ul>
+<li><p><a href="olebrowse.html">olebrowse</a></p></li>
+<li><p><a href="oleid.html">oleid</a></p></li>
+<li><p><a href="olemeta.html">olemeta</a></p></li>
+<li><p><a href="oletimes.html">oletimes</a></p></li>
+<li><p><a href="olevba.html">olevba</a></p></li>
+<li><p><a href="pyxswf.html">pyxswf</a></p></li>
+<li><p><a href="rtfobj.html">rtfobj</a></p></li>
+</ul></li>
+</ul>
