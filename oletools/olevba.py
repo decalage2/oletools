@@ -25,7 +25,7 @@ https://github.com/unixfreak0037/officeparser
 
 # === LICENSE ==================================================================
 
-# olevba is copyright (c) 2014-2015 Philippe Lagadec (http://www.decalage.info)
+# olevba is copyright (c) 2014-2016 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -158,6 +158,7 @@ https://github.com/unixfreak0037/officeparser
 # 2015-11-17       PL: - fixed bug with --decode option
 # 2015-12-16       PL: - fixed bug in main (no options input anymore)
 #                      - improved logging, added -l option
+# 2016-01-31       PL: - fixed issue #31 in VBA_Parser.open_mht
 
 __version__ = '0.42'
 
@@ -1939,6 +1940,19 @@ class VBA_Parser(object):
             # parse the MIME content
             # remove any leading whitespace or newline (workaround for issue in email package)
             stripped_data = data.lstrip('\r\n\t ')
+            # strip any junk from the beginning of the file
+            # (issue #31 fix by Greg C - gdigreg)
+            # TODO: improve keywords to avoid false positives
+            mime_offset = stripped_data.find('MIME')
+            content_offset = stripped_data.find('Content')
+            # if "MIME" is found, and located before "Content":
+            if -1 < mime_offset <= content_offset:
+                stripped_data = stripped_data[mime_offset:]
+            # else if "Content" is found, and before "MIME"
+            # TODO: can it work without "MIME" at all?
+            elif content_offset > -1:
+                stripped_data = stripped_data[content_offset:]
+            # TODO: quick and dirty fix: insert a standard line with MIME-Version header?
             mhtml = email.message_from_string(stripped_data)
             # find all the attached files:
             for part in mhtml.walk():
@@ -1966,6 +1980,12 @@ class VBA_Parser(object):
                         log.exception('Failed decompressing an MSO container in %r - %s'
                                       % (fname, MSG_OLEVBA_ISSUES))
                         # TODO: bug here - need to split in smaller functions/classes?
+                else:
+                    try:
+                        log.debug('type(part_data) = %s' % type(part_data))
+                        log.debug('part_data[0:20] = %r' % part_data[0:20])
+                    except:
+                        pass
             # set type only if parsing succeeds
             self.type = TYPE_MHTML
         except:
