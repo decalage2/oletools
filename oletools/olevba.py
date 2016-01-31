@@ -159,6 +159,7 @@ https://github.com/unixfreak0037/officeparser
 # 2015-12-16       PL: - fixed bug in main (no options input anymore)
 #                      - improved logging, added -l option
 # 2016-01-31       PL: - fixed issue #31 in VBA_Parser.open_mht
+#                      - fixed issue #32 by monkeypatching email.feedparser
 
 __version__ = '0.42'
 
@@ -233,6 +234,10 @@ from thirdparty.prettytable import prettytable
 from thirdparty.xglob import xglob
 from thirdparty.pyparsing.pyparsing import *
 
+# monkeypatch email to fix issue #32:
+# allow header lines without ":"
+import email.feedparser
+email.feedparser.headerRE = re.compile(r'^(From |[\041-\071\073-\176]{1,}:?|[\t ])')
 
 
 # === LOGGING =================================================================
