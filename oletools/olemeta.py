@@ -56,8 +56,9 @@ __version__ = '0.03'
 
 #=== IMPORTS =================================================================
 
-import sys
+import sys, codecs
 import thirdparty.olefile as olefile
+from thirdparty.tablestream import tablestream
 
 
 #=== MAIN =================================================================
@@ -70,19 +71,42 @@ except IndexError:
 # parse and display metadata:
 meta = ole.get_metadata()
 
-print('Properties from SummaryInformation stream:')
+# console output with UTF8 encoding:
+console_utf8 = codecs.getwriter('utf8')(sys.stdout)
+
+# TODO: move similar code to a function
+
+print('Properties from the SummaryInformation stream:')
+t = tablestream.TableStream([21, 30], header_row=['Property', 'Value'], outfile=console_utf8)
 for prop in meta.SUMMARY_ATTRIBS:
     value = getattr(meta, prop)
     if value is not None:
         # TODO: pretty printing for strings, dates, numbers
-        print('- %s: %s' % (prop, value))
+        # TODO: better unicode handling
+        # print('- %s: %s' % (prop, value))
+        if isinstance(value, unicode):
+            # encode to UTF8, avoiding errors
+            value = value.encode('utf-8', errors='replace')
+        else:
+            value = str(value)
+        t.write_row([prop, value], colors=[None, 'yellow'])
+t.close()
 print ''
-print('Properties from DocumentSummaryInformation stream:')
+
+print('Properties from the DocumentSummaryInformation stream:')
+t = tablestream.TableStream([21, 30], header_row=['Property', 'Value'], outfile=console_utf8)
 for prop in meta.DOCSUM_ATTRIBS:
     value = getattr(meta, prop)
     if value is not None:
         # TODO: pretty printing for strings, dates, numbers
-        print('- %s: %s' % (prop, value))
-
+        # TODO: better unicode handling
+        # print('- %s: %s' % (prop, value))
+        if isinstance(value, unicode):
+            # encode to UTF8, avoiding errors
+            value = value.encode('utf-8', errors='replace')
+        else:
+            value = str(value)
+        t.write_row([prop, value], colors=[None, 'yellow'])
+t.close()
 
 ole.close()
