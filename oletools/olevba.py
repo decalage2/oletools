@@ -160,13 +160,13 @@ https://github.com/unixfreak0037/officeparser
 #                      - improved logging, added -l option
 # 2016-01-31       PL: - fixed issue #31 in VBA_Parser.open_mht
 #                      - fixed issue #32 by monkeypatching email.feedparser
+# 2016-02-07       PL: - KeyboardInterrupt is now raised properly
 
 __version__ = '0.42'
 
 #------------------------------------------------------------------------------
 # TODO:
 # + option --fast to disable VBA expressions parsing
-# + do not use logging, but a provided logger (null logger by default)
 # + setup logging (common with other oletools)
 # + add xor bruteforcing like bbharvest
 # + options -a and -c should imply -d
@@ -187,6 +187,7 @@ __version__ = '0.42'
 # - extract_macros: convert to a class, split long function into smaller methods
 # - extract_macros: read bytes from stream file objects instead of strings
 # - extract_macros: use combined struct.unpack instead of many calls
+# - all except clauses should target specific exceptions
 
 #------------------------------------------------------------------------------
 # REFERENCES:
@@ -778,6 +779,9 @@ def mso_file_extract(data):
     try:
         offset = struct.unpack_from('<H', data, offset=0x1E)[0] + 46
         log.debug('Parsing MSO file: data offset = 0x%X' % offset)
+    except KeyboardInterrupt:
+        # do not ignore exceptions when the user presses Ctrl+C/Pause:
+        raise
     except:
         log.exception('Unable to parse MSO/ActiveMime file header')
         raise RuntimeError('Unable to parse MSO/ActiveMime file header')
@@ -790,6 +794,9 @@ def mso_file_extract(data):
             log.debug('Attempting zlib decompression from MSO file offset 0x%X' % start)
             extracted_data = zlib.decompress(data[start:])
             return extracted_data
+        except KeyboardInterrupt:
+            # do not ignore exceptions when the user presses Ctrl+C/Pause:
+            raise
         except:
             log.exception('zlib decompression failed')
     # None of the guessed offsets worked, let's try brute-forcing by looking
@@ -801,6 +808,9 @@ def mso_file_extract(data):
             log.debug('Attempting zlib decompression from MSO file offset 0x%X' % start)
             extracted_data = zlib.decompress(data[start:])
             return extracted_data
+        except KeyboardInterrupt:
+            # do not ignore exceptions when the user presses Ctrl+C/Pause:
+            raise
         except:
             log.exception('zlib decompression failed')
     raise RuntimeError('Unable to decompress data from a MSO/ActiveMime file')
@@ -1506,6 +1516,9 @@ def detect_base64_strings(vba_code):
                 decoded = base64.b64decode(value)
                 results.append((value, decoded))
                 found.add(value)
+            except KeyboardInterrupt:
+                # do not ignore exceptions when the user presses Ctrl+C/Pause:
+                raise
             except:
                 # if an exception occurs, it is likely not a base64-encoded string
                 pass
@@ -1533,6 +1546,9 @@ def detect_dridex_strings(vba_code):
                 decoded = DridexUrlDecode(value)
                 results.append((value, decoded))
                 found.add(value)
+            except KeyboardInterrupt:
+                # do not ignore exceptions when the user presses Ctrl+C/Pause:
+                raise
             except:
                 # if an exception occurs, it is likely not a dridex-encoded string
                 pass
@@ -1858,6 +1874,9 @@ class VBA_Parser(object):
             # TODO: raise TypeError if this is a Powerpoint 97 file, since VBA macros cannot be detected yet
             # set type only if parsing succeeds
             self.type = TYPE_OLE
+        except KeyboardInterrupt:
+            # do not ignore exceptions when the user presses Ctrl+C/Pause:
+            raise
         except:
             # TODO: handle OLE parsing exceptions
             log.exception('Failed OLE parsing for file %r' % self.filename)
@@ -1887,12 +1906,18 @@ class VBA_Parser(object):
                     ole_data = z.open(subfile).read()
                     try:
                         self.ole_subfiles.append(VBA_Parser(filename=subfile, data=ole_data))
+                    except KeyboardInterrupt:
+                        # do not ignore exceptions when the user presses Ctrl+C/Pause:
+                        raise
                     except:
                         log.debug('%s is not a valid OLE file' % subfile)
                         continue
             z.close()
             # set type only if parsing succeeds
             self.type = TYPE_OpenXML
+        except KeyboardInterrupt:
+            # do not ignore exceptions when the user presses Ctrl+C/Pause:
+            raise
         except:
             # TODO: handle parsing exceptions
             log.exception('Failed Zip/OpenXML parsing for file %r' % self.filename)
@@ -1923,12 +1948,18 @@ class VBA_Parser(object):
                     ole_data = mso_file_extract(mso_data)
                     try:
                         self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
+                    except KeyboardInterrupt:
+                        # do not ignore exceptions when the user presses Ctrl+C/Pause:
+                        raise
                     except:
                         log.error('%s does not contain a valid OLE file' % fname)
                 else:
                     log.error('%s is not a valid MSO file' % fname)
             # set type only if parsing succeeds
             self.type = TYPE_Word2003_XML
+        except KeyboardInterrupt:
+            # do not ignore exceptions when the user presses Ctrl+C/Pause:
+            raise
         except:
             # TODO: differentiate exceptions for each parsing stage
             log.exception('Failed XML parsing for file %r' % self.filename)
@@ -1979,8 +2010,14 @@ class VBA_Parser(object):
                             # TODO: check if it is actually an OLE file
                             # TODO: get the MSO filename from content_location?
                             self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
+                        except KeyboardInterrupt:
+                            # do not ignore exceptions when the user presses Ctrl+C/Pause:
+                            raise
                         except:
                             log.debug('%s does not contain a valid OLE file' % fname)
+                    except KeyboardInterrupt:
+                        # do not ignore exceptions when the user presses Ctrl+C/Pause:
+                        raise
                     except:
                         log.exception('Failed decompressing an MSO container in %r - %s'
                                       % (fname, MSG_OLEVBA_ISSUES))
@@ -1989,10 +2026,16 @@ class VBA_Parser(object):
                     try:
                         log.debug('type(part_data) = %s' % type(part_data))
                         log.debug('part_data[0:20] = %r' % part_data[0:20])
+                    except KeyboardInterrupt:
+                        # do not ignore exceptions when the user presses Ctrl+C/Pause:
+                        raise
                     except:
                         pass
             # set type only if parsing succeeds
             self.type = TYPE_MHTML
+        except KeyboardInterrupt:
+            # do not ignore exceptions when the user presses Ctrl+C/Pause:
+            raise
         except:
             log.exception('Failed MIME parsing for file %r - %s'
                               % (self.filename, MSG_OLEVBA_ISSUES))
@@ -2012,6 +2055,9 @@ class VBA_Parser(object):
             self.contains_macros = True
             # set type only if parsing succeeds
             self.type = TYPE_TEXT
+        except KeyboardInterrupt:
+            # do not ignore exceptions when the user presses Ctrl+C/Pause:
+            raise
         except:
             log.exception('Failed text parsing for file %r - %s'
                               % (self.filename, MSG_OLEVBA_ISSUES))
@@ -2364,6 +2410,9 @@ class VBA_Parser_CLI(VBA_Parser):
                     print self.reveal()
             else:
                 print 'No VBA macros found.'
+        except KeyboardInterrupt:
+            # do not ignore exceptions when the user presses Ctrl+C/Pause:
+            raise
         except:  #TypeError:
             #raise
             #TODO: print more info if debug mode
@@ -2414,6 +2463,9 @@ class VBA_Parser_CLI(VBA_Parser):
                 # file type not OLE nor OpenXML
                 flags = '?'
                 message = 'File format not supported'
+        except KeyboardInterrupt:
+            # do not ignore exceptions when the user presses Ctrl+C/Pause:
+            raise
         except:
             # another error occurred
             #raise
