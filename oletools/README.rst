@@ -26,7 +26,12 @@ Software.
 News
 ----
 
--  **2015-09-22 v0.41**: added new --reveal option to
+-  **2016-02-07 v0.42**: added two new tools oledir and olemap, better
+   handling of malformed files and several bugfixes in
+   `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`__,
+   improved display for
+   `olemeta <https://bitbucket.org/decalage/oletools/wiki/olemeta>`__.
+-  2015-09-22 v0.41: added new --reveal option to
    `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`__, to
    show the macro code with VBA strings deobfuscated.
 -  2015-09-17 v0.40: Improved macro deobfuscation in
@@ -167,7 +172,7 @@ This license applies to the python-oletools package, apart from the
 thirdparty folder which contains third-party files published with their
 own license.
 
-The python-oletools package is copyright (c) 2012-2015 Philippe Lagadec
+The python-oletools package is copyright (c) 2012-2016 Philippe Lagadec
 (http://www.decalage.info)
 
 All rights reserved.

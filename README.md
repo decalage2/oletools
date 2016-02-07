@@ -22,7 +22,10 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2015-09-22 v0.41**: added new --reveal option to [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba),
+- **2016-02-07 v0.42**: added two new tools oledir and olemap, better handling of malformed
+files and several bugfixes in [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba),
+improved display for [olemeta](https://bitbucket.org/decalage/oletools/wiki/olemeta).
+- 2015-09-22 v0.41: added new --reveal option to [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba),
 to show the macro code with VBA strings deobfuscated.
 - 2015-09-17 v0.40: Improved macro deobfuscation in [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba),
 to decode Hex and Base64 within VBA expressions. Display printable deobfuscated strings by 
@@ -116,7 +119,7 @@ License
 This license applies to the python-oletools package, apart from the thirdparty folder which contains third-party files 
 published with their own license.
 
-The python-oletools package is copyright (c) 2012-2015 Philippe Lagadec (http://www.decalage.info)
+The python-oletools package is copyright (c) 2012-2016 Philippe Lagadec (http://www.decalage.info)
 
 All rights reserved.
 
