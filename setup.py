@@ -16,6 +16,7 @@ to install this package.
 # 2015-02-08 v0.08: - added DridexUrlDecoder
 # 2015-03-23 v0.09: - updated description and classifiers, added shebang line
 # 2015-06-16 v0.10: - added pyparsing
+# 2016-02-08 v0.42: - added colorclass, tablestream
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -76,6 +77,8 @@ packages=[
     'oletools.thirdparty.xglob',
     'oletools.thirdparty.DridexUrlDecoder',
     'oletools.thirdparty.pyparsing',
+    'oletools.thirdparty.colorclass',
+    'oletools.thirdparty.tablestream',
 ]
 ##setupdir = '.'
 ##package_dir={'': setupdir}
@@ -173,6 +176,12 @@ package_data={
     'oletools.thirdparty.pyparsing': [
         'LICENSE', 'README',
         ],
+    'oletools.thirdparty.colorclass': [
+        'LICENSE.txt',
+        ],
+    # 'oletools.thirdparty.tablestream': [
+    #     'LICENSE', 'README',
+    #     ],
     }
 
 
