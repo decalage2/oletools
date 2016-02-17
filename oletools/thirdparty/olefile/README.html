@@ -1,19 +1,11 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
-  <meta name="generator" content="pandoc" />
-  <title></title>
-</head>
-<body>
 <h1 id="olefile-formerly-olefileio_pl">olefile (formerly OleFileIO_PL)</h1>
 <p><a href="http://www.decalage.info/olefile">olefile</a> is a Python package to parse, read and write <a href="http://en.wikipedia.org/wiki/Compound_File_Binary_Format">Microsoft OLE2 files</a> (also called Structured Storage, Compound File Binary Format or Compound Document File Format), such as Microsoft Office 97-2003 documents, vbaProject.bin in MS Office 2007+ files, Image Composer and FlashPix files, Outlook messages, StickyNotes, several Microscopy file formats, McAfee antivirus quarantine files, etc.</p>
 <p><strong>Quick links:</strong> <a href="http://www.decalage.info/olefile">Home page</a> - <a href="https://bitbucket.org/decalage/olefileio_pl/wiki/Install">Download/Install</a> - <a href="https://bitbucket.org/decalage/olefileio_pl/wiki">Documentation</a> - <a href="https://bitbucket.org/decalage/olefileio_pl/issues?status=new&amp;status=open">Report Issues/Suggestions/Questions</a> - <a href="http://decalage.info/contact">Contact the author</a> - <a href="https://bitbucket.org/decalage/olefileio_pl">Repository</a> - <a href="https://twitter.com/decalage2">Updates on Twitter</a></p>
 <h2 id="news">News</h2>
-<p>Follow all updates and news on Twitter: <a href="https://twitter.com/decalage2"><code class="url">https://twitter.com/decalage2</code></a></p>
+<p>Follow all updates and news on Twitter: <a href="https://twitter.com/decalage2">https://twitter.com/decalage2</a></p>
 <ul>
-<li><strong>2015-01-25 v0.42</strong>: improved handling of special characters in stream/storage names on Python 2.x (using UTF-8 instead of Latin-1), fixed bug in listdir with empty storages.</li>
+<li><strong>2016-02-02 v0.43</strong>: fixed issues <a href="https://bitbucket.org/decalage/olefileio_pl/issues/26/variable-referenced-before-assignment">#26</a> and <a href="https://bitbucket.org/decalage/olefileio_pl/issues/27/incomplete-ole-stream-incorrect-ole-fat">#27</a>, better handling of malformed files, use python logging.</li>
+<li>2015-01-25 v0.42: improved handling of special characters in stream/storage names on Python 2.x (using UTF-8 instead of Latin-1), fixed bug in listdir with empty storages.</li>
 <li>2014-11-25 v0.41: OleFileIO.open and isOleFile now support OLE files stored in byte strings, fixed installer for python 3, added support for Jython (Niko Ehrenfeuchter)</li>
 <li>2014-10-01 v0.40: renamed OleFileIO_PL to olefile, added initial write support for streams &gt;4K, updated doc and license, improved the setup script.</li>
 <li>2014-07-27 v0.31: fixed support for large files with 4K sectors, thanks to Niko Ehrenfeuchter, Martijn Berger and Dave Jones. Added test scripts from Pillow (by hugovk). Fixed setup for Python 3 (Martin Panter)</li>
@@ -69,7 +61,7 @@
 <p>A real-life example: <a href="http://blog.gregback.net/2011/03/using-remnux-for-forensic-puzzle-6/">using OleFileIO_PL for malware analysis and forensics</a>.</p>
 <p>See also <a href="https://computer-forensics.sans.org/community/papers/gcfa/grow-forensic-tools-taxonomy-python-libraries-helpful-forensic-analysis_6879">this paper</a> about python tools for forensics, which features olefile.</p>
 <h2 id="license">License</h2>
-<p>olefile (formerly OleFileIO_PL) is copyright (c) 2005-2015 Philippe Lagadec (<a href="http://www.decalage.info">http://www.decalage.info</a>)</p>
+<p>olefile (formerly OleFileIO_PL) is copyright (c) 2005-2016 Philippe Lagadec (<a href="http://www.decalage.info">http://www.decalage.info</a>)</p>
 <p>All rights reserved.</p>
 <p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
 <ul>
@@ -87,5 +79,3 @@
 <p>By obtaining, using, and/or copying this software and/or its associated documentation, you agree that you have read, understood, and will comply with the following terms and conditions:</p>
 <p>Permission to use, copy, modify, and distribute this software and its associated documentation for any purpose and without fee is hereby granted, provided that the above copyright notice appears in all copies, and that both that copyright notice and this permission notice appear in supporting documentation, and that the name of Secret Labs AB or the author not be used in advertising or publicity pertaining to distribution of the software without specific, written prior permission.</p>
 <p>SECRET LABS AB AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL SECRET LABS AB OR THE AUTHOR BE LIABLE FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.</p>
-</body>
-</html>

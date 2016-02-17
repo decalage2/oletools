@@ -1,30 +1,35 @@
 olefile (formerly OleFileIO\_PL)
 ================================
 
-`olefile <http://www.decalage.info/olefile>`_ is a Python package to
+`olefile <http://www.decalage.info/olefile>`__ is a Python package to
 parse, read and write `Microsoft OLE2
-files <http://en.wikipedia.org/wiki/Compound_File_Binary_Format>`_ (also
-called Structured Storage, Compound File Binary Format or Compound
+files <http://en.wikipedia.org/wiki/Compound_File_Binary_Format>`__
+(also called Structured Storage, Compound File Binary Format or Compound
 Document File Format), such as Microsoft Office 97-2003 documents,
 vbaProject.bin in MS Office 2007+ files, Image Composer and FlashPix
 files, Outlook messages, StickyNotes, several Microscopy file formats,
 McAfee antivirus quarantine files, etc.
 
-**Quick links:** `Home page <http://www.decalage.info/olefile>`_ -
-`Download/Install <https://bitbucket.org/decalage/olefileio_pl/wiki/Install>`_
-- `Documentation <https://bitbucket.org/decalage/olefileio_pl/wiki>`_ -
+**Quick links:** `Home page <http://www.decalage.info/olefile>`__ -
+`Download/Install <https://bitbucket.org/decalage/olefileio_pl/wiki/Install>`__
+- `Documentation <https://bitbucket.org/decalage/olefileio_pl/wiki>`__ -
 `Report
-Issues/Suggestions/Questions <https://bitbucket.org/decalage/olefileio_pl/issues?status=new&status=open>`_
-- `Contact the author <http://decalage.info/contact>`_ -
-`Repository <https://bitbucket.org/decalage/olefileio_pl>`_ - `Updates
-on Twitter <https://twitter.com/decalage2>`_
+Issues/Suggestions/Questions <https://bitbucket.org/decalage/olefileio_pl/issues?status=new&status=open>`__
+- `Contact the author <http://decalage.info/contact>`__ -
+`Repository <https://bitbucket.org/decalage/olefileio_pl>`__ - `Updates
+on Twitter <https://twitter.com/decalage2>`__
 
 News
 ----
 
 Follow all updates and news on Twitter: https://twitter.com/decalage2
 
--  **2015-01-25 v0.42**: improved handling of special characters in
+-  **2016-02-02 v0.43**: fixed issues
+   `#26 <https://bitbucket.org/decalage/olefileio_pl/issues/26/variable-referenced-before-assignment>`__
+   and
+   `#27 <https://bitbucket.org/decalage/olefileio_pl/issues/27/incomplete-ole-stream-incorrect-ole-fat>`__,
+   better handling of malformed files, use python logging.
+-  2015-01-25 v0.42: improved handling of special characters in
    stream/storage names on Python 2.x (using UTF-8 instead of Latin-1),
    fixed bug in listdir with empty storages.
 -  2014-11-25 v0.41: OleFileIO.open and isOleFile now support OLE files
@@ -44,15 +49,15 @@ Follow all updates and news on Twitter: https://twitter.com/decalage2
    timestamps
 -  2013-05-27 v0.25: improved metadata extraction, properties parsing
    and exception handling, fixed `issue
-   #12 <https://bitbucket.org/decalage/olefileio_pl/issue/12/error-when-converting-timestamps-in-ole>`_
+   #12 <https://bitbucket.org/decalage/olefileio_pl/issue/12/error-when-converting-timestamps-in-ole>`__
 -  2013-05-07 v0.24: new features to extract metadata (get\_metadata
    method and OleMetadata class), improved getproperties to convert
    timestamps to Python datetime
 -  2012-10-09: published
-   `python-oletools <http://www.decalage.info/python/oletools>`_, a
+   `python-oletools <http://www.decalage.info/python/oletools>`__, a
    package of analysis tools based on OleFileIO\_PL
 -  2012-09-11 v0.23: added support for file-like objects, fixed `issue
-   #8 <https://bitbucket.org/decalage/olefileio_pl/issue/8/bug-with-file-object>`_
+   #8 <https://bitbucket.org/decalage/olefileio_pl/issue/8/bug-with-file-object>`__
 -  2012-02-17 v0.22: fixed issues #7 (bug in getproperties) and #2
    (added close method)
 -  2011-10-20: code hosted on bitbucket to ease contributions and bug
@@ -94,27 +99,27 @@ olefile can be used as an independent package or with PIL/Pillow.
 olefile is mostly meant for developers. If you are looking for tools to
 analyze OLE files or to extract data (especially for security purposes
 such as malware analysis and forensics), then please also check my
-`python-oletools <http://www.decalage.info/python/oletools>`_, which are
-built upon olefile and provide a higher-level interface.
+`python-oletools <http://www.decalage.info/python/oletools>`__, which
+are built upon olefile and provide a higher-level interface.
 
 History
 -------
 
 olefile is based on the OleFileIO module from
-`PIL <http://www.pythonware.com/products/pil/index.htm>`_, the excellent
-Python Imaging Library, created and maintained by Fredrik Lundh. The
-olefile API is still compatible with PIL, but since 2005 I have improved
-the internal implementation significantly, with new features, bugfixes
-and a more robust design. From 2005 to 2014 the project was called
-OleFileIO\_PL, and in 2014 I changed its name to olefile to celebrate
-its 9 years and its new write features.
+`PIL <http://www.pythonware.com/products/pil/index.htm>`__, the
+excellent Python Imaging Library, created and maintained by Fredrik
+Lundh. The olefile API is still compatible with PIL, but since 2005 I
+have improved the internal implementation significantly, with new
+features, bugfixes and a more robust design. From 2005 to 2014 the
+project was called OleFileIO\_PL, and in 2014 I changed its name to
+olefile to celebrate its 9 years and its new write features.
 
 As far as I know, olefile is the most complete and robust Python
 implementation to read MS OLE2 files, portable on several operating
 systems. (please tell me if you know other similar Python modules)
 
 Since 2014 olefile/OleFileIO\_PL has been integrated into
-`Pillow <http://python-imaging.github.io/>`_, the friendly fork of PIL.
+`Pillow <http://python-imaging.github.io/>`__, the friendly fork of PIL.
 olefile will continue to be improved as a separate project, and new
 versions will be merged into Pillow regularly.
 
@@ -140,11 +145,11 @@ Documentation
 -------------
 
 Please see the `online
-documentation <https://bitbucket.org/decalage/olefileio_pl/wiki>`_ for
+documentation <https://bitbucket.org/decalage/olefileio_pl/wiki>`__ for
 more information, especially the `OLE
-overview <https://bitbucket.org/decalage/olefileio_pl/wiki/OLE_Overview>`_
+overview <https://bitbucket.org/decalage/olefileio_pl/wiki/OLE_Overview>`__
 and the `API
-page <https://bitbucket.org/decalage/olefileio_pl/wiki/API>`_ which
+page <https://bitbucket.org/decalage/olefileio_pl/wiki/API>`__ which
 describe how to use olefile in Python applications. A copy of the same
 documentation is also provided in the doc subfolder of the olefile
 package.
@@ -153,17 +158,17 @@ Real-life examples
 ------------------
 
 A real-life example: `using OleFileIO\_PL for malware analysis and
-forensics <http://blog.gregback.net/2011/03/using-remnux-for-forensic-puzzle-6/>`_.
+forensics <http://blog.gregback.net/2011/03/using-remnux-for-forensic-puzzle-6/>`__.
 
 See also `this
-paper <https://computer-forensics.sans.org/community/papers/gcfa/grow-forensic-tools-taxonomy-python-libraries-helpful-forensic-analysis_6879>`_
+paper <https://computer-forensics.sans.org/community/papers/gcfa/grow-forensic-tools-taxonomy-python-libraries-helpful-forensic-analysis_6879>`__
 about python tools for forensics, which features olefile.
 
 License
 -------
 
-olefile (formerly OleFileIO\_PL) is copyright (c) 2005-2015 Philippe
-Lagadec (`http://www.decalage.info <http://www.decalage.info>`_)
+olefile (formerly OleFileIO\_PL) is copyright (c) 2005-2016 Philippe
+Lagadec (http://www.decalage.info)
 
 All rights reserved.
 

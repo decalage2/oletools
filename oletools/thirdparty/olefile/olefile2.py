@@ -1166,33 +1166,33 @@ class OleFileIO:
             self._raise_defect(DEFECT_FATAL, "incorrect ByteOrder in OLE header")
             # TODO: add big-endian support for documents created on Mac ?
         self.SectorSize = 2**self.SectorShift
-        debug( "SectorSize   = %d" % self.SectorSize )
+        debug( "sector_size   = %d" % self.SectorSize )
         if self.SectorSize not in [512, 4096]:
-            self._raise_defect(DEFECT_INCORRECT, "incorrect SectorSize in OLE header")
+            self._raise_defect(DEFECT_INCORRECT, "incorrect sector_size in OLE header")
         if (self.DllVersion==3 and self.SectorSize!=512) \
         or (self.DllVersion==4 and self.SectorSize!=4096):
-            self._raise_defect(DEFECT_INCORRECT, "SectorSize does not match DllVersion in OLE header")
+            self._raise_defect(DEFECT_INCORRECT, "sector_size does not match DllVersion in OLE header")
         self.MiniSectorSize = 2**self.MiniSectorShift
-        debug( "MiniSectorSize   = %d" % self.MiniSectorSize )
+        debug( "mini_sector_size   = %d" % self.MiniSectorSize )
         if self.MiniSectorSize not in [64]:
-            self._raise_defect(DEFECT_INCORRECT, "incorrect MiniSectorSize in OLE header")
+            self._raise_defect(DEFECT_INCORRECT, "incorrect mini_sector_size in OLE header")
         if self.Reserved != 0 or self.Reserved1 != 0:
             self._raise_defect(DEFECT_INCORRECT, "incorrect OLE header (non-null reserved bytes)")
         debug( "csectDir     = %d" % self.csectDir )
         if self.SectorSize==512 and self.csectDir!=0:
             self._raise_defect(DEFECT_INCORRECT, "incorrect csectDir in OLE header")
-        debug( "csectFat     = %d" % self.csectFat )
-        debug( "sectDirStart = %X" % self.sectDirStart )
-        debug( "signature    = %d" % self.signature )
+        debug( "num_fat_sectors     = %d" % self.csectFat )
+        debug( "first_dir_sector = %X" % self.sectDirStart )
+        debug( "transaction_signature_number    = %d" % self.signature )
         # Signature should be zero, BUT some implementations do not follow this
         # rule => only a potential defect:
         if self.signature != 0:
-            self._raise_defect(DEFECT_POTENTIAL, "incorrect OLE header (signature>0)")
-        debug( "MiniSectorCutoff = %d" % self.MiniSectorCutoff )
-        debug( "MiniFatStart     = %X" % self.MiniFatStart )
-        debug( "csectMiniFat     = %d" % self.csectMiniFat )
-        debug( "sectDifStart     = %X" % self.sectDifStart )
-        debug( "csectDif         = %d" % self.csectDif )
+            self._raise_defect(DEFECT_POTENTIAL, "incorrect OLE header (transaction_signature_number>0)")
+        debug( "mini_stream_cutoff_size = %d" % self.MiniSectorCutoff )
+        debug( "first_mini_fat_sector     = %X" % self.MiniFatStart )
+        debug( "num_mini_fat_sectors     = %d" % self.csectMiniFat )
+        debug( "first_difat_sector     = %X" % self.sectDifStart )
+        debug( "num_difat_sectors         = %d" % self.csectDif )
 
         # calculate the number of sectors in the file
         # (-1 because header doesn't count)
@@ -1414,9 +1414,9 @@ class OleFileIO:
             if isect_difat not in [ENDOFCHAIN, FREESECT]:
                 # last DIFAT pointer value must be ENDOFCHAIN or FREESECT
                 raise IOError, 'incorrect end of DIFAT'
-##          if len(self.fat) != self.csectFat:
-##              # FAT should contain csectFat blocks
-##              print "FAT length: %d instead of %d" % (len(self.fat), self.csectFat)
+##          if len(self.fat) != self.num_fat_sectors:
+##              # FAT should contain num_fat_sectors blocks
+##              print "FAT length: %d instead of %d" % (len(self.fat), self.num_fat_sectors)
 ##              raise IOError, 'incorrect DIFAT'
         # since FAT is read from fixed-size sectors, it may contain more values
         # than the actual number of sectors in the file.
@@ -1438,7 +1438,7 @@ class OleFileIO:
         # 1) Stream size is calculated according to the number of sectors
         #    declared in the OLE header. This allocated stream may be more than
         #    needed to store the actual sector indexes.
-        # (self.csectMiniFat is the number of sectors of size self.SectorSize)
+        # (self.num_mini_fat_sectors is the number of sectors of size self.sector_size)
         stream_size = self.csectMiniFat * self.SectorSize
         # 2) Actually used size is calculated by dividing the MiniStream size
         #    (given by root entry size) by the size of mini sectors, *4 for
@@ -1565,7 +1565,7 @@ class OleFileIO:
         """
         debug('OleFileIO.open(): sect=%d, size=%d, force_FAT=%s' %
             (start, size, str(force_FAT)))
-        # stream size is compared to the MiniSectorCutoff threshold:
+        # stream size is compared to the mini_stream_cutoff_size threshold:
         if size < self.minisectorcutoff and not force_FAT:
             # ministream object
             if not self.ministream:
