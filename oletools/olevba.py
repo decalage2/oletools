@@ -161,8 +161,9 @@ https://github.com/unixfreak0037/officeparser
 # 2016-01-31       PL: - fixed issue #31 in VBA_Parser.open_mht
 #                      - fixed issue #32 by monkeypatching email.feedparser
 # 2016-02-07       PL: - KeyboardInterrupt is now raised properly
+# 2016-02-20 v0.43 PL: - fixed issue #34 in the VBA parser and vba_chr
 
-__version__ = '0.42'
+__version__ = '0.43'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -531,6 +532,7 @@ class VbaExpressionString(str):
     Then isinstance(s, VbaExpressionString) is True only for VBA expressions.
      (see detect_vba_strings)
     """
+    # TODO: use Unicode everywhere instead of str
     pass
 
 
@@ -588,12 +590,70 @@ vba_expr_int = Forward()
 
 # --- CHR --------------------------------------------------------------------
 
+# MS-VBAL 6.1.2.11.1.4 Chr / Chr$
+# Function Chr(CharCode As Long) As Variant
+# Function Chr$(CharCode As Long) As String
+# Parameter Description
+# CharCode Long whose value is a code point.
+# Returns a String data value consisting of a single character containing the character whose code
+# point is the data value of the argument.
+# - If the argument is not in the range 0 to 255, Error Number 5 ("Invalid procedure call or
+# argument") is raised unless the implementation supports a character set with a larger code point
+# range.
+# - If the argument value is in the range of 0 to 127, it is interpreted as a 7-bit ASCII code point.
+# - If the argument value is in the range of 128 to 255, the code point interpretation of the value is
+# implementation defined.
+# - Chr$ has the same runtime semantics as Chr, however the declared type of its function result is
+# String rather than Variant.
+
+# 6.1.2.11.1.5 ChrB / ChrB$
+# Function ChrB(CharCode As Long) As Variant
+# Function ChrB$(CharCode As Long) As String
+# CharCode Long whose value is a code point.
+# Returns a String data value consisting of a single byte character whose code point value is the
+# data value of the argument.
+# - If the argument is not in the range 0 to 255, Error Number 6 ("Overflow") is raised.
+# - ChrB$ has the same runtime semantics as ChrB however the declared type of its function result
+# is String rather than Variant.
+# - Note: the ChrB function is used with byte data contained in a String. Instead of returning a
+# character, which may be one or two bytes, ChrB always returns a single byte. The ChrW function
+# returns a String containing the Unicode character except on platforms where Unicode is not
+# supported, in which case, the behavior is identical to the Chr function.
+
+# 6.1.2.11.1.6 ChrW/ ChrW$
+# Function ChrW(CharCode As Long) As Variant
+# Function ChrW$(CharCode As Long) As String
+# CharCode Long whose value is a code point.
+# Returns a String data value consisting of a single character containing the character whose code
+# point is the data value of the argument.
+# - If the argument is not in the range -32,767 to 65,535 then Error Number 5 ("Invalid procedure
+# call or argument") is raised.
+# - If the argument is a negative value it is treated as if it was the value: CharCode + 65,536.
+# - If the implemented uses 16-bit Unicode code points argument, data value is interpreted as a 16-
+# bit Unicode code point.
+# - If the implementation does not support Unicode, ChrW has the same semantics as Chr.
+# - ChrW$ has the same runtime semantics as ChrW, however the declared type of its function result
+# is String rather than Variant.
+
 # Chr, Chr$, ChrB, ChrW(int) => char
 vba_chr = Suppress(
             Combine(WordStart(vba_identifier_chars) + CaselessLiteral('Chr')
             + Optional(CaselessLiteral('B') | CaselessLiteral('W')) + Optional('$'))
             + '(') + vba_expr_int + Suppress(')')
-vba_chr.setParseAction(lambda t: VbaExpressionString(chr(t[0])))
+
+def vba_chr_tostr(t):
+    try:
+        i = t[0]
+        # normal, non-unicode character:
+        if i>=0 and i<=255:
+            return VbaExpressionString(chr(i))
+        else:
+            return VbaExpressionString(unichr(i).encode('utf-8', 'backslashreplace'))
+    except ValueError:
+        log.exception('ERROR: incorrect parameter value for chr(): %r' % i)
+        return VbaExpressionString('Chr(%r)' % i)
+
+vba_chr.setParseAction(vba_chr_tostr)
 
 
 # --- ASC --------------------------------------------------------------------
@@ -735,8 +795,8 @@ vba_expr_int <<= infixNotation(vba_expr_int_item,
     [
         ("*", 2, opAssoc.LEFT, multiply_ints_list),
         ("/", 2, opAssoc.LEFT, divide_ints_list),
-        ("+", 2, opAssoc.LEFT, sum_ints_list),
         ("-", 2, opAssoc.LEFT, subtract_ints_list),
+        ("+", 2, opAssoc.LEFT, sum_ints_list),
     ])
 
 
