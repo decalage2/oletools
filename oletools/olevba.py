@@ -2520,10 +2520,19 @@ def main():
                       help='if the file is a zip archive, open all files from it, using the provided password (requires Python 2.6+)')
     parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
                       help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
-    parser.add_option("-t", '--triage', action="store_true", dest="triage_mode",
-                      help='triage mode, display results as a summary table (default for multiple files)')
-    parser.add_option("-d", '--detailed', action="store_true", dest="detailed_mode",
-                      help='detailed mode, display full results (default for single file)')
+    # output mode; could make this even simpler with add_option(type='choice') but that would make
+    # cmd line interface incompatible...
+    modes = optparse.OptionGroup(parser, title='Output mode (mutually exclusive)')
+    modes.add_option("-t", '--triage', action="store_const", dest="output_mode",
+                     const='triage', default='unspecified',
+                     help='triage mode, display results as a summary table (default for multiple files)')
+    modes.add_option("-d", '--detailed', action="store_const", dest="output_mode",
+                     const='detailed', default='unspecified',
+                     help='detailed mode, display full results (default for single file)')
+    modes.add_option("-j", '--json', action="store_const", dest="output_mode",
+                     const='json', default='unspecified',
+                     help='json mode, detailed in json format (never default)')
+    parser.add_option_group(modes)
     parser.add_option("-a", '--analysis', action="store_false", dest="display_code", default=True,
                       help='display only analysis results, not the macro source code')
     parser.add_option("-c", '--code', action="store_true", dest="vba_code_only", default=False,
@@ -2546,6 +2555,8 @@ def main():
     # TODO: --novba to disable VBA expressions parsing
 
     (options, args) = parser.parse_args()
+    print options.output_mode
+    sys.exit()
 
     # Print help if no arguments are passed
     if len(args) == 0:
@@ -2573,8 +2584,9 @@ def main():
     # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('Type', 'Macros', 'AutoEx', 'Susp.', 'IOCs', 'HexStr')
     # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('-'*8, '-'*7, '-'*7, '-'*7, '-'*7, '-'*7)
 
-    # Column headers (except if detailed mode)
-    if not options.detailed_mode or options.triage_mode:
+    # Column headers (do not know how many files there will be yet, so if no output_mode
+    # was specified, we will print triage for first file --> need these headers)
+    if options.output_mode in ('triage', 'unspecified'):
         print '%-12s %-65s' % ('Flags', 'Filename')
         print '%-12s %-65s' % ('-' * 11, '-' * 65)
 
@@ -2589,13 +2601,13 @@ def main():
             continue
         # Open the file
         vba_parser = VBA_Parser_CLI(filename, data=data, container=container)
-        if options.detailed_mode and not options.triage_mode:
+        if options.output_mode == 'detailed':
             # fully detailed output
             vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
                          display_code=options.display_code, global_analysis=True, #options.global_analysis,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
                          show_deobfuscated_code=options.show_deobfuscated_code)
-        else:
+        elif options.output_mode in ('triage', 'unspecified'):
             # print container name when it changes:
             if container != previous_container:
                 if container is not None:
@@ -2603,14 +2615,18 @@ def main():
                 previous_container = container
             # summarized output for triage:
             vba_parser.process_file_triage(show_decoded_strings=options.show_decoded_strings)
+        elif options.output_mode == 'json':
+            raise NotImplementedError('about to add json output!')
+        else:  # (should be impossible)
+            raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
         count += 1
-    if not options.detailed_mode or options.triage_mode:
+    if options.output_mode == 'triage':
         print '\n(Flags: OpX=OpenXML, XML=Word2003XML, MHT=MHTML, TXT=Text, M=Macros, ' \
               'A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex strings, ' \
               'B=Base64 strings, D=Dridex strings, V=VBA strings, ?=Unknown)\n'
 
-    if count == 1 and not options.triage_mode and not options.detailed_mode:
-        # if options -t and -d were not specified and it's a single file, print details:
+    if count == 1 and options.output_mode == 'unspecified':
+        # if options -t, -d and -j were not specified and it's a single file, print details:
         vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
                          display_code=options.display_code, global_analysis=True, #options.global_analysis,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
