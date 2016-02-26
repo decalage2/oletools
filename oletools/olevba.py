@@ -161,6 +161,7 @@ https://github.com/unixfreak0037/officeparser
 # 2016-01-31       PL: - fixed issue #31 in VBA_Parser.open_mht
 #                      - fixed issue #32 by monkeypatching email.feedparser
 # 2016-02-07       PL: - KeyboardInterrupt is now raised properly
+# 2016-02-26       CH: - Add json output
 
 __version__ = '0.42'
 
@@ -212,6 +213,7 @@ import traceback
 import zlib
 import email  # for MHTML parsing
 import string # for printable
+import json   # for json output mode (argument --json)
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -2349,6 +2351,20 @@ class VBA_Parser_CLI(VBA_Parser):
         else:
             print 'No suspicious keyword or IOC found.'
 
+    def print_analysis_json(self, show_decoded_strings=False):
+        """
+        Analyze the provided VBA code, and return the results in json format
+
+        :param vba_code: str, VBA source code to be analyzed
+        :param show_decoded_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
+        :return: dict
+        """
+        # print a waiting message only if the output is not redirected to a file:
+        if sys.stdout.isatty():
+            print 'Analysis...\r',
+            sys.stdout.flush()
+        return [dict(type=kw_type, keyword=keyword, description=description)
+                for kw_type, keyword, description in self.analyze_macros(show_decoded_strings)]
 
     def process_file(self, show_decoded_strings=False,
                      display_code=True, global_analysis=True, hide_attributes=True,
@@ -2420,6 +2436,81 @@ class VBA_Parser_CLI(VBA_Parser):
             # display the exception with full stack trace for debugging, but do not stop:
             traceback.print_exc()
         print ''
+
+
+    def process_file_json(self, show_decoded_strings=False,
+                          display_code=True, global_analysis=True, hide_attributes=True,
+                          vba_code_only=False, show_deobfuscated_code=False):
+        """
+        Process a single file
+        
+        every "show" or "print" here is to be translated as "add to json"
+
+        :param filename: str, path and filename of file on disk, or within the container.
+        :param data: bytes, content of the file if it is in a container, None if it is a file on disk.
+        :param show_decoded_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
+        :param display_code: bool, if False VBA source code is not displayed (default True)
+        :param global_analysis: bool, if True all modules are merged for a single analysis (default),
+                                otherwise each module is analyzed separately (old behaviour)
+        :param hide_attributes: bool, if True the first lines starting with "Attribute VB" are hidden (default)
+        """
+        #TODO: fix conflicting parameters (?)
+
+        if vba_code_only and not display_code:
+            display_code = True
+
+        result = {}
+
+        if self.container:
+            result['container'] = self.container
+        else:
+            result['container'] = None
+        result['file'] = self.filename
+        result['json_conversion_successful'] = False
+        result['analysis'] = None
+        result['code_deobfuscated'] = None
+
+        try:
+            #TODO: handle olefile errors, when an OLE file is malformed
+            result['type'] = self.type
+            macros = []
+            if self.detect_vba_macros():
+                for (subfilename, stream_path, vba_filename, vba_code) in self.extract_all_macros():
+                    curr_macro = {}
+                    if hide_attributes:
+                        # hide attribute lines:
+                        vba_code_filtered = filter_vba(vba_code)
+                    else:
+                        vba_code_filtered = vba_code
+
+                    curr_macro['vba_filename'] = vba_filename
+                    curr_macro['subfilename'] = subfilename
+                    curr_macro['ole_stream'] = stream_path
+                    if display_code:
+                        curr_macro['code'] = vba_code_filtered.strip()
+                    if not global_analysis and not vba_code_only:
+                        # analyse each module's code, filtered to avoid false positives:
+                        #TODO: remove this option
+                        curr_macro['analysis'] = self.print_analysis_json(show_decoded_strings)
+                    macros.append(curr_macro)
+                if global_analysis and not vba_code_only:
+                    # analyse the code from all modules at once:
+                    result['analysis'] = self.print_analysis_json(show_decoded_strings)
+                if show_deobfuscated_code:
+                    result['code_deobfuscated'] = self.reveal()
+            result['macros'] = macros
+            result['json_conversion_successful'] = True
+        except KeyboardInterrupt:
+            # do not ignore exceptions when the user presses Ctrl+C/Pause:
+            raise
+        except:  #TypeError:
+            #raise
+            #TODO: print more info if debug mode
+            #print sys.exc_value
+            # display the exception with full stack trace for debugging, but do not stop:
+            traceback.print_exc()
+
+        return result
 
 
     def process_file_triage(self, show_decoded_strings=False):
@@ -2555,8 +2646,6 @@ def main():
     # TODO: --novba to disable VBA expressions parsing
 
     (options, args) = parser.parse_args()
-    print options.output_mode
-    sys.exit()
 
     # Print help if no arguments are passed
     if len(args) == 0:
@@ -2564,8 +2653,13 @@ def main():
         parser.print_help()
         sys.exit()
 
-    # print banner with version
-    print 'olevba %s - http://decalage.info/python/oletools' % __version__
+    # provide info about tool and its version
+    if options.output_mode == 'json':
+        json_results = [dict(script_name='olevba', version=__version__,
+                             url='http://decalage.info/python/oletools',
+                             type='MetaInformation'), ]
+    else:
+        print 'olevba %s - http://decalage.info/python/oletools' % __version__
 
     logging.basicConfig(level=LOG_LEVELS[options.loglevel], format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
@@ -2616,7 +2710,11 @@ def main():
             # summarized output for triage:
             vba_parser.process_file_triage(show_decoded_strings=options.show_decoded_strings)
         elif options.output_mode == 'json':
-            raise NotImplementedError('about to add json output!')
+            json_results.append(
+                vba_parser.process_file_json(show_decoded_strings=options.show_decoded_strings,
+                         display_code=options.display_code, global_analysis=True, #options.global_analysis,
+                         hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
+                         show_deobfuscated_code=options.show_deobfuscated_code))
         else:  # (should be impossible)
             raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
         count += 1
@@ -2631,6 +2729,19 @@ def main():
                          display_code=options.display_code, global_analysis=True, #options.global_analysis,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
                          show_deobfuscated_code=options.show_deobfuscated_code)
+
+    if options.output_mode == 'json':
+        json_options = dict(check_circular=False, indent=4, ensure_ascii=False)
+        # from python json doc for ensure_ascii=False: "unless [target for json
+        # output] explicitly understands unicode (as in codecs.getwriter())
+        # this is likely to cause an error."
+        # If option --decode is given, data is likely to contain non-ascii data
+        
+        if False:  # options.outfile: # (option currently commented out)
+            with open(outfile, 'w') as write_handle:
+                json.dump(write_handle, **json_options)
+        else:
+            print json.dumps(json_results, **json_options)
 
 
 if __name__ == '__main__':
