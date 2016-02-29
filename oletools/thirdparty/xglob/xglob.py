@@ -20,7 +20,7 @@ For more info and updates: http://www.decalage.info/xglob
 
 # LICENSE:
 #
-# xglob is copyright (c) 2013-2015, Philippe Lagadec (http://www.decalage.info)
+# xglob is copyright (c) 2013-2016, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -50,8 +50,10 @@ For more info and updates: http://www.decalage.info/xglob
 # 2014-01-14 v0.02 PL: - added riglob, ziglob
 # 2014-12-26 v0.03 PL: - moved code from balbuzard into a separate package
 # 2015-01-03 v0.04 PL: - fixed issues in iter_files + yield container name
+# 2016-02-24 v0.05 PL: - do not stop on exceptions, return them as data
+#                      - fixed issue when using wildcards with empty path
 
-__version__ = '0.04'
+__version__ = '0.05'
 
 
 #=== IMPORTS =================================================================
@@ -83,6 +85,10 @@ def riglob (pathname):
     filenames, using wildcards, e.g. *.txt
     """
     path, filespec = os.path.split(pathname)
+    # fix path if empty:
+    if path == '':
+        path = '.'
+    # print 'riglob: path=%r, filespec=%r' % (path, filespec)
     for dirpath, dirnames, files in os.walk(path):
         for f in fnmatch.filter(files, filespec):
             yield os.path.join(dirpath, f)
@@ -118,6 +124,7 @@ def iter_files(files, recursive=False, zip_password=None, zip_fname='*'):
     #TODO: catch exceptions and yield them for the caller (no file found, file is not zip, wrong password, etc)
     #TODO: use logging instead of printing
     #TODO: split in two simpler functions, the caller knows if it's a zip or not
+    # print 'iter_files: files=%r, recursive=%s' % (files, recursive)
     # choose recursive or non-recursive iglob:
     if recursive:
         iglob = riglob
@@ -132,8 +139,11 @@ def iter_files(files, recursive=False, zip_password=None, zip_fname='*'):
                 #print 'Looking for file(s) matching "%s"' % zip_fname
                 for subfilename in ziglob(z, zip_fname):
                     #print 'Opening file in zip archive:', filename
-                    data = z.read(subfilename, zip_password)
-                    yield filename, subfilename, data
+                    try:
+                        data = z.read(subfilename, zip_password)
+                        yield filename, subfilename, data
+                    except Exception as e:
+                        yield filename, subfilename, e
                 z.close()
             else:
                 # normal file
