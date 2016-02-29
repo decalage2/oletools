@@ -162,6 +162,7 @@ https://github.com/unixfreak0037/officeparser
 #                      - fixed issue #32 by monkeypatching email.feedparser
 # 2016-02-07       PL: - KeyboardInterrupt is now raised properly
 # 2016-02-20 v0.43 PL: - fixed issue #34 in the VBA parser and vba_chr
+# 2016-02-29       PL: - added Workbook_Activate to suspicious keywords
 
 __version__ = '0.43'
 
@@ -334,7 +335,7 @@ AUTOEXEC_KEYWORDS = {
 
     # MS Excel:
     'Runs when the Excel Workbook is opened':
-        ('Auto_Open', 'Workbook_Open'),
+        ('Auto_Open', 'Workbook_Open', 'Workbook_Activate'),
     'Runs when the Excel Workbook is closed':
         ('Auto_Close', 'Workbook_Close'),
 
