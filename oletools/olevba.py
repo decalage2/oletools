@@ -162,6 +162,7 @@ https://github.com/unixfreak0037/officeparser
 #                      - fixed issue #32 by monkeypatching email.feedparser
 # 2016-02-07       PL: - KeyboardInterrupt is now raised properly
 # 2016-02-26       CH: - Add json output
+# 2016-03-04       CH: - convert json to ascii in own function
 
 __version__ = '0.42'
 
@@ -1592,6 +1593,28 @@ def detect_vba_strings(vba_code):
     return results
 
 
+def json2ascii(json_obj, encoding='utf8', errors='replace'):
+    if json_obj is None:
+        pass
+    elif isinstance(json_obj, (str, bool, int, float)):
+        pass
+    elif isinstance(json_obj, unicode):
+        logging.debug('json2ascii: replaced: {0}'.format(json_obj.encode(encoding, errors)))
+        # cannot put original into logger
+        # print 'original: ' json_obj
+        return json_obj.encode(encoding, errors)
+    elif isinstance(json_obj, dict):
+        for key in json_obj:
+            json_obj[key] = json2ascii(json_obj[key])
+    elif isinstance(json_obj, (list,tuple)):
+        for item in json_obj:
+            item = json2ascii(item)
+    else:
+        logging.debug('unexpected type in json2ascii: {0} -- leave as is'
+                      .format(type(json_obj)))
+    return json_obj
+
+
 class VBA_Scanner(object):
     """
     Class to scan the source code of a VBA module to find obfuscated strings,
@@ -2732,10 +2755,10 @@ def main():
 
     if options.output_mode == 'json':
         json_options = dict(check_circular=False, indent=4, ensure_ascii=False)
-        # from python json doc for ensure_ascii=False: "unless [target for json
-        # output] explicitly understands unicode (as in codecs.getwriter())
-        # this is likely to cause an error."
-        # If option --decode is given, data is likely to contain non-ascii data
+        
+        # json.dump[s] cannot deal with unicode objects that are not properly
+        # encoded --> encode in own function:
+        json_results = json2ascii(json_results)
         
         if False:  # options.outfile: # (option currently commented out)
             with open(outfile, 'w') as write_handle:
