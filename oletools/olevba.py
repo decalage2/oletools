@@ -1594,12 +1594,26 @@ def detect_vba_strings(vba_code):
 
 
 def json2ascii(json_obj, encoding='utf8', errors='replace'):
+    """ ensure there is no unicode in json and all strings are safe to decode
+
+    works recursively, decodes and re-encodes every string to/from unicode
+    to ensure there will be no trouble in loading the dumped json output
+    """
     if json_obj is None:
         pass
-    elif isinstance(json_obj, (str, bool, int, float)):
+    elif isinstance(json_obj, (bool, int, float)):
         pass
+    elif isinstance(json_obj, str):
+        dencoded = json_obj.decode(encoding, errors).encode(encoding, errors)
+        if dencoded != str:
+            logging.info('json2ascii: replaced: {0} (len {1})'
+                         .format(json_obj, len(json_obj)))
+            logging.info('json2ascii:     with: {0} (len {1})'
+                         .format(dencoded, len(dencoded)))
+        return dencoded
     elif isinstance(json_obj, unicode):
-        logging.debug('json2ascii: replaced: {0}'.format(json_obj.encode(encoding, errors)))
+        logging.info('json2ascii: replaced: {0}'
+                     .format(json_obj.encode(encoding, errors)))
         # cannot put original into logger
         # print 'original: ' json_obj
         return json_obj.encode(encoding, errors)
@@ -2759,13 +2773,31 @@ def main():
         # json.dump[s] cannot deal with unicode objects that are not properly
         # encoded --> encode in own function:
         json_results = json2ascii(json_results)
-        
+        #print_json(json_results)
+
         if False:  # options.outfile: # (option currently commented out)
             with open(outfile, 'w') as write_handle:
                 json.dump(write_handle, **json_options)
         else:
             print json.dumps(json_results, **json_options)
 
+
+def print_json(j):
+    if isinstance(j, dict):
+        for key, val in j.items():
+            print_json(key)
+            print_json(val)
+    elif isinstance(j, list):
+        for elem in j:
+            print_json(elem)
+    else:
+        try:
+            if len(j) > 20:
+                print type(j), repr(j[:20]), '...(len {0})'.format(len(j))
+            else:
+                print type(j), repr(j)
+        except TypeError:
+            print type(j), repr(j)
 
 if __name__ == '__main__':
     main()
