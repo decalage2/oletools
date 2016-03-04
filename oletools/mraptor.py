@@ -48,8 +48,9 @@ http://www.decalage.info/python/oletools
 # CHANGELOG:
 # 2016-02-23 v0.01 PL: - first version
 # 2016-02-29 v0.02 PL: - added Workbook_Activate, FileSaveAs
+# 2016-03-04 v0.03 PL: - returns an exit code based on the overall result
 
-__version__ = '0.01'
+__version__ = '0.03'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -112,6 +113,36 @@ TYPE2TAG = {
 
 
 # === CLASSES =================================================================
+
+class Result_NoMacro(object):
+    exit_code = 0
+    color = 'green'
+    name = 'No Macro'
+
+
+class Result_NotMSOffice(object):
+    exit_code = 1
+    color = 'green'
+    name = 'Not MS Office'
+
+
+class Result_MacroOK(object):
+    exit_code = 2
+    color = 'cyan'
+    name = 'Macro OK'
+
+
+class Result_Error(object):
+    exit_code = 10
+    color = 'yellow'
+    name = 'ERROR'
+
+
+class Result_Suspicious(object):
+    exit_code = 20
+    color = 'red'
+    name = 'SUSPICIOUS'
+
 
 class MacroRaptor(object):
     """
@@ -202,6 +233,9 @@ def main():
     if len(args) == 0:
         print __doc__
         parser.print_help()
+        print '\nAn exit code is returned based on the analysis result:'
+        for result in (Result_NoMacro, Result_NotMSOffice, Result_MacroOK, Result_Error, Result_Suspicious):
+            print ' - %d: %s' % (result.exit_code, result.name)
         sys.exit()
 
     # print banner with version
@@ -216,6 +250,8 @@ def main():
             header_row=['Result', 'Flags', 'Type', 'File'],
             column_width=[10, 5, 4, 56])
 
+    exitcode = -1
+    global_result = None
     # TODO: handle errors in xglob, to continue processing the next files
     for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
                                                       zip_password=options.zip_password, zip_fname=options.zip_fname):
@@ -231,24 +267,24 @@ def main():
         #     log.exception('Error when opening file %r' % full_name)
         #     continue
         if isinstance(data, Exception):
-            result = '* ERROR *'
-            result_color = 'yellow'
-            t.write_row([result, '', '', full_name],
-                        colors=[result_color, None, None, None])
+            result = Result_Error
+            t.write_row([result.name, '', '', full_name],
+                        colors=[result.color, None, None, None])
             t.write_row(['', '', '', str(data)],
-                        colors=[None, None, None, result_color])
+                        colors=[None, None, None, result.color])
         else:
+            filetype = '???'
             try:
                 vba_parser = olevba.VBA_Parser(filename=filename, data=data, container=container)
                 filetype = TYPE2TAG[vba_parser.type]
             except Exception as e:
                 # log.error('Error when parsing VBA macros from file %r' % full_name)
-                result = '* ERROR *'
-                result_color = 'yellow'
-                t.write_row([result, '', TYPE2TAG[vba_parser.type], full_name],
-                            colors=[result_color, None, None, None])
+                # TODO: distinguish actual errors from non-MSOffice files
+                result = Result_Error
+                t.write_row([result.name, '', filetype, full_name],
+                            colors=[result.color, None, None, None])
                 t.write_row(['', '', '', str(e)],
-                            colors=[None, None, None, result_color])
+                            colors=[None, None, None, result.color])
                 continue
             if vba_parser.detect_vba_macros():
                 vba_code_all_modules = ''
@@ -257,33 +293,34 @@ def main():
                         vba_code_all_modules += vba_code + '\n'
                 except Exception as e:
                     # log.error('Error when parsing VBA macros from file %r' % full_name)
-                    result = '* ERROR *'
-                    result_color = 'yellow'
-                    t.write_row([result, '', TYPE2TAG[vba_parser.type], full_name],
-                                colors=[result_color, None, None, None])
+                    result = Result_Error
+                    t.write_row([result.name, '', TYPE2TAG[vba_parser.type], full_name],
+                                colors=[result.color, None, None, None])
                     t.write_row(['', '', '', str(e)],
-                                colors=[None, None, None, result_color])
+                                colors=[None, None, None, result.color])
                     continue
                 mraptor = MacroRaptor(vba_code_all_modules)
                 mraptor.scan()
                 if mraptor.suspicious:
-                    result = 'SUSPICIOUS'
-                    result_color = 'red'
+                    result = Result_Suspicious
                 else:
-                    result = 'Macro OK'
-                    result_color = 'cyan'
-                t.write_row([result, mraptor.get_flags(), filetype, full_name],
-                            colors=[result_color, None, None, None])
+                    result = Result_MacroOK
+                t.write_row([result.name, mraptor.get_flags(), filetype, full_name],
+                            colors=[result.color, None, None, None])
                 if mraptor.matches and options.show_matches:
                     t.write_row(['', '', '', 'Matches: %r' % mraptor.matches])
             else:
-                result = 'No Macro'
-                result_color = 'green'
-                t.write_row([result, '', filetype, full_name],
-                            colors=[result_color, None, None, None])
+                result = Result_NoMacro
+                t.write_row([result.name, '', filetype, full_name],
+                            colors=[result.color, None, None, None])
+        if result.exit_code > exitcode:
+            global_result = result
+            exitcode = result.exit_code
 
     print ''
     print 'Flags: A=AutoExec, W=Write, X=Execute'
+    print 'Exit code: %d - %s' % (exitcode, global_result.name)
+    sys.exit(exitcode)
 
 if __name__ == '__main__':
     main()
