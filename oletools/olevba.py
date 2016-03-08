@@ -163,8 +163,9 @@ https://github.com/unixfreak0037/officeparser
 # 2016-02-07       PL: - KeyboardInterrupt is now raised properly
 # 2016-02-20 v0.43 PL: - fixed issue #34 in the VBA parser and vba_chr
 # 2016-02-29       PL: - added Workbook_Activate to suspicious keywords
+# 2016-03-08 v0.44 PL: - added VBA Form strings extraction and analysis
 
-__version__ = '0.43'
+__version__ = '0.44'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -509,6 +510,9 @@ BASE64_WHITELIST = set(['thisdocument', 'thisworkbook', 'test', 'temp', 'http', 
 re_dridex_string = re.compile(r'"[0-9A-Za-z]{20,}"')
 # regex to check that it is not just a hex string:
 re_nothex_check = re.compile(r'[G-Zg-z]')
+
+# regex to extract printable strings (at least 5 chars) from VBA Forms:
+re_printable_string = re.compile(r'[\t\r\n\x20-\xFF]{5,}')
 
 
 # === PARTIAL VBA GRAMMAR ====================================================
@@ -1861,6 +1865,7 @@ class VBA_Parser(object):
         self.container = container
         self.type = None
         self.vba_projects = None
+        self.vba_forms = None
         self.contains_macros = None # will be set to True or False by detect_macros
         self.vba_code_all_modules = None # to store the source code of all modules
         # list of tuples for each module: (subfilename, stream_path, vba_filename, vba_code)
@@ -2304,6 +2309,8 @@ class VBA_Parser(object):
                 for (subfilename, stream_path, vba_filename, vba_code) in self.extract_all_macros():
                     #TODO: filter code? (each module)
                     self.vba_code_all_modules += vba_code + '\n'
+                for (subfilename, form_path, form_string) in self.extract_form_strings():
+                    self.vba_code_all_modules += form_string + '\n'
             # Analyze the whole code at once:
             scanner = VBA_Scanner(self.vba_code_all_modules)
             self.analysis_results = scanner.scan(show_decoded_strings)
@@ -2336,6 +2343,95 @@ class VBA_Parser(object):
                 deobf_code = deobf_code.replace(encoded, '"%s"' % decoded)
         return deobf_code
         #TODO: repasser l'analyse plusieurs fois si des chaines hex ou base64 sont revelees
+
+
+    def find_vba_forms(self):
+        """
+        Finds all the VBA forms stored in an OLE file.
+
+        Return None if the file is not OLE but OpenXML.
+        Return a list of tuples (vba_root, project_path, dir_path) for each VBA project.
+        vba_root is the path of the root OLE storage containing the VBA project,
+        including a trailing slash unless it is the root of the OLE file.
+        project_path is the path of the OLE stream named "PROJECT" within the VBA project.
+        dir_path is the path of the OLE stream named "VBA/dir" within the VBA project.
+
+        If this function returns an empty list for one of the supported formats
+        (i.e. Word, Excel, Powerpoint except Powerpoint 97-2003), then the
+        file does not contain VBA macros.
+
+        :return: None if OpenXML file, list of tuples (vba_root, project_path, dir_path)
+        for each VBA project found if OLE file
+        """
+        log.debug('VBA_Parser.find_vba_forms')
+        # if the file is not OLE but OpenXML, return None:
+        if self.ole_file is None:
+            return None
+
+        # if this method has already been called, return previous result:
+        # if self.vba_projects is not None:
+        #     return self.vba_projects
+
+        # According to MS-OFORMS section 2.1.2 Control Streams:
+        # - A parent control, that is, a control that can contain embedded controls,
+        #   MUST be persisted as a storage that contains multiple streams.
+        # - All parent controls MUST contain a FormControl. The FormControl
+        #   properties are persisted to a stream (1) as specified in section 2.1.1.2.
+        #   The name of this stream (1) MUST be "f".
+        # - Embedded controls that cannot themselves contain other embedded
+        #   controls are persisted sequentially as FormEmbeddedActiveXControls
+        #   to a stream (1) contained in the same storage as the parent control.
+        #   The name of this stream (1) MUST be "o".
+        # - all names are case-insensitive
+
+        # start with an empty list:
+        self.vba_forms = []
+        # Look for any storage containing those storage/streams:
+        ole = self.ole_file
+        for storage in ole.listdir(streams=False, storages=True):
+            log.debug('Checking storage %r' % storage)
+            # Look for two streams named 'o' and 'f':
+            o_stream = storage + ['o']
+            f_stream = storage + ['f']
+            log.debug('Checking if streams %r and %r exist' % (f_stream, o_stream))
+            if ole.exists(o_stream) and ole.get_type(o_stream) == olefile.STGTY_STREAM \
+            and ole.exists(f_stream) and ole.get_type(f_stream) == olefile.STGTY_STREAM:
+                form_path = '/'.join(storage)
+                log.debug('Found VBA Form: %r' % form_path)
+                self.vba_forms.append(storage)
+        return self.vba_forms
+
+    def extract_form_strings(self):
+        """
+        Extract printable strings from each VBA Form found in the file
+
+        Iterator: yields (filename, stream_path, vba_filename, vba_code) for each VBA macro found
+        If the file is OLE, filename is the path of the file.
+        If the file is OpenXML, filename is the path of the OLE subfile containing VBA macros
+        within the zip archive, e.g. word/vbaProject.bin.
+        """
+        if self.ole_file is None:
+            # This may be either an OpenXML or a text file:
+            if self.type == TYPE_TEXT:
+                # This is a text file, return no results:
+                return
+            else:
+                # OpenXML: recursively yield results from each OLE subfile:
+                for ole_subfile in self.ole_subfiles:
+                    for results in ole_subfile.extract_form_strings():
+                        yield results
+        else:
+            # This is an OLE file:
+            self.find_vba_forms()
+            ole = self.ole_file
+            for form_storage in self.vba_forms:
+                o_stream = form_storage + ['o']
+                log.debug('Opening form object stream %r' % '/'.join(o_stream))
+                form_data = ole.openstream(o_stream).read()
+                # Extract printable strings from the form object stream "o":
+                for m in re_printable_string.finditer(form_data):
+                    log.debug('Printable string found in form: %r' % m.group())
+                    yield (self.filename, '/'.join(o_stream), m.group())
 
 
     def close(self):
@@ -2463,6 +2559,11 @@ class VBA_Parser_CLI(VBA_Parser):
                         print 'ANALYSIS:'
                         # analyse each module's code, filtered to avoid false positives:
                         self.print_analysis(show_decoded_strings)
+                for (subfilename, stream_path, form_string) in self.extract_form_strings():
+                    print '-' * 79
+                    print 'VBA FORM STRING IN %r - OLE stream: %r' % (subfilename, stream_path)
+                    print '- ' * 39
+                    print form_string
                 if global_analysis and not vba_code_only:
                     # analyse the code from all modules at once:
                     self.print_analysis(show_decoded_strings)
