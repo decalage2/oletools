@@ -2,8 +2,8 @@
 """
 mraptor.py - MacroRaptor
 
-MacroRaptor is a script to parse OLE and OpenXML files such as MS Office documents
-(e.g. Word, Excel), to detect malicious macros.
+MacroRaptor is a script to parse OLE and OpenXML files such as MS Office
+documents (e.g. Word, Excel), to detect malicious macros.
 
 Supported formats:
 - Word 97-2003 (.doc, .dot), Word 2007+ (.docm, .dotm)
@@ -49,8 +49,9 @@ http://www.decalage.info/python/oletools
 # 2016-02-23 v0.01 PL: - first version
 # 2016-02-29 v0.02 PL: - added Workbook_Activate, FileSaveAs
 # 2016-03-04 v0.03 PL: - returns an exit code based on the overall result
+# 2016-03-08 v0.04 PL: - collapse long lines before analysis
 
-__version__ = '0.03'
+__version__ = '0.04'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -153,8 +154,8 @@ class MacroRaptor(object):
         MacroRaptor constructor
         :param vba_code: string containing the VBA macro code
         """
-        # TODO: collapse long lines first
-        self.vba_code = vba_code
+        # collapse long lines first
+        self.vba_code = olevba.vba_collapse_long_lines(vba_code)
         self.autoexec = False
         self.write = False
         self.execute = False
