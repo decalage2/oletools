@@ -1,4 +1,4 @@
-python-oletools v0.41 documentation
+python-oletools v0.44 documentation
 ===================================
 
 This is the home page of the documentation for python-oletools. The latest version can be found 
@@ -26,14 +26,18 @@ Tools in python-oletools:
 
 - **[[olebrowse]]**: A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to
   view and extract individual data streams.
-- **[[oleid]]**: a tool to analyze OLE files to detect specific characteristics usually found in malicious files.
-- **[[olemeta]]**: a tool to extract all standard properties (metadata) from OLE files.
-- **[[oletimes]]**: a tool to extract creation and modification timestamps of all streams and storages.
-- **[[olevba]]**: a tool to extract and analyze VBA Macro source code from MS Office documents (OLE and OpenXML).
-- **[[pyxswf]]**: a tool to detect, extract and analyze Flash objects (SWF) that may
+- **[[oleid]]**: to analyze OLE files to detect specific characteristics usually found in malicious files.
+- **[[olemeta]]**: to extract all standard properties (metadata) from OLE files.
+- **[[oletimes]]**: to extract creation and modification timestamps of all streams and storages.
+- **[[oledir]]**: to display all the directory entries of an OLE file, including free and orphaned entries.
+- **[[olemap]]**: to display a map of all the sectors in an OLE file.
+- **[[olevba]]**: to extract and analyze VBA Macro source code from MS Office documents (OLE and OpenXML).
+- **[[mraptor]]**: to detect malicious VBA Macros
+- **[[pyxswf]]**: to detect, extract and analyze Flash objects (SWF) that may
   be embedded in files such as MS Office documents (e.g. Word, Excel) and RTF,
   which is especially useful for malware analysis.
-- **[[rtfobj]]**: a tool and python module to extract embedded objects from RTF files.
+- **[[oleobj]]**: to extract embedded objects from OLE files.
+- **[[rtfobj]]**: to extract embedded objects from RTF files.
 - and a few others (coming soon)
 
 --------------------------------------------------------------------------
@@ -50,6 +54,10 @@ python-oletools documentation
 	- [[oleid]]
 	- [[olemeta]]
 	- [[oletimes]]
+	- [[oledir]]
+	- [[olemap]]
 	- [[olevba]]
+	- [[mraptor]]
 	- [[pyxswf]]
-	- [[rtfobj]] 
+	- [[oleobj]]
+	- [[rtfobj]]
