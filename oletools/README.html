@@ -4,7 +4,9 @@
 <p>Note: python-oletools is not related to OLETools published by BeCubed Software.</p>
 <h2 id="news">News</h2>
 <ul>
-<li><strong>2016-02-07 v0.42</strong>: added two new tools oledir and olemap, better handling of malformed files and several bugfixes in <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>, improved display for <a href="https://bitbucket.org/decalage/oletools/wiki/olemeta">olemeta</a>.</li>
+<li><strong>2016-03-11 v0.44</strong>: improved <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a> to extract and analyse strings from VBA Forms.</li>
+<li>2016-03-04 v0.43: added new tool MacroRaptor (mraptor) to detect malicious macros, bugfix and slight improvements in <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>.</li>
+<li>2016-02-07 v0.42: added two new tools oledir and olemap, better handling of malformed files and several bugfixes in <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>, improved display for <a href="https://bitbucket.org/decalage/oletools/wiki/olemeta">olemeta</a>.</li>
 <li>2015-09-22 v0.41: added new --reveal option to <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>, to show the macro code with VBA strings deobfuscated.</li>
 <li>2015-09-17 v0.40: Improved macro deobfuscation in <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>, to decode Hex and Base64 within VBA expressions. Display printable deobfuscated strings by default. Improved the VBA_Parser API. Improved performance. Fixed <a href="https://bitbucket.org/decalage/oletools/issue/23">issue #23</a> with sys.stderr.</li>
 <li>2015-06-19 v0.12: <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a> can now deobfuscate VBA expressions with any combination of Chr, Asc, Val, StrReverse, Environ, +, &amp;, using a VBA parser built with <a href="http://pyparsing.wikispaces.com">pyparsing</a>. New options to display only the analysis results or only the macros source code. The analysis is now done on all the VBA modules at once.</li>
@@ -24,12 +26,16 @@
 <h2 id="tools-in-python-oletools">Tools in python-oletools:</h2>
 <ul>
 <li><a href="https://bitbucket.org/decalage/oletools/wiki/olebrowse">olebrowse</a>: A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to view and extract individual data streams.</li>
-<li><a href="https://bitbucket.org/decalage/oletools/wiki/oleid">oleid</a>: a tool to analyze OLE files to detect specific characteristics usually found in malicious files.</li>
-<li><a href="https://bitbucket.org/decalage/oletools/wiki/olemeta">olemeta</a>: a tool to extract all standard properties (metadata) from OLE files.</li>
-<li><a href="https://bitbucket.org/decalage/oletools/wiki/oletimes">oletimes</a>: a tool to extract creation and modification timestamps of all streams and storages.</li>
-<li><a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>: a tool to extract and analyze VBA Macro source code from MS Office documents (OLE and OpenXML).</li>
-<li><a href="https://bitbucket.org/decalage/oletools/wiki/pyxswf">pyxswf</a>: a tool to detect, extract and analyze Flash objects (SWF) that may be embedded in files such as MS Office documents (e.g. Word, Excel) and RTF, which is especially useful for malware analysis.</li>
-<li><a href="https://bitbucket.org/decalage/oletools/wiki/rtfobj">rtfobj</a>: a tool and python module to extract embedded objects from RTF files.</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/oleid">oleid</a>: to analyze OLE files to detect specific characteristics usually found in malicious files.</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/olemeta">olemeta</a>: to extract all standard properties (metadata) from OLE files.</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/oletimes">oletimes</a>: to extract creation and modification timestamps of all streams and storages.</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/oledir">oledir</a>: to display all the directory entries of an OLE file, including free and orphaned entries.</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/olemap">olemap</a>: to display a map of all the sectors in an OLE file.</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>: to extract and analyze VBA Macro source code from MS Office documents (OLE and OpenXML).</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/mraptor">MacroRaptor</a>: to detect malicious VBA Macros</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/pyxswf">pyxswf</a>: to detect, extract and analyze Flash objects (SWF) that may be embedded in files such as MS Office documents (e.g. Word, Excel) and RTF, which is especially useful for malware analysis.</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/oleobj">oleobj</a>: to extract embedded objects from OLE files.</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/rtfobj">rtfobj</a>: to extract embedded objects from RTF files.</li>
 <li>and a few others (coming soon)</li>
 </ul>
 <h2 id="download-and-install">Download and Install:</h2>

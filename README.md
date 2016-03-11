@@ -22,7 +22,11 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2016-02-07 v0.42**: added two new tools oledir and olemap, better handling of malformed
+- **2016-03-11 v0.44**: improved [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba)
+to extract and analyse strings from VBA Forms.
+- 2016-03-04 v0.43: added new tool MacroRaptor (mraptor) to detect malicious macros, bugfix
+and slight improvements in [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba).
+- 2016-02-07 v0.42: added two new tools oledir and olemap, better handling of malformed
 files and several bugfixes in [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba),
 improved display for [olemeta](https://bitbucket.org/decalage/oletools/wiki/olemeta).
 - 2015-09-22 v0.41: added new --reveal option to [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba),
@@ -64,14 +68,18 @@ Tools in python-oletools:
 
 - [olebrowse](https://bitbucket.org/decalage/oletools/wiki/olebrowse): A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to
   view and extract individual data streams.
-- [oleid](https://bitbucket.org/decalage/oletools/wiki/oleid): a tool to analyze OLE files to detect specific characteristics usually found in malicious files.
-- [olemeta](https://bitbucket.org/decalage/oletools/wiki/olemeta): a tool to extract all standard properties (metadata) from OLE files.
-- [oletimes](https://bitbucket.org/decalage/oletools/wiki/oletimes): a tool to extract creation and modification timestamps of all streams and storages.
-- [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba): a tool to extract and analyze VBA Macro source code from MS Office documents (OLE and OpenXML).
-- [pyxswf](https://bitbucket.org/decalage/oletools/wiki/pyxswf): a tool to detect, extract and analyze Flash objects (SWF) that may
+- [oleid](https://bitbucket.org/decalage/oletools/wiki/oleid): to analyze OLE files to detect specific characteristics usually found in malicious files.
+- [olemeta](https://bitbucket.org/decalage/oletools/wiki/olemeta): to extract all standard properties (metadata) from OLE files.
+- [oletimes](https://bitbucket.org/decalage/oletools/wiki/oletimes): to extract creation and modification timestamps of all streams and storages.
+- [oledir](https://bitbucket.org/decalage/oletools/wiki/oledir): to display all the directory entries of an OLE file, including free and orphaned entries.
+- [olemap](https://bitbucket.org/decalage/oletools/wiki/olemap): to display a map of all the sectors in an OLE file.
+- [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba): to extract and analyze VBA Macro source code from MS Office documents (OLE and OpenXML).
+- [MacroRaptor](https://bitbucket.org/decalage/oletools/wiki/mraptor): to detect malicious VBA Macros
+- [pyxswf](https://bitbucket.org/decalage/oletools/wiki/pyxswf): to detect, extract and analyze Flash objects (SWF) that may
   be embedded in files such as MS Office documents (e.g. Word, Excel) and RTF,
   which is especially useful for malware analysis.
-- [rtfobj](https://bitbucket.org/decalage/oletools/wiki/rtfobj): a tool and python module to extract embedded objects from RTF files.
+- [oleobj](https://bitbucket.org/decalage/oletools/wiki/oleobj): to extract embedded objects from OLE files.
+- [rtfobj](https://bitbucket.org/decalage/oletools/wiki/rtfobj): to extract embedded objects from RTF files.
 - and a few others (coming soon)
 
 Download and Install:
