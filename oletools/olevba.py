@@ -161,8 +161,6 @@ https://github.com/unixfreak0037/officeparser
 # 2016-01-31       PL: - fixed issue #31 in VBA_Parser.open_mht
 #                      - fixed issue #32 by monkeypatching email.feedparser
 # 2016-02-07       PL: - KeyboardInterrupt is now raised properly
-# 2016-02-26       CH: - Add json output
-# 2016-03-04       CH: - convert json to ascii in own function
 
 __version__ = '0.42'
 
