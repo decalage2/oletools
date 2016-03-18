@@ -131,7 +131,7 @@ def iter_files(files, recursive=False, zip_password=None, zip_fname='*'):
     else:
         iglob = glob.iglob
     for filespec in files:
-        if not os.path.exists(filespec):
+        if not is_glob(filespec) and not os.path.exists(filespec):
             raise ValueError('given path {} does not exist!'.format(filespec))
         for filename in iglob(filespec):
             if zip_password is not None:
@@ -155,3 +155,39 @@ def iter_files(files, recursive=False, zip_password=None, zip_fname='*'):
                 #data = open(filename, 'rb').read()
                 #yield None, filename, data
 
+
+def is_glob(filespec):
+    """ determine if given file specification is a single file name or a glob
+
+    python's glob and fnmatch can only interpret ?, *, [list], and [ra-nge],
+    (and combinations: hex_*_[A-Fabcdef0-9]).
+    The special chars *?[-] can only be escaped using []
+    --> file_name is not a glob
+    --> file?name is a glob
+    --> file* is a glob
+    --> file[-._]name is a glob
+    --> file[?]name is not a glob (matches literal "file?name")
+    --> file[*]name is not a glob (matches literal "file*name")
+    --> file[-]name is not a glob (matches literal "file-name")
+    --> file-name is not a glob
+
+    Also, obviously incorrect globs are treated as non-globs
+    --> file[name is not a glob (matches literal "file[name")
+    --> file]-[name is treated as a glob
+        (it is not a valid glob but detecting errors like this requires
+         sophisticated regular expression matching)
+
+    Python's glob also works with globs in directory-part of path
+    --> dir-part of path is analyzed just like filename-part
+    --> thirdparty/*/xglob.py is a (valid) glob
+    
+    TODO: create a correct regexp to test for validity of ranges
+    """
+
+    # remove escaped special chars
+    cleaned = filespec.replace('[*]', '').replace('[?]', '') \
+                      .replace('[[]', '').replace('[]]', '').replace('[-]', '')
+
+    # check if special chars remain
+    return '*' in cleaned or '?' in cleaned or \
+          ('[' in cleaned and ']' in cleaned)
