@@ -131,6 +131,8 @@ def iter_files(files, recursive=False, zip_password=None, zip_fname='*'):
     else:
         iglob = glob.iglob
     for filespec in files:
+        if not os.path.exists(filespec):
+            raise ValueError('given path {} does not exist!'.format(filespec))
         for filename in iglob(filespec):
             if zip_password is not None:
                 # Each file is expected to be a zip archive:
