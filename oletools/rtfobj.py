@@ -15,7 +15,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# rtfobj is copyright (c) 2012-2015, Philippe Lagadec (http://www.decalage.info)
+# rtfobj is copyright (c) 2012-2016, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -46,8 +46,9 @@ http://www.decalage.info/python/oletools
 # 2015-12-09 v0.03 PL: - configurable logging, CLI options
 #                      - extract OLE 1.0 objects
 #                      - extract files from OLE Package objects
+# 2016-04-01 v0.04 PL: - fixed logging output to use stdout instead of stderr
 
-__version__ = '0.03'
+__version__ = '0.04'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -338,8 +339,11 @@ if __name__ == '__main__':
         parser.print_help()
         sys.exit()
 
-    # setup logging to the console
-    logging.basicConfig(level=LOG_LEVELS[options.loglevel], format='%(levelname)-8s %(message)s')
+    # Setup logging to the console:
+    # here we use stdout instead of stderr by default, so that the output
+    # can be redirected properly.
+    logging.basicConfig(level=LOG_LEVELS[options.loglevel], stream=sys.stdout,
+                        format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
     log.setLevel(logging.NOTSET)
     oleobj.log.setLevel(logging.NOTSET)
