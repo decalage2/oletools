@@ -2720,7 +2720,7 @@ class VBA_Parser_CLI(VBA_Parser):
         return result
 
 
-    def process_file_triage(self, show_decoded_strings=False):
+    def process_file_triage(self, show_decoded_strings=False, skip_deobfuscate=False):
         """
         Process a file in triage mode, showing only summary results on one line.
         """
@@ -2955,11 +2955,11 @@ def main():
         json_results = json2ascii(json_results)
         #print_json(json_results)
 
-        if False:  # options.outfile: # (option currently commented out)
-            with open(outfile, 'w') as write_handle:
-                json.dump(write_handle, **json_options)
-        else:
-            print json.dumps(json_results, **json_options)
+        # if False:  # options.outfile: # (option currently commented out)
+        #     with open(outfile, 'w') as write_handle:
+        #         json.dump(write_handle, **json_options)
+        # else:
+        print json.dumps(json_results, **json_options)
 
 
 def print_json(j):
