@@ -47,8 +47,9 @@ http://www.decalage.info/python/oletools
 #                      - extract OLE 1.0 objects
 #                      - extract files from OLE Package objects
 # 2016-04-01 v0.04 PL: - fixed logging output to use stdout instead of stderr
+# 2016-04-07 v0.45 PL: - improved parsing to handle some malware tricks
 
-__version__ = '0.04'
+__version__ = '0.45'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -110,9 +111,24 @@ log = get_logger('rtfobj')
 #=== CONSTANTS=================================================================
 
 # REGEX pattern to extract embedded OLE objects in hexadecimal format:
+
 # alphanum digit: [0-9A-Fa-f]
+HEX_DIGIT = r'[0-9A-Fa-f]'
+
 # hex char = two alphanum digits: [0-9A-Fa-f]{2}
-HEX_CHAR = r'[0-9A-Fa-f]{2}'
+# HEX_CHAR = r'[0-9A-Fa-f]{2}'
+# in fact MS Word allows whitespaces in between the hex digits!
+# HEX_CHAR = r'[0-9A-Fa-f]\s*[0-9A-Fa-f]'
+# Even worse, MS Word also allows ANY RTF-style tag {*} in between!!
+# AND the tags can be nested...
+SINGLE_RTF_TAG = r'[{][^{}]*[}]'
+# Nested tags, two levels (because Python's re does not support nested matching):
+NESTED_RTF_TAG = r'[{](?:[^{}]|'+SINGLE_RTF_TAG+r')*[}]'
+# ignored whitespaces and tags within a hex block:
+IGNORED = r'(?:\s|'+NESTED_RTF_TAG+r')*'
+
+HEX_CHAR = HEX_DIGIT + IGNORED + HEX_DIGIT
+
 # several hex chars, at least 4: (?:[0-9A-Fa-f]{2}){4,}
 # + word boundaries
 HEX_CHARS_4orMORE = r'\b(?:' + HEX_CHAR + r'){4,}\b'
@@ -124,7 +140,9 @@ HEX_CHARS_1orMORE_WHITESPACES = r'(?:' + HEX_CHAR + r')+\s+'
 # HEX_CHARS_1orMORE_WHITESPACES = r'\b(?:' + HEX_CHAR + r')+\b\s*'
 # at least one block of hex and whitespace chars, followed by closing curly bracket:
 # HEX_BLOCK_CURLY_BRACKET = r'(?:' + HEX_CHARS_1orMORE_WHITESPACES + r')+\}'
-PATTERN = r'(?:' + HEX_CHARS_1orMORE_WHITESPACES + r')*' + HEX_CHARS_1orMORE
+# PATTERN = r'(?:' + HEX_CHARS_1orMORE_WHITESPACES + r')*' + HEX_CHARS_1orMORE
+
+PATTERN = r'\b(?:' + HEX_CHAR + IGNORED + r'){4,}\b'
 
 # at least 4 hex chars, followed by whitespace or CR/LF: (?:[0-9A-Fa-f]{2}){4,}\s*
 # PATTERN = r'(?:(?:[0-9A-Fa-f]{2})+\s*)*(?:[0-9A-Fa-f]{2}){4,}'
@@ -135,18 +153,19 @@ PATTERN = r'(?:' + HEX_CHARS_1orMORE_WHITESPACES + r')*' + HEX_CHARS_1orMORE
 TRANSTABLE_NOCHANGE = string.maketrans('', '')
 
 re_hexblock = re.compile(PATTERN)
+re_embedded_tags = re.compile(IGNORED)
 re_decimal = re.compile(r'\d+')
 
 re_delimiter = re.compile(r'[ \t\r\n\f\v]')
 
 DELIMITER = r'[ \t\r\n\f\v]'
 DELIMITERS_ZeroOrMore = r'[ \t\r\n\f\v]*'
-ANTISLASH_BIN = r'\\bin'
+BACKSLASH_BIN = r'\\bin'
 # According to my tests, Word accepts up to 250 digits (leading zeroes)
 DECIMAL_GROUP = r'(\d{1,250})'
 
-re_delims_bin_decimal = re.compile(DELIMITERS_ZeroOrMore + ANTISLASH_BIN
-    + DECIMAL_GROUP + DELIMITER)
+re_delims_bin_decimal = re.compile(DELIMITERS_ZeroOrMore + BACKSLASH_BIN
+                                   + DECIMAL_GROUP + DELIMITER)
 re_delim_hexblock = re.compile(DELIMITER + PATTERN)
 
 
@@ -206,10 +225,18 @@ def rtf_iter_objects (data, min_size=32):
             match = re_hexblock.search(data, pos=current)
             continue
         log.debug('Found hex block starting at %08X, end %08X' % (start, current))
+        log.debug('Match: %s' % found)
         # remove all whitespace and line feeds:
         #NOTE: with Python 2.6+, we could use None instead of TRANSTABLE_NOCHANGE
         found = found.translate(TRANSTABLE_NOCHANGE, ' \t\r\n\f\v')
+        # TODO: make it a function
+        # Also remove embedded RTF tags:
+        found = re_embedded_tags.sub('', found)
         # object data extracted from the RTF file
+        # MS Word accepts an extra hex digit, so we need to trim it if present:
+        if len(found) & 1:
+            found = found[:-1]
+        log.debug('Cleaned match: %s' % found)
         objdata = binascii.unhexlify(found)
         # Detect the "\bin" control word, which is sometimes used for obfuscation:
         bin_match = re_delims_bin_decimal.match(data, pos=current)
@@ -236,9 +263,12 @@ def rtf_iter_objects (data, min_size=32):
                 log.debug('Found next hex block starting at %08X, end %08X'
                     % (match.start(), match.end()))
                 found = match.group(0)
+                log.debug('Match: %s' % found)
                 # remove all whitespace and line feeds:
                 #NOTE: with Python 2.6+, we could use None instead of TRANSTABLE_NOCHANGE
                 found = found.translate(TRANSTABLE_NOCHANGE, ' \t\r\n\f\v')
+                # Also remove embedded RTF tags:
+                found = re_embedded_tags.sub(found, '')
                 objdata += binascii.unhexlify(found)
                 current = match.end()
             bin_match = re_delims_bin_decimal.match(data, pos=current)
