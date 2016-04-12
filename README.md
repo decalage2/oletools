@@ -22,7 +22,11 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2016-03-11 v0.44**: improved [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba)
+- **2016-04-12 v0.45**: improved [rtfobj](https://bitbucket.org/decalage/oletools/wiki/rtfobj)
+to handle several [anti-analysis tricks](http://www.decalage.info/rtf_tricks),
+improved [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba)
+to export results in JSON format.
+- 2016-03-11 v0.44: improved [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba)
 to extract and analyse strings from VBA Forms.
 - 2016-03-04 v0.43: added new tool MacroRaptor (mraptor) to detect malicious macros, bugfix
 and slight improvements in [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba).
