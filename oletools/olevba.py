@@ -167,6 +167,7 @@ https://github.com/unixfreak0037/officeparser
 # 2016-03-04 v0.45 CH: - added JSON output (by Christian Herdtweck)
 # 2016-03-16       CH: - added option --no-deobfuscate (temporary)
 # 2016-04-19 v0.46 PL: - new option --deobf instead of --no-deobfuscate
+#                      - updated suspicious keywords
 
 __version__ = '0.46'
 
@@ -378,8 +379,13 @@ SUSPICIOUS_KEYWORDS = {
     'May run PowerShell commands':
     #sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
     #also: https://bitbucket.org/decalage/oletools/issues/14/olevba-library-update-ioc
-    #TODO: add support for keywords starting with a non-alpha character, such as "-noexit"
-        ('PowerShell', 'noexit', 'ExecutionPolicy', 'noprofile'),
+    # ref: https://blog.netspi.com/15-ways-to-bypass-the-powershell-execution-policy/
+    # TODO: add support for keywords starting with a non-alpha character, such as "-noexit"
+    # TODO: '-command', '-EncodedCommand', '-scriptblock'
+        ('PowerShell', 'noexit', 'ExecutionPolicy', 'noprofile', 'command', 'EncodedCommand',
+         'invoke-command', 'scriptblock', 'Invoke-Expression', 'AuthorizationManager'),
+    'May run an executable file or a system command using PowerShell':
+        ('Start-Process',),
     'May hide the application':
         ('Application.Visible', 'ShowWindow', 'SW_HIDE'),
     'May create a directory':
@@ -391,6 +397,8 @@ SUSPICIOUS_KEYWORDS = {
         ('Application.AltStartupPath',),
     'May create an OLE object':
         ('CreateObject',),
+    'May create an OLE object using PowerShell':
+        ('New-Object',),
     'May run an application (if combined with CreateObject)':
         ('Shell.Application',),
     'May enumerate application windows (if combined with Shell.Application object)':
@@ -409,7 +417,7 @@ SUSPICIOUS_KEYWORDS = {
         ),
     'May download files from the Internet using PowerShell':
     #sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
-        ('New-Object System.Net.WebClient', 'DownloadFile'),
+        ('Net.WebClient', 'DownloadFile', 'DownloadString'),
     'May control another application by simulating user keystrokes':
         ('SendKeys', 'AppActivate'),
     #SendKeys: http://msdn.microsoft.com/en-us/library/office/gg278655%28v=office.15%29.aspx
