@@ -15,9 +15,6 @@ be processed row by row.
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
-
-olemap is part of the python-oletools package:
-http://www.decalage.info/python/oletools
 """
 
 #=== LICENSE ==================================================================
@@ -50,8 +47,9 @@ http://www.decalage.info/python/oletools
 # CHANGELOG:
 # 2015-11-01 v0.01 PL: - first version
 # 2016-01-01 v0.02 PL: - added styles, color support
+# 2016-04-19 v0.03 PL: - enable colorclass on Windows, fixed issue #39
 
-__version__ = '0.02'
+__version__ = '0.03'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -64,9 +62,13 @@ __version__ = '0.02'
 # === IMPORTS =================================================================
 
 import textwrap
-import sys
+import sys, os
 
 from thirdparty.colorclass import colorclass
+
+# On Windows, colorclass needs to be enabled:
+if os.name == 'nt':
+    colorclass.Windows.enable(auto_colors=True)
 
 
 # === CLASSES =================================================================
@@ -318,7 +320,7 @@ class TableStream(object):
 
 
 if __name__ == '__main__':
-    t = TableStream([10,5,20], header_row=['i', 'i*i', '2**i'], style=TableStyleSlim)
+    t = TableStream([10, 5, 20], header_row=['i', 'i*i', '2**i'], style=TableStyleSlim)
     t.write_row(['test', 'test', 'test'])
     cell = 'a very very long text'
     t.write_row([cell, cell, cell], colors=['blue', None, 'red'])
