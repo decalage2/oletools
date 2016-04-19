@@ -22,7 +22,10 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2016-04-12 v0.45**: improved [rtfobj](https://bitbucket.org/decalage/oletools/wiki/rtfobj)
+- **2016-04-19 v0.46**: [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba)
+does not deobfuscate VBA expressions by default (much faster), new option --deobf
+to enable it. Fixed color display bug on Windows for several tools.
+- 2016-04-12 v0.45: improved [rtfobj](https://bitbucket.org/decalage/oletools/wiki/rtfobj)
 to handle several [anti-analysis tricks](http://www.decalage.info/rtf_tricks),
 improved [olevba](https://bitbucket.org/decalage/oletools/wiki/olevba)
 to export results in JSON format.
