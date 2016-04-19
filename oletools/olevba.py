@@ -166,12 +166,12 @@ https://github.com/unixfreak0037/officeparser
 # 2016-03-08 v0.44 PL: - added VBA Form strings extraction and analysis
 # 2016-03-04 v0.45 CH: - added JSON output (by Christian Herdtweck)
 # 2016-03-16       CH: - added option --no-deobfuscate (temporary)
+# 2016-04-19 v0.46 PL: - new option --deobf instead of --no-deobfuscate
 
-__version__ = '0.45'
+__version__ = '0.46'
 
 #------------------------------------------------------------------------------
 # TODO:
-# + option --fast to disable VBA expressions parsing
 # + setup logging (common with other oletools)
 # + add xor bruteforcing like bbharvest
 # + options -a and -c should imply -d
@@ -900,6 +900,29 @@ def is_printable(s):
     # inspired from http://stackoverflow.com/questions/3636928/test-if-a-python-string-is-printable
     # check if the set of chars from s is contained into the set of printable chars:
     return set(s).issubset(_PRINTABLE_SET)
+
+
+def print_json(j):
+    """
+    Print a dictionary, a list or any other object to stdout
+    :param j: object to be printed
+    :return:
+    """
+    if isinstance(j, dict):
+        for key, val in j.items():
+            print_json(key)
+            print_json(val)
+    elif isinstance(j, list):
+        for elem in j:
+            print_json(elem)
+    else:
+        try:
+            if len(j) > 20:
+                print type(j), repr(j[:20]), '...(len {0})'.format(len(j))
+            else:
+                print type(j), repr(j)
+        except TypeError:
+            print type(j), repr(j)
 
 
 def copytoken_help(decompressed_current, decompressed_chunk_start):
@@ -1726,14 +1749,14 @@ class VBA_Scanner(object):
         self.vba_strings = None
 
 
-    def scan(self, include_decoded_strings=False, skip_deobfuscate=False):
+    def scan(self, include_decoded_strings=False, deobfuscate=False):
         """
         Analyze the provided VBA code to detect suspicious keywords,
         auto-executable macros, IOC patterns, obfuscation patterns
         such as hex-encoded strings.
 
         :param include_decoded_strings: bool, if True, all encoded strings will be included with their decoded content.
-        :param skip_deobfuscate: bool, if True do not try to deobfuscate code (faster but less secure)
+        :param deobfuscate: bool, if True attempt to deobfuscate VBA expressions (slow)
         :return: list of tuples (type, keyword, description)
         (type = 'AutoExec', 'Suspicious', 'IOC', 'Hex String', 'Base64 String' or 'Dridex String')
         """
@@ -1762,10 +1785,10 @@ class VBA_Scanner(object):
         for encoded, decoded in self.dridex_strings:
             self.code_dridex += '\n' + decoded
         # Detect obfuscated strings in VBA expressions
-        if skip_deobfuscate:
-            self.vba_strings = []
-        else:
+        if deobfuscate:
             self.vba_strings = detect_vba_strings(self.code)
+        else:
+            self.vba_strings = []
         for encoded, decoded in self.vba_strings:
             self.code_vba += '\n' + decoded
         results = []
@@ -1849,7 +1872,7 @@ class VBA_Scanner(object):
                 len(self.dridex_strings), len(self.vba_strings))
 
 
-def scan_vba(vba_code, include_decoded_strings, skip_deobfuscate=False):
+def scan_vba(vba_code, include_decoded_strings, deobfuscate=False):
     """
     Analyze the provided VBA code to detect suspicious keywords,
     auto-executable macros, IOC patterns, obfuscation patterns
@@ -1858,11 +1881,11 @@ def scan_vba(vba_code, include_decoded_strings, skip_deobfuscate=False):
 
     :param vba_code: str, VBA source code to be analyzed
     :param include_decoded_strings: bool, if True all encoded strings will be included with their decoded content.
-    :param skip_deobfuscate: do not deobfuscate code; much faster but less secure
+    :param deobfuscate: bool, if True attempt to deobfuscate VBA expressions (slow)
     :return: list of tuples (type, keyword, description)
     (type = 'AutoExec', 'Suspicious', 'IOC', 'Hex String', 'Base64 String' or 'Dridex String')
     """
-    return VBA_Scanner(vba_code).scan(include_decoded_strings, skip_deobfuscate)
+    return VBA_Scanner(vba_code).scan(include_decoded_strings, deobfuscate)
 
 
 #=== CLASSES =================================================================
@@ -2338,7 +2361,7 @@ class VBA_Parser(object):
 
 
 
-    def analyze_macros(self, show_decoded_strings=False, skip_deobfuscate=False):
+    def analyze_macros(self, show_decoded_strings=False, deobfuscate=False):
         """
         runs extract_macros and analyze the source code of all VBA macros
         found in the file.
@@ -2357,7 +2380,7 @@ class VBA_Parser(object):
                     self.vba_code_all_modules += form_string + '\n'
             # Analyze the whole code at once:
             scanner = VBA_Scanner(self.vba_code_all_modules)
-            self.analysis_results = scanner.scan(show_decoded_strings, skip_deobfuscate)
+            self.analysis_results = scanner.scan(show_decoded_strings, deobfuscate)
             autoexec, suspicious, iocs, hexstrings, base64strings, dridex, vbastrings = scanner.scan_summary()
             self.nb_autoexec += autoexec
             self.nb_suspicious += suspicious
@@ -2520,20 +2543,20 @@ class VBA_Parser_CLI(VBA_Parser):
             pass
 
 
-    def print_analysis(self, show_decoded_strings=False, skip_deobfuscate=False):
+    def print_analysis(self, show_decoded_strings=False, deobfuscate=False):
         """
         Analyze the provided VBA code, and print the results in a table
 
         :param vba_code: str, VBA source code to be analyzed
         :param show_decoded_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
-        :param skip_deobfuscate: bool, if True do not try to deobfuscate code (faster but less secure)
+        :param deobfuscate: bool, if True attempt to deobfuscate VBA expressions (slow)
         :return: None
         """
         # print a waiting message only if the output is not redirected to a file:
         if sys.stdout.isatty():
             print 'Analysis...\r',
             sys.stdout.flush()
-        results = self.analyze_macros(show_decoded_strings, skip_deobfuscate)
+        results = self.analyze_macros(show_decoded_strings, deobfuscate)
         if results:
             t = prettytable.PrettyTable(('Type', 'Keyword', 'Description'))
             t.align = 'l'
@@ -2569,7 +2592,7 @@ class VBA_Parser_CLI(VBA_Parser):
     def process_file(self, show_decoded_strings=False,
                      display_code=True, global_analysis=True, hide_attributes=True,
                      vba_code_only=False, show_deobfuscated_code=False,
-                     skip_deobfuscate=False):
+                     deobfuscate=False):
         """
         Process a single file
 
@@ -2580,7 +2603,7 @@ class VBA_Parser_CLI(VBA_Parser):
         :param global_analysis: bool, if True all modules are merged for a single analysis (default),
                                 otherwise each module is analyzed separately (old behaviour)
         :param hide_attributes: bool, if True the first lines starting with "Attribute VB" are hidden (default)
-        :param skip_deobfuscate: bool, if True do not try to deobfuscate code (faster but less secure)
+        :param deobfuscate: bool, if True attempt to deobfuscate VBA expressions (slow)
         """
         #TODO: replace print by writing to a provided output file (sys.stdout by default)
         # fix conflicting parameters:
@@ -2619,7 +2642,7 @@ class VBA_Parser_CLI(VBA_Parser):
                         print '- ' * 39
                         print 'ANALYSIS:'
                         # analyse each module's code, filtered to avoid false positives:
-                        self.print_analysis(show_decoded_strings, skip_deobfuscate)
+                        self.print_analysis(show_decoded_strings, deobfuscate)
                 for (subfilename, stream_path, form_string) in self.extract_form_strings():
                     print '-' * 79
                     print 'VBA FORM STRING IN %r - OLE stream: %r' % (subfilename, stream_path)
@@ -2627,7 +2650,7 @@ class VBA_Parser_CLI(VBA_Parser):
                     print form_string
                 if global_analysis and not vba_code_only:
                     # analyse the code from all modules at once:
-                    self.print_analysis(show_decoded_strings, skip_deobfuscate)
+                    self.print_analysis(show_decoded_strings, deobfuscate)
                 if show_deobfuscated_code:
                     print 'MACRO SOURCE CODE WITH DEOBFUSCATED VBA STRINGS (EXPERIMENTAL):\n\n'
                     print self.reveal()
@@ -2720,7 +2743,7 @@ class VBA_Parser_CLI(VBA_Parser):
         return result
 
 
-    def process_file_triage(self, show_decoded_strings=False, skip_deobfuscate=False):
+    def process_file_triage(self, show_decoded_strings=False, deobfuscate=False):
         """
         Process a file in triage mode, showing only summary results on one line.
         """
@@ -2735,7 +2758,7 @@ class VBA_Parser_CLI(VBA_Parser):
                         print 'Analysis...\r',
                         sys.stdout.flush()
                     self.analyze_macros(show_decoded_strings=show_decoded_strings,
-                                        skip_deobfuscate=skip_deobfuscate)
+                                        deobfuscate=deobfuscate)
                 flags = TYPE2TAG[self.type]
                 macros = autoexec = suspicious = iocs = hexstrings = base64obf = dridex = vba_obf = '-'
                 if self.contains_macros: macros = 'M'
@@ -2844,16 +2867,8 @@ def main():
                       help='display the macro source code after replacing all the obfuscated strings by their decoded content.')
     parser.add_option('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
                             help="logging level debug/info/warning/error/critical (default=%default)")
-    parser.add_option('-n', '--no-deobfuscate', dest="skip_deobfuscate", action="store_true", default=False,
-                            help="skip deobfuscation (much faster but less secure)")
-
-    # Disabled options:
-    # parser.add_option("--each", action="store_false", dest="global_analysis", default=True,
-    #                   help='analyze each VBA module separately')
-    # parser.add_option("-i", "--input", dest='input', type='str', default=None,
-    #                   help='input file containing VBA source code to be analyzed (no parsing)')
-
-    # TODO: --novba to disable VBA expressions parsing
+    parser.add_option('--deobf', dest="deobfuscate", action="store_true", default=False,
+                            help="Attempt to deobfuscate VBA expressions (slow)")
 
     (options, args) = parser.parse_args()
 
@@ -2875,22 +2890,13 @@ def main():
     # enable logging in the modules:
     log.setLevel(logging.NOTSET)
 
-    # if options.input:
-    #     #TODO: remove this option
-    #     raise NotImplementedError
-    #     # input file provided with VBA source code to be analyzed directly:
-    #     print 'Analysis of VBA source code from %s:' % options.input
-    #     vba_code = open(options.input).read()
-    #     print_analysis(vba_code, show_decoded_strings=options.show_decoded_strings)
-    #                    skip_deobfuscate=options.skip_deobfuscate)
-    #     sys.exit()
-
     # Old display with number of items detected:
     # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('Type', 'Macros', 'AutoEx', 'Susp.', 'IOCs', 'HexStr')
     # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('-'*8, '-'*7, '-'*7, '-'*7, '-'*7, '-'*7)
 
-    if options.skip_deobfuscate and options.show_deobfuscated_code:
-        logging.warning('Ignoring option --reveal since option -n / --no-deobfuscate is present!')
+    # with the option --reveal, make sure --deobf is also enabled:
+    if options.show_deobfuscated_code and not options.deobfuscate:
+        options.deobfuscate = True
 
     # Column headers (do not know how many files there will be yet, so if no output_mode
     # was specified, we will print triage for first file --> need these headers)
@@ -2915,7 +2921,7 @@ def main():
                          display_code=options.display_code, global_analysis=True, #options.global_analysis,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
                          show_deobfuscated_code=options.show_deobfuscated_code,
-                         skip_deobfuscate=options.skip_deobfuscate)
+                         deobfuscate=options.deobfuscate)
         elif options.output_mode in ('triage', 'unspecified'):
             # print container name when it changes:
             if container != previous_container:
@@ -2924,7 +2930,7 @@ def main():
                 previous_container = container
             # summarized output for triage:
             vba_parser.process_file_triage(show_decoded_strings=options.show_decoded_strings,
-                                           skip_deobfuscate=options.skip_deobfuscate)
+                                           deobfuscate=options.deobfuscate)
         elif options.output_mode == 'json':
             json_results.append(
                 vba_parser.process_file_json(show_decoded_strings=options.show_decoded_strings,
@@ -2945,7 +2951,7 @@ def main():
                          display_code=options.display_code, global_analysis=True, #options.global_analysis,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
                          show_deobfuscated_code=options.show_deobfuscated_code,
-                         skip_deobfuscate=options.skip_deobfuscate)
+                         deobfuscate=options.deobfuscate)
 
     if options.output_mode == 'json':
         json_options = dict(check_circular=False, indent=4, ensure_ascii=False)
@@ -2961,23 +2967,6 @@ def main():
         # else:
         print json.dumps(json_results, **json_options)
 
-
-def print_json(j):
-    if isinstance(j, dict):
-        for key, val in j.items():
-            print_json(key)
-            print_json(val)
-    elif isinstance(j, list):
-        for elem in j:
-            print_json(elem)
-    else:
-        try:
-            if len(j) > 20:
-                print type(j), repr(j[:20]), '...(len {0})'.format(len(j))
-            else:
-                print type(j), repr(j)
-        except TypeError:
-            print type(j), repr(j)
 
 if __name__ == '__main__':
     main()
