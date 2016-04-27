@@ -324,11 +324,14 @@ class MsoExtractionError(RuntimeError):
 #--- CONSTANTS ----------------------------------------------------------------
 
 # return codes
-RETURN_OK = 0
-RETURN_PARSE_ERROR = 1
-RETURN_OPEN_ERROR = 2
-RETURN_FILE_NOT_FOUND = 3
-RETURN_UNEXPECTED = 4
+RETURN_OK             = 0
+RETURN_WARNINGS       = 1  # (reserved, not used yet)
+RETURN_WRONG_ARGS     = 2  # (fixed, built into optparse)
+RETURN_OPEN_ERROR     = 3
+RETURN_PARSE_ERROR    = 4
+RETURN_FILE_NOT_FOUND = 5
+RETURN_SEVERAL_ERRS   = 6
+RETURN_UNEXPECTED     = 7
 
 # URL and message to report issues:
 URL_OLEVBA_ISSUES = 'https://bitbucket.org/decalage/oletools/issues'
@@ -2849,7 +2852,7 @@ def main():
     if len(args) == 0:
         print __doc__
         parser.print_help()
-        sys.exit()
+        sys.exit(RETURN_WRONG_ARGS)
 
     # provide info about tool and its version
     if options.output_mode == 'json':
@@ -2882,85 +2885,95 @@ def main():
     container = filename = data = None
     vba_parser = None
     return_code = RETURN_OK
-    for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
-                                                      zip_password=options.zip_password, zip_fname=options.zip_fname):
-        # ignore directory names stored in zip files:
-        if container and filename.endswith('/'):
-            continue
+    try:
+        for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
+                                                          zip_password=options.zip_password, zip_fname=options.zip_fname):
+            # ignore directory names stored in zip files:
+            if container and filename.endswith('/'):
+                continue
 
-        try:
-            # Open the file
-            vba_parser = VBA_Parser_CLI(filename, data=data, container=container)
+            try:
+                # Open the file
+                vba_parser = VBA_Parser_CLI(filename, data=data, container=container)
 
-            if options.output_mode == 'detailed':
-                # fully detailed output
-                vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
+                if options.output_mode == 'detailed':
+                    # fully detailed output
+                    vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
+                                 display_code=options.display_code,
+                                 hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
+                                 show_deobfuscated_code=options.show_deobfuscated_code,
+                                 deobfuscate=options.deobfuscate)
+                elif options.output_mode in ('triage', 'unspecified'):
+                    # print container name when it changes:
+                    if container != previous_container:
+                        if container is not None:
+                            print '\nFiles in %s:' % container
+                        previous_container = container
+                    # summarized output for triage:
+                    vba_parser.process_file_triage(show_decoded_strings=options.show_decoded_strings,
+                                                   deobfuscate=options.deobfuscate)
+                elif options.output_mode == 'json':
+                    json_results.append(
+                        vba_parser.process_file_json(show_decoded_strings=options.show_decoded_strings,
+                                 display_code=options.display_code,
+                                 hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
+                                 show_deobfuscated_code=options.show_deobfuscated_code))
+                else:  # (should be impossible)
+                    raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
+                count += 1
+
+            except FileOpenError as exc:
+                if options.output_mode in ('triage', 'unspecified'):
+                    print '%-12s %s - File format not supported' % ('?', filename)
+                else:
+                    log.exception('Failed to open %s -- probably not supported!' % filename)
+                return_code = RETURN_OPEN_ERROR if return_code == 0 else RETURN_SEVERAL_ERRS
+            except ProcessingError as exc:
+                if options.output_mode in ('triage', 'unspecified'):
+                    print '%-12s %s - %s' % ('!ERROR', filename, exc.orig_exception)
+                else:
+                    log.exception('Error processing file %s (%s)!'
+                                  % (filename, exc.orig_exception))
+                return_code = RETURN_PARSE_ERROR if return_code == 0 else RETURN_SEVERAL_ERRS
+            finally:
+                vba_parser.close()
+
+        if options.output_mode == 'triage':
+            print '\n(Flags: OpX=OpenXML, XML=Word2003XML, MHT=MHTML, TXT=Text, M=Macros, ' \
+                  'A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex strings, ' \
+                  'B=Base64 strings, D=Dridex strings, V=VBA strings, ?=Unknown)\n'
+
+        if count == 1 and options.output_mode == 'unspecified':
+            # if options -t, -d and -j were not specified and it's a single file, print details:
+            vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
                              display_code=options.display_code,
                              hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
                              show_deobfuscated_code=options.show_deobfuscated_code,
                              deobfuscate=options.deobfuscate)
-            elif options.output_mode in ('triage', 'unspecified'):
-                # print container name when it changes:
-                if container != previous_container:
-                    if container is not None:
-                        print '\nFiles in %s:' % container
-                    previous_container = container
-                # summarized output for triage:
-                vba_parser.process_file_triage(show_decoded_strings=options.show_decoded_strings,
-                                               deobfuscate=options.deobfuscate)
-            elif options.output_mode == 'json':
-                json_results.append(
-                    vba_parser.process_file_json(show_decoded_strings=options.show_decoded_strings,
-                             display_code=options.display_code,
-                             hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
-                             show_deobfuscated_code=options.show_deobfuscated_code))
-            else:  # (should be impossible)
-                raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
-            count += 1
 
-        except FileOpenError as exc:
-            if options.output_mode in ('triage', 'unspecified'):
-                print '%-12s %s - File format not supported' % ('?', filename)
-            else:
-                log.exception('Failed to open %s -- probably not supported!' % filename)
-            return_code = max(return_code, RETURN_OPEN_ERROR)
-        except ProcessingError as exc:
-            if options.output_mode in ('triage', 'unspecified'):
-                print '%-12s %s - %s' % ('!ERROR', filename, exc.orig_exception)
-            else:
-                log.exception('Error processing file %s (%s)!'
-                              % (filename, exc.orig_exception))
-            return_code = max(return_code, RETURN_PARSE_ERROR)
-        finally:
-            vba_parser.close()
+        if options.output_mode == 'json':
+            json_options = dict(check_circular=False, indent=4, ensure_ascii=False)
 
-    if options.output_mode == 'triage':
-        print '\n(Flags: OpX=OpenXML, XML=Word2003XML, MHT=MHTML, TXT=Text, M=Macros, ' \
-              'A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex strings, ' \
-              'B=Base64 strings, D=Dridex strings, V=VBA strings, ?=Unknown)\n'
+            # json.dump[s] cannot deal with unicode objects that are not properly
+            # encoded --> encode in own function:
+            json_results = json2ascii(json_results)
+            #print_json(json_results)
 
-    if count == 1 and options.output_mode == 'unspecified':
-        # if options -t, -d and -j were not specified and it's a single file, print details:
-        vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
-                         display_code=options.display_code,
-                         hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
-                         show_deobfuscated_code=options.show_deobfuscated_code,
-                         deobfuscate=options.deobfuscate)
+            # if False:  # options.outfile: # (option currently commented out)
+            #     with open(outfile, 'w') as write_handle:
+            #         json.dump(write_handle, **json_options)
+            # else:
+            print json.dumps(json_results, **json_options)
 
-    if options.output_mode == 'json':
-        json_options = dict(check_circular=False, indent=4, ensure_ascii=False)
+    except Exception as exc:
+        # some unexpected error, maybe some of the types caught in except clauses
+        # above were not sufficient. This is very bad, so log complete trace at exception level
+        log.exception('Unhandled exception in main: %s' % exc, exc_info=True)
+        return_code = RETURN_UNEXPECTED    # even if there were others before -- this is more important
 
-        # json.dump[s] cannot deal with unicode objects that are not properly
-        # encoded --> encode in own function:
-        json_results = json2ascii(json_results)
-        #print_json(json_results)
-
-        # if False:  # options.outfile: # (option currently commented out)
-        #     with open(outfile, 'w') as write_handle:
-        #         json.dump(write_handle, **json_options)
-        # else:
-        print json.dumps(json_results, **json_options)
-
+    # done. exit
+    log.debug('will exit now with code %s' % return_code)
+    sys.exit(return_code)
 
 if __name__ == '__main__':
     main()
