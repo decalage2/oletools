@@ -871,25 +871,29 @@ def mso_file_extract(data):
     """
     # check the magic:
     assert is_mso_file(data)
+
+    # In all the samples seen so far, Word always uses an offset of 0x32,
+    # and Excel 0x22A. But we read the offset from the header to be more
+    # generic.
+    offsets = [0x32, 0x22A]
+
     # First, attempt to get the compressed data offset from the header
     # According to my tests, it should be an unsigned 16 bits integer,
     # at offset 0x1E (little endian) + add 46:
     try:
         offset = struct.unpack_from('<H', data, offset=0x1E)[0] + 46
         log.debug('Parsing MSO file: data offset = 0x%X' % offset)
-    except Exception:
-        log.exception('Unable to parse MSO/ActiveMime file header')
-        raise RuntimeError('Unable to parse MSO/ActiveMime file header')
-    # In all the samples seen so far, Word always uses an offset of 0x32,
-    # and Excel 0x22A. But we read the offset from the header to be more
-    # generic.
-    # Let's try that offset, then 0x32 and 0x22A, just in case:
-    for start in (offset, 0x32, 0x22A):
+        offsets.insert(0, offset)  # insert at beginning of offsets
+    except struct.error as exc:
+        log.exception('Unable to parse MSO/ActiveMime file header (%s)' % exc)
+        raise MsoExtractionError('Unable to parse MSO/ActiveMime file header')
+    # now try offsets
+    for start in offsets:
         try:
             log.debug('Attempting zlib decompression from MSO file offset 0x%X' % start)
             extracted_data = zlib.decompress(data[start:])
             return extracted_data
-        except Exception:
+        except zlib.error as exc:
             log.exception('zlib decompression failed')
     # None of the guessed offsets worked, let's try brute-forcing by looking
     # for potential zlib-compressed blocks starting with 0x78:
@@ -900,7 +904,7 @@ def mso_file_extract(data):
             log.debug('Attempting zlib decompression from MSO file offset 0x%X' % start)
             extracted_data = zlib.decompress(data[start:])
             return extracted_data
-        except Exception:
+        except zlib.error as exc:
             log.exception('zlib decompression failed')
     raise MsoExtractionError('Unable to decompress data from a MSO/ActiveMime file')
 
