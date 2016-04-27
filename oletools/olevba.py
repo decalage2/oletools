@@ -299,7 +299,7 @@ class FileOpenError(Exception):
     """
 
     def __init__(self, filename):
-        super(InvalidFileTypeError, self).__init__(
+        super(FileOpenError, self).__init__(
             'Failed to open file %s ... probably not supported' % filename)
         self.filename = filename
 
@@ -1620,7 +1620,7 @@ def detect_base64_strings(vba_code):
                 decoded = base64.b64decode(value)
                 results.append((value, decoded))
                 found.add(value)
-            except Exception:
+            except (TypeError, ValueError) as exc:
                 # if an exception occurs, it is likely not a base64-encoded string
                 pass
     return results
@@ -2016,7 +2016,7 @@ class VBA_Parser(object):
             # TODO: raise TypeError if this is a Powerpoint 97 file, since VBA macros cannot be detected yet
             # set type only if parsing succeeds
             self.type = TYPE_OLE
-        except Exception:
+        except (IOError, TypeError, ValueError):
             # TODO: handle OLE parsing exceptions
             log.exception('Failed OLE parsing for file %r' % self.filename)
             pass
@@ -2051,7 +2051,7 @@ class VBA_Parser(object):
             z.close()
             # set type only if parsing succeeds
             self.type = TYPE_OpenXML
-        except Exception:
+        except (RuntimeError, zipfile.BadZipfile, zipfile.LargeZipFile, IOError) as exc:
             # TODO: handle parsing exceptions
             log.exception('Failed Zip/OpenXML parsing for file %r' % self.filename)
             pass
