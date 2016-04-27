@@ -2165,11 +2165,8 @@ class VBA_Parser(object):
                         log.debug('%s does not contain a valid OLE file (%s)'
                                   % (fname, exc))
                 else:
-                    try:
-                        log.debug('type(part_data) = %s' % type(part_data))
-                        log.debug('part_data[0:20] = %r' % part_data[0:20])
-                    except Exception:
-                        pass
+                    log.debug('type(part_data) = %s' % type(part_data))
+                    log.debug('part_data[0:20] = %r' % part_data[0:20])
             # set type only if parsing succeeds
             self.type = TYPE_MHTML
         except Exception:
@@ -2185,16 +2182,11 @@ class VBA_Parser(object):
         :return: nothing
         """
         log.info('Opening text file %s' % self.filename)
-        try:
-            # directly store the source code:
-            self.vba_code_all_modules = data
-            self.contains_macros = True
-            # set type only if parsing succeeds
-            self.type = TYPE_TEXT
-        except Exception:
-            log.exception('Failed text parsing for file %r - %s'
-                              % (self.filename, MSG_OLEVBA_ISSUES))
-            pass
+        # directly store the source code:
+        self.vba_code_all_modules = data
+        self.contains_macros = True
+        # set type only if parsing succeeds
+        self.type = TYPE_TEXT
 
 
     def find_vba_projects(self):
