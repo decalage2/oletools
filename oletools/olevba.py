@@ -304,6 +304,14 @@ class FileOpenError(Exception):
         self.filename = filename
 
 
+class MsoExtractionError(RuntimeError):
+    """ raised by mso_file_extract if parsing MSO/ActiveMIME data failed """
+
+    def __init__(self, msg):
+        super(MsoExtractionError, self).__init__(msg)
+        self.msg = msg
+
+
 #--- CONSTANTS ----------------------------------------------------------------
 
 # URL and message to report issues:
@@ -859,7 +867,7 @@ def mso_file_extract(data):
     :param data: bytes string, MSO/ActiveMime file content
     :return: bytes string, extracted data (uncompressed)
 
-    raise a RuntimeError if the data cannot be extracted
+    raise a MsoExtractionError if the data cannot be extracted
     """
     # check the magic:
     assert is_mso_file(data)
@@ -894,7 +902,7 @@ def mso_file_extract(data):
             return extracted_data
         except Exception:
             log.exception('zlib decompression failed')
-    raise RuntimeError('Unable to decompress data from a MSO/ActiveMime file')
+    raise MsoExtractionError('Unable to decompress data from a MSO/ActiveMime file')
 
 
 #--- FUNCTIONS ----------------------------------------------------------------
