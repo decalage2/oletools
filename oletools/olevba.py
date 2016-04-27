@@ -214,7 +214,6 @@ import optparse
 import os.path
 import binascii
 import base64
-import traceback
 import zlib
 import email  # for MHTML parsing
 import string # for printable
@@ -302,6 +301,16 @@ class FileOpenError(Exception):
         super(FileOpenError, self).__init__(
             'Failed to open file %s ... probably not supported' % filename)
         self.filename = filename
+
+
+class ProcessingError(Exception):
+    """ raised by VBA_Parser.process_file* functions """
+
+    def __init__(self, filename, orig_exception):
+        super(ProcessingError, self).__init__(
+            'Error processing file %s (%s)' % (filename, orig_exception))
+        self.filename = filename
+        self.orig_exception = orig_exception
 
 
 class MsoExtractionError(RuntimeError):
@@ -2643,12 +2652,11 @@ class VBA_Parser_CLI(VBA_Parser):
                     print self.reveal()
             else:
                 print 'No VBA macros found.'
-        except Exception:  #TypeError:
-            #raise
-            #TODO: print more info if debug mode
-            #print sys.exc_value
-            # display the exception with full stack trace for debugging, but do not stop:
-            traceback.print_exc()
+        except Exception as exc:
+            # display the exception with full stack trace for debugging
+            log.exception('Error processing file %s (%s)' % (self.filename, exc))
+            log.debug('Traceback:', exc_info=True)
+            raise ProcessingError(self.filename, exc)
         print ''
 
 
@@ -2710,12 +2718,11 @@ class VBA_Parser_CLI(VBA_Parser):
                     result['code_deobfuscated'] = self.reveal()
             result['macros'] = macros
             result['json_conversion_successful'] = True
-        except Exception:  #TypeError:
-            #raise
-            #TODO: print more info if debug mode
-            #print sys.exc_value
-            # display the exception with full stack trace for debugging, but do not stop:
-            traceback.print_exc()
+        except Exception as exc:
+            # display the exception with full stack trace for debugging
+            log.exception('Error processing file %s (%s)' % (self.filename, exc))
+            log.debug('Traceback:', exc_info=True)
+            raise ProcessingError(self.filename, exc)
 
         return result
 
@@ -2725,54 +2732,46 @@ class VBA_Parser_CLI(VBA_Parser):
         Process a file in triage mode, showing only summary results on one line.
         """
         #TODO: replace print by writing to a provided output file (sys.stdout by default)
-        message = ''
         try:
-            if self.type is not None:
-                #TODO: handle olefile errors, when an OLE file is malformed
-                if self.detect_vba_macros():
-                    # print a waiting message only if the output is not redirected to a file:
-                    if sys.stdout.isatty():
-                        print 'Analysis...\r',
-                        sys.stdout.flush()
-                    self.analyze_macros(show_decoded_strings=show_decoded_strings,
-                                        deobfuscate=deobfuscate)
-                flags = TYPE2TAG[self.type]
-                macros = autoexec = suspicious = iocs = hexstrings = base64obf = dridex = vba_obf = '-'
-                if self.contains_macros: macros = 'M'
-                if self.nb_autoexec: autoexec = 'A'
-                if self.nb_suspicious: suspicious = 'S'
-                if self.nb_iocs: iocs = 'I'
-                if self.nb_hexstrings: hexstrings = 'H'
-                if self.nb_base64strings: base64obf = 'B'
-                if self.nb_dridexstrings: dridex = 'D'
-                if self.nb_vbastrings: vba_obf = 'V'
-                flags += '%s%s%s%s%s%s%s%s' % (macros, autoexec, suspicious, iocs, hexstrings,
-                                             base64obf, dridex, vba_obf)
-                # old table display:
-                # macros = autoexec = suspicious = iocs = hexstrings = 'no'
-                # if nb_macros: macros = 'YES:%d' % nb_macros
-                # if nb_autoexec: autoexec = 'YES:%d' % nb_autoexec
-                # if nb_suspicious: suspicious = 'YES:%d' % nb_suspicious
-                # if nb_iocs: iocs = 'YES:%d' % nb_iocs
-                # if nb_hexstrings: hexstrings = 'YES:%d' % nb_hexstrings
-                # # 2nd line = info
-                # print '%-8s %-7s %-7s %-7s %-7s %-7s' % (self.type, macros, autoexec, suspicious, iocs, hexstrings)
-            else:
-                # self.type==None
-                # file type not OLE nor OpenXML
-                flags = '?'
-                message = 'File format not supported'
-        except Exception:
-            # another error occurred
-            #raise
-            #TODO: print more info if debug mode
-            #TODO: distinguish real errors from incorrect file types
-            flags = '!ERROR'
-            message = sys.exc_value
-        line = '%-12s %s' % (flags, self.filename)
-        if message:
-            line += ' - %s' % message
-        print line
+            #TODO: handle olefile errors, when an OLE file is malformed
+            if self.detect_vba_macros():
+                # print a waiting message only if the output is not redirected to a file:
+                if sys.stdout.isatty():
+                    print 'Analysis...\r',
+                    sys.stdout.flush()
+                self.analyze_macros(show_decoded_strings=show_decoded_strings,
+                                    deobfuscate=deobfuscate)
+            flags = TYPE2TAG[self.type]
+            macros = autoexec = suspicious = iocs = hexstrings = base64obf = dridex = vba_obf = '-'
+            if self.contains_macros: macros = 'M'
+            if self.nb_autoexec: autoexec = 'A'
+            if self.nb_suspicious: suspicious = 'S'
+            if self.nb_iocs: iocs = 'I'
+            if self.nb_hexstrings: hexstrings = 'H'
+            if self.nb_base64strings: base64obf = 'B'
+            if self.nb_dridexstrings: dridex = 'D'
+            if self.nb_vbastrings: vba_obf = 'V'
+            flags += '%s%s%s%s%s%s%s%s' % (macros, autoexec, suspicious, iocs, hexstrings,
+                                         base64obf, dridex, vba_obf)
+
+            line = '%-12s %s' % (flags, self.filename)
+            print line
+
+            # old table display:
+            # macros = autoexec = suspicious = iocs = hexstrings = 'no'
+            # if nb_macros: macros = 'YES:%d' % nb_macros
+            # if nb_autoexec: autoexec = 'YES:%d' % nb_autoexec
+            # if nb_suspicious: suspicious = 'YES:%d' % nb_suspicious
+            # if nb_iocs: iocs = 'YES:%d' % nb_iocs
+            # if nb_hexstrings: hexstrings = 'YES:%d' % nb_hexstrings
+            # # 2nd line = info
+            # print '%-8s %-7s %-7s %-7s %-7s %-7s' % (self.type, macros, autoexec, suspicious, iocs, hexstrings)
+        except Exception as exc:
+            # display the exception with full stack trace for debugging only
+            log.debug('Error processing file %s (%s)' % (self.filename, exc),
+                      exc_info=True)
+            raise ProcessingError(self.filename, exc)
+
 
         # t = prettytable.PrettyTable(('filename', 'type', 'macros', 'autoexec', 'suspicious', 'ioc', 'hexstrings'),
         #     header=False, border=False)
@@ -2888,39 +2887,53 @@ def main():
         # ignore directory names stored in zip files:
         if container and filename.endswith('/'):
             continue
-        # Open the file
-        try:
-            vba_parser = VBA_Parser_CLI(filename, data=data, container=container)
-        except FileOpenError as exc:
-            log.exception('Failed to open %s (%s)!' % (filename, exc))
-            return_code = max(return_code, RETURN_OPEN_ERROR)
-            continue
 
-        if options.output_mode == 'detailed':
-            # fully detailed output
-            vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
-                         display_code=options.display_code,
-                         hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
-                         show_deobfuscated_code=options.show_deobfuscated_code,
-                         deobfuscate=options.deobfuscate)
-        elif options.output_mode in ('triage', 'unspecified'):
-            # print container name when it changes:
-            if container != previous_container:
-                if container is not None:
-                    print '\nFiles in %s:' % container
-                previous_container = container
-            # summarized output for triage:
-            vba_parser.process_file_triage(show_decoded_strings=options.show_decoded_strings,
-                                           deobfuscate=options.deobfuscate)
-        elif options.output_mode == 'json':
-            json_results.append(
-                vba_parser.process_file_json(show_decoded_strings=options.show_decoded_strings,
-                         display_code=options.display_code,
-                         hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
-                         show_deobfuscated_code=options.show_deobfuscated_code))
-        else:  # (should be impossible)
-            raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
-        count += 1
+        try:
+            # Open the file
+            vba_parser = VBA_Parser_CLI(filename, data=data, container=container)
+
+            if options.output_mode == 'detailed':
+                # fully detailed output
+                vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
+                             display_code=options.display_code,
+                             hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
+                             show_deobfuscated_code=options.show_deobfuscated_code,
+                             deobfuscate=options.deobfuscate)
+            elif options.output_mode in ('triage', 'unspecified'):
+                # print container name when it changes:
+                if container != previous_container:
+                    if container is not None:
+                        print '\nFiles in %s:' % container
+                    previous_container = container
+                # summarized output for triage:
+                vba_parser.process_file_triage(show_decoded_strings=options.show_decoded_strings,
+                                               deobfuscate=options.deobfuscate)
+            elif options.output_mode == 'json':
+                json_results.append(
+                    vba_parser.process_file_json(show_decoded_strings=options.show_decoded_strings,
+                             display_code=options.display_code,
+                             hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
+                             show_deobfuscated_code=options.show_deobfuscated_code))
+            else:  # (should be impossible)
+                raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
+            count += 1
+
+        except FileOpenError as exc:
+            if options.output_mode in ('triage', 'unspecified'):
+                print '%-12s %s - File format not supported' % ('?', filename)
+            else:
+                log.exception('Failed to open %s -- probably not supported!' % filename)
+            return_code = max(return_code, RETURN_OPEN_ERROR)
+        except ProcessingError as exc:
+            if options.output_mode in ('triage', 'unspecified'):
+                print '%-12s %s - %s' % ('!ERROR', filename, exc.orig_exception)
+            else:
+                log.exception('Error processing file %s (%s)!'
+                              % (filename, exc.orig_exception))
+            return_code = max(return_code, RETURN_PARSE_ERROR)
+        finally:
+            vba_parser.close()
+
     if options.output_mode == 'triage':
         print '\n(Flags: OpX=OpenXML, XML=Word2003XML, MHT=MHTML, TXT=Text, M=Macros, ' \
               'A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex strings, ' \
