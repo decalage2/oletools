@@ -2237,6 +2237,15 @@ class VBA_Parser(object):
         # - The root/VBA storage MUST contain a _VBA_PROJECT stream and a dir stream
         # - all names are case-insensitive
 
+        def check_vba_stream(ole, vba_root, stream_path):
+            full_path = vba_root + stream_path
+            if ole.exists(full_path) and ole.get_type(full_path) == olefile.STGTY_STREAM:
+                log.debug('Found %s stream: %s' % (stream_path, full_path))
+                return full_path
+            else:
+                log.debug('Missing %s stream, this is not a valid VBA project structure' % stream_path)
+                return False
+
         # start with an empty list:
         self.vba_projects = []
         # Look for any storage containing those storage/streams:
@@ -2252,15 +2261,6 @@ class VBA_Parser(object):
                 if vba_root != '':
                     vba_root += '/'
                 log.debug('Checking vba_root="%s"' % vba_root)
-
-                def check_vba_stream(ole, vba_root, stream_path):
-                    full_path = vba_root + stream_path
-                    if ole.exists(full_path) and ole.get_type(full_path) == olefile.STGTY_STREAM:
-                        log.debug('Found %s stream: %s' % (stream_path, full_path))
-                        return full_path
-                    else:
-                        log.debug('Missing %s stream, this is not a valid VBA project structure' % stream_path)
-                        return False
 
                 # Check if the VBA root storage also contains a PROJECT stream:
                 project_path = check_vba_stream(ole, vba_root, 'PROJECT')
