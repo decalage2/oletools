@@ -290,6 +290,20 @@ def get_logger(name, level=logging.CRITICAL+1):
 log = get_logger('olevba')
 
 
+#=== EXCEPTIONS ==============================================================
+
+class FileOpenError(Exception):
+    """ raised by VBA_Parser constructor if all open_... attempts failed
+
+    probably means the file type is not supported
+    """
+
+    def __init__(self, filename):
+        super(InvalidFileTypeError, self).__init__(
+            'Failed to open file %s ... probably not supported' % filename)
+        self.filename = filename
+
+
 #--- CONSTANTS ----------------------------------------------------------------
 
 # URL and message to report issues:
@@ -1908,6 +1922,8 @@ class VBA_Parser(object):
 
         :param container: str, path and filename of container if the file is within
         a zip archive, None otherwise.
+
+        raises a FileOpenError if all attemps to interpret the data header failed
         """
         #TODO: filename should only be a string, data should be used for the file-like object
         #TODO: filename should be mandatory, optional data is a string or file-like object
@@ -1985,7 +2001,7 @@ class VBA_Parser(object):
             # At this stage, could not match a known format:
             msg = '%s is not a supported file type, cannot extract VBA Macros.' % self.filename
             log.error(msg)
-            raise TypeError(msg)
+            raise FileOpenError(msg)
 
     def open_ole(self, _file):
         """
