@@ -314,6 +314,13 @@ class MsoExtractionError(RuntimeError):
 
 #--- CONSTANTS ----------------------------------------------------------------
 
+# return codes
+RETURN_OK = 0
+RETURN_PARSE_ERROR = 1
+RETURN_OPEN_ERROR = 2
+RETURN_FILE_NOT_FOUND = 3
+RETURN_UNEXPECTED = 4
+
 # URL and message to report issues:
 URL_OLEVBA_ISSUES = 'https://bitbucket.org/decalage/oletools/issues'
 MSG_OLEVBA_ISSUES = 'Please report this issue on %s' % URL_OLEVBA_ISSUES
@@ -2886,6 +2893,7 @@ def main():
     count = 0
     container = filename = data = None
     vba_parser = None
+    return_code = RETURN_OK
     for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
                                                       zip_password=options.zip_password, zip_fname=options.zip_fname):
         # ignore directory names stored in zip files:
@@ -2896,6 +2904,7 @@ def main():
             vba_parser = VBA_Parser_CLI(filename, data=data, container=container)
         except FileOpenError as exc:
             log.exception('Failed to open %s (%s)!' % (filename, exc))
+            return_code = max(return_code, RETURN_OPEN_ERROR)
             continue
 
         if options.output_mode == 'detailed':
