@@ -60,6 +60,15 @@ __version__ = '0.05'
 
 import os, fnmatch, glob, zipfile
 
+#=== EXCEPTIONS ==============================================================
+
+class PathNotFoundException(Exception):
+    """ raised if given a fixed file/dir (not a glob) that does not exist """
+    def __init__(self, path):
+        super(PathNotFoundException, self).__init__(
+            'Given path does not exist: %r' % path)
+
+
 #=== FUNCTIONS ===============================================================
 
 # recursive glob function to find files in any subfolder:
@@ -118,8 +127,11 @@ def iter_files(files, recursive=False, zip_password=None, zip_fname='*'):
     - then files matching zip_fname are opened from the zip archive
 
     Iterator: yields (container, filename, data) for each file. If zip_password is None, then
-    only the filename is returned, container and data=None. Otherwise container si the
-    filename of the container (zip file), and data is the file content.
+    only the filename is returned, container and data=None. Otherwise container is the
+    filename of the container (zip file), and data is the file content (or an exception).
+    If a given filename is not a glob and does not exist, the triplet
+    (None, filename, PathNotFoundException) is yielded. (Globs matching nothing
+    do not trigger exceptions)
     """
     #TODO: catch exceptions and yield them for the caller (no file found, file is not zip, wrong password, etc)
     #TODO: use logging instead of printing
@@ -132,7 +144,7 @@ def iter_files(files, recursive=False, zip_password=None, zip_fname='*'):
         iglob = glob.iglob
     for filespec in files:
         if not is_glob(filespec) and not os.path.exists(filespec):
-            raise ValueError('given path {} does not exist!'.format(filespec))
+            yield None, PathNotFoundException(filespec), None
         for filename in iglob(filespec):
             if zip_password is not None:
                 # Each file is expected to be a zip archive:
