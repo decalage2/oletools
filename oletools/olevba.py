@@ -2516,8 +2516,7 @@ class VBA_Parser_CLI(VBA_Parser):
     def __init__(self, filename, data=None, container=None):
         """
         Constructor for VBA_Parser_CLI.
-        Calls __init__ from VBA_Parser, but handles the TypeError exception
-        when the file type is not supported.
+        Calls __init__ from VBA_Parser
 
         :param filename: filename or path of file to parse, or file-like object
 
@@ -2528,11 +2527,7 @@ class VBA_Parser_CLI(VBA_Parser):
         :param container: str, path and filename of container if the file is within
         a zip archive, None otherwise.
         """
-        try:
-            VBA_Parser.__init__(self, filename, data=data, container=container)
-        except TypeError:
-            # in that case, self.type=None
-            pass
+        super(VBA_Parser_CLI, self).__init__(filename, data=data, container=container)
 
 
     def print_analysis(self, show_decoded_strings=False, deobfuscate=False):
@@ -2897,7 +2892,12 @@ def main():
         if container and filename.endswith('/'):
             continue
         # Open the file
-        vba_parser = VBA_Parser_CLI(filename, data=data, container=container)
+        try:
+            vba_parser = VBA_Parser_CLI(filename, data=data, container=container)
+        except FileOpenError as exc:
+            log.exception('Failed to open %s (%s)!' % (filename, exc))
+            continue
+
         if options.output_mode == 'detailed':
             # fully detailed output
             vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
