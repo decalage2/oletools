@@ -1687,14 +1687,14 @@ def json2ascii(json_obj, encoding='utf8', errors='replace'):
     elif isinstance(json_obj, str):
         dencoded = json_obj.decode(encoding, errors).encode(encoding, errors)
         if dencoded != str:
-            logging.info('json2ascii: replaced: {0} (len {1})'
-                         .format(json_obj, len(json_obj)))
-            logging.info('json2ascii:     with: {0} (len {1})'
-                         .format(dencoded, len(dencoded)))
+            log.info('json2ascii: replaced: {0} (len {1})'
+                     .format(json_obj, len(json_obj)))
+            log.info('json2ascii:     with: {0} (len {1})'
+                     .format(dencoded, len(dencoded)))
         return dencoded
     elif isinstance(json_obj, unicode):
-        logging.info('json2ascii: replaced: {0}'
-                     .format(json_obj.encode(encoding, errors)))
+        log.info('json2ascii: replaced: {0}'
+                 .format(json_obj.encode(encoding, errors)))
         # cannot put original into logger
         # print 'original: ' json_obj
         return json_obj.encode(encoding, errors)
@@ -1705,8 +1705,8 @@ def json2ascii(json_obj, encoding='utf8', errors='replace'):
         for item in json_obj:
             item = json2ascii(item)
     else:
-        logging.debug('unexpected type in json2ascii: {0} -- leave as is'
-                      .format(type(json_obj)))
+        log.debug('unexpected type in json2ascii: {0} -- leave as is'
+                  .format(type(json_obj)))
     return json_obj
 
 
