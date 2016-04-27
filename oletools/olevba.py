@@ -2094,11 +2094,14 @@ class VBA_Parser(object):
                 if is_mso_file(mso_data):
                     # decompress the zlib data stored in the MSO file, which is the OLE container:
                     # TODO: handle different offsets => separate function
-                    ole_data = mso_file_extract(mso_data)
                     try:
+                        ole_data = mso_file_extract(mso_data)
                         self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
-                    except Exception:
-                        log.error('%s does not contain a valid OLE file' % fname)
+                    except MsoExtractionError:
+                        log.exception('Failed decompressing an MSO container in %r - %s'
+                                      % (fname, MSG_OLEVBA_ISSUES))
+                    except FileOpenError as exc:
+                        log.debug('%s is not a valid OLE sub file (%s)' % (fname, exc))
                 else:
                     log.error('%s is not a valid MSO file' % fname)
             # set type only if parsing succeeds
@@ -2150,16 +2153,17 @@ class VBA_Parser(object):
                     log.debug('Found ActiveMime header, decompressing MSO container')
                     try:
                         ole_data = mso_file_extract(part_data)
-                        try:
-                            # TODO: check if it is actually an OLE file
-                            # TODO: get the MSO filename from content_location?
-                            self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
-                        except Exception:
-                            log.debug('%s does not contain a valid OLE file' % fname)
-                    except Exception:
+
+                        # TODO: check if it is actually an OLE file
+                        # TODO: get the MSO filename from content_location?
+                        self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
+                    except MsoExtractionError:
                         log.exception('Failed decompressing an MSO container in %r - %s'
                                       % (fname, MSG_OLEVBA_ISSUES))
                         # TODO: bug here - need to split in smaller functions/classes?
+                    except FileOpenError as exc:
+                        log.debug('%s does not contain a valid OLE file (%s)'
+                                  % (fname, exc))
                 else:
                     try:
                         log.debug('type(part_data) = %s' % type(part_data))
