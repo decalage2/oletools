@@ -2584,7 +2584,7 @@ class VBA_Parser_CLI(VBA_Parser):
                 for kw_type, keyword, description in self.analyze_macros(show_decoded_strings)]
 
     def process_file(self, show_decoded_strings=False,
-                     display_code=True, global_analysis=True, hide_attributes=True,
+                     display_code=True, hide_attributes=True,
                      vba_code_only=False, show_deobfuscated_code=False,
                      deobfuscate=False):
         """
@@ -2630,19 +2630,12 @@ class VBA_Parser_CLI(VBA_Parser):
                             print '(empty macro)'
                         else:
                             print vba_code_filtered
-                    if not global_analysis and not vba_code_only:
-                        #TODO: remove this option
-                        raise NotImplementedError
-                        print '- ' * 39
-                        print 'ANALYSIS:'
-                        # analyse each module's code, filtered to avoid false positives:
-                        self.print_analysis(show_decoded_strings, deobfuscate)
                 for (subfilename, stream_path, form_string) in self.extract_form_strings():
                     print '-' * 79
                     print 'VBA FORM STRING IN %r - OLE stream: %r' % (subfilename, stream_path)
                     print '- ' * 39
                     print form_string
-                if global_analysis and not vba_code_only:
+                if not vba_code_only:
                     # analyse the code from all modules at once:
                     self.print_analysis(show_decoded_strings, deobfuscate)
                 if show_deobfuscated_code:
@@ -2660,7 +2653,7 @@ class VBA_Parser_CLI(VBA_Parser):
 
 
     def process_file_json(self, show_decoded_strings=False,
-                          display_code=True, global_analysis=True, hide_attributes=True,
+                          display_code=True, hide_attributes=True,
                           vba_code_only=False, show_deobfuscated_code=False):
         """
         Process a single file
@@ -2709,12 +2702,8 @@ class VBA_Parser_CLI(VBA_Parser):
                     curr_macro['ole_stream'] = stream_path
                     if display_code:
                         curr_macro['code'] = vba_code_filtered.strip()
-                    if not global_analysis and not vba_code_only:
-                        # analyse each module's code, filtered to avoid false positives:
-                        #TODO: remove this option
-                        curr_macro['analysis'] = self.print_analysis_json(show_decoded_strings)
                     macros.append(curr_macro)
-                if global_analysis and not vba_code_only:
+                if not vba_code_only:
                     # analyse the code from all modules at once:
                     result['analysis'] = self.print_analysis_json(show_decoded_strings)
                 if show_deobfuscated_code:
@@ -2910,7 +2899,7 @@ def main():
         if options.output_mode == 'detailed':
             # fully detailed output
             vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
-                         display_code=options.display_code, global_analysis=True, #options.global_analysis,
+                         display_code=options.display_code,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
                          show_deobfuscated_code=options.show_deobfuscated_code,
                          deobfuscate=options.deobfuscate)
@@ -2926,7 +2915,7 @@ def main():
         elif options.output_mode == 'json':
             json_results.append(
                 vba_parser.process_file_json(show_decoded_strings=options.show_decoded_strings,
-                         display_code=options.display_code, global_analysis=True, #options.global_analysis,
+                         display_code=options.display_code,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
                          show_deobfuscated_code=options.show_deobfuscated_code))
         else:  # (should be impossible)
@@ -2940,7 +2929,7 @@ def main():
     if count == 1 and options.output_mode == 'unspecified':
         # if options -t, -d and -j were not specified and it's a single file, print details:
         vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
-                         display_code=options.display_code, global_analysis=True, #options.global_analysis,
+                         display_code=options.display_code,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
                          show_deobfuscated_code=options.show_deobfuscated_code,
                          deobfuscate=options.deobfuscate)
