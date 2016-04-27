@@ -894,7 +894,8 @@ def mso_file_extract(data):
             extracted_data = zlib.decompress(data[start:])
             return extracted_data
         except zlib.error as exc:
-            log.exception('zlib decompression failed')
+            log.exception('zlib decompression failed for offset %s (%s)'
+                          % (start, exc))
     # None of the guessed offsets worked, let's try brute-forcing by looking
     # for potential zlib-compressed blocks starting with 0x78:
     log.debug('Looking for potential zlib-compressed blocks in MSO file')
@@ -905,7 +906,7 @@ def mso_file_extract(data):
             extracted_data = zlib.decompress(data[start:])
             return extracted_data
         except zlib.error as exc:
-            log.exception('zlib decompression failed')
+            log.exception('zlib decompression failed (%s)' % exc)
     raise MsoExtractionError('Unable to decompress data from a MSO/ActiveMime file')
 
 
@@ -1633,6 +1634,7 @@ def detect_base64_strings(vba_code):
                 results.append((value, decoded))
                 found.add(value)
             except (TypeError, ValueError) as exc:
+                log.debug('Failed to base64-decode (%s)' % exc)
                 # if an exception occurs, it is likely not a base64-encoded string
                 pass
     return results
@@ -1659,7 +1661,8 @@ def detect_dridex_strings(vba_code):
                 decoded = DridexUrlDecode(value)
                 results.append((value, decoded))
                 found.add(value)
-            except Exception:
+            except Exception as exc:
+                log.debug('Failed to Dridex-decode (%s)' % exc)
                 # if an exception occurs, it is likely not a dridex-encoded string
                 pass
     return results
@@ -2057,15 +2060,16 @@ class VBA_Parser(object):
                     ole_data = z.open(subfile).read()
                     try:
                         self.ole_subfiles.append(VBA_Parser(filename=subfile, data=ole_data))
-                    except Exception:
-                        log.debug('%s is not a valid OLE file' % subfile)
+                    except FileOpenError as exc:
+                        log.error('%s is not a valid OLE file (%s)' % (subfile, exc))
                         continue
             z.close()
             # set type only if parsing succeeds
             self.type = TYPE_OpenXML
         except (RuntimeError, zipfile.BadZipfile, zipfile.LargeZipFile, IOError) as exc:
             # TODO: handle parsing exceptions
-            log.exception('Failed Zip/OpenXML parsing for file %r' % self.filename)
+            log.exception('Failed Zip/OpenXML parsing for file %r (%s)'
+                          % (self.filename, exc))
             pass
 
     def open_word2003xml(self, data):
@@ -2099,9 +2103,10 @@ class VBA_Parser(object):
                     log.error('%s is not a valid MSO file' % fname)
             # set type only if parsing succeeds
             self.type = TYPE_Word2003_XML
-        except Exception:
+        except Exception as exc:
             # TODO: differentiate exceptions for each parsing stage
-            log.exception('Failed XML parsing for file %r' % self.filename)
+            # (but ET is different libs, no good exception description in API)
+            log.exception('Failed XML parsing for file %r (%s)' % (self.filename, exc))
             pass
 
     def open_mht(self, data):
