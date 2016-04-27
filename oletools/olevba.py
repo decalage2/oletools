@@ -238,7 +238,7 @@ except ImportError:
 
 import thirdparty.olefile as olefile
 from thirdparty.prettytable import prettytable
-from thirdparty.xglob import xglob
+from thirdparty.xglob import xglob, PathNotFoundException
 from thirdparty.pyparsing.pyparsing import *
 
 # monkeypatch email to fix issue #32:
@@ -327,11 +327,12 @@ class MsoExtractionError(RuntimeError):
 RETURN_OK             = 0
 RETURN_WARNINGS       = 1  # (reserved, not used yet)
 RETURN_WRONG_ARGS     = 2  # (fixed, built into optparse)
-RETURN_OPEN_ERROR     = 3
-RETURN_PARSE_ERROR    = 4
-RETURN_FILE_NOT_FOUND = 5
-RETURN_SEVERAL_ERRS   = 6
-RETURN_UNEXPECTED     = 7
+RETURN_FILE_NOT_FOUND = 3
+RETURN_XGLOB_ERR      = 4
+RETURN_OPEN_ERROR     = 5
+RETURN_PARSE_ERROR    = 6
+RETURN_SEVERAL_ERRS   = 7
+RETURN_UNEXPECTED     = 8
 
 # URL and message to report issues:
 URL_OLEVBA_ISSUES = 'https://bitbucket.org/decalage/oletools/issues'
@@ -2890,6 +2891,25 @@ def main():
                                                           zip_password=options.zip_password, zip_fname=options.zip_fname):
             # ignore directory names stored in zip files:
             if container and filename.endswith('/'):
+                continue
+
+            # handle errors from xglob
+            if isinstance(data, Exception):
+                if isinstance(data, PathNotFoundException):
+                    if options.output_mode in ('triage', 'unspecified'):
+                        print '%-12s %s - File not found' % ('?', filename)
+                    else:
+                        log.exception('Given path %r does not exist!' % filename)
+                    return_code = RETURN_FILE_NOT_FOUND if return_code == 0 \
+                                                    else RETURN_SEVERAL_ERRS
+                else:
+                    if options.output_mode in ('triage', 'unspecified'):
+                        print '%-12s %s - Failed to read from zip file %s' % ('?', filename, container)
+                    else:
+                        log.exception('Exception opening/reading %r from zip file %r: %s'
+                                      % (filename, container, data))
+                    return_code = RETURN_XGLOB_ERR if return_code == 0 \
+                                                    else RETURN_SEVERAL_ERRS
                 continue
 
             try:
