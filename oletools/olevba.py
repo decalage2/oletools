@@ -2174,6 +2174,7 @@ class VBA_Parser(object):
         except Exception as exc:
             # TODO: differentiate exceptions for each parsing stage
             # (but ET is different libs, no good exception description in API)
+            # found: XMLSyntaxError
             log.exception('Failed XML parsing for file %r (%s)' % (self.filename, exc))
 
     def open_mht(self, data):
@@ -2230,12 +2231,15 @@ class VBA_Parser(object):
                                   % (fname, exc))
                 else:
                     log.debug('type(part_data) = %s' % type(part_data))
-                    log.debug('part_data[0:20] = %r' % part_data[0:20])
+                    try:
+                        log.debug('part_data[0:20] = %r' % part_data[0:20])
+                    except TypeError as err:
+                        log.debug('part_data has no __getitem__')
             # set type only if parsing succeeds
             self.type = TYPE_MHTML
         except Exception:
             log.exception('Failed MIME parsing for file %r - %s'
-                              % (self.filename, MSG_OLEVBA_ISSUES))
+                          % (self.filename, MSG_OLEVBA_ISSUES))
 
 
     def open_text(self, data):
