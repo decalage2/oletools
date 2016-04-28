@@ -2701,7 +2701,7 @@ class VBA_Parser_CLI(VBA_Parser):
                 print 'No VBA macros found.'
         except Exception as exc:
             # display the exception with full stack trace for debugging
-            log.exception('Error processing file %s (%s)' % (self.filename, exc))
+            log.error('Error processing file %s (%s)' % (self.filename, exc))
             log.debug('Traceback:', exc_info=True)
             raise ProcessingError(self.filename, exc)
         print ''
@@ -2767,7 +2767,7 @@ class VBA_Parser_CLI(VBA_Parser):
             result['json_conversion_successful'] = True
         except Exception as exc:
             # display the exception with full stack trace for debugging
-            log.exception('Error processing file %s (%s)' % (self.filename, exc))
+            log.error('Error processing file %s (%s)' % (self.filename, exc))
             log.debug('Traceback:', exc_info=True)
             raise ProcessingError(self.filename, exc)
 
@@ -2941,14 +2941,14 @@ def main():
                     if options.output_mode in ('triage', 'unspecified'):
                         print '%-12s %s - File not found' % ('?', filename)
                     else:
-                        log.exception('Given path %r does not exist!' % filename)
+                        log.error('Given path %r does not exist!' % filename)
                     return_code = RETURN_FILE_NOT_FOUND if return_code == 0 \
                                                     else RETURN_SEVERAL_ERRS
                 else:
                     if options.output_mode in ('triage', 'unspecified'):
                         print '%-12s %s - Failed to read from zip file %s' % ('?', filename, container)
                     else:
-                        log.exception('Exception opening/reading %r from zip file %r: %s'
+                        log.error('Exception opening/reading %r from zip file %r: %s'
                                       % (filename, container, data))
                     return_code = RETURN_XGLOB_ERR if return_code == 0 \
                                                     else RETURN_SEVERAL_ERRS
