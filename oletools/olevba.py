@@ -1097,7 +1097,7 @@ def decompress_stream(compressed_container):
                         copy_token = \
                             struct.unpack("<H", compressed_container[compressed_current:compressed_current + 2])[0]
                         #TODO: check this
-                        length_mask, offset_mask, bit_count, maximum_length = copytoken_help(
+                        length_mask, offset_mask, bit_count, _ = copytoken_help(
                             len(decompressed_container), decompressed_chunk_start)
                         length = (copy_token & length_mask) + 3
                         temp1 = copy_token & offset_mask
@@ -1430,7 +1430,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
     unused = projectmodules_projectcookierecord_cookie
 
     log.debug("parsing {0} modules".format(projectmodules_count))
-    for x in xrange(0, projectmodules_count):
+    for _ in xrange(0, projectmodules_count):
         modulename_id = struct.unpack("<H", dir_stream.read(2))[0]
         check_value('MODULENAME_Id', 0x0019, modulename_id)
         modulename_sizeof_modulename = struct.unpack("<L", dir_stream.read(4))[0]
@@ -2432,10 +2432,10 @@ class VBA_Parser(object):
             # variable to merge source code from all modules:
             if self.vba_code_all_modules is None:
                 self.vba_code_all_modules = ''
-                for (subfilename, stream_path, vba_filename, vba_code) in self.extract_all_macros():
+                for (_, _, _, vba_code) in self.extract_all_macros():
                     #TODO: filter code? (each module)
                     self.vba_code_all_modules += vba_code + '\n'
-                for (subfilename, form_path, form_string) in self.extract_form_strings():
+                for (_, _, form_string) in self.extract_form_strings():
                     self.vba_code_all_modules += form_string + '\n'
             # Analyze the whole code at once:
             scanner = VBA_Scanner(self.vba_code_all_modules)
