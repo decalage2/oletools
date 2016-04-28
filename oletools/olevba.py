@@ -1227,7 +1227,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
     projectdocstring_id = struct.unpack("<H", dir_stream.read(2))[0]
     check_value('PROJECTDOCSTRING_Id', 0x0005, projectdocstring_id)
     projectdocstring_sizeof_docstring = struct.unpack("<L", dir_stream.read(4))[0]
-    if projectname_sizeof_projectname > 2000:
+    if projectdocstring_sizeof_docstring > 2000:
         log.error(
             "PROJECTDOCSTRING_SizeOfDocString value not in range: {0}".format(projectdocstring_sizeof_docstring))
     projectdocstring_docstring = dir_stream.read(projectdocstring_sizeof_docstring)
