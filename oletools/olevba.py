@@ -908,7 +908,8 @@ def mso_file_extract(data):
         log.debug('Parsing MSO file: data offset = 0x%X' % offset)
         offsets.insert(0, offset)  # insert at beginning of offsets
     except struct.error as exc:
-        log.exception('Unable to parse MSO/ActiveMime file header (%s)' % exc)
+        log.info('Unable to parse MSO/ActiveMime file header (%s)' % exc)
+        log.debug('Trace:', exc_info=True)
         raise MsoExtractionError('Unable to parse MSO/ActiveMime file header')
     # now try offsets
     for start in offsets:
@@ -917,8 +918,9 @@ def mso_file_extract(data):
             extracted_data = zlib.decompress(data[start:])
             return extracted_data
         except zlib.error as exc:
-            log.exception('zlib decompression failed for offset %s (%s)'
-                          % (start, exc))
+            log.info('zlib decompression failed for offset %s (%s)'
+                     % (start, exc))
+            log.debug('Trace:', exc_info=True)
     # None of the guessed offsets worked, let's try brute-forcing by looking
     # for potential zlib-compressed blocks starting with 0x78:
     log.debug('Looking for potential zlib-compressed blocks in MSO file')
@@ -929,7 +931,8 @@ def mso_file_extract(data):
             extracted_data = zlib.decompress(data[start:])
             return extracted_data
         except zlib.error as exc:
-            log.exception('zlib decompression failed (%s)' % exc)
+            log.info('zlib decompression failed (%s)' % exc)
+            log.debug('Trace:', exc_info=True)
     raise MsoExtractionError('Unable to decompress data from a MSO/ActiveMime file')
 
 
@@ -2098,7 +2101,7 @@ class VBA_Parser(object):
         if self.type is None:
             # At this stage, could not match a known format:
             msg = '%s is not a supported file type, cannot extract VBA Macros.' % self.filename
-            log.error(msg)
+            log.info(msg)
             raise FileOpenError(msg)
 
     def open_ole(self, _file):
@@ -2114,9 +2117,10 @@ class VBA_Parser(object):
             # TODO: raise TypeError if this is a Powerpoint 97 file, since VBA macros cannot be detected yet
             # set type only if parsing succeeds
             self.type = TYPE_OLE
-        except (IOError, TypeError, ValueError):
+        except (IOError, TypeError, ValueError) as exc:
             # TODO: handle OLE parsing exceptions
-            log.exception('Failed OLE parsing for file %r' % self.filename)
+            log.info('Failed OLE parsing for file %r (%s)' % (self.filename, exc))
+            log.debug('Trace:', exc_info=True)
 
 
     def open_openxml(self, _file):
@@ -2143,15 +2147,16 @@ class VBA_Parser(object):
                     try:
                         self.ole_subfiles.append(VBA_Parser(filename=subfile, data=ole_data))
                     except FileOpenError as exc:
-                        log.error('%s is not a valid OLE file (%s)' % (subfile, exc))
+                        log.info('%s is not a valid OLE file (%s)' % (subfile, exc))
                         continue
             z.close()
             # set type only if parsing succeeds
             self.type = TYPE_OpenXML
         except (RuntimeError, zipfile.BadZipfile, zipfile.LargeZipFile, IOError) as exc:
             # TODO: handle parsing exceptions
-            log.exception('Failed Zip/OpenXML parsing for file %r (%s)'
+            log.info('Failed Zip/OpenXML parsing for file %r (%s)'
                           % (self.filename, exc))
+            log.debug('Trace:', exc_info=True)
 
     def open_word2003xml(self, data):
         """
@@ -2179,19 +2184,21 @@ class VBA_Parser(object):
                         ole_data = mso_file_extract(mso_data)
                         self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
                     except MsoExtractionError:
-                        log.exception('Failed decompressing an MSO container in %r - %s'
-                                      % (fname, MSG_OLEVBA_ISSUES))
+                        log.info('Failed decompressing an MSO container in %r - %s'
+                                 % (fname, MSG_OLEVBA_ISSUES))
+                        log.debug('Trace:', exc_info=True)
                     except FileOpenError as exc:
                         log.debug('%s is not a valid OLE sub file (%s)' % (fname, exc))
                 else:
-                    log.error('%s is not a valid MSO file' % fname)
+                    log.info('%s is not a valid MSO file' % fname)
             # set type only if parsing succeeds
             self.type = TYPE_Word2003_XML
         except Exception as exc:
             # TODO: differentiate exceptions for each parsing stage
             # (but ET is different libs, no good exception description in API)
             # found: XMLSyntaxError
-            log.exception('Failed XML parsing for file %r (%s)' % (self.filename, exc))
+            log.info('Failed XML parsing for file %r (%s)' % (self.filename, exc))
+            log.debug('Trace:', exc_info=True)
 
     def open_mht(self, data):
         """
@@ -2239,8 +2246,9 @@ class VBA_Parser(object):
                         # TODO: get the MSO filename from content_location?
                         self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
                     except MsoExtractionError:
-                        log.exception('Failed decompressing an MSO container in %r - %s'
+                        log.info('Failed decompressing an MSO container in %r - %s'
                                       % (fname, MSG_OLEVBA_ISSUES))
+                        log.debug('Trace:', exc_info=True)
                         # TODO: bug here - need to split in smaller functions/classes?
                     except FileOpenError as exc:
                         log.debug('%s does not contain a valid OLE file (%s)'
@@ -2254,8 +2262,9 @@ class VBA_Parser(object):
             # set type only if parsing succeeds
             self.type = TYPE_MHTML
         except Exception:
-            log.exception('Failed MIME parsing for file %r - %s'
+            log.info('Failed MIME parsing for file %r - %s'
                           % (self.filename, MSG_OLEVBA_ISSUES))
+            log.debug('Trace:', exc_info=True)
 
 
     def open_text(self, data):
@@ -2721,7 +2730,7 @@ class VBA_Parser_CLI(VBA_Parser):
                 print 'No VBA macros found.'
         except Exception as exc:
             # display the exception with full stack trace for debugging
-            log.error('Error processing file %s (%s)' % (self.filename, exc))
+            log.info('Error processing file %s (%s)' % (self.filename, exc))
             log.debug('Traceback:', exc_info=True)
             raise ProcessingError(self.filename, exc)
         print ''
@@ -2787,7 +2796,7 @@ class VBA_Parser_CLI(VBA_Parser):
             result['json_conversion_successful'] = True
         except Exception as exc:
             # display the exception with full stack trace for debugging
-            log.error('Error processing file %s (%s)' % (self.filename, exc))
+            log.info('Error processing file %s (%s)' % (self.filename, exc))
             log.debug('Traceback:', exc_info=True)
             raise ProcessingError(self.filename, exc)
 
