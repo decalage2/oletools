@@ -2970,14 +2970,14 @@ def main():
                 if isinstance(data, PathNotFoundException):
                     if options.output_mode in ('triage', 'unspecified'):
                         print '%-12s %s - File not found' % ('?', filename)
-                    else:
+                    elif options.output_mode != 'json':
                         log.error('Given path %r does not exist!' % filename)
                     return_code = RETURN_FILE_NOT_FOUND if return_code == 0 \
                                                     else RETURN_SEVERAL_ERRS
                 else:
                     if options.output_mode in ('triage', 'unspecified'):
                         print '%-12s %s - Failed to read from zip file %s' % ('?', filename, container)
-                    else:
+                    elif options.output_mode != 'json':
                         log.error('Exception opening/reading %r from zip file %r: %s'
                                       % (filename, container, data))
                     return_code = RETURN_XGLOB_ERR if return_code == 0 \
@@ -3020,23 +3020,23 @@ def main():
             except FileOpenError as exc:
                 if options.output_mode in ('triage', 'unspecified'):
                     print '%-12s %s - File format not supported' % ('?', filename)
-                else:
-                    log.exception('Failed to open %s -- probably not supported!' % filename)
-                if options.output_mode == 'json':
+                elif options.output_mode == 'json':
                     print_json(file=filename, type='error',
                                error=type(exc).__name__, message=str(exc))
+                else:
+                    log.exception('Failed to open %s -- probably not supported!' % filename)
                 return_code = RETURN_OPEN_ERROR if return_code == 0 \
                                                 else RETURN_SEVERAL_ERRS
             except ProcessingError as exc:
                 if options.output_mode in ('triage', 'unspecified'):
                     print '%-12s %s - %s' % ('!ERROR', filename, exc.orig_exception)
-                else:
-                    log.exception('Error processing file %s (%s)!'
-                                  % (filename, exc.orig_exception))
-                if options.output_mode == 'json':
+                elif options.output_mode == 'json':
                     print_json(file=filename, type='error',
                                error=type(exc).__name__,
                                message=str(exc.orig_exception))
+                else:
+                    log.exception('Error processing file %s (%s)!'
+                                  % (filename, exc.orig_exception))
                 return_code = RETURN_PARSE_ERROR if return_code == 0 \
                                                 else RETURN_SEVERAL_ERRS
             finally:
@@ -3064,6 +3064,7 @@ def main():
     except Exception as exc:
         # some unexpected error, maybe some of the types caught in except clauses
         # above were not sufficient. This is very bad, so log complete trace at exception level
+        # and do not care about output mode
         log.exception('Unhandled exception in main: %s' % exc, exc_info=True)
         return_code = RETURN_UNEXPECTED    # even if there were others before -- this is more important
 
