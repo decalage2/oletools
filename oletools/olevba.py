@@ -1545,6 +1545,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
             log.debug('extracted file {0}'.format(filename))
         else:
             log.warning("module stream {0} has code data length 0".format(modulestreamname_streamname))
+    _ = unused
     return
 
 
