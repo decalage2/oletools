@@ -2956,6 +2956,10 @@ def main():
                                       % (filename, container, data))
                     return_code = RETURN_XGLOB_ERR if return_code == 0 \
                                                     else RETURN_SEVERAL_ERRS
+                if options.output_mode == 'json':
+                    json_results.append(dict(file=filename, type='error',
+                                             error=type(data).__name__,
+                                             message=str(data)))
                 continue
 
             try:
@@ -2993,6 +2997,10 @@ def main():
                     print '%-12s %s - File format not supported' % ('?', filename)
                 else:
                     log.exception('Failed to open %s -- probably not supported!' % filename)
+                if options.output_mode == 'json':
+                    json_results.append(dict(file=filename, type='error',
+                                             error=type(exc).__name__,
+                                             message=str(exc)))
                 return_code = RETURN_OPEN_ERROR if return_code == 0 \
                                                 else RETURN_SEVERAL_ERRS
             except ProcessingError as exc:
@@ -3001,6 +3009,10 @@ def main():
                 else:
                     log.exception('Error processing file %s (%s)!'
                                   % (filename, exc.orig_exception))
+                if options.output_mode == 'json':
+                    json_results.append(dict(file=filename, type='error',
+                                             error=type(exc).__name__,
+                                             message=str(exc.orig_exception)))
                 return_code = RETURN_PARSE_ERROR if return_code == 0 \
                                                 else RETURN_SEVERAL_ERRS
             finally:
