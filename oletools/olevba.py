@@ -2988,14 +2988,16 @@ def main():
                     print '%-12s %s - File format not supported' % ('?', filename)
                 else:
                     log.exception('Failed to open %s -- probably not supported!' % filename)
-                return_code = RETURN_OPEN_ERROR if return_code == 0 else RETURN_SEVERAL_ERRS
+                return_code = RETURN_OPEN_ERROR if return_code == 0 \
+                                                else RETURN_SEVERAL_ERRS
             except ProcessingError as exc:
                 if options.output_mode in ('triage', 'unspecified'):
                     print '%-12s %s - %s' % ('!ERROR', filename, exc.orig_exception)
                 else:
                     log.exception('Error processing file %s (%s)!'
                                   % (filename, exc.orig_exception))
-                return_code = RETURN_PARSE_ERROR if return_code == 0 else RETURN_SEVERAL_ERRS
+                return_code = RETURN_PARSE_ERROR if return_code == 0 \
+                                                else RETURN_SEVERAL_ERRS
             finally:
                 vba_parser.close()
 
