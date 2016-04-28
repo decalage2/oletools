@@ -1780,8 +1780,9 @@ def json2ascii(json_obj, encoding='utf8', errors='replace'):
     elif isinstance(json_obj, (bool, int, float)):
         pass
     elif isinstance(json_obj, str):
+        # de-code and re-encode
         dencoded = json_obj.decode(encoding, errors).encode(encoding, errors)
-        if dencoded != str:
+        if dencoded != json_obj:
             log.info('json2ascii: replaced: {0} (len {1})'
                      .format(json_obj, len(json_obj)))
             log.info('json2ascii:     with: {0} (len {1})'
