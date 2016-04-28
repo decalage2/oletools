@@ -211,7 +211,6 @@ import math
 import zipfile
 import re
 import optparse
-import os.path
 import binascii
 import base64
 import zlib
@@ -239,7 +238,11 @@ except ImportError:
 import thirdparty.olefile as olefile
 from thirdparty.prettytable import prettytable
 from thirdparty.xglob import xglob, PathNotFoundException
-from thirdparty.pyparsing.pyparsing import *
+from thirdparty.pyparsing.pyparsing import \
+        CaselessKeyword, CaselessLiteral, Combine, Forward, Literal, \
+        Optional, QuotedString,Regex, Suppress, Word, WordStart, \
+        alphanums, alphas, hexnums,nums, opAssoc, srange, \
+        infixNotation
 
 # monkeypatch email to fix issue #32:
 # allow header lines without ":"
