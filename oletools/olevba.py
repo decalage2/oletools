@@ -1785,15 +1785,15 @@ def json2ascii(json_obj, encoding='utf8', errors='replace'):
 
 _have_printed_json_start = False
 
-def print_json(json_dict=None, is_last=False, **json_parts):
+def print_json(json_dict=None, _json_is_last=False, **json_parts):
     """ line-wise print of json.dumps(json2ascii(..)) with options and indent+1
 
     can use in two ways:
     (1) print_json(some_dict)
     (2) print_json(key1=value1, key2=value2, ...)
 
-    :param bool is_last: set to True only for very last entry to complete
-                         the top-level json-list
+    :param bool _json_is_last: set to True only for very last entry to complete
+                               the top-level json-list
     """
     global _have_printed_json_start
 
@@ -1815,7 +1815,7 @@ def print_json(json_dict=None, is_last=False, **json_parts):
                            indent=4, ensure_ascii=False).splitlines()
     for line in lines[:-1]:
         print '    {}'.format(line)
-    if is_last:
+    if _json_is_last:
         print '    {}'.format(lines[-1])   # print last line without comma
         print ']'
     else:
@@ -3050,7 +3050,7 @@ def main():
         if options.output_mode == 'json':
             # print last json entry (a last one without a comma) and closing ]
             print_json(type='MetaInformation', return_code=return_code,
-                       is_last=True)
+                       n_processed=count, _json_is_last=True)
 
     except Exception as exc:
         # some unexpected error, maybe some of the types caught in except clauses
