@@ -1703,7 +1703,6 @@ def detect_base64_strings(vba_code):
             except (TypeError, ValueError) as exc:
                 log.debug('Failed to base64-decode (%s)' % exc)
                 # if an exception occurs, it is likely not a base64-encoded string
-                pass
     return results
 
 
@@ -1731,7 +1730,6 @@ def detect_dridex_strings(vba_code):
             except Exception as exc:
                 log.debug('Failed to Dridex-decode (%s)' % exc)
                 # if an exception occurs, it is likely not a dridex-encoded string
-                pass
     return results
 
 
@@ -2101,7 +2099,6 @@ class VBA_Parser(object):
         except (IOError, TypeError, ValueError):
             # TODO: handle OLE parsing exceptions
             log.exception('Failed OLE parsing for file %r' % self.filename)
-            pass
 
 
     def open_openxml(self, _file):
@@ -2137,7 +2134,6 @@ class VBA_Parser(object):
             # TODO: handle parsing exceptions
             log.exception('Failed Zip/OpenXML parsing for file %r (%s)'
                           % (self.filename, exc))
-            pass
 
     def open_word2003xml(self, data):
         """
@@ -2177,7 +2173,6 @@ class VBA_Parser(object):
             # TODO: differentiate exceptions for each parsing stage
             # (but ET is different libs, no good exception description in API)
             log.exception('Failed XML parsing for file %r (%s)' % (self.filename, exc))
-            pass
 
     def open_mht(self, data):
         """
@@ -2239,7 +2234,6 @@ class VBA_Parser(object):
         except Exception:
             log.exception('Failed MIME parsing for file %r - %s'
                               % (self.filename, MSG_OLEVBA_ISSUES))
-            pass
 
 
     def open_text(self, data):
@@ -2844,7 +2838,6 @@ def main():
     """
     Main function, called when olevba is run from the command line
     """
-    global log
     DEFAULT_LOG_LEVEL = "warning" # Default log level
     LOG_LEVELS = {
         'debug':    logging.DEBUG,
