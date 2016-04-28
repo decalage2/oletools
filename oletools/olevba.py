@@ -951,29 +951,6 @@ def is_printable(s):
     return set(s).issubset(_PRINTABLE_SET)
 
 
-def print_json(j):
-    """
-    Print a dictionary, a list or any other object to stdout
-    :param j: object to be printed
-    :return:
-    """
-    if isinstance(j, dict):
-        for key, val in j.items():
-            print_json(key)
-            print_json(val)
-    elif isinstance(j, list):
-        for elem in j:
-            print_json(elem)
-    else:
-        try:
-            if len(j) > 20:
-                print type(j), repr(j[:20]), '...(len {0})'.format(len(j))
-            else:
-                print type(j), repr(j)
-        except TypeError:
-            print type(j), repr(j)
-
-
 def copytoken_help(decompressed_current, decompressed_chunk_start):
     """
     compute bit masks to decode a CopyToken according to MS-OVBA 2.4.1.3.19.1 CopyToken Help
@@ -1804,6 +1781,45 @@ def json2ascii(json_obj, encoding='utf8', errors='replace'):
         log.debug('unexpected type in json2ascii: {0} -- leave as is'
                   .format(type(json_obj)))
     return json_obj
+
+
+_have_printed_json_start = False
+
+def print_json(json_dict=None, is_last=False, **json_parts):
+    """ line-wise print of json.dumps(json2ascii(..)) with options and indent+1
+
+    can use in two ways:
+    (1) print_json(some_dict)
+    (2) print_json(key1=value1, key2=value2, ...)
+
+    :param bool is_last: set to True only for very last entry to complete
+                         the top-level json-list
+    """
+    global _have_printed_json_start
+
+    if json_dict and json_parts:
+        raise ValueError('Invalid json argument: want either single dict or '
+                         'key=value parts but got both)')
+    elif (json_dict is not None) and (not isinstance(json_dict, dict)):
+        raise ValueError('Invalid json argument: want either single dict or '
+                         'key=value parts but got {} instead of dict)'
+                         .format(type(json_dict)))
+    if json_parts:
+        json_dict = json_parts
+
+    if not _have_printed_json_start:
+        print '['
+        _have_printed_json_start = True
+
+    lines = json.dumps(json2ascii(json_dict), check_circular=False,
+                           indent=4, ensure_ascii=False).splitlines()
+    for line in lines[:-1]:
+        print '    {}'.format(line)
+    if is_last:
+        print '    {}'.format(lines[-1])   # print last line without comma
+        print ']'
+    else:
+        print '    {},'.format(lines[-1])   # print last line with comma
 
 
 class VBA_Scanner(object):
@@ -2903,9 +2919,10 @@ def main():
 
     # provide info about tool and its version
     if options.output_mode == 'json':
-        json_results = [dict(script_name='olevba', version=__version__,
-                             url='http://decalage.info/python/oletools',
-                             type='MetaInformation'), ]
+        # prints opening [
+        print_json(script_name='olevba', version=__version__,
+                   url='http://decalage.info/python/oletools',
+                   type='MetaInformation')
     else:
         print 'olevba %s - http://decalage.info/python/oletools' % __version__
 
@@ -2957,9 +2974,8 @@ def main():
                     return_code = RETURN_XGLOB_ERR if return_code == 0 \
                                                     else RETURN_SEVERAL_ERRS
                 if options.output_mode == 'json':
-                    json_results.append(dict(file=filename, type='error',
-                                             error=type(data).__name__,
-                                             message=str(data)))
+                    print_json(file=filename, type='error',
+                               error=type(data).__name__, message=str(data))
                 continue
 
             try:
@@ -2983,7 +2999,7 @@ def main():
                     vba_parser.process_file_triage(show_decoded_strings=options.show_decoded_strings,
                                                    deobfuscate=options.deobfuscate)
                 elif options.output_mode == 'json':
-                    json_results.append(
+                    print_json(
                         vba_parser.process_file_json(show_decoded_strings=options.show_decoded_strings,
                                  display_code=options.display_code,
                                  hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
@@ -2998,9 +3014,8 @@ def main():
                 else:
                     log.exception('Failed to open %s -- probably not supported!' % filename)
                 if options.output_mode == 'json':
-                    json_results.append(dict(file=filename, type='error',
-                                             error=type(exc).__name__,
-                                             message=str(exc)))
+                    print_json(file=filename, type='error',
+                               error=type(exc).__name__, message=str(exc))
                 return_code = RETURN_OPEN_ERROR if return_code == 0 \
                                                 else RETURN_SEVERAL_ERRS
             except ProcessingError as exc:
@@ -3010,9 +3025,9 @@ def main():
                     log.exception('Error processing file %s (%s)!'
                                   % (filename, exc.orig_exception))
                 if options.output_mode == 'json':
-                    json_results.append(dict(file=filename, type='error',
-                                             error=type(exc).__name__,
-                                             message=str(exc.orig_exception)))
+                    print_json(file=filename, type='error',
+                               error=type(exc).__name__,
+                               message=str(exc.orig_exception))
                 return_code = RETURN_PARSE_ERROR if return_code == 0 \
                                                 else RETURN_SEVERAL_ERRS
             finally:
@@ -3033,18 +3048,9 @@ def main():
                              deobfuscate=options.deobfuscate)
 
         if options.output_mode == 'json':
-            json_options = dict(check_circular=False, indent=4, ensure_ascii=False)
-
-            # json.dump[s] cannot deal with unicode objects that are not properly
-            # encoded --> encode in own function:
-            json_results = json2ascii(json_results)
-            #print_json(json_results)
-
-            # if False:  # options.outfile: # (option currently commented out)
-            #     with open(outfile, 'w') as write_handle:
-            #         json.dump(write_handle, **json_options)
-            # else:
-            print json.dumps(json_results, **json_options)
+            # print last json entry (a last one without a comma) and closing ]
+            print_json(type='MetaInformation', return_code=return_code,
+                       is_last=True)
 
     except Exception as exc:
         # some unexpected error, maybe some of the types caught in except clauses
