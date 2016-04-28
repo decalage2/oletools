@@ -2999,7 +2999,8 @@ def main():
                 return_code = RETURN_PARSE_ERROR if return_code == 0 \
                                                 else RETURN_SEVERAL_ERRS
             finally:
-                vba_parser.close()
+                if vba_parser is not None:
+                    vba_parser.close()
 
         if options.output_mode == 'triage':
             print '\n(Flags: OpX=OpenXML, XML=Word2003XML, MHT=MHTML, TXT=Text, M=Macros, ' \
