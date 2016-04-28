@@ -1453,7 +1453,6 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
             modulestreamname_sizeof_streamname_unicode = struct.unpack("<L", dir_stream.read(4))[0]
             modulestreamname_streamname_unicode = dir_stream.read(modulestreamname_sizeof_streamname_unicode)
             unused = modulestreamname_id
-            unused = modulestreamname_streamname_unicode
             section_id = struct.unpack("<H", dir_stream.read(2))[0]
         if section_id == 0x001C:
             moduledocstring_id = section_id
@@ -1521,7 +1520,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
         log.debug("StreamName = {0}".format(repr(modulestreamname_streamname)))
         streamname_unicode = modulestreamname_streamname.decode(vba_codec)
         log.debug("StreamName.decode('%s') = %s" % (vba_codec, repr(streamname_unicode)))
-        log.debug("StreamNameUnicode = {0}".format(repr(modulestreamname_streamnameunicode)))
+        log.debug("StreamNameUnicode = {0}".format(repr(modulestreamname_streamname_unicode)))
         log.debug("TextOffset = {0}".format(moduleoffset_textoffset))
 
         code_path = vba_root + u'VBA/' + streamname_unicode
