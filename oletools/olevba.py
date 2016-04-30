@@ -169,7 +169,7 @@ https://github.com/unixfreak0037/officeparser
 # 2016-04-19 v0.46 PL: - new option --deobf instead of --no-deobfuscate
 #                      - updated suspicious keywords
 
-__version__ = '0.46'
+__version__ = '0.47'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -373,7 +373,7 @@ SUSPICIOUS_KEYWORDS = {
     #ADODB.Stream sample: http://pastebin.com/Z4TMyuq6
     'May run an executable file or a system command':
         ('Shell', 'vbNormal', 'vbNormalFocus', 'vbHide', 'vbMinimizedFocus', 'vbMaximizedFocus', 'vbNormalNoFocus',
-         'vbMinimizedNoFocus', 'WScript.Shell', 'Run'),
+         'vbMinimizedNoFocus', 'WScript.Shell', 'Run', 'ShellExecute'),
     #Shell: http://msdn.microsoft.com/en-us/library/office/gg278437%28v=office.15%29.aspx
     #WScript.Shell+Run sample: http://pastebin.com/Z4TMyuq6
     'May run PowerShell commands':
