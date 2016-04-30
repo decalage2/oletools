@@ -1,0 +1,53 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+</head>
+<body>
+<h1 id="how-to-download-and-install-python-oletools">How to Download and Install python-oletools</h1>
+<h2 id="pre-requisites">Pre-requisites</h2>
+<p>For now, python-oletools require <strong>Python 2.x</strong>, if possible 2.7 or 2.6 to enable all features.</p>
+<p>They are not compatible with Python 3.x yet. (Please contact me if that is a strong requirement)</p>
+<h2 id="to-use-oletools-as-command-line-tools">To use oletools as command-line tools</h2>
+<p>To use python-oletools from the command line as analysis tools, you may simply <a href="https://bitbucket.org/decalage/oletools/downloads">download the zip archive</a> and extract the files into the directory of your choice. Pick the latest release version, or click on <strong>&quot;Download Repository&quot;</strong> to get the latest development version with the most recent features.</p>
+<p>Another possibility is to use a Mercurial client (hg) to clone the repository into a folder. You can then update it easily in the future.</p>
+<h3 id="windows">Windows</h3>
+<p>You may add the oletools directory to your PATH environment variable to access the tools from anywhere.</p>
+<h3 id="linux-mac-osx-unix">Linux, Mac OSX, Unix</h3>
+<p>It is very convenient to create symbolic links to each tool in one of the bin directories in order to run them as shell commands from anywhere. For example, here is how to create an executable link &quot;olevba&quot; in /usr/local/bin pointing to olevba.py, assuming oletools was unzipped into /opt/oletools:</p>
+<pre><code>chmod +x /opt/oletools/oletools/olevba.py
+ln -s /opt/oletools/oletools/olevba.py /usr/local/bin/olevba</code></pre>
+<p>Then the olevba command can be used from any directory:</p>
+<pre><code>user@remnux:~/MalwareZoo/VBA$ olevba dridex427.xls |less</code></pre>
+<h2 id="for-python-applications">For python applications</h2>
+<p>If you plan to use python-oletools with other Python applications or your own scripts, the simplest solution is to use <strong>&quot;pip install oletools&quot;</strong> or <strong>&quot;easy_install oletools&quot;</strong> to download and install the package in one go. Pip is included with Python since version 2.7.9.</p>
+<p><strong>Important: to update oletools</strong> if it is already installed, you must run <strong>&quot;pip install -U oletools&quot;</strong>, otherwise pip will not update it.</p>
+<p>Alternatively if you prefer the old school way, you may download the <a href="https://bitbucket.org/decalage/oletools/downloads">zip archive</a>, extract it into a temporary directory and run <strong>&quot;python setup.py install&quot;</strong>.</p>
+<hr />
+<h2 id="python-oletools-documentation">python-oletools documentation</h2>
+<ul>
+<li><a href="Home.html">Home</a></li>
+<li><a href="License.html">License</a></li>
+<li><a href="Install.html">Install</a></li>
+<li><a href="Contribute.html">Contribute</a>, Suggest Improvements or Report Issues</li>
+<li>Tools:
+<ul>
+<li><a href="olebrowse.html">olebrowse</a></li>
+<li><a href="oleid.html">oleid</a></li>
+<li><a href="olemeta.html">olemeta</a></li>
+<li><a href="oletimes.html">oletimes</a></li>
+<li><a href="oledir.html">oledir</a></li>
+<li><a href="olemap.html">olemap</a></li>
+<li><a href="olevba.html">olevba</a></li>
+<li><a href="mraptor.html">mraptor</a></li>
+<li><a href="pyxswf.html">pyxswf</a></li>
+<li><a href="oleobj.html">oleobj</a></li>
+<li><a href="rtfobj.html">rtfobj</a></li>
+</ul></li>
+</ul>
+</body>
+</html>
