@@ -26,7 +26,12 @@ Software.
 News
 ----
 
--  **2016-04-12 v0.45**: improved
+-  **2016-04-19 v0.46**:
+   `olevba <https://bitbucket.org/decalage/oletools/wiki/olevba>`__ does
+   not deobfuscate VBA expressions by default (much faster), new option
+   --deobf to enable it. Fixed color display bug on Windows for several
+   tools.
+-  2016-04-12 v0.45: improved
    `rtfobj <https://bitbucket.org/decalage/oletools/wiki/rtfobj>`__ to
    handle several `anti-analysis
    tricks <http://www.decalage.info/rtf_tricks>`__, improved
