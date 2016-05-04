@@ -1,0 +1,81 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+</head>
+<body>
+<h1 id="python-oletools">python-oletools</h1>
+<p><a href="http://www.decalage.info/python/oletools">python-oletools</a> is a package of python tools to analyze <a href="http://en.wikipedia.org/wiki/Compound_File_Binary_Format">Microsoft OLE2 files</a> (also called Structured Storage, Compound File Binary Format or Compound Document File Format), such as Microsoft Office documents or Outlook messages, mainly for malware analysis, forensics and debugging. It is based on the <a href="http://www.decalage.info/olefile">olefile</a> parser. See <a href="http://www.decalage.info/python/oletools">http://www.decalage.info/python/oletools</a> for more info.</p>
+<p><strong>Quick links:</strong> <a href="http://www.decalage.info/python/oletools">Home page</a> - <a href="https://bitbucket.org/decalage/oletools/wiki/Install">Download/Install</a> - <a href="https://bitbucket.org/decalage/oletools/wiki">Documentation</a> - <a href="https://bitbucket.org/decalage/oletools/issues?status=new&amp;status=open">Report Issues/Suggestions/Questions</a> - <a href="http://decalage.info/contact">Contact the Author</a> - <a href="https://bitbucket.org/decalage/oletools">Repository</a> - <a href="https://twitter.com/decalage2">Updates on Twitter</a></p>
+<p>Note: python-oletools is not related to OLETools published by BeCubed Software.</p>
+<h2 id="news">News</h2>
+<ul>
+<li><strong>2016-04-12 v0.45</strong>: improved <a href="https://bitbucket.org/decalage/oletools/wiki/rtfobj">rtfobj</a> to handle several <a href="http://www.decalage.info/rtf_tricks">anti-analysis tricks</a>, improved <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a> to export results in JSON format.</li>
+<li>2016-03-11 v0.44: improved <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a> to extract and analyse strings from VBA Forms.</li>
+<li>2016-03-04 v0.43: added new tool MacroRaptor (mraptor) to detect malicious macros, bugfix and slight improvements in <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>.</li>
+<li>2016-02-07 v0.42: added two new tools oledir and olemap, better handling of malformed files and several bugfixes in <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>, improved display for <a href="https://bitbucket.org/decalage/oletools/wiki/olemeta">olemeta</a>.</li>
+<li>2015-09-22 v0.41: added new --reveal option to <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>, to show the macro code with VBA strings deobfuscated.</li>
+<li>2015-09-17 v0.40: Improved macro deobfuscation in <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>, to decode Hex and Base64 within VBA expressions. Display printable deobfuscated strings by default. Improved the VBA_Parser API. Improved performance. Fixed <a href="https://bitbucket.org/decalage/oletools/issue/23">issue #23</a> with sys.stderr.</li>
+<li>2015-06-19 v0.12: <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a> can now deobfuscate VBA expressions with any combination of Chr, Asc, Val, StrReverse, Environ, +, &amp;, using a VBA parser built with <a href="http://pyparsing.wikispaces.com">pyparsing</a>. New options to display only the analysis results or only the macros source code. The analysis is now done on all the VBA modules at once.</li>
+<li>2015-05-29 v0.11: Improved parsing of MHTML and ActiveMime/MSO files in <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>, added several suspicious keywords to VBA scanner (thanks to <span class="citation">@ozhermit</span> and Davy Douhine for the suggestions)</li>
+<li>2015-05-06 v0.10: <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a> now supports Word MHTML files with macros, aka &quot;Single File Web Page&quot; (.mht) - see <a href="https://bitbucket.org/decalage/oletools/issue/10">issue #10</a> for more info</li>
+<li>2015-03-23 v0.09: <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a> now supports Word 2003 XML files, added anti-sandboxing/VM detection</li>
+<li>2015-02-08 v0.08: <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a> can now decode strings obfuscated with Hex/StrReverse/Base64/Dridex and extract IOCs. Added new triage mode, support for non-western codepages with olefile 0.42, improved API and display, several bugfixes.</li>
+<li>2015-01-05 v0.07: improved <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a> to detect suspicious keywords and IOCs in VBA macros, can now scan several files and open password-protected zip archives, added a Python API, upgraded OleFileIO_PL to olefile v0.41</li>
+<li>2014-08-28 v0.06: added <a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>, a new tool to extract VBA Macro source code from MS Office documents (97-2003 and 2007+). Improved <a href="https://bitbucket.org/decalage/oletools/wiki">documentation</a></li>
+<li>2013-07-24 v0.05: added new tools <a href="https://bitbucket.org/decalage/oletools/wiki/olemeta">olemeta</a> and <a href="https://bitbucket.org/decalage/oletools/wiki/oletimes">oletimes</a></li>
+<li>2013-04-18 v0.04: fixed bug in rtfobj, added documentation for <a href="https://bitbucket.org/decalage/oletools/wiki/rtfobj">rtfobj</a></li>
+<li>2012-11-09 v0.03: Improved <a href="https://bitbucket.org/decalage/oletools/wiki/pyxswf">pyxswf</a> to extract Flash objects from RTF</li>
+<li>2012-10-29 v0.02: Added <a href="https://bitbucket.org/decalage/oletools/wiki/oleid">oleid</a></li>
+<li>2012-10-09 v0.01: Initial version of <a href="https://bitbucket.org/decalage/oletools/wiki/olebrowse">olebrowse</a> and pyxswf</li>
+<li>see changelog in source code for more info.</li>
+</ul>
+<h2 id="tools-in-python-oletools">Tools in python-oletools:</h2>
+<ul>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/olebrowse">olebrowse</a>: A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to view and extract individual data streams.</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/oleid">oleid</a>: to analyze OLE files to detect specific characteristics usually found in malicious files.</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/olemeta">olemeta</a>: to extract all standard properties (metadata) from OLE files.</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/oletimes">oletimes</a>: to extract creation and modification timestamps of all streams and storages.</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/oledir">oledir</a>: to display all the directory entries of an OLE file, including free and orphaned entries.</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/olemap">olemap</a>: to display a map of all the sectors in an OLE file.</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/olevba">olevba</a>: to extract and analyze VBA Macro source code from MS Office documents (OLE and OpenXML).</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/mraptor">MacroRaptor</a>: to detect malicious VBA Macros</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/pyxswf">pyxswf</a>: to detect, extract and analyze Flash objects (SWF) that may be embedded in files such as MS Office documents (e.g. Word, Excel) and RTF, which is especially useful for malware analysis.</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/oleobj">oleobj</a>: to extract embedded objects from OLE files.</li>
+<li><a href="https://bitbucket.org/decalage/oletools/wiki/rtfobj">rtfobj</a>: to extract embedded objects from RTF files.</li>
+<li>and a few others (coming soon)</li>
+</ul>
+<h2 id="download-and-install">Download and Install:</h2>
+<p>To use python-oletools from the command line as analysis tools, you may simply <a href="https://bitbucket.org/decalage/oletools/downloads">download the zip archive</a> and extract the files in the directory of your choice.</p>
+<p>To get the latest development version, click on &quot;Download repository&quot; on the <a href="https://bitbucket.org/decalage/oletools/downloads">downloads page</a>, or use mercurial to clone the repository.</p>
+<p>If you plan to use python-oletools with other Python applications or your own scripts, then the simplest solution is to use &quot;<strong>pip install oletools</strong>&quot; or &quot;<strong>easy_install oletools</strong>&quot; to download and install in one go. Otherwise you may download/extract the zip archive and run &quot;<strong>setup.py install</strong>&quot;.</p>
+<p><strong>Important: to update oletools</strong> if it is already installed, you must run <strong>&quot;pip install -U oletools&quot;</strong>, otherwise pip will not update it.</p>
+<h2 id="documentation">Documentation:</h2>
+<p>The latest version of the documentation can be found <a href="https://bitbucket.org/decalage/oletools/wiki">online</a>, otherwise a copy is provided in the doc subfolder of the package.</p>
+<h2 id="how-to-suggest-improvements-report-issues-or-contribute">How to Suggest Improvements, Report Issues or Contribute:</h2>
+<p>This is a personal open-source project, developed on my spare time. Any contribution, suggestion, feedback or bug report is welcome.</p>
+<p>To suggest improvements, report a bug or any issue, please use the <a href="https://bitbucket.org/decalage/olefileio_pl/issues?status=new&amp;status=open">issue reporting page</a>, providing all the information and files to reproduce the problem.</p>
+<p>You may also <a href="http://decalage.info/contact">contact the author</a> directly to provide feedback.</p>
+<p>The code is available in <a href="https://bitbucket.org/decalage/oletools">a Mercurial repository on Bitbucket</a>. You may use it to submit enhancements using forks and pull requests.</p>
+<h2 id="license">License</h2>
+<p>This license applies to the python-oletools package, apart from the thirdparty folder which contains third-party files published with their own license.</p>
+<p>The python-oletools package is copyright (c) 2012-2016 Philippe Lagadec (http://www.decalage.info)</p>
+<p>All rights reserved.</p>
+<p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
+<ul>
+<li>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</li>
+<li>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</li>
+</ul>
+<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &quot;AS IS&quot; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>
+<hr />
+<p>olevba contains modified source code from the officeparser project, published under the following MIT License (MIT):</p>
+<p>officeparser is copyright (c) 2014 John William Davison</p>
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the &quot;Software&quot;), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
+<p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
+<p>THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+</body>
+</html>
