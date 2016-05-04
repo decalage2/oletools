@@ -17,6 +17,7 @@ References:
 #------------------------------------------------------------------------------
 # TODO:
 # - license
+# - create a AtomBase class that defines check_value and parses RecordHead?
 #
 # CHANGELOG:
 # 2016-05-04 v0.01 CH: - start parsing "Current User" stream
@@ -59,6 +60,21 @@ class PptUnexpectedData(Exception):
 
 
 # === STRUCTS =================================================================
+
+
+def check_value(name, value, expected):
+    """ simplify verification of values in extract_from """
+    if isinstance(expected, (list, tuple)):
+        if value not in expected:
+            exp_str = '[' + ' OR '.join('{0:04X}'.format(val) 
+                                        for val in expected) + ']'
+            raise PptUnexpectedData(
+                'Current User', name,
+                '{0:04X}'.format(value), exp_str)
+    elif expected != value:
+        raise PptUnexpectedData(
+            'Current User', name,
+            '{0:04X}'.format(value), '{0:04X}'.format(expected))
 
 
 class RecordHeader(object):
@@ -123,6 +139,9 @@ class CurrentUserAtom(object):
         self.unicode_user_name = None
         self.rel_version = None
 
+    def is_encrypted(self):
+        return self.header_token == self.HEADER_TOKEN_ENCRYPT
+
     @classmethod
     def extract_from(clz, ole):
         """ extract info from olefile """
@@ -137,21 +156,19 @@ class CurrentUserAtom(object):
 
             # parse record header
             obj.rec_head = RecordHeader.extract_from(stream)
-            obj.check_value('rec_version', obj.rec_head.rec_ver, 0)
-            obj.check_value('rec_instance', obj.rec_head.rec_ver, 0)
-            obj.check_value('rec_instance', obj.rec_head.rec_type,
-                             clz.RECORD_TYPE)
+            check_value('rec_version', obj.rec_head.rec_ver, 0)
+            check_value('rec_instance', obj.rec_head.rec_ver, 0)
+            check_value('rec_type', obj.rec_head.rec_type, clz.RECORD_TYPE)
 
             size, = struct.unpack('<L', stream.read(4))
-            obj.check_value('size', size, obj.SIZE)
+            check_value('size', size, obj.SIZE)
             obj.header_token, = struct.unpack('<L', stream.read(4))
-            obj.check_value('headerToken', obj.header_token,
-                             [clz.HEADER_TOKEN_ENCRYPT,
-                              clz.HEADER_TOKEN_NOCRYPT])
+            check_value('headerToken', obj.header_token,
+                        [clz.HEADER_TOKEN_ENCRYPT, clz.HEADER_TOKEN_NOCRYPT])
             log.debug('headerToken is encrypt: {}'
                       .format(obj.header_token == clz.HEADER_TOKEN_ENCRYPT))
             obj.offset_to_current_edit, = struct.unpack('<L', stream.read(4))
-            log.debug('offsetToCurrentEdit: {0} ({0:04X})'
+            log.debug('offsetToCurrentEdit: {0} (0x{0:04X})'
                       .format(obj.offset_to_current_edit))
             obj.len_user_name, = struct.unpack('<H', stream.read(2))
             log.debug('lenUserName: {}'.format(obj.len_user_name))
@@ -160,22 +177,19 @@ class CurrentUserAtom(object):
                     'Current User', 'CurrentUserAtom.lenUserName',
                     obj.len_user_name, '< 256')
             obj.doc_file_version, = struct.unpack('<H', stream.read(2))
-            obj.check_value('docFileVersion', obj.doc_file_version,
-                             clz.DOC_FILE_VERSION)
+            check_value('docFileVersion', obj.doc_file_version,
+                        clz.DOC_FILE_VERSION)
             obj.major_version, = struct.unpack('<B', stream.read(1))
-            obj.check_value('majorVersion', obj.major_version,
-                             clz.MAJOR_VERSION)
+            check_value('majorVersion', obj.major_version, clz.MAJOR_VERSION)
             obj.minor_version, = struct.unpack('<B', stream.read(1))
-            obj.check_value('minorVersion', obj.minor_version,
-                             clz.MINOR_VERSION)
+            check_value('minorVersion', obj.minor_version, clz.MINOR_VERSION)
             stream.read(2)    # unused
             obj.ansi_user_name = stream.read(obj.len_user_name)
             log.debug('ansiUserName: {!r}'.format(obj.ansi_user_name))
             obj.rel_version, = struct.unpack('<L', stream.read(4))
             log.debug('relVersion: {0:04X}'.format(obj.rel_version))
-            obj.check_value('relVersion', obj.rel_version,
-                             [clz.REL_VERSION_CAN_USE,
-                              clz.REL_VERSION_NO_USE])
+            check_value('relVersion', obj.rel_version,
+                        [clz.REL_VERSION_CAN_USE, clz.REL_VERSION_NO_USE])
             obj.unicode_user_name = stream.read(2 * obj.len_user_name)
             log.debug('unicodeUserName: {!r}'.format(obj.unicode_user_name))
 
@@ -188,19 +202,67 @@ class CurrentUserAtom(object):
                 log.debug('closing stream')
                 stream.close()
 
-    def check_value(self, name, value, expected):
-        """ simplify verification of values in extract_from """
-        if isinstance(expected, (list, tuple)):
-            if value not in expected:
-                exp_str = '[' + ' OR '.join('{0:04X}'.format(val) 
-                                            for val in expected) + ']'
-                raise PptUnexpectedData(
-                    'Current User', 'CurrentUserAtom.' + name,
-                    '{0:04X}'.format(value), exp_str)
-        elif expected != value:
-            raise PptUnexpectedData(
-                'Current User', 'CurrentUserAtom.' + name,
-                '{0:04X}'.format(value), '{0:04X}'.format(expected))
+class UserEditAtom(object):
+    """ An atom record that specifies information about a user edit
+
+    https://msdn.microsoft.com/en-us/library/dd945746%28v=office.12%29.aspx
+    """
+
+    RECORD_TYPE = 0x0FF5
+    MINOR_VERSION = 0x00
+    MAJOR_VERSION = 0x03
+
+    def __init__(self):
+        self.rec_head = None
+        self.last_slide_id_ref = None
+        self.version = None
+        self.minor_version = None
+        self.major_version = None
+        self.offset_last_edit = None
+        self.offset_persist_directory = None
+        self.doc_persist_id_ref = None
+        self.persist_id_seed = None
+        self.last_view = None
+        self.encrypt_session_persist_id_ref = None
+
+    @classmethod
+    def extract_from(clz, stream, is_encrypted):
+        """ extract info from given stream (already positioned correctly!) """
+
+        log.debug('extract UserEditAtom from stream')
+
+        obj = clz()
+
+        # parse record header
+        obj.rec_head = RecordHeader.extract_from(stream)
+        check_value('rec_version', obj.rec_head.rec_ver, 0)
+        check_value('rec_instance', obj.rec_head.rec_ver, 0)
+        check_value('rec_type', obj.rec_head.rec_type, clz.RECORD_TYPE)
+
+        obj.last_slide_id_ref, = struct.unpack('<L', stream.read(4))
+        obj.version, = struct.unpack('<H', stream.read(2))
+        obj.minor_version, = struct.unpack('<B', stream.read(1))
+        check_value('minorVersion', obj.minor_version, clz.MINOR_VERSION)
+        obj.major_version, = struct.unpack('<B', stream.read(1))
+        check_value('majorVersion', obj.major_version, clz.MAJOR_VERSION)
+        obj.offset_last_edit, = struct.unpack('<L', stream.read(4))
+        log.debug('offsetLastEdit: {0} (0x{0:04X})'.format(obj.offset_last_edit))
+        # todo: check that this is before start pos / prev pos; 0x000 is end
+        obj.offset_persist_directory, = struct.unpack('<L', stream.read(4))
+        log.debug('offsetPersistDir: {0} (0x{0:04X})'
+                  .format(obj.offset_persist_directory))
+        obj.doc_persist_id_ref, = struct.unpack('<L', stream.read(4))
+        check_value('docPersistIdRef', obj.doc_persist_id_ref, 1)
+        obj.persist_id_seed, = struct.unpack('<L', stream.read(4))
+        obj.last_view, = struct.unpack('<H', stream.read(2))
+        stream.read(2)   # unused
+        if is_encrypted:
+            obj.encrypt_session_persist_id_ref, = struct.unpack('<L',
+                                                                stream.read(4))
+        else:
+            obj.encrypt_session_persist_id_ref = None
+
+        return obj
 
 
 # === PptParser ===============================================================
@@ -226,6 +288,8 @@ class PptParser(object):
             self.ole = olefile.OleFileIO(ole)
 
         self.fast_fail = fast_fail
+
+        self.current_user_atom = None
 
         # basic compatibility check: root directory structure is
         # [['\x05DocumentSummaryInformation'],
@@ -282,6 +346,10 @@ class PptParser(object):
         https://msdn.microsoft.com/en-us/library/dd948895%28v=office.12%29.aspx
         """
 
+        if self.current_user_atom is not None:
+            log.warning('re-reading and overwriting '
+                        'previously read CurrentUserAtom')
+
         try:
             self.current_user_atom = CurrentUserAtom.extract_from(self.ole)
         except Exception:
@@ -289,6 +357,25 @@ class PptParser(object):
                 raise
             else:
                 self._log_exception()
+
+    def construct_persist_object_directory(self):
+        """ part 2 """
+        
+        if self.current_user_atom is None:
+            self.parse_current_user()
+
+        offset = self.current_user_atom.offset_to_current_edit
+        is_encrypted = self.current_user_atom.is_encrypted()
+        stream = None
+
+        try:
+            stream = self.ole.openstream('PowerPoint Document')
+            stream.seek(offset)
+            user_edit = UserEditAtom.extract_from(stream, is_encrypted)
+        finally:
+            if stream is not None:
+                log.debug('closing stream')
+                stream.close()
 
 # === TESTING =================================================================
 
@@ -305,6 +392,7 @@ def test():
     # parse
     ppt = PptParser(test_file)
     ppt.parse_current_user()
+    ppt.construct_persist_object_directory()
 
 
 if __name__ == '__main__':
