@@ -195,6 +195,7 @@ __version__ = '0.44'
 #                      - in OleStream use _raise_defect instead of exceptions
 # 2016-04-27           - added support for incomplete streams and incorrect
 #                        directory entries (to read malformed documents)
+# 2016-05-04           - fixed slight bug in OleStream
 
 #-----------------------------------------------------------------------------
 # TODO (for version 1.0):
@@ -857,6 +858,7 @@ class OleStream(io.BytesIO):
             log.debug('Read data of length %d, less than expected stream size %d' % (len(data), size))
             # TODO: provide details in exception message
             self.ole._raise_defect(DEFECT_INCORRECT, 'OLE stream size is less than declared')
+            self.size = len(data)
         # when all data is read in memory, BytesIO constructor is called
         io.BytesIO.__init__(self, data)
         # Then the OleStream object can be used as a read-only file object.
