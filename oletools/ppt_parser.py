@@ -18,6 +18,7 @@ References:
 # TODO:
 # - make CurrentUserAtom and UserEditAtom PptTypes; adjust parse
 # - make stream optional in PptUnexpectedData
+# - can speed-up by using less bigger struct.parse calls?
 # - license
 # - create a AtomBase class that defines check_value and parses RecordHead?
 #
@@ -64,7 +65,21 @@ class PptUnexpectedData(Exception):
         super(PptUnexpectedData, self).__init__(self.msg)
 
 
-# === STRUCTS =================================================================
+# === HELPERS =================================================================
+
+def read_1(stream):
+    """ read 1 byte from stream """
+    return struct.unpack('<B', stream.read(1))[0]
+
+
+def read_2(stream):
+    """ read 2 byte (short) from stream """
+    return struct.unpack('<H', stream.read(2))[0]
+
+
+def read_4(stream):
+    """ read 4 byte (long) from stream """
+    return struct.unpack('<L', stream.read(4))[0]
 
 
 def check_value(name, value, expected):
@@ -81,6 +96,8 @@ def check_value(name, value, expected):
             'Current User', name,
             '{0:04X}'.format(value), '{0:04X}'.format(expected))
 
+
+# === STRUCTS =================================================================
 
 class RecordHeader(object):
     """ a record header, at start of many types found in ppt files
@@ -214,32 +231,11 @@ class PptType(object):
         raise NotImplementedError('abstract base function!')
 
     def __init__(self, stream_name=MAIN_STREAM_NAME):
-        self.stream = None
         self.stream_name = stream_name
         self.rec_head = None
 
     def read_rec_head(self, stream):
         self.rec_head = RecordHeader.extract_from(stream)
-
-    def set_stream(self, stream):
-        """ need to call before any read_... method """
-        self.stream = stream
-
-    def unset_stream(self):
-        """ should call after any read_... method """
-        self.stream = None
-
-    def read_1(self):
-        """ read 1 byte from stream """
-        return struct.unpack('<B', self.stream.read(1))[0]
-
-    def read_2(self):
-        """ read 2 byte (short) from stream """
-        return struct.unpack('<H', self.stream.read(2))[0]
-
-    def read_4(self):
-        """ read 4 byte (long) from stream """
-        return struct.unpack('<L', self.stream.read(4))[0]
 
     def check_validity(self):
         """ to be overwritten in subclasses
@@ -737,6 +733,82 @@ class DocumentContainer(PptType):
         errs.extend(self.doc_info_list.check_validity())
         return errs
 
+
+class VBAInfoContainer(PptType):
+    """ A container record that specifies VBA information for the document.
+
+    https://msdn.microsoft.com/en-us/library/dd952168%28v=office.12%29.aspx
+    """
+
+    RECORD_TYPE = 0x03FF
+    RECORD_VERSION = 0xF
+    RECORD_INSTANCE = 0x001
+
+    def __init__(self):
+        super(VBAInfoContainer, self).__init__()
+        self.vba_info_atom = None
+
+    @classmethod
+    def extract_from(clz, stream):
+        log.debug('parsing VBAInfoContainer')
+        obj = clz()
+        obj.read_rec_head()
+        obj.vba_info_atom = VBAInfoAtom.extract_from(stream)
+        return obj
+
+    def check_validty(self):
+
+        errs = self.check_rec_head(length=0x14)
+        errs.extend(self.vba_info_atom.check_validity())
+        return errs
+
+
+class VBAInfoAtom(PptType):
+    """ An atom record that specifies a reference to the VBA project storage.
+
+    https://msdn.microsoft.com/en-us/library/dd948874%28v=office.12%29.aspx
+    """
+
+    RECORD_TYPE = 0x0400
+
+    def __init__(self):
+        super(VBAInfoAtom, self).__init__()
+        self.persist_id_ref = None
+        self.f_has_macros = None
+        self.version = None
+
+    @classmethod
+    def extract_from(clz, stream):
+        log.debug('parsing VBAInfoAtom')
+        obj = clz()
+        obj.read_rec_head()
+
+        # persistIdRef (4 bytes): A PersistIdRef (section 2.2.21) that
+        # specifies the value to look up in the persist object directory to
+        # find the offset of a VbaProjectStg record (section 2.10.40).
+        obj.persist_id_ref = read_4(stream)
+
+        # fHasMacros (4 bytes): An unsigned integer that specifies whether the
+        # VBA project storage contains data. It MUST be 0 (empty vba storage)
+        # or 1 (vba storage contains data)
+        obj.f_has_macros = read_4(stream)
+
+        # version (4 bytes): An unsigned integer that specifies the VBA runtime
+        # version that generated the VBA project storage. It MUST be
+        # 0x00000002.
+        obj.version = read_4(stream)
+
+        return obj
+
+    def check_validty(self):
+
+        errs = self.check_rec_head(length=0x14)
+
+        # must be 0 or 1:
+        errs.extend(self.check_range('fHasMacros', self.f_has_macros, None, 2)
+        errs.extend(self.check_value('version', self.version, 2)
+        return errs 
+
 # === PptParser ===============================================================
 
 
@@ -762,6 +834,7 @@ class PptParser(object):
         self.fast_fail = fast_fail
 
         self.current_user_atom = None
+        self.newest_user_edit = None
         self.document_persist_obj = None
         self.persist_object_directory = None
 
@@ -845,6 +918,7 @@ class PptParser(object):
         offset = self.current_user_atom.offset_to_current_edit
         is_encrypted = self.current_user_atom.is_encrypted()
         self.persist_object_directory = {}
+        self.newest_user_edit = None
 
         stream = None
         try:
@@ -854,6 +928,8 @@ class PptParser(object):
 
                 stream.seek(offset, os.SEEK_SET)
                 user_edit = UserEditAtom.extract_from(stream, is_encrypted)
+                if self.newest_user_edit is None:
+                    self.newest_user_edit = user_edit
 
                 log.debug('checking validity')
                 errs = user_edit.check_validity()
@@ -910,7 +986,11 @@ class PptParser(object):
         if self.persist_object_directory is None:
             self.parse_persist_object_directory()
 
-        offset = None  # TODO: read from object directory
+        # find the offset of the document container
+        newest_ref = self.newest_user_edit.doc_persist_id_ref
+        offset = self.persist_object_directory[newest_ref]
+        raise NotImplementedError('should have 1 offset here!')
+
         stream = None
 
         try:
