@@ -50,6 +50,7 @@ http://www.decalage.info/python/oletools
 # 2016-04-07 v0.45 PL: - improved parsing to handle some malware tricks
 # 2016-05-06 v0.47 TJ: - added option -d to set the output directory
 #                        (contribution by Thomas Jarosch)
+#                  TJ: - sanitize filenames to avoid special characters
 
 __version__ = '0.47'
 
@@ -282,15 +283,41 @@ def rtf_iter_objects (data, min_size=32):
         match = re_hexblock.search(data, pos=current)
 
 
+
+def sanitize_filename(filename, replacement='_', max_length=200):
+    """compute basename of filename. Replaces all non-whitelisted characters.
+       The returned filename is always a basename of the file."""
+    basepath = os.path.basename(filename).strip()
+    sane_fname = re.sub(r'[^\w\.\- ]', replacement, basepath)
+
+    while ".." in sane_fname:
+        sane_fname = sane_fname.replace('..', '.')
+
+    while "  " in sane_fname:
+        sane_fname = sane_fname.replace('  ', ' ')
+
+    if not len(filename):
+        sane_fname = 'NONAME'
+
+    # limit filename length
+    if max_length:
+        sane_fname = sane_fname[:max_length]
+
+    return sane_fname
+
+
 def process_file(container, filename, data, output_dir=None):
     if output_dir:
         if not os.path.isdir(output_dir):
             log.info('creating output directory %s' % output_dir)
             os.mkdir(output_dir)
 
-        fname_prefix = os.path.join(output_dir, os.path.basename(filename))
+        fname_prefix = os.path.join(output_dir,
+                                    sanitize_filename(filename))
     else:
-        fname_prefix = filename
+        base_dir = os.path.dirname(filename)
+        sane_fname = sanitize_filename(filename)
+        fname_prefix = os.path.join(base_dir, sane_fname)
 
     # TODO: option to extract objects to files (false by default)
     if data is None:
@@ -330,7 +357,8 @@ def process_file(container, filename, data, output_dir=None):
                 print 'Source path = %r' % opkg.src_path
                 print 'Temp path = %r' % opkg.temp_path
                 if opkg.filename:
-                    fname = '%s_%s' % (fname_prefix, opkg.filename)
+                    fname = '%s_%s' % (fname_prefix,
+                                       sanitize_filename(opkg.filename))
                 else:
                     fname = '%s_object_%08X.noname' % (fname_prefix, index)
                 print 'saving to file %s' % fname
