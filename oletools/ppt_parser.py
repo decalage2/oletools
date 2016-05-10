@@ -121,6 +121,9 @@ class RecordHeader(object):
         obj.rec_instance, obj.rec_ver = divmod(version_instance, 2**4)
         obj.rec_type, = struct.unpack('<H', stream.read(2))
         obj.rec_len, = struct.unpack('<L', stream.read(4))
+        log.debug('type is {0:04X}, instance {1:04X}, version {2:04X}, len {3}'
+                  .format(obj.rec_type, obj.rec_instance, obj.rec_ver,
+                          obj.rec_len))
         return obj
 
 
@@ -273,35 +276,28 @@ class CurrentUserAtom(PptType):
     def extract_from(clz, stream):
         """ create instance with info from stream """
 
-        stream = None
-        try:
-            obj = clz()
+        obj = clz()
 
-            # parse record header
-            obj.rec_head = RecordHeader.extract_from(stream)
+        # parse record header
+        obj.rec_head = RecordHeader.extract_from(stream)
 
-            size, = struct.unpack('<L', stream.read(4))
-            obj.header_token, = struct.unpack('<L', stream.read(4))
-            obj.offset_to_current_edit, = struct.unpack('<L', stream.read(4))
-            obj.len_user_name, = struct.unpack('<H', stream.read(2))
-            obj.doc_file_version, = struct.unpack('<H', stream.read(2))
-            obj.major_version, = struct.unpack('<B', stream.read(1))
-            obj.minor_version, = struct.unpack('<B', stream.read(1))
-            stream.read(2)    # unused
-            obj.ansi_user_name = stream.read(obj.len_user_name)
-            obj.rel_version, = struct.unpack('<L', stream.read(4))
-            obj.unicode_user_name = stream.read(2 * obj.len_user_name)
+        obj.size, = struct.unpack('<L', stream.read(4))
+        obj.header_token, = struct.unpack('<L', stream.read(4))
+        obj.offset_to_current_edit, = struct.unpack('<L', stream.read(4))
+        obj.len_user_name, = struct.unpack('<H', stream.read(2))
+        obj.doc_file_version, = struct.unpack('<H', stream.read(2))
+        obj.major_version, = struct.unpack('<B', stream.read(1))
+        obj.minor_version, = struct.unpack('<B', stream.read(1))
+        stream.read(2)    # unused
+        obj.ansi_user_name = stream.read(obj.len_user_name)
+        obj.rel_version, = struct.unpack('<L', stream.read(4))
+        obj.unicode_user_name = stream.read(2 * obj.len_user_name)
 
-            return obj
-
-        finally:
-            if stream is not None:
-                log.debug('closing stream')
-                stream.close()
+        return obj
 
     def check_validity(self):
         errs = self.check_rec_head()
-        errs.extend(self.check_value('size', size, self.SIZE)
+        errs.extend(self.check_value('size', self.size, self.SIZE))
         errs.extend(self.check_value('headerToken', self.header_token,
                                      [clz.HEADER_TOKEN_ENCRYPT,
                                       clz.HEADER_TOKEN_NOCRYPT]))
@@ -567,6 +563,52 @@ class PersistDirectoryEntry(object):
         return errs
 
 
+class DocInfoListSubContainerOrAtom(PptType):
+    """ one of various types found in a DocInfoListContainer
+
+    https://msdn.microsoft.com/en-us/library/dd921705%28v=office.12%29.aspx
+
+    actual type of this object is defined by the recVersion field in its Record
+    Head
+
+    Similar to DummyType, RECORD_TYPE varies from instance to instance for this
+    type
+    """
+
+    # RECORD_TYPE varies, is specified only in extract_from
+    VALID_RECORD_TYPES = [0x1388, # self.RECORD_TYPE_PROG_TAGS, \
+                          0x0414, # self.RECORD_TYPE_NORMAL_VIEW_SET_INFO_9, \
+                          0x0413, # self.RECORD_TYPE_NOTES_TEXT_VIEW_INFO_9, \
+                          0x0407, # self.RECORD_TYPE_OUTLINE_VIEW_INFO, \
+                          0x03FA, # self.RECORD_TYPE_SLIDE_VIEW_INFO, \
+                          0x0408]  # self.RECORD_TYPE_SORTER_VIEW_INFO
+
+    def __init__(self):
+        super(DocInfoListSubContainerOrAtom, self).__init__()
+
+    @classmethod
+    def extract_from(clz, stream):
+        """ build instance with info read from stream """
+
+        log.debug('Parsing DocInfoListSubContainerOrAtom from stream')
+
+        obj = clz()
+        obj.read_rec_head(stream)
+        if obj.rec_head.rec_type == VBAInfoContainer.RECORD_TYPE:
+            obj = VBAInfoContainer.extract_from(stream, obj.rec_head)
+        else:
+            log.debug('skipping over {} Byte in DocInfoListSubContainerOrAtom'
+                      .format(obj.rec_head.rec_len))
+            log.debug('start at pos {}'.format(stream.tell()))
+            stream.seek(obj.rec_head.rec_len, os.SEEK_CUR)
+            log.debug('now at pos {}'.format(stream.tell()))
+        return obj
+
+    def check_validity(self):
+        """ can be any of multiple types """
+        self.check_value(self.rec_head.rec_type, self.VALID_RECORD_TYPES)
+
+
 class DocInfoListContainer(PptType):
     """ information about the document and document display settings
 
@@ -578,6 +620,40 @@ class DocInfoListContainer(PptType):
 
     def __init__(self):
         super(DocInfoListContainer, self).__init__()
+
+    @classmethod
+    def extract_from(clz, stream):
+        """ build instance with info read from stream """
+
+        log.debug('Parsing DocInfoListContainer from stream')
+        obj = clz()
+        obj.read_rec_head(stream)
+
+        # rgChildRec (variable): An array of DocInfoListSubContainerOrAtom
+        # records (section 2.4.5) that specifies information about the document
+        # or how the document is displayed. The size, in bytes, of the array is
+        # specified by rh.recLen
+        curr_pos = stream.tell()
+        end_pos = curr_pos + obj.rec_head.rec_len
+        log.debug('start reading at pos {}, will read until {}'
+                  .format(curr_pos, end_pos))
+        bytes_read = 0
+        obj.rg_child_rec = []
+
+        while curr_pos < end_pos:
+            new_obj = DocInfoListSubContainerOrAtom().extract_from(stream)
+            obj.rg_child_rec.append(new_obj)
+            curr_pos = stream.tell()
+            log.debug('now at pos {}'.format(curr_pos))
+
+        log.debug('reached end pos {} ({}). stop reading DocInfoListContainer'
+                  .format(end_pos, curr_pos))
+
+    def check_validity(self):
+        errs = self.check_rec_head()
+        for obj in self.rg_child_rec:
+            errs.extend(obj.check_validity())
+        return errs
 
 
 class DocumentContainer(PptType):
@@ -618,26 +694,32 @@ class DocumentContainer(PptType):
 
         this container contains lots of data we are not interested in.
         """
+
+        log.debug('Parsing DocumentContainer from stream')
         obj = clz()
 
         # parse record header
         obj.read_rec_head(stream)
+        log.info('validity: {} errs'.format(len(obj.check_rec_head())))
 
         # documentAtom (48 bytes): A DocumentAtom record (section 2.4.2) that
         # specifies size information for presentation slides and notes slides.
         obj.document_atom = DummyType('DocumentAtom', 0x03E9, rec_ver=0x1,
                                       rec_len=0x28).extract_from(stream)
+        log.info('validity: {} errs'.format(len(obj.document_atom.check_validity())))
 
         # exObjList (variable): An optional ExObjListContainer record (section
         # 2.10.1) that specifies the list of external objects in the document.
         obj.ex_obj_list = DummyType('ExObjListContainer', 0x0409, rec_ver=0xF)\
                           .extract_from(stream)
+        log.info('validity: {} errs'.format(len(obj.ex_obj_list.check_validity())))
 
         # documentTextInfo (variable): A DocumentTextInfoContainer record
         # (section 2.9.1) that specifies the default text styles for the
         # document.
         obj.document_text_info = DummyType('DocumentTextInfoContainer', 0x03F2,
                                            rec_ver=0xF).extract_from(stream)
+        log.info('validity: {} errs'.format(len(obj.document_text_info.check_validity())))
 
         # soundCollection (variable): An optional SoundCollectionContainer
         # record (section 2.4.16.1) that specifies the list of sounds in the
@@ -645,17 +727,20 @@ class DocumentContainer(PptType):
         obj.sound_collection = DummyType('SoundCollectionContainer', 0x07E4,
                                          rec_ver=0xF, rec_instance=0x005)\
                                .extract_from(stream)
+        log.info('validity: {} errs'.format(len(obj.sound_collection.check_validity())))
 
         # drawingGroup (variable): A DrawingGroupContainer record (section
         # 2.4.3) that specifies drawing information for the document.
         obj.drawing_group = DummyType('DrawingGroupContainer', 0x040B,
                                       rec_ver=0xF).extract_from(stream)
+        log.info('validity: {} errs'.format(len(obj.drawing_group.check_validity())))
 
         # masterList (variable): A MasterListWithTextContainer record (section
         # 2.4.14.1) that specifies the list of main master slides and title
         # master slides.
         obj.master_list = DummyType('MasterListWithContainer', 0x0FF0,
                                     rec_ver=0xF).extract_from(stream)
+        log.info('validity: {} errs'.format(len(obj.master_list.check_validity())))
 
         # docInfoList (variable): An optional DocInfoListContainer record
         # (section 2.4.4) that specifies additional document information.
@@ -747,15 +832,16 @@ class VBAInfoContainer(PptType):
         self.vba_info_atom = None
 
     @classmethod
-    def extract_from(clz, stream):
+    def extract_from(clz, stream, rec_head):
+        """ since can determine this type only after reading header, it is arg
+        """
         log.debug('parsing VBAInfoContainer')
         obj = clz()
-        obj.read_rec_head()
+        obj.rec_head = rec_head
         obj.vba_info_atom = VBAInfoAtom.extract_from(stream)
         return obj
 
-    def check_validty(self):
-
+    def check_validity(self):
         errs = self.check_rec_head(length=0x14)
         errs.extend(self.vba_info_atom.check_validity())
         return errs
@@ -768,6 +854,7 @@ class VBAInfoAtom(PptType):
     """
 
     RECORD_TYPE = 0x0400
+    RECORD_VERSION = 0x2
 
     def __init__(self):
         super(VBAInfoAtom, self).__init__()
@@ -803,9 +890,9 @@ class VBAInfoAtom(PptType):
         errs = self.check_rec_head(length=0x14)
 
         # must be 0 or 1:
-        errs.extend(self.check_range('fHasMacros', self.f_has_macros, None, 2)
-        errs.extend(self.check_value('version', self.version, 2)
-        return errs 
+        errs.extend(self.check_range('fHasMacros', self.f_has_macros, None, 2))
+        errs.extend(self.check_value('version', self.version, 2))
+        return errs
 
 # === PptParser ===============================================================
 
@@ -919,6 +1006,9 @@ class PptParser(object):
             log.warning('re-reading and overwriting '
                         'previously read persist_object_directory')
 
+        # Step 1: Read the CurrentUserAtom record (section 2.3.2) from the
+        # Current User Stream (section 2.1.1). All seek operations in the steps
+        # that follow this step are in the PowerPoint Document Stream.
         if self.current_user_atom is None:
             self.parse_current_user()
 
@@ -931,9 +1021,17 @@ class PptParser(object):
         try:
             log.debug('opening stream')
             stream = self.ole.openstream(MAIN_STREAM_NAME)
+
+            # Repeat steps 3 through 6 until offsetLastEdit is 0x00000000.
             while offset != 0:
 
+                # Step 2: Seek, in the PowerPoint Document Stream, to the
+                # offset specified by the offsetToCurrentEdit field of the
+                # CurrentUserAtom record identified in step 1.
                 stream.seek(offset, os.SEEK_SET)
+
+                # Step 3: Read the UserEditAtom record at the current offset.
+                # Let this record be a live record.
                 user_edit = UserEditAtom.extract_from(stream, is_encrypted)
                 if self.newest_user_edit is None:
                     self.newest_user_edit = user_edit
@@ -948,10 +1046,15 @@ class PptParser(object):
                 if errs and self.fast_fail:
                     raise errs[0]
 
+                # Step 4: Seek to the offset specified by the
+                # offsetPersistDirectory field of the UserEditAtom record
+                # identified in step 3.
                 log.debug('seeking to pos {}'
                           .format(user_edit.offset_persist_directory))
                 stream.seek(user_edit.offset_persist_directory, os.SEEK_SET)
 
+                # Step 5: Read the PersistDirectoryAtom record at the current
+                # offset. Let this record be a live record.
                 persist_dir_atom = PersistDirectoryAtom.extract_from(stream)
 
                 log.debug('checking validity')
@@ -965,14 +1068,37 @@ class PptParser(object):
                 if errs and self.fast_fail:
                     raise errs[0]
 
+
+                # Construct the complete persist object directory for this file
+                # as follows:
+                # - For each PersistDirectoryAtom record previously identified
+                # in step 5, add the persist object identifier and persist
+                # object stream offset pairs to the persist object directory
+                # starting with the PersistDirectoryAtom record last
+                # identified, that is, the one closest to the beginning of the
+                # stream.
+                # - Continue adding these pairs to the persist object directory
+                # for each PersistDirectoryAtom record in the reverse order
+                # that they were identified in step 5; that is, the pairs from
+                # the PersistDirectoryAtom record closest to the end of the
+                # stream are added last.
+                # - When adding a new pair to the persist object directory, if
+                # the persist object identifier already exists in the persist
+                # object directory, the persist object stream offset from the
+                # new pair replaces the existing persist object stream offset
+                # for that persist object identifier.
                 for entry in persist_dir_atom.rg_persist_dir_entry:
-                    log.debug('saving {} offsets for persist_id {}'
-                              .format(len(entry.rg_persist_offset),
-                                      entry.persist_id))
-                    self.persist_object_directory[entry.persist_id] = \
-                        entry.rg_persist_offset
+                    last_id = entry.persist_id+len(entry.rg_persist_offset)-1
+                    log.debug('for persist IDs {}-{}, save offsets {}'
+                              .format(entry.persist_id, last_id,
+                                      entry.rg_persist_offset))
+                    for count, offset in enumerate(entry.rg_persist_offset):
+                        self.persist_object_directory[entry.persist_id+count] \
+                            = offset
 
                 # check for more
+                # Step 6: Seek to the offset specified by the offsetLastEdit
+                # field in the UserEditAtom record identified in step 3.
                 offset = user_edit.offset_last_edit
         except Exception:
             if self.fast_fail:
@@ -985,27 +1111,36 @@ class PptParser(object):
                 stream.close()
 
     def parse_document_persist_object(self):
-        """ """
+        """ Part 2: Identify the document persist object """
         if self.document_persist_obj is not None:
             log.warning('re-reading and overwriting '
                         'previously read document_persist_object')
 
+        # Step 1:  Read the docPersistIdRef field of the UserEditAtom record
+        # first identified in step 3 of Part 1, that is, the UserEditAtom
+        # record closest to the end of the stream.
         if self.persist_object_directory is None:
             self.parse_persist_object_directory()
 
-        # find the offset of the document container
+        # Step 2: Lookup the value of the docPersistIdRef field in the persist
+        # object directory constructed in step 8 of Part 1 to find the stream
+        # offset of a persist object.
         newest_ref = self.newest_user_edit.doc_persist_id_ref
         offset = self.persist_object_directory[newest_ref]
-        raise NotImplementedError('should have 1 offset here!')
+        log.debug('newest user edit ID is {}, offset is {}'
+                  .format(newest_ref, offset))
 
         stream = None
 
         try:
+            # Step 3:  Seek to the stream offset specified in step 2.
             log.debug('opening stream')
             stream = self.ole.openstream(MAIN_STREAM_NAME)
-            log.debug('stream pos: {}'.format(stream.tell()))
-            stream.seek(offset)
-            log.debug('seek by {} to {}'.format(offset, stream.tell()))
+            log.debug('seek to {}'.format(offset))
+            stream.seek(offset, os.SEEK_SET)
+
+            # Step 4: Read the DocumentContainer record at the current offset.
+            # Let this record be a live record.
             self.document_persist_obj = DocumentContainer.extract_from(stream)
         except Exception:
             if self.fast_fail:
@@ -1032,17 +1167,20 @@ class PptParser(object):
 def test():
     """ for testing and debugging """
 
+    from glob import glob
+
     # setup logging
     logging.basicConfig(level=logging.DEBUG,
                         format='%(levelname)-8s %(message)s')
     log.setLevel(logging.NOTSET)
 
-    # test file with some autostart macros
-    test_file = 'gelaber_autostart.ppt'
-
-    # parse
-    ppt = PptParser(test_file, fast_fail=False)
-    ppt.parse_document_persist_object()
+    #test_file = 'gelaber_autostart.ppt'
+    for file_name in glob('*.ppt'):
+        # parse
+        log.info('-' * 72)
+        log.info('test file: {}'.format(file_name))
+        ppt = PptParser(file_name, fast_fail=False)
+        ppt.parse_document_persist_object()
 
 
 if __name__ == '__main__':
