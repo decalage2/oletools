@@ -838,23 +838,28 @@ class VBAInfoContainer(PptType):
     RECORD_TYPE = 0x03FF
     RECORD_VERSION = 0xF
     RECORD_INSTANCE = 0x001
+    RECORD_LENGTH = 0x14
 
     def __init__(self):
         super(VBAInfoContainer, self).__init__()
         self.vba_info_atom = None
 
     @classmethod
-    def extract_from(clz, stream, rec_head):
+    def extract_from(clz, stream, rec_head=None):
         """ since can determine this type only after reading header, it is arg
         """
         log.debug('parsing VBAInfoContainer')
         obj = clz()
-        obj.rec_head = rec_head
+        if rec_head is None:
+            obj.read_rec_head(stream)
+        else:
+            log.debug('skip parsing of RecordHead')
+            obj.rec_head = rec_head
         obj.vba_info_atom = VBAInfoAtom.extract_from(stream)
         return obj
 
     def check_validity(self):
-        errs = self.check_rec_head(length=0x14)
+        errs = self.check_rec_head(length=self.RECORD_LENGTH)
         errs.extend(self.vba_info_atom.check_validity())
         return errs
 
@@ -867,6 +872,7 @@ class VBAInfoAtom(PptType):
 
     RECORD_TYPE = 0x0400
     RECORD_VERSION = 0x2
+    RECORD_LENGTH = 0x0C
 
     def __init__(self):
         super(VBAInfoAtom, self).__init__()
@@ -878,7 +884,7 @@ class VBAInfoAtom(PptType):
     def extract_from(clz, stream):
         log.debug('parsing VBAInfoAtom')
         obj = clz()
-        obj.read_rec_head()
+        obj.read_rec_head(stream)
 
         # persistIdRef (4 bytes): A PersistIdRef (section 2.2.21) that
         # specifies the value to look up in the persist object directory to
@@ -897,9 +903,9 @@ class VBAInfoAtom(PptType):
 
         return obj
 
-    def check_validty(self):
+    def check_validity(self):
 
-        errs = self.check_rec_head(length=0x14)
+        errs = self.check_rec_head(length=self.RECORD_LENGTH)
 
         # must be 0 or 1:
         errs.extend(self.check_range('fHasMacros', self.f_has_macros, None, 2))
@@ -1184,11 +1190,13 @@ class PptParser(object):
         BUF_SIZE = 1024
 
         pattern = RecordHeader.generate(
-                                VBAInfoContainer.RECORD_TYPE, rec_len=0x14,
+                                VBAInfoContainer.RECORD_TYPE,
+                                rec_len=VBAInfoContainer.RECORD_LENGTH,
                                 rec_instance=VBAInfoContainer.RECORD_INSTANCE,
                                 rec_ver=VBAInfoContainer.RECORD_VERSION) \
                 + RecordHeader.generate(
-                                VBAInfoAtom.RECORD_TYPE, rec_len=0xC,
+                                VBAInfoAtom.RECORD_TYPE,
+                                rec_len=VBAInfoAtom.RECORD_LENGTH,
                                 rec_instance=VBAInfoAtom.RECORD_INSTANCE,
                                 rec_ver=VBAInfoAtom.RECORD_VERSION)
         pattern_len = len(pattern)
@@ -1200,7 +1208,10 @@ class PptParser(object):
         try:
             log.debug('opening stream')
             stream = self.ole.openstream(MAIN_STREAM_NAME)
+
+            # look for candidate positions
             n_reads = 0
+            candidates = []
             while True:
                 start_pos = stream.tell()
                 n_reads += 1
@@ -1210,14 +1221,42 @@ class PptParser(object):
                 idx = buf.find(pattern)
                 while idx != -1:
                     log.info('found pattern at index {}'.format(start_pos+idx))
+                    candidates.append(start_pos+idx)
                     idx = buf.find(pattern, idx+1)
 
                 if len(buf) == BUF_SIZE:
+                    # move back a bit to avoid splitting of pattern through buf
                     stream.seek(-1 * pattern_len, os.SEEK_CUR)
                 else:
                     log.debug('reached end of buf (read {}<{}) after {} reads'
                               .format(len(buf), BUF_SIZE, n_reads))
                     break
+
+            # try parse
+            for idx in candidates:
+                # assume that in stream at idx there is a VBAInfoContainer
+                stream.seek(idx)
+                log.info('extracting at idx {}'.format(idx))
+                try:
+                    container = VBAInfoContainer.extract_from(stream)
+                except Exception:
+                    self._log_exception()
+                    continue
+
+                errs = container.check_validity()
+                if errs:
+                    log.warning('check_validity found {} issues'.format(len(errs)))
+                else:
+                    log.info('container is ok')
+                    atom = container.vba_info_atom
+                    log.info('persist id ref is {}, has_macros {}, version {}'
+                             .format(atom.persist_id_ref, atom.f_has_macros,
+                                     atom.version))
+                for err in errs:
+                    log.warning('check_validity(VBAInfoContainer): {}'
+                                .format(err))
+                if errs and self.fast_fail:
+                    raise errs[0]
 
         finally:
             if stream is not None:
