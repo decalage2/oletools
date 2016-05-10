@@ -16,7 +16,6 @@ References:
 # TODO
 #------------------------------------------------------------------------------
 # TODO:
-# - make CurrentUserAtom and UserEditAtom PptTypes; adjust parse
 # - make stream optional in PptUnexpectedData
 # - can speed-up by using less bigger struct.parse calls?
 # - license
@@ -125,97 +124,6 @@ class RecordHeader(object):
         return obj
 
 
-class CurrentUserAtom(object):
-    """ An atom record that specifies information about the last user to modify
-    the file and where the most recent user edit is located. This is the only
-    record in the Current User Stream (section 2.1.1).
-
-    https://msdn.microsoft.com/en-us/library/dd948895%28v=office.12%29.aspx
-    """
-
-    # allowed values for header_token
-    HEADER_TOKEN_ENCRYPT = 0xF3D1C4DF
-    HEADER_TOKEN_NOCRYPT = 0xE391C05F
-
-    # allowed values for rel_version
-    REL_VERSION_CAN_USE = 0x00000008
-    REL_VERSION_NO_USE = 0x00000009
-
-    # required values
-    RECORD_TYPE = 0x0FF6
-    SIZE = 0x14
-    DOC_FILE_VERSION = 0x03F4
-    MAJOR_VERSION = 0x03
-    MINOR_VERSION = 0x00
-
-    def __init__(self):
-        self.rec_head = None
-        self.size = None
-        self.header_token = None
-        self.offset_to_current_edit = None
-        self.len_user_name = None
-        self.doc_file_version = None
-        self.major_version = None
-        self.minor_version = None
-        self.ansi_user_name = None
-        self.unicode_user_name = None
-        self.rel_version = None
-
-    def is_encrypted(self):
-        return self.header_token == self.HEADER_TOKEN_ENCRYPT
-
-    @classmethod
-    def extract_from(clz, ole):
-        """ extract info from olefile """
-
-        log.debug('parsing "Current User"')
-
-        stream = None
-        try:
-            # open stream
-            log.debug('opening stream')
-            stream = ole.openstream('Current User')
-            obj = clz()
-
-            # parse record header
-            obj.rec_head = RecordHeader.extract_from(stream)
-            check_value('rec_version', obj.rec_head.rec_ver, 0)
-            check_value('rec_instance', obj.rec_head.rec_instance, 0)
-            check_value('rec_type', obj.rec_head.rec_type, clz.RECORD_TYPE)
-
-            size, = struct.unpack('<L', stream.read(4))
-            check_value('size', size, obj.SIZE)
-            obj.header_token, = struct.unpack('<L', stream.read(4))
-            check_value('headerToken', obj.header_token,
-                        [clz.HEADER_TOKEN_ENCRYPT, clz.HEADER_TOKEN_NOCRYPT])
-            obj.offset_to_current_edit, = struct.unpack('<L', stream.read(4))
-            obj.len_user_name, = struct.unpack('<H', stream.read(2))
-            if obj.len_user_name > 255:
-                raise PptUnexpectedData(
-                    'Current User', 'CurrentUserAtom.lenUserName',
-                    obj.len_user_name, '< 256')
-            obj.doc_file_version, = struct.unpack('<H', stream.read(2))
-            check_value('docFileVersion', obj.doc_file_version,
-                        clz.DOC_FILE_VERSION)
-            obj.major_version, = struct.unpack('<B', stream.read(1))
-            check_value('majorVersion', obj.major_version, clz.MAJOR_VERSION)
-            obj.minor_version, = struct.unpack('<B', stream.read(1))
-            check_value('minorVersion', obj.minor_version, clz.MINOR_VERSION)
-            stream.read(2)    # unused
-            obj.ansi_user_name = stream.read(obj.len_user_name)
-            obj.rel_version, = struct.unpack('<L', stream.read(4))
-            check_value('relVersion', obj.rel_version,
-                        [clz.REL_VERSION_CAN_USE, clz.REL_VERSION_NO_USE])
-            obj.unicode_user_name = stream.read(2 * obj.len_user_name)
-
-            return obj
-
-        finally:
-            if stream is not None:
-                log.debug('closing stream')
-                stream.close()
-
-
 class PptType(object):
     """ base class of data types found in ppt ole files
 
@@ -318,6 +226,96 @@ class PptType(object):
         if length is not None:
             errs.extend(self.check_value('rec_head.recLen',
                                          self.rec_head.rec_len, length))
+        return errs
+
+
+class CurrentUserAtom(PptType):
+    """ An atom record that specifies information about the last user to modify
+    the file and where the most recent user edit is located. This is the only
+    record in the Current User Stream (section 2.1.1).
+
+    https://msdn.microsoft.com/en-us/library/dd948895%28v=office.12%29.aspx
+    """
+
+    # allowed values for header_token
+    HEADER_TOKEN_ENCRYPT = 0xF3D1C4DF
+    HEADER_TOKEN_NOCRYPT = 0xE391C05F
+
+    # allowed values for rel_version
+    REL_VERSION_CAN_USE = 0x00000008
+    REL_VERSION_NO_USE = 0x00000009
+
+    # required values
+    RECORD_TYPE = 0x0FF6
+    SIZE = 0x14
+    DOC_FILE_VERSION = 0x03F4
+    MAJOR_VERSION = 0x03
+    MINOR_VERSION = 0x00
+
+    def __init__(self):
+        super(CurrentUserAtom, self).__init__(stream_name='Current User')
+        self.rec_head = None
+        self.size = None
+        self.header_token = None
+        self.offset_to_current_edit = None
+        self.len_user_name = None
+        self.doc_file_version = None
+        self.major_version = None
+        self.minor_version = None
+        self.ansi_user_name = None
+        self.unicode_user_name = None
+        self.rel_version = None
+
+    def is_encrypted(self):
+        return self.header_token == self.HEADER_TOKEN_ENCRYPT
+
+    @classmethod
+    def extract_from(clz, stream):
+        """ create instance with info from stream """
+
+        stream = None
+        try:
+            obj = clz()
+
+            # parse record header
+            obj.rec_head = RecordHeader.extract_from(stream)
+
+            size, = struct.unpack('<L', stream.read(4))
+            obj.header_token, = struct.unpack('<L', stream.read(4))
+            obj.offset_to_current_edit, = struct.unpack('<L', stream.read(4))
+            obj.len_user_name, = struct.unpack('<H', stream.read(2))
+            obj.doc_file_version, = struct.unpack('<H', stream.read(2))
+            obj.major_version, = struct.unpack('<B', stream.read(1))
+            obj.minor_version, = struct.unpack('<B', stream.read(1))
+            stream.read(2)    # unused
+            obj.ansi_user_name = stream.read(obj.len_user_name)
+            obj.rel_version, = struct.unpack('<L', stream.read(4))
+            obj.unicode_user_name = stream.read(2 * obj.len_user_name)
+
+            return obj
+
+        finally:
+            if stream is not None:
+                log.debug('closing stream')
+                stream.close()
+
+    def check_validity(self):
+        errs = self.check_rec_head()
+        errs.extend(self.check_value('size', size, self.SIZE)
+        errs.extend(self.check_value('headerToken', self.header_token,
+                                     [clz.HEADER_TOKEN_ENCRYPT,
+                                      clz.HEADER_TOKEN_NOCRYPT]))
+        errs.extend(self.check_range('lenUserName', self.len_user_name, None,
+                                     256))
+        errs.extend(self.check_value('docFileVersion', self.doc_file_version,
+                                     clz.DOC_FILE_VERSION))
+        errs.extend(self.check_value('majorVersion', self.major_version,
+                                     clz.MAJOR_VERSION))
+        errs.extend(self.check_value('minorVersion', self.minor_version,
+                                     clz.MINOR_VERSION))
+        errs.extend(self.check_value('relVersion', self.rel_version,
+                                     [clz.REL_VERSION_CAN_USE,
+                                      clz.REL_VERSION_NO_USE]))
         return errs
 
 
@@ -667,56 +665,56 @@ class DocumentContainer(PptType):
         # slideHF (variable): An optional SlideHeadersFootersContainer record
         # (section 2.4.15.1) that specifies the default header and footer
         # information for presentation slides.
-        obj.slide_hf = None
+        #obj.slide_hf = None
 
         # notesHF (variable): An optional NotesHeadersFootersContainer record
         # (section 2.4.15.6) that specifies the default header and footer
         # information for notes slides.
-        obj.notes_hf = None
+        #obj.notes_hf = None
 
         # slideList (variable): An optional SlideListWithTextContainer record
         # (section 2.4.14.3) that specifies the list of presentation slides.
-        obj.slide_list = None
+        #obj.slide_list = None
 
         # notesList (variable): An optional NotesListWithTextContainer record
         # (section 2.4.14.6) that specifies the list of notes slides.
-        obj.notes_list = None
+        #obj.notes_list = None
 
         # slideShowDocInfoAtom (88 bytes): An optional SlideShowDocInfoAtom
         # record (section 2.6.1) that specifies slide show information for the
         # document.
-        obj.slide_show_doc_info = None
+        #obj.slide_show_doc_info = None
 
         # namedShows (variable): An optional NamedShowsContainer record
         # (section 2.6.2) that specifies named shows in the document.
-        obj.named_shows = None
+        #obj.named_shows = None
 
         # summary (variable): An optional SummaryContainer record (section
         # 2.4.22.3) that specifies bookmarks for the document.
-        obj.summary = None
+        #obj.summary = None
 
         # docRoutingSlipAtom (variable): An optional DocRoutingSlipAtom record
         # (section 2.11.1) that specifies document routing information.
-        obj.doc_routing_slip = None
+        #obj.doc_routing_slip = None
 
         # printOptionsAtom (13 bytes): An optional PrintOptionsAtom record
         # (section 2.4.12) that specifies default print options.
-        obj.print_options = None
+        #obj.print_options = None
 
         # rtCustomTableStylesAtom1 (variable): An optional
         # RoundTripCustomTableStyles12Atom record (section 2.11.13) that
         # specifies round-trip information for custom table styles.
-        obj.rt_custom_table_styles_1 = None
+        #obj.rt_custom_table_styles_1 = None
 
         # endDocumentAtom (8 bytes): An EndDocumentAtom record (section 2.4.13)
         # that specifies the end of the information for the document.
-        obj.end_document = None
+        #obj.end_document = None
 
         # rtCustomTableStylesAtom2 (variable): An optional
         # RoundTripCustomTableStyles12Atom record that specifies round-trip
         # information for custom table styles. It MUST NOT exist if
         # rtCustomTableStylesAtom1 exists.
-        obj.rt_custom_table_styles_2 = None
+        #obj.rt_custom_table_styles_2 = None
 
         return obj
 
@@ -897,13 +895,22 @@ class PptParser(object):
             log.warning('re-reading and overwriting '
                         'previously read current_user_atom')
 
+        log.debug('parsing "Current User"')
+
+        stream = None
         try:
-            self.current_user_atom = CurrentUserAtom.extract_from(self.ole)
+            log.debug('opening stream')
+            stream = self.ole.openstream('Current User')
+            self.current_user_atom = CurrentUserAtom.extract_from(stream)
         except Exception:
             if self.fast_fail:
                 raise
             else:
                 self._log_exception()
+        finally:
+            if stream is not None:
+                log.debug('closing stream')
+                stream.close()
 
     def parse_persist_object_directory(self):
         """ Part 1: Construct the persist object directory """
