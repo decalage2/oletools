@@ -126,6 +126,18 @@ class RecordHeader(object):
                           obj.rec_len))
         return obj
 
+    @classmethod
+    def generate(clz, rec_type, rec_len=None, rec_instance=0, rec_ver=0):
+        """ generate a record header string given values
+
+        length of result depends on rec_len being given or not
+        """
+        version_instance = rec_ver + 2**4 * rec_instance
+        if rec_len is None:
+            return struct.pack('<HH', version_instance, rec_type)
+        else:
+            return struct.pack('<HHL', version_instance, rec_type, rec_len)
+
 
 class PptType(object):
     """ base class of data types found in ppt ole files
@@ -1162,6 +1174,56 @@ class PptParser(object):
         if errs and self.fast_fail:
             raise errs[0]
 
+    def search_vba(self):
+        """ quick-and-dirty: do not parse everything, just look for right bytes
+
+        "quick" here means quick to program. Runtime now is linear is document
+        size (--> for big documents the other method might be faster)
+        """
+
+        BUF_SIZE = 1024
+
+        pattern = RecordHeader.generate(
+                                VBAInfoContainer.RECORD_TYPE, rec_len=0x14,
+                                rec_instance=VBAInfoContainer.RECORD_INSTANCE,
+                                rec_ver=VBAInfoContainer.RECORD_VERSION) \
+                + RecordHeader.generate(
+                                VBAInfoAtom.RECORD_TYPE, rec_len=0xC,
+                                rec_instance=VBAInfoAtom.RECORD_INSTANCE,
+                                rec_ver=VBAInfoAtom.RECORD_VERSION)
+        pattern_len = len(pattern)
+        log.debug('pattern length is {}'.format(pattern_len))
+        if pattern_len > BUF_SIZE:
+            raise ValueError('need buf > pattern to search!')
+
+        stream = None
+        try:
+            log.debug('opening stream')
+            stream = self.ole.openstream(MAIN_STREAM_NAME)
+            n_reads = 0
+            while True:
+                start_pos = stream.tell()
+                n_reads += 1
+                #log.debug('read {} starting from {}'
+                #          .format(BUF_SIZE, start_pos))
+                buf = stream.read(BUF_SIZE)
+                idx = buf.find(pattern)
+                while idx != -1:
+                    log.info('found pattern at index {}'.format(start_pos+idx))
+                    idx = buf.find(pattern, idx+1)
+
+                if len(buf) == BUF_SIZE:
+                    stream.seek(-1 * pattern_len, os.SEEK_CUR)
+                else:
+                    log.debug('reached end of buf (read {}<{}) after {} reads'
+                              .format(len(buf), BUF_SIZE, n_reads))
+                    break
+
+        finally:
+            if stream is not None:
+                log.debug('closing stream')
+                stream.close()
+
 # === TESTING =================================================================
 
 def test():
@@ -1180,7 +1242,8 @@ def test():
         log.info('-' * 72)
         log.info('test file: {}'.format(file_name))
         ppt = PptParser(file_name, fast_fail=False)
-        ppt.parse_document_persist_object()
+        #ppt.parse_document_persist_object()
+        ppt.search_vba()
 
 
 if __name__ == '__main__':
