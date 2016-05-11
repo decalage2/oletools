@@ -19,7 +19,8 @@ References:
 # - make stream optional in PptUnexpectedData
 # - can speed-up by using less bigger struct.parse calls?
 # - license
-# - create a AtomBase class that defines check_value and parses RecordHead?
+# - make buffered stream from output of iterative_decompress
+# - less stream open/close, possibly through decorator for open+closing?
 #
 # CHANGELOG:
 # 2016-05-04 v0.01 CH: - start parsing "Current User" stream
@@ -33,9 +34,11 @@ import logging
 import struct
 import traceback
 import os
+import cStringIO
 
 import thirdparty.olefile as olefile
 from olevba import get_logger
+import zlib
 
 
 # a global logger object used for debugging:
@@ -132,6 +135,8 @@ class RecordHeader(object):
 
         length of result depends on rec_len being given or not
         """
+        if rec_type is None:
+            raise ValueError('RECORD_TYPE not set!')
         version_instance = rec_ver + 2**4 * rec_instance
         if rec_len is None:
             return struct.pack('<HH', version_instance, rec_type)
@@ -161,7 +166,12 @@ class PptType(object):
         self.rec_head = RecordHeader.extract_from(stream)
 
     def check_validity(self):
-        """ to be overwritten in subclasses
+        """ check validity of data
+
+        replaces 'raise PptUnexpectedData' so caller can get all the errors
+        (not just the first) whenever she wishes.
+
+        to be overwritten in subclasses
 
         :returns: list of PptUnexpectedData
         """
@@ -242,6 +252,12 @@ class PptType(object):
             errs.extend(self.check_value('rec_head.recLen',
                                          self.rec_head.rec_len, length))
         return errs
+
+    @classmethod
+    def generate_pattern(clz, rec_len=None):
+        """ call RecordHeader.generate with values for this type """
+        return RecordHeader.generate(clz.RECORD_TYPE, rec_len,
+                                     clz.RECORD_INSTANCE, clz.RECORD_VERSION)
 
 
 class CurrentUserAtom(PptType):
@@ -853,7 +869,7 @@ class VBAInfoContainer(PptType):
         if rec_head is None:
             obj.read_rec_head(stream)
         else:
-            log.debug('skip parsing of RecordHead')
+            log.debug('skip parsing of RecordHeader')
             obj.rec_head = rec_head
         obj.vba_info_atom = VBAInfoAtom.extract_from(stream)
         return obj
@@ -911,6 +927,92 @@ class VBAInfoAtom(PptType):
         errs.extend(self.check_range('fHasMacros', self.f_has_macros, None, 2))
         errs.extend(self.check_value('version', self.version, 2))
         return errs
+
+
+class ExternalObjectStorage(PptType):
+    """ storage for compressed/uncompressed OLE/VBA/ActiveX control data
+
+    Matches types ExOleObjStgCompressedAtom, ExOleObjStgUncompressedAtom,
+    VbaProjectStgCompressedAtom, VbaProjectStgUncompressedAtom,
+    ExControlStgUncompressedAtom, ExControlStgCompressedAtom
+
+    Difference between compressed and uncompressed: RecordHeader.rec_instance
+    is 0 or 1, first variable after RecordHeader is decompressed_size
+
+    Data is not read at first, only its offset in the stream and size is saved
+
+    e.g.
+    https://msdn.microsoft.com/en-us/library/dd952169%28v=office.12%29.aspx
+    """
+
+    RECORD_TYPE = 0x1011
+    RECORD_INSTANCE_COMPRESSED = 1
+    RECORD_INSTANCE_UNCOMPRESSED = 0
+
+    def __init__(self, compressed=None):
+        super(ExternalObjectStorage, self).__init__()
+        if compressed is None:
+            self.RECORD_INSTANCE = None   # otherwise defaults to 0
+        elif compressed:
+            self.RECORD_INSTANCE = self.RECORD_INSTANCE_COMPRESSED
+            self.compressed = True
+        else:
+            self.RECORD_INSTANCE = self.RECORD_INSTANCE_UNCOMPRESSED
+            self.compressed = False
+        self.uncompressed_size = None
+        self.data_offset = None
+        self.data_size = None
+
+    def extract_from(self, stream):
+        """ not a classmethod because of compressed attrib
+
+        see also: DummyType
+        """
+        log.debug('Parsing ExternalObjectStorage (compressed={}) from stream'
+                  .format(self.compressed))
+        self.read_rec_head(stream)
+        self.data_size = self.rec_head.rec_len
+        if self.compressed:
+            log.debug('is compressed --> reduce size')
+            self.uncompressed_size = read_4(stream)
+            self.data_size -= 4
+        self.data_offset = stream.tell()
+
+    def check_validity(self):
+        return self.check_rec_head()
+
+
+class ExternalObjectStorageUncompressed(ExternalObjectStorage):
+    """ subclass of ExternalObjectStorage for uncompressed objects """
+    RECORD_INSTANCE = ExternalObjectStorage.RECORD_INSTANCE_UNCOMPRESSED
+
+    def __init__(self):
+        super(ExternalObjectStorageUncompressed, self).__init__(False)
+
+    @classmethod
+    def extract_from(clz, stream):
+        """ note the usage of super here: call instance method of super class!
+        """
+        obj = clz()
+        super(ExternalObjectStorageUncompressed, obj).extract_from(stream)
+        return obj
+
+
+class ExternalObjectStorageCompressed(ExternalObjectStorage):
+    """ subclass of ExternalObjectStorage for compressed objects """
+    RECORD_INSTANCE = ExternalObjectStorage.RECORD_INSTANCE_COMPRESSED
+
+    def __init__(self):
+        super(ExternalObjectStorageCompressed, self).__init__(True)
+
+    @classmethod
+    def extract_from(clz, stream):
+        """ note the usage of super here: call instance method of super class!
+        """
+        obj = clz()
+        super(ExternalObjectStorageCompressed, obj).extract_from(stream)
+        return obj
+
 
 # === PptParser ===============================================================
 
@@ -1180,59 +1282,65 @@ class PptParser(object):
         if errs and self.fast_fail:
             raise errs[0]
 
-    def search_vba(self):
-        """ quick-and-dirty: do not parse everything, just look for right bytes
-
-        "quick" here means quick to program. Runtime now is linear is document
-        size (--> for big documents the other method might be faster)
-        """
+    def search_pattern(self, pattern, stream):
+        """ search for pattern in stream, return indices """
 
         BUF_SIZE = 1024
 
-        pattern = RecordHeader.generate(
-                                VBAInfoContainer.RECORD_TYPE,
-                                rec_len=VBAInfoContainer.RECORD_LENGTH,
-                                rec_instance=VBAInfoContainer.RECORD_INSTANCE,
-                                rec_ver=VBAInfoContainer.RECORD_VERSION) \
-                + RecordHeader.generate(
-                                VBAInfoAtom.RECORD_TYPE,
-                                rec_len=VBAInfoAtom.RECORD_LENGTH,
-                                rec_instance=VBAInfoAtom.RECORD_INSTANCE,
-                                rec_ver=VBAInfoAtom.RECORD_VERSION)
         pattern_len = len(pattern)
         log.debug('pattern length is {}'.format(pattern_len))
         if pattern_len > BUF_SIZE:
             raise ValueError('need buf > pattern to search!')
 
+        n_reads = 0
+        candidates = []
+        while True:
+            start_pos = stream.tell()
+            n_reads += 1
+            #log.debug('read {} starting from {}'
+            #          .format(BUF_SIZE, start_pos))
+            buf = stream.read(BUF_SIZE)
+            idx = buf.find(pattern)
+            while idx != -1:
+                log.info('found pattern at index {}'.format(start_pos+idx))
+                candidates.append(start_pos+idx)
+                idx = buf.find(pattern, idx+1)
+
+            if len(buf) == BUF_SIZE:
+                # move back a bit to avoid splitting of pattern through buf
+                stream.seek(-1 * pattern_len, os.SEEK_CUR)
+            else:
+                log.debug('reached end of buf (read {}<{}) after {} reads'
+                          .format(len(buf), BUF_SIZE, n_reads))
+                break
+        return candidates
+
+
+    def search_vba_info(self):
+        """ search through stream for VBAInfoContainer, alternative to parse...
+
+        quick-and-dirty: do not parse everything, just look for right bytes
+
+        "quick" here means quick to program. Runtime now is linear is document
+        size (--> for big documents the other method might be faster)
+
+        .. seealso:: search_vba_storage
+        """
+
+        pattern = VBAInfoContainer.generate_pattern(
+                                rec_len=VBAInfoContainer.RECORD_LENGTH) \
+                + VBAInfoAtom.generate_pattern(
+                                rec_len=VBAInfoAtom.RECORD_LENGTH)
         stream = None
         try:
             log.debug('opening stream')
             stream = self.ole.openstream(MAIN_STREAM_NAME)
 
             # look for candidate positions
-            n_reads = 0
-            candidates = []
-            while True:
-                start_pos = stream.tell()
-                n_reads += 1
-                #log.debug('read {} starting from {}'
-                #          .format(BUF_SIZE, start_pos))
-                buf = stream.read(BUF_SIZE)
-                idx = buf.find(pattern)
-                while idx != -1:
-                    log.info('found pattern at index {}'.format(start_pos+idx))
-                    candidates.append(start_pos+idx)
-                    idx = buf.find(pattern, idx+1)
-
-                if len(buf) == BUF_SIZE:
-                    # move back a bit to avoid splitting of pattern through buf
-                    stream.seek(-1 * pattern_len, os.SEEK_CUR)
-                else:
-                    log.debug('reached end of buf (read {}<{}) after {} reads'
-                              .format(len(buf), BUF_SIZE, n_reads))
-                    break
+            candidates = self.search_pattern(pattern, stream)
 
             # try parse
+            containers = []
             for idx in candidates:
                 # assume that in stream at idx there is a VBAInfoContainer
                 stream.seek(idx)
@@ -1252,16 +1360,141 @@ class PptParser(object):
                     log.info('persist id ref is {}, has_macros {}, version {}'
                              .format(atom.persist_id_ref, atom.f_has_macros,
                                      atom.version))
+                    containers.append(container)
                 for err in errs:
                     log.warning('check_validity(VBAInfoContainer): {}'
                                 .format(err))
                 if errs and self.fast_fail:
                     raise errs[0]
 
+            return containers
+
         finally:
             if stream is not None:
                 log.debug('closing stream')
                 stream.close()
+
+    def search_vba_storage(self):
+        """ search through stream for VBAProjectStg, alternative to parse...
+
+        quick-and-dirty: do not parse everything, just look for right bytes
+
+        "quick" here means quick to program. Runtime now is linear is document
+        size (--> for big documents the other method might be faster)
+
+        The storages found could also contain (instead of VBA data): ActiveX
+        data or general OLE data
+
+        .. seealso:: :py:meth:`search_vba_info`
+        """
+
+        stream = None
+        try:
+            log.debug('opening stream')
+            stream = self.ole.openstream(MAIN_STREAM_NAME)
+
+            storages = []
+            for obj_type in (ExternalObjectStorageUncompressed,
+                             ExternalObjectStorageCompressed):
+                # re-position stream at start
+                stream.seek(0, os.SEEK_SET)
+
+                # look for candidate positions
+                pattern = obj_type.generate_pattern()
+                candidates = self.search_pattern(pattern, stream)
+
+                # try parse
+                for idx in candidates:
+                    # assume a ExternalObjectStorage in stream at idx
+                    stream.seek(idx)
+                    log.info('extracting at idx {}'.format(idx))
+                    try:
+                        storage = obj_type.extract_from(stream)
+                    except Exception:
+                        self._log_exception()
+                        continue
+
+                    errs = storage.check_validity()
+                    if errs:
+                        log.warning('check_validity found {} issues'
+                                    .format(len(errs)))
+                    else:
+                        log.info('storage is ok; compressed={}, size={}, '
+                                 'size_decomp={}'
+                                 .format(storage.compressed,
+                                         storage.rec_head.rec_len,
+                                         storage.uncompressed_size))
+                        storages.append(storage)
+                    for err in errs:
+                        log.warning('check_validity({}): {}'
+                                    .format(obj_type.__name__, err))
+                    if errs and self.fast_fail:
+                        raise errs[0]
+
+            return storages
+
+        finally:
+            if stream is not None:
+                log.debug('closing stream')
+                stream.close()
+
+
+    def decompress_vba_storage(self, storage):
+        """ return decompressed data from search_vba_storage """
+
+        log.debug('decompressing storage for VBA OLE data stream ')
+        stream = None
+        try:
+            log.debug('opening stream')
+            stream = self.ole.openstream(MAIN_STREAM_NAME)
+
+            # decompress iteratively; a zlib.decompress of all data
+            # failed with Error -5 (incomplete or truncated stream)
+            stream.seek(storage.data_offset, os.SEEK_SET)
+            decomp, n_read, err = \
+                iterative_decompress(stream, storage.data_size)
+            log.info('decompressed {} to {} bytes, err is {}'
+                     .format(n_read, len(decomp), err))
+            if err and self.fast_fail:
+                raise err
+            # otherwise try to continue with partial data
+
+            return decomp
+
+            ## create OleFileIO from decompressed data
+            #ole = olefile.OleFileIO(decomp)
+            #root_streams = [entry[0].lower() for entry in ole.listdir()]
+            #for required in 'project', 'projectwm', 'vba':
+            #    if required not in root_streams:
+            #        raise ValueError('storage seems to not be a VBA storage '
+            #                         '({} not found in root streams)'
+            #                         .format(required))
+            #log.debug('tests succeeded')
+            #return ole
+
+        finally:
+            if stream is not None:
+                log.debug('closing stream')
+                stream.close()
+
+
+def iterative_decompress(stream, size, chunk_size=4096):
+    """ decompress data from stream chunk-wise """
+
+    decompressor = zlib.decompressobj()
+    n_read = 0
+    decomp = ''
+    return_err = None
+
+    try:
+        while n_read < size:
+            n_new = min(size-n_read, chunk_size)
+            decomp += decompressor.decompress(stream.read(n_new))
+            n_read += n_new
+    except zlib.error as err:
+        return_err = err
+
+    return decomp, n_read, return_err
 
 # === TESTING =================================================================
 
@@ -1269,6 +1502,7 @@ def test():
     """ for testing and debugging """
 
     from glob import glob
+    from olevba import VBA_Parser
 
     # setup logging
     logging.basicConfig(level=logging.DEBUG,
@@ -1280,9 +1514,32 @@ def test():
         # parse
         log.info('-' * 72)
         log.info('test file: {}'.format(file_name))
-        ppt = PptParser(file_name, fast_fail=False)
-        #ppt.parse_document_persist_object()
-        ppt.search_vba()
+        try:
+            ppt = PptParser(file_name, fast_fail=False)
+            #ppt.parse_document_persist_object()
+            n_infos = len(ppt.search_vba_info())
+            storages = ppt.search_vba_storage()
+            n_storages = len(storages)
+            log.debug('found {} infos and {} storages'.format(n_infos,
+                                                              n_storages))
+            if n_infos != n_storages:
+                log.warning('found different number of vba infos and storages')
+            for storage in storages:
+                parser = VBA_Parser(None, ppt.decompress_vba_storage(storage),
+                                    container=file_name)
+                for vba_root, project_path, dir_path in parser.find_vba_projects():
+                    log.info('found vba project: root={}, proj={}, dir={}'
+                             .format(vba_root, project_path, dir_path))
+                for subfilename, stream_path, vba_filename, vba_code in \
+                        parser.extract_all_macros():
+                    log.info('found macro: subfile={}, stream={}, vbafile={}'
+                             .format(subfilename, stream_path, vba_filename))
+                    for line in vba_code.splitlines():
+                        log.info('code: {}'.format(line.rstrip()))
+
+
+        except Exception:
+            log.exception('exception')
 
 
 if __name__ == '__main__':
