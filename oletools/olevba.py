@@ -302,6 +302,7 @@ TYPE_OpenXML = 'OpenXML'
 TYPE_Word2003_XML = 'Word2003_XML'
 TYPE_MHTML = 'MHTML'
 TYPE_TEXT = 'Text'
+TYPE_PPT = 'PPT'
 
 # short tag to display file types in triage mode:
 TYPE2TAG = {
@@ -310,6 +311,7 @@ TYPE2TAG = {
     TYPE_Word2003_XML: 'XML:',
     TYPE_MHTML: 'MHT:',
     TYPE_TEXT: 'TXT:',
+    TYPE_PPT: 'PPT',
 }
 
 
@@ -2182,6 +2184,30 @@ class VBA_Parser(object):
                               % (self.filename, MSG_OLEVBA_ISSUES))
             pass
 
+    def open_ppt(self, ole):
+        """ try to interpret ole file as PowerPoint 97-2003 using PptParser """
+        try:
+            ppt_parser = ppt_parser.PptParser(ole)
+            n_infos = len(ppt_parser.search_vba_info())
+            storages = ppt_parser.search_vba_storage()
+            n_storages = len(storages)
+            log.debug('ppt: found {} infos and {} storages'.format(n_infos,
+                                                              n_storages))
+            if n_infos != n_storages:
+                log.warning('ppt: found different number of vba infos and storages!')
+            for storage in storages:
+                if storage.is_compressed:
+                    storage_decomp = self.ole_file.decompress_vba_storage(storage)
+                else:
+                    log.warning('just guessing here: decompressed storage = storage?')
+                    storage_decomp = storage.read_all()  # not implemented yet
+                self.ole_subfiles.append(VBA_Parser(None, storage_decomp,
+                                                    container='PptParser'))
+            self.ole_file = None   # required to make other methods look at ole_subfiles
+            self.type = TYPE_PPT
+        except Exception:
+            log.exception('Failed PPT parsing for file %r' % self.filename)
+
 
     def open_text(self, data):
         """
@@ -2224,6 +2250,15 @@ class VBA_Parser(object):
         for each VBA project found if OLE file
         """
         log.debug('VBA_Parser.find_vba_projects')
+
+        # if this is a ppt file (PowerPoint 97-2003):
+        # let ppt_parser do its job
+        if self.type == TYPE_PPT:
+            self.vba_projects = []
+            for subfile in self.ole_subfiles:
+                self.vba_projects.extend(subfile.find_vba_projects())
+            return self.vba_projects
+
         # if the file is not OLE but OpenXML, return None:
         if self.ole_file is None:
             return None
