@@ -957,31 +957,30 @@ class ExternalObjectStorage(PptType):
     RECORD_INSTANCE_COMPRESSED = 1
     RECORD_INSTANCE_UNCOMPRESSED = 0
 
-    def __init__(self, compressed=None):
+    def __init__(self, is_compressed=None):
         super(ExternalObjectStorage, self).__init__()
-        if compressed is None:
+        if is_compressed is None:
             self.RECORD_INSTANCE = None   # otherwise defaults to 0
-        elif compressed:
+        elif is_compressed:
             self.RECORD_INSTANCE = self.RECORD_INSTANCE_COMPRESSED
-            self.compressed = True
+            self.is_compressed = True
         else:
             self.RECORD_INSTANCE = self.RECORD_INSTANCE_UNCOMPRESSED
-            self.compressed = False
+            self.is_compressed = False
         self.uncompressed_size = None
         self.data_offset = None
         self.data_size = None
 
     def extract_from(self, stream):
-        """ not a classmethod because of compressed attrib
+        """ not a classmethod because of is_compressed attrib
 
         see also: DummyType
         """
         log.debug('Parsing ExternalObjectStorage (compressed={}) from stream'
-                  .format(self.compressed))
+                  .format(self.is_compressed))
         self.read_rec_head(stream)
         self.data_size = self.rec_head.rec_len
-        if self.compressed:
-            log.debug('is compressed --> reduce size')
+        if self.is_compressed:
             self.uncompressed_size = read_4(stream)
             self.data_size -= 4
         self.data_offset = stream.tell()
@@ -1429,7 +1428,7 @@ class PptParser(object):
                     else:
                         log.info('storage is ok; compressed={}, size={}, '
                                  'size_decomp={}'
-                                 .format(storage.compressed,
+                                 .format(storage.is_compressed,
                                          storage.rec_head.rec_len,
                                          storage.uncompressed_size))
                         storages.append(storage)
