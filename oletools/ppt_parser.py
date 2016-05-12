@@ -2,7 +2,8 @@
 
 Based on olefile, parse the ppt-specific info
 
-Code much influenced by olevba._extract_vba
+Code much influenced by olevba._extract_vba but much more object-oriented
+(possibly slightly excessivly so)
 
 Currently quite narrowly focused on extracting VBA from ppt files, no slides or
 stuff, but built to be extended to parsing more/all of the file
@@ -125,16 +126,16 @@ class RecordHeader(object):
     @classmethod
     def extract_from(clz, stream):
         """ reads 8 byte from stream """
-        log.debug('parsing RecordHeader from stream')
+        #log.debug('parsing RecordHeader from stream')
         obj = clz()
         # first half byte is version, next 3 half bytes are instance
         version_instance, = struct.unpack('<H', stream.read(2))
         obj.rec_instance, obj.rec_ver = divmod(version_instance, 2**4)
         obj.rec_type, = struct.unpack('<H', stream.read(2))
         obj.rec_len, = struct.unpack('<L', stream.read(4))
-        log.debug('type is {0:04X}, instance {1:04X}, version {2:04X}, len {3}'
-                  .format(obj.rec_type, obj.rec_instance, obj.rec_ver,
-                          obj.rec_len))
+        #log.debug('type is {0:04X}, instance {1:04X}, version {2:04X}, len {3}'
+        #          .format(obj.rec_type, obj.rec_instance, obj.rec_ver,
+        #                  obj.rec_len))
         return obj
 
     @classmethod
@@ -1057,8 +1058,8 @@ class PptParser(object):
         #  ['Current User'],
         #  ['PowerPoint Document']]
         root_streams = self.ole.listdir()
-        for stream in root_streams:
-            log.debug('found root stream {!r}'.format(stream))
+        #for stream in root_streams:
+        #    log.debug('found root stream {!r}'.format(stream))
         if any(len(stream) != 1 for stream in root_streams):
             self._fail('root', 'listdir', root_streams, 'len = 1')
         root_streams = [stream[0].lower() for stream in root_streams]
@@ -1310,7 +1311,7 @@ class PptParser(object):
             buf = stream.read(BUF_SIZE)
             idx = buf.find(pattern)
             while idx != -1:
-                log.info('found pattern at index {}'.format(start_pos+idx))
+                log.debug('found pattern at index {}'.format(start_pos+idx))
                 candidates.append(start_pos+idx)
                 idx = buf.find(pattern, idx+1)
 
@@ -1335,6 +1336,8 @@ class PptParser(object):
         .. seealso:: search_vba_storage
         """
 
+        logging.debug('looking for VBA info containers')
+
         pattern = VBAInfoContainer.generate_pattern(
                                 rec_len=VBAInfoContainer.RECORD_LENGTH) \
                 + VBAInfoAtom.generate_pattern(
@@ -1352,7 +1355,7 @@ class PptParser(object):
             for idx in candidates:
                 # assume that in stream at idx there is a VBAInfoContainer
                 stream.seek(idx)
-                log.info('extracting at idx {}'.format(idx))
+                log.debug('extracting at idx {}'.format(idx))
                 try:
                     container = VBAInfoContainer.extract_from(stream)
                 except Exception:
@@ -1363,9 +1366,9 @@ class PptParser(object):
                 if errs:
                     log.warning('check_validity found {} issues'.format(len(errs)))
                 else:
-                    log.info('container is ok')
+                    log.debug('container is ok')
                     atom = container.vba_info_atom
-                    log.info('persist id ref is {}, has_macros {}, version {}'
+                    log.debug('persist id ref is {}, has_macros {}, version {}'
                              .format(atom.persist_id_ref, atom.f_has_macros,
                                      atom.version))
                     containers.append(container)
@@ -1396,6 +1399,7 @@ class PptParser(object):
         .. seealso:: :py:meth:`search_vba_info`
         """
 
+        logging.debug('looking for VBA storage objects')
         stream = None
         try:
             log.debug('opening stream')
@@ -1415,7 +1419,7 @@ class PptParser(object):
                 for idx in candidates:
                     # assume a ExternalObjectStorage in stream at idx
                     stream.seek(idx)
-                    log.info('extracting at idx {}'.format(idx))
+                    log.debug('extracting at idx {}'.format(idx))
                     try:
                         storage = obj_type.extract_from(stream)
                     except Exception:
@@ -1427,11 +1431,11 @@ class PptParser(object):
                         log.warning('check_validity found {} issues'
                                     .format(len(errs)))
                     else:
-                        log.info('storage is ok; compressed={}, size={}, '
-                                 'size_decomp={}'
-                                 .format(storage.is_compressed,
-                                         storage.rec_head.rec_len,
-                                         storage.uncompressed_size))
+                        log.debug('storage is ok; compressed={}, size={}, '
+                                  'size_decomp={}'
+                                  .format(storage.is_compressed,
+                                          storage.rec_head.rec_len,
+                                          storage.uncompressed_size))
                         storages.append(storage)
                     for err in errs:
                         log.warning('check_validity({}): {}'
@@ -1461,8 +1465,8 @@ class PptParser(object):
             stream.seek(storage.data_offset, os.SEEK_SET)
             decomp, n_read, err = \
                 iterative_decompress(stream, storage.data_size)
-            log.info('decompressed {} to {} bytes, err is {}'
-                     .format(n_read, len(decomp), err))
+            log.debug('decompressed {} to {} bytes; found err: {}'
+                      .format(n_read, len(decomp), err))
             if err and self.fast_fail:
                 raise err
             # otherwise try to continue with partial data
