@@ -2198,34 +2198,42 @@ class VBA_Parser(object):
         ole_subfiles (except find_vba_* which needs to explicitly check for
         self.type)
         """
+
         log.info('Check whether OLE file is PPT')
         ppt_parser.enable_logging()
         try:
             ppt = ppt_parser.PptParser(self.ole_file, fast_fail=True)
+            info_container = ppt.search_vba_info()
+            n_infos = len(info_container)
+            n_macros = sum(1 for info in info_container
+                           if info.vba_info_atom.f_has_macros > 0)
             n_infos = len(ppt.search_vba_info())
+            # TODO: does it make sense at all to continue if n_macros == 0?
+            #       --> no vba-info, so all storages probably ActiveX or other OLE
             storages = ppt.search_vba_storage()
             n_storages = len(storages)
-            log.debug('ppt: found {} infos and {} storages'.format(n_infos,
-                                                              n_storages))
-            if n_infos != n_storages:
-                # probably, some storages are ActiveX or other OLE types
-                log.warning('ppt: found different number of vba infos ({} and '
-                            'storages ({}) --> subfiles might make trouble'
-                            .format(n_infos, n_storages))
+            n_compressed = 0
             for storage in storages:
                 if storage.is_compressed:
                     storage_decomp = ppt.decompress_vba_storage(storage)
+                    n_compressed += 1
                 else:
                     log.warning('just guessing here: decompressed storage = storage?')
                     storage_decomp = storage.read_all()  # not implemented yet
                 self.ole_subfiles.append(VBA_Parser(None, storage_decomp,
                                                     container='PptParser'))
+            log.info('File is PPT with {} vba infos ({} with macros) and {} '
+                     'vba storages ({} compressed)'
+                     .format(n_infos, n_macros, n_storages, n_compressed))
             self.ole_file.close()  # just in case
             self.ole_file = None   # required to make other methods look at ole_subfiles
             self.type = TYPE_PPT
         except Exception as exc:
-            log.debug("File appears not to be a ppt file (%s)")
-            log.debug('Exception from opening attempt:', exc_info=True)
+            if self.container == 'PptParser':
+                # this is a subfile of a ppt --> to be expected that is no ppt
+                log.debug('PPT subfile is not a PPT file')
+            else:
+                log.debug("File appears not to be a ppt file (%s)" % exc)
 
 
     def open_text(self, data):
