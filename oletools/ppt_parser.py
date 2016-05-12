@@ -37,12 +37,20 @@ import os
 import cStringIO
 
 import thirdparty.olefile as olefile
-from olevba import get_logger
 import zlib
 
 
 # a global logger object used for debugging:
-log = get_logger('ppt')
+log = olefile.get_logger('ppt')
+
+
+def enable_logging():
+    """
+    Enable logging for this module (disabled by default).
+    This will set the module-specific logger level to NOTSET, which
+    means the main application controls the actual logging level.
+    """
+    log.setLevel(logging.NOTSET)
 
 
 #--- CONSTANTS ----------------------------------------------------------------
