@@ -35,7 +35,6 @@ import logging
 import struct
 import traceback
 import os
-import cStringIO
 
 import thirdparty.olefile as olefile
 import zlib
@@ -336,19 +335,19 @@ class CurrentUserAtom(PptType):
         errs = self.check_rec_head()
         errs.extend(self.check_value('size', self.size, self.SIZE))
         errs.extend(self.check_value('headerToken', self.header_token,
-                                     [clz.HEADER_TOKEN_ENCRYPT,
-                                      clz.HEADER_TOKEN_NOCRYPT]))
+                                     [self.HEADER_TOKEN_ENCRYPT,
+                                      self.HEADER_TOKEN_NOCRYPT]))
         errs.extend(self.check_range('lenUserName', self.len_user_name, None,
                                      256))
         errs.extend(self.check_value('docFileVersion', self.doc_file_version,
-                                     clz.DOC_FILE_VERSION))
+                                     self.DOC_FILE_VERSION))
         errs.extend(self.check_value('majorVersion', self.major_version,
-                                     clz.MAJOR_VERSION))
+                                     self.MAJOR_VERSION))
         errs.extend(self.check_value('minorVersion', self.minor_version,
-                                     clz.MINOR_VERSION))
+                                     self.MINOR_VERSION))
         errs.extend(self.check_value('relVersion', self.rel_version,
-                                     [clz.REL_VERSION_CAN_USE,
-                                      clz.REL_VERSION_NO_USE]))
+                                     [self.REL_VERSION_CAN_USE,
+                                      self.REL_VERSION_NO_USE]))
         return errs
 
 
@@ -643,7 +642,8 @@ class DocInfoListSubContainerOrAtom(PptType):
 
     def check_validity(self):
         """ can be any of multiple types """
-        self.check_value(self.rec_head.rec_type, self.VALID_RECORD_TYPES)
+        self.check_value('rh.recType', self.rec_head.rec_type,
+                         self.VALID_RECORD_TYPES)
 
 
 class DocInfoListContainer(PptType):
@@ -657,6 +657,7 @@ class DocInfoListContainer(PptType):
 
     def __init__(self):
         super(DocInfoListContainer, self).__init__()
+        self.rg_child_rec = None
 
     @classmethod
     def extract_from(clz, stream):
@@ -674,7 +675,6 @@ class DocInfoListContainer(PptType):
         end_pos = curr_pos + obj.rec_head.rec_len
         log.debug('start reading at pos {}, will read until {}'
                   .format(curr_pos, end_pos))
-        bytes_read = 0
         obj.rg_child_rec = []
 
         while curr_pos < end_pos:
@@ -1376,8 +1376,8 @@ class PptParser(object):
                     log.debug('container is ok')
                     atom = container.vba_info_atom
                     log.debug('persist id ref is {}, has_macros {}, version {}'
-                             .format(atom.persist_id_ref, atom.f_has_macros,
-                                     atom.version))
+                              .format(atom.persist_id_ref, atom.f_has_macros,
+                                      atom.version))
                     containers.append(container)
                 for err in errs:
                     log.warning('check_validity(VBAInfoContainer): {}'
