@@ -9,6 +9,7 @@ and analyze malicious macros.
 Supported formats:
 - Word 97-2003 (.doc, .dot), Word 2007+ (.docm, .dotm)
 - Excel 97-2003 (.xls), Excel 2007+ (.xlsm, .xlsb)
+- PowerPoint 97-2003 (.ppt)
 - PowerPoint 2007+ (.pptm, .ppsm)
 - Word 2003 XML (.xml)
 - Word/Excel Single File Web Page / MHTML (.mht)
@@ -188,7 +189,6 @@ __version__ = '0.46'
 # + look for VBA in embedded documents (e.g. Excel in Word)
 # + support SRP streams (see Lenny's article + links and sample)
 # - python 3.x support
-# - add support for PowerPoint macros (see libclamav, libgsf), use oledump heuristic?
 # - check VBA macros in Visio, Access, Project, etc
 # - extract_macros: convert to a class, split long function into smaller methods
 # - extract_macros: read bytes from stream file objects instead of strings
@@ -1911,6 +1911,7 @@ class VBA_Parser(object):
     - Word MHT - Single File Web Page / MHTML (.mht)
     - Excel 97-2003 (.xls)
     - Excel 2007+ (.xlsm, .xlsb)
+    - PowerPoint 97-2003 (.ppt)
     - PowerPoint 2007+ (.pptm, .ppsm)
     """
 
@@ -1971,6 +1972,7 @@ class VBA_Parser(object):
         if olefile.isOleFile(_file):
             # This looks like an OLE file
             self.open_ole(_file)
+
             # if this worked, try whether it is a ppt file (special ole file)
             self.open_ppt()
         if self.type is None and zipfile.is_zipfile(_file):
@@ -2017,7 +2019,6 @@ class VBA_Parser(object):
         try:
             # Open and parse the OLE file, using unicode for path names:
             self.ole_file = olefile.OleFileIO(_file, path_encoding=None)
-            # TODO: raise TypeError if this is a Powerpoint 97 file, since VBA macros cannot be detected yet
             # set type only if parsing succeeds
             self.type = TYPE_OLE
         except KeyboardInterrupt:
@@ -2261,8 +2262,7 @@ class VBA_Parser(object):
         dir_path is the path of the OLE stream named "VBA/dir" within the VBA project.
 
         If this function returns an empty list for one of the supported formats
-        (i.e. Word, Excel, Powerpoint except Powerpoint 97-2003), then the
-        file does not contain VBA macros.
+        (i.e. Word, Excel, Powerpoint), then the file does not contain VBA macros.
 
         :return: None if OpenXML file, list of tuples (vba_root, project_path, dir_path)
         for each VBA project found if OLE file
@@ -2293,7 +2293,7 @@ class VBA_Parser(object):
         # Find the VBA project root (different in MS Word, Excel, etc):
         # - Word 97-2003: Macros
         # - Excel 97-2003: _VBA_PROJECT_CUR
-        # - PowerPoint 97-2003: not supported yet (different file structure)
+        # - PowerPoint 97-2003: PptParser has identified ole_subfiles
         # - Word 2007+: word/vbaProject.bin in zip archive, then the VBA project is the root of vbaProject.bin.
         # - Excel 2007+: xl/vbaProject.bin in zip archive, then same as Word
         # - PowerPoint 2007+: ppt/vbaProject.bin in zip archive, then same as Word
@@ -2350,7 +2350,6 @@ class VBA_Parser(object):
         if it contains VBA projects. Both OLE and OpenXML files are supported.
 
         Important: for now, results are accurate only for Word, Excel and PowerPoint
-        EXCEPT Powerpoint 97-2003, which has a different structure for VBA.
 
         Note: this method does NOT attempt to check the actual presence or validity
         of VBA macro source code, so there might be false positives.
@@ -2365,7 +2364,7 @@ class VBA_Parser(object):
         # if this method was already called, return the previous result:
         if self.contains_macros is not None:
             return self.contains_macros
-        # if OpenXML, check all the OLE subfiles:
+        # if OpenXML/PPT, check all the OLE subfiles:
         if self.ole_file is None:
             for ole_subfile in self.ole_subfiles:
                 if ole_subfile.detect_vba_macros():
@@ -2390,14 +2389,15 @@ class VBA_Parser(object):
         If the file is OLE, filename is the path of the file.
         If the file is OpenXML, filename is the path of the OLE subfile containing VBA macros
         within the zip archive, e.g. word/vbaProject.bin.
+        If the file is PPT, result is as for OpenXML but filename is useless
         """
         if self.ole_file is None:
-            # This may be either an OpenXML or a text file:
+            # This may be either an OpenXML/PPT or a text file:
             if self.type == TYPE_TEXT:
                 # This is a text file, yield the full code:
                 yield (self.filename, '', self.filename, self.vba_code_all_modules)
             else:
-                # OpenXML: recursively yield results from each OLE subfile:
+                # OpenXML/PPT: recursively yield results from each OLE subfile:
                 for ole_subfile in self.ole_subfiles:
                     for results in ole_subfile.extract_macros():
                         yield results
@@ -2490,13 +2490,13 @@ class VBA_Parser(object):
         dir_path is the path of the OLE stream named "VBA/dir" within the VBA project.
 
         If this function returns an empty list for one of the supported formats
-        (i.e. Word, Excel, Powerpoint except Powerpoint 97-2003), then the
-        file does not contain VBA macros.
+        (i.e. Word, Excel, Powerpoint), then the file does not contain VBA forms.
 
         :return: None if OpenXML file, list of tuples (vba_root, project_path, dir_path)
         for each VBA project found if OLE file
         """
         log.debug('VBA_Parser.find_vba_forms')
+
         # if the file is not OLE but OpenXML, return None:
         if self.ole_file is None and self.type != TYPE_PPT:
             return None
@@ -2553,14 +2553,15 @@ class VBA_Parser(object):
         If the file is OLE, filename is the path of the file.
         If the file is OpenXML, filename is the path of the OLE subfile containing VBA macros
         within the zip archive, e.g. word/vbaProject.bin.
+        If the file is PPT, result is as for OpenXML but filename is useless
         """
         if self.ole_file is None:
-            # This may be either an OpenXML or a text file:
+            # This may be either an OpenXML/PPT or a text file:
             if self.type == TYPE_TEXT:
                 # This is a text file, return no results:
                 return
             else:
-                # OpenXML: recursively yield results from each OLE subfile:
+                # OpenXML/PPT: recursively yield results from each OLE subfile:
                 for ole_subfile in self.ole_subfiles:
                     for results in ole_subfile.extract_form_strings():
                         yield results
