@@ -2203,27 +2203,10 @@ class VBA_Parser(object):
         ppt_parser.enable_logging()
         try:
             ppt = ppt_parser.PptParser(self.ole_file, fast_fail=True)
-            info_container = ppt.search_vba_info()
-            n_infos = len(info_container)
-            n_macros = sum(1 for info in info_container
-                           if info.vba_info_atom.f_has_macros > 0)
-            n_infos = len(ppt.search_vba_info())
-            # TODO: does it make sense at all to continue if n_macros == 0?
-            #       --> no vba-info, so all storages probably ActiveX or other OLE
-            storages = ppt.search_vba_storage()
-            n_storages = len(storages)
-            n_compressed = 0
-            for storage in storages:
-                if storage.is_compressed:
-                    storage_decomp = ppt.decompress_vba_storage(storage)
-                    n_compressed += 1
-                else:
-                    storage_decomp = ppt.read_vba_storage_data(storage)
-                self.ole_subfiles.append(VBA_Parser(None, storage_decomp,
+            for vba_data in ppt.iter_vba_data():
+                self.ole_subfiles.append(VBA_Parser(None, vba_data,
                                                     container='PptParser'))
-            log.info('File is PPT with {} vba infos ({} with macros) and {} '
-                     'vba storages ({} compressed)'
-                     .format(n_infos, n_macros, n_storages, n_compressed))
+            log.info('File is PPT')
             self.ole_file.close()  # just in case
             self.ole_file = None   # required to make other methods look at ole_subfiles
             self.type = TYPE_PPT
