@@ -241,6 +241,7 @@ import thirdparty.olefile as olefile
 from thirdparty.prettytable import prettytable
 from thirdparty.xglob import xglob
 from thirdparty.pyparsing.pyparsing import *
+import ppt_parser
 
 # monkeypatch email to fix issue #32:
 # allow header lines without ":"
@@ -1970,6 +1971,8 @@ class VBA_Parser(object):
         if olefile.isOleFile(_file):
             # This looks like an OLE file
             self.open_ole(_file)
+            # if this worked, try whether it is a ppt file (special ole file)
+            self.open_ppt()
         if self.type is None and zipfile.is_zipfile(_file):
             # Zip file, which may be an OpenXML document
             self.open_openxml(_file)
@@ -2184,29 +2187,44 @@ class VBA_Parser(object):
                               % (self.filename, MSG_OLEVBA_ISSUES))
             pass
 
-    def open_ppt(self, ole):
-        """ try to interpret ole file as PowerPoint 97-2003 using PptParser """
+    def open_ppt(self):
+        """ try to interpret self.ole_file as PowerPoint 97-2003 using PptParser
+
+        Although self.ole_file is a valid olefile.OleFileIO, we set
+        self.ole_file = None in here and instead set self.ole_subfiles to the
+        VBA ole streams found within the main ole file. That makes most of the
+        code below treat this like an OpenXML file and only look at the
+        ole_subfiles (except find_vba_* which needs to explicitly check for
+        self.type)
+        """
+        log.info('Check whether OLE file is PPT')
+        ppt_parser.enable_logging()
         try:
-            ppt_parser = ppt_parser.PptParser(ole)
-            n_infos = len(ppt_parser.search_vba_info())
-            storages = ppt_parser.search_vba_storage()
+            ppt = ppt_parser.PptParser(self.ole_file, fast_fail=True)
+            n_infos = len(ppt.search_vba_info())
+            storages = ppt.search_vba_storage()
             n_storages = len(storages)
             log.debug('ppt: found {} infos and {} storages'.format(n_infos,
                                                               n_storages))
             if n_infos != n_storages:
-                log.warning('ppt: found different number of vba infos and storages!')
+                # probably, some storages are ActiveX or other OLE types
+                log.warning('ppt: found different number of vba infos ({} and '
+                            'storages ({}) --> subfiles might make trouble'
+                            .format(n_infos, n_storages))
             for storage in storages:
                 if storage.is_compressed:
-                    storage_decomp = self.ole_file.decompress_vba_storage(storage)
+                    storage_decomp = ppt.decompress_vba_storage(storage)
                 else:
                     log.warning('just guessing here: decompressed storage = storage?')
                     storage_decomp = storage.read_all()  # not implemented yet
                 self.ole_subfiles.append(VBA_Parser(None, storage_decomp,
                                                     container='PptParser'))
+            self.ole_file.close()  # just in case
             self.ole_file = None   # required to make other methods look at ole_subfiles
             self.type = TYPE_PPT
-        except Exception:
-            log.exception('Failed PPT parsing for file %r' % self.filename)
+        except Exception as exc:
+            log.debug("File appears not to be a ppt file (%s)")
+            log.debug('Exception from opening attempt:', exc_info=True)
 
 
     def open_text(self, data):
@@ -2251,20 +2269,25 @@ class VBA_Parser(object):
         """
         log.debug('VBA_Parser.find_vba_projects')
 
-        # if this is a ppt file (PowerPoint 97-2003):
-        # let ppt_parser do its job
-        if self.type == TYPE_PPT:
-            self.vba_projects = []
-            for subfile in self.ole_subfiles:
-                self.vba_projects.extend(subfile.find_vba_projects())
-            return self.vba_projects
-
         # if the file is not OLE but OpenXML, return None:
-        if self.ole_file is None:
+        if self.ole_file is None and self.type != TYPE_PPT:
             return None
 
         # if this method has already been called, return previous result:
         if self.vba_projects is not None:
+            return self.vba_projects
+
+        # if this is a ppt file (PowerPoint 97-2003):
+        # self.ole_file is None but the ole_subfiles do contain vba_projects
+        # (like for OpenXML files).
+        if self.type == TYPE_PPT:
+            # TODO: so far, this function is never called for PPT files, but
+            # if that happens, the information is lost which ole file contains
+            # which storage!
+            log.warning('Returned info is not complete for PPT types!')
+            self.vba_projects = []
+            for subfile in self.ole_subfiles:
+                self.vba_projects.extend(subfile.find_vba_projects())
             return self.vba_projects
 
         # Find the VBA project root (different in MS Word, Excel, etc):
@@ -2475,7 +2498,7 @@ class VBA_Parser(object):
         """
         log.debug('VBA_Parser.find_vba_forms')
         # if the file is not OLE but OpenXML, return None:
-        if self.ole_file is None:
+        if self.ole_file is None and self.type != TYPE_PPT:
             return None
 
         # if this method has already been called, return previous result:
@@ -2494,21 +2517,32 @@ class VBA_Parser(object):
         #   The name of this stream (1) MUST be "o".
         # - all names are case-insensitive
 
+        if self.type == TYPE_PPT:
+            # TODO: so far, this function is never called for PPT files, but
+            # if that happens, the information is lost which ole file contains
+            # which storage!
+            ole_files = self.ole_subfiles
+            log.warning('Returned info is not complete for PPT types!')
+        else:
+            ole_files = [self.ole_file, ]
+
         # start with an empty list:
         self.vba_forms = []
-        # Look for any storage containing those storage/streams:
-        ole = self.ole_file
-        for storage in ole.listdir(streams=False, storages=True):
-            log.debug('Checking storage %r' % storage)
-            # Look for two streams named 'o' and 'f':
-            o_stream = storage + ['o']
-            f_stream = storage + ['f']
-            log.debug('Checking if streams %r and %r exist' % (f_stream, o_stream))
-            if ole.exists(o_stream) and ole.get_type(o_stream) == olefile.STGTY_STREAM \
-            and ole.exists(f_stream) and ole.get_type(f_stream) == olefile.STGTY_STREAM:
-                form_path = '/'.join(storage)
-                log.debug('Found VBA Form: %r' % form_path)
-                self.vba_forms.append(storage)
+
+        # Loop over ole streams
+        for ole in ole_files:
+            # Look for any storage containing those storage/streams:
+            for storage in ole.listdir(streams=False, storages=True):
+                log.debug('Checking storage %r' % storage)
+                # Look for two streams named 'o' and 'f':
+                o_stream = storage + ['o']
+                f_stream = storage + ['f']
+                log.debug('Checking if streams %r and %r exist' % (f_stream, o_stream))
+                if ole.exists(o_stream) and ole.get_type(o_stream) == olefile.STGTY_STREAM \
+                and ole.exists(f_stream) and ole.get_type(f_stream) == olefile.STGTY_STREAM:
+                    form_path = '/'.join(storage)
+                    log.debug('Found VBA Form: %r' % form_path)
+                    self.vba_forms.append(storage)
         return self.vba_forms
 
     def extract_form_strings(self):
