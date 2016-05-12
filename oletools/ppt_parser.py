@@ -1038,6 +1038,7 @@ class PptParser(object):
                                PptUnexpectedData; if False will only log error
         """
         if isinstance(ole, olefile.OleFileIO):
+            log.debug('using open OleFileIO')
             self.ole = ole
         else:
             log.debug('Opening file ' + ole)
@@ -1513,7 +1514,7 @@ def test():
 
     # setup logging
     logging.basicConfig(level=logging.DEBUG,
-                        format='%(levelname)-8s %(message)s')
+                        format='%(levelname)-8s %(name)s: %(message)s')
     log.setLevel(logging.NOTSET)
 
     #test_file = 'gelaber_autostart.ppt'
