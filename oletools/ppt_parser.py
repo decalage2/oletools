@@ -133,7 +133,7 @@ class RecordHeader(object):
         obj.rec_instance, obj.rec_ver = divmod(version_instance, 2**4)
         obj.rec_type, = struct.unpack('<H', stream.read(2))
         obj.rec_len, = struct.unpack('<L', stream.read(4))
-        #log.debug('type is {0:04X}, instance {1:04X}, version {2:04X}, len {3}'
+        #log.debug('type is {0:04X}, instance {1:04X}, version {2:04X},len {3}'
         #          .format(obj.rec_type, obj.rec_instance, obj.rec_ver,
         #                  obj.rec_len))
         return obj
@@ -743,20 +743,23 @@ class DocumentContainer(PptType):
         # specifies size information for presentation slides and notes slides.
         obj.document_atom = DummyType('DocumentAtom', 0x03E9, rec_ver=0x1,
                                       rec_len=0x28).extract_from(stream)
-        log.info('validity: {} errs'.format(len(obj.document_atom.check_validity())))
+        log.info('validity: {} errs'
+                 .format(len(obj.document_atom.check_validity())))
 
         # exObjList (variable): An optional ExObjListContainer record (section
         # 2.10.1) that specifies the list of external objects in the document.
         obj.ex_obj_list = DummyType('ExObjListContainer', 0x0409, rec_ver=0xF)\
                           .extract_from(stream)
-        log.info('validity: {} errs'.format(len(obj.ex_obj_list.check_validity())))
+        log.info('validity: {} errs'
+                 .format(len(obj.ex_obj_list.check_validity())))
 
         # documentTextInfo (variable): A DocumentTextInfoContainer record
         # (section 2.9.1) that specifies the default text styles for the
         # document.
         obj.document_text_info = DummyType('DocumentTextInfoContainer', 0x03F2,
                                            rec_ver=0xF).extract_from(stream)
-        log.info('validity: {} errs'.format(len(obj.document_text_info.check_validity())))
+        log.info('validity: {} errs'
+                 .format(len(obj.document_text_info.check_validity())))
 
         # soundCollection (variable): An optional SoundCollectionContainer
         # record (section 2.4.16.1) that specifies the list of sounds in the
@@ -764,20 +767,23 @@ class DocumentContainer(PptType):
         obj.sound_collection = DummyType('SoundCollectionContainer', 0x07E4,
                                          rec_ver=0xF, rec_instance=0x005)\
                                .extract_from(stream)
-        log.info('validity: {} errs'.format(len(obj.sound_collection.check_validity())))
+        log.info('validity: {} errs'
+                 .format(len(obj.sound_collection.check_validity())))
 
         # drawingGroup (variable): A DrawingGroupContainer record (section
         # 2.4.3) that specifies drawing information for the document.
         obj.drawing_group = DummyType('DrawingGroupContainer', 0x040B,
                                       rec_ver=0xF).extract_from(stream)
-        log.info('validity: {} errs'.format(len(obj.drawing_group.check_validity())))
+        log.info('validity: {} errs'
+                 .format(len(obj.drawing_group.check_validity())))
 
         # masterList (variable): A MasterListWithTextContainer record (section
         # 2.4.14.1) that specifies the list of main master slides and title
         # master slides.
         obj.master_list = DummyType('MasterListWithContainer', 0x0FF0,
                                     rec_ver=0xF).extract_from(stream)
-        log.info('validity: {} errs'.format(len(obj.master_list.check_validity())))
+        log.info('validity: {} errs'
+                 .format(len(obj.master_list.check_validity())))
 
         # docInfoList (variable): An optional DocInfoListContainer record
         # (section 2.4.4) that specifies additional document information.
@@ -1364,7 +1370,8 @@ class PptParser(object):
 
                 errs = container.check_validity()
                 if errs:
-                    log.warning('check_validity found {} issues'.format(len(errs)))
+                    log.warning('check_validity found {} issues'
+                                .format(len(errs)))
                 else:
                     log.debug('container is ok')
                     atom = container.vba_info_atom
@@ -1562,7 +1569,8 @@ def test():
             for storage in storages:
                 parser = VBA_Parser(None, ppt.decompress_vba_storage(storage),
                                     container='PptParser')
-                for vba_root, project_path, dir_path in parser.find_vba_projects():
+                for vba_root, project_path, dir_path in \
+                        parser.find_vba_projects():
                     log.info('found vba project: root={}, proj={}, dir={}'
                              .format(vba_root, project_path, dir_path))
                 for subfilename, stream_path, vba_filename, vba_code in \
