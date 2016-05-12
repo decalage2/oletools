@@ -1517,8 +1517,9 @@ def test():
                         format='%(levelname)-8s %(name)s: %(message)s')
     log.setLevel(logging.NOTSET)
 
-    #test_file = 'gelaber_autostart.ppt'
-    for file_name in glob('*.ppt'):
+    test_files = ['gelaber_autostart.ppt', ]
+    #test_files = glob('*.ppt')
+    for file_name in test_files:
         # parse
         log.info('-' * 72)
         log.info('test file: {}'.format(file_name))
@@ -1534,7 +1535,7 @@ def test():
                 log.warning('found different number of vba infos and storages')
             for storage in storages:
                 parser = VBA_Parser(None, ppt.decompress_vba_storage(storage),
-                                    container=file_name)
+                                    container='PptParser')
                 for vba_root, project_path, dir_path in parser.find_vba_projects():
                     log.info('found vba project: root={}, proj={}, dir={}'
                              .format(vba_root, project_path, dir_path))
