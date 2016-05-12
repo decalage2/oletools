@@ -2218,8 +2218,7 @@ class VBA_Parser(object):
                     storage_decomp = ppt.decompress_vba_storage(storage)
                     n_compressed += 1
                 else:
-                    log.warning('just guessing here: decompressed storage = storage?')
-                    storage_decomp = storage.read_all()  # not implemented yet
+                    storage_decomp = ppt.read_vba_storage_data(storage)
                 self.ole_subfiles.append(VBA_Parser(None, storage_decomp,
                                                     container='PptParser'))
             log.info('File is PPT with {} vba infos ({} with macros) and {} '

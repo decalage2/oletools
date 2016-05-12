@@ -1490,6 +1490,28 @@ class PptParser(object):
                 stream.close()
 
 
+    def read_vba_storage_data(self, storage):
+        """ return data pointed to by uncompressed storage """
+
+        log.debug('reading uncompressed VBA OLE data stream')
+        stream = None
+        try:
+            log.debug('opening stream')
+            stream = self.ole.openstream(MAIN_STREAM_NAME)
+
+            log.debug('reading {} bytes starting at {}'
+                      .format(storage.data_size, storage.data_offset))
+            stream.seek(storage.data_offset, os.SEEK_SET)
+            data = stream.read(storage.data_size)
+
+            return data
+
+        finally:
+            if stream is not None:
+                log.debug('closing stream')
+                stream.close()
+
+
 def iterative_decompress(stream, size, chunk_size=4096):
     """ decompress data from stream chunk-wise """
 
