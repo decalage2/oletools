@@ -21,12 +21,12 @@ References:
 # - can speed-up by using less bigger struct.parse calls?
 # - license
 # - make buffered stream from output of iterative_decompress
-# - less stream open/close, possibly through decorator for open+closing?
+# - maybe can merge the 2 decorators into 1? (with_opened_main_stream)
 #
 # CHANGELOG:
 # 2016-05-04 v0.01 CH: - start parsing "Current User" stream
 
-__version__ = '0.01'
+__version__ = '0.02'
 
 
 #--- IMPORTS ------------------------------------------------------------------
@@ -1030,6 +1030,78 @@ class ExternalObjectStorageCompressed(ExternalObjectStorage):
 
 # === PptParser ===============================================================
 
+def with_opened_main_stream(func):
+    """ a decorator that can open and close the default stream for func
+
+    to be applied only to functions in PptParser that read from default stream
+    (:py:data:`MAIN_STREAM_NAME`)
+
+    Decorated functions need to accept args (self, stream, ...)
+    """
+
+    def wrapped(self, *args, **kwargs):
+        # remember who opened the stream so that function also closes it
+        stream_opened_by_me = False
+        try:
+            # open stream if required
+            if self._open_main_stream is None:
+                log.debug('opening stream {!r} for {}'
+                          .format(MAIN_STREAM_NAME, func.__name__))
+                self._open_main_stream = self.ole.openstream(MAIN_STREAM_NAME)
+                stream_opened_by_me = True
+
+            # run wrapped function
+            return func(self, self._open_main_stream, *args, **kwargs)
+
+        # error handling
+        except Exception:
+            if self.fast_fail:
+                raise
+            else:
+                self._log_exception()
+        finally:
+            # ensure stream is closed by the one who opened it (even if error)
+            if stream_opened_by_me:
+                log.debug('closing stream {!r} after {}'
+                          .format(MAIN_STREAM_NAME, func.__name__))
+                self._open_main_stream.close()
+                self._open_main_stream = None
+    return wrapped
+
+
+def generator_with_opened_main_stream(func):
+    """ same as with_opened_main_stream but with yield instead of return """
+
+    def wrapped(self, *args, **kwargs):
+        # remember who opened the stream so that function also closes it
+        stream_opened_by_me = False
+        try:
+            # open stream if required
+            if self._open_main_stream is None:
+                log.debug('opening stream {!r} for {}'
+                          .format(MAIN_STREAM_NAME, func.__name__))
+                self._open_main_stream = self.ole.openstream(MAIN_STREAM_NAME)
+                stream_opened_by_me = True
+
+            # run actual function
+            for result in func(self, self._open_main_stream, *args, **kwargs):
+                yield result
+
+        # error handling
+        except Exception:
+            if self.fast_fail:
+                raise
+            else:
+                self._log_exception()
+        finally:
+            # ensure stream is closed by the one who opened it (even if error)
+            if stream_opened_by_me:
+                log.debug('closing stream {!r} after {}'
+                          .format(MAIN_STREAM_NAME, func.__name__))
+                self._open_main_stream.close()
+                self._open_main_stream = None
+    return wrapped
+
 
 class PptParser(object):
     """ Parser for PowerPoint 97-2003 specific data structures
@@ -1073,6 +1145,8 @@ class PptParser(object):
             self._fail('root', 'listdir', root_streams, 'Current User')
         if not MAIN_STREAM_NAME.lower() in root_streams:
             self._fail('root', 'listdir', root_streams, MAIN_STREAM_NAME)
+
+        self._open_main_stream = None
 
     def _log_exception(self, msg=None):
         """ log an exception instead of raising it
@@ -1121,7 +1195,7 @@ class PptParser(object):
 
         stream = None
         try:
-            log.debug('opening stream')
+            log.debug('opening stream "Current User"')
             stream = self.ole.openstream('Current User')
             self.current_user_atom = CurrentUserAtom.extract_from(stream)
         except Exception:
@@ -1131,10 +1205,11 @@ class PptParser(object):
                 self._log_exception()
         finally:
             if stream is not None:
-                log.debug('closing stream')
+                log.debug('closing stream "Current User"')
                 stream.close()
 
-    def parse_persist_object_directory(self):
+    @with_opened_main_stream
+    def parse_persist_object_directory(self, stream):
         """ Part 1: Construct the persist object directory """
 
         if self.persist_object_directory is not None:
@@ -1152,100 +1227,87 @@ class PptParser(object):
         self.persist_object_directory = {}
         self.newest_user_edit = None
 
-        stream = None
-        try:
-            log.debug('opening stream')
-            stream = self.ole.openstream(MAIN_STREAM_NAME)
+        # Repeat steps 3 through 6 until offsetLastEdit is 0x00000000.
+        while offset != 0:
 
-            # Repeat steps 3 through 6 until offsetLastEdit is 0x00000000.
-            while offset != 0:
+            # Step 2: Seek, in the PowerPoint Document Stream, to the
+            # offset specified by the offsetToCurrentEdit field of the
+            # CurrentUserAtom record identified in step 1.
+            stream.seek(offset, os.SEEK_SET)
 
-                # Step 2: Seek, in the PowerPoint Document Stream, to the
-                # offset specified by the offsetToCurrentEdit field of the
-                # CurrentUserAtom record identified in step 1.
-                stream.seek(offset, os.SEEK_SET)
+            # Step 3: Read the UserEditAtom record at the current offset.
+            # Let this record be a live record.
+            user_edit = UserEditAtom.extract_from(stream, is_encrypted)
+            if self.newest_user_edit is None:
+                self.newest_user_edit = user_edit
 
-                # Step 3: Read the UserEditAtom record at the current offset.
-                # Let this record be a live record.
-                user_edit = UserEditAtom.extract_from(stream, is_encrypted)
-                if self.newest_user_edit is None:
-                    self.newest_user_edit = user_edit
+            log.debug('checking validity')
+            errs = user_edit.check_validity()
+            if errs:
+                log.warning('check_validity found {} issues'
+                            .format(len(errs)))
+            for err in errs:
+                log.warning('UserEditAtom.check_validity: {}'.format(err))
+            if errs and self.fast_fail:
+                raise errs[0]
 
-                log.debug('checking validity')
-                errs = user_edit.check_validity()
-                if errs:
-                    log.warning('check_validity found {} issues'
-                                .format(len(errs)))
-                for err in errs:
-                    log.warning('UserEditAtom.check_validity: {}'.format(err))
-                if errs and self.fast_fail:
-                    raise errs[0]
+            # Step 4: Seek to the offset specified by the
+            # offsetPersistDirectory field of the UserEditAtom record
+            # identified in step 3.
+            log.debug('seeking to pos {}'
+                      .format(user_edit.offset_persist_directory))
+            stream.seek(user_edit.offset_persist_directory, os.SEEK_SET)
 
-                # Step 4: Seek to the offset specified by the
-                # offsetPersistDirectory field of the UserEditAtom record
-                # identified in step 3.
-                log.debug('seeking to pos {}'
-                          .format(user_edit.offset_persist_directory))
-                stream.seek(user_edit.offset_persist_directory, os.SEEK_SET)
+            # Step 5: Read the PersistDirectoryAtom record at the current
+            # offset. Let this record be a live record.
+            persist_dir_atom = PersistDirectoryAtom.extract_from(stream)
 
-                # Step 5: Read the PersistDirectoryAtom record at the current
-                # offset. Let this record be a live record.
-                persist_dir_atom = PersistDirectoryAtom.extract_from(stream)
-
-                log.debug('checking validity')
-                errs = persist_dir_atom.check_validity(offset)
-                if errs:
-                    log.warning('check_validity found {} issues'
-                                .format(len(errs)))
-                for err in errs:
-                    log.warning('PersistDirectoryAtom.check_validity: {}'
-                                .format(err))
-                if errs and self.fast_fail:
-                    raise errs[0]
+            log.debug('checking validity')
+            errs = persist_dir_atom.check_validity(offset)
+            if errs:
+                log.warning('check_validity found {} issues'
+                            .format(len(errs)))
+            for err in errs:
+                log.warning('PersistDirectoryAtom.check_validity: {}'
+                            .format(err))
+            if errs and self.fast_fail:
+                raise errs[0]
 
 
-                # Construct the complete persist object directory for this file
-                # as follows:
-                # - For each PersistDirectoryAtom record previously identified
-                # in step 5, add the persist object identifier and persist
-                # object stream offset pairs to the persist object directory
-                # starting with the PersistDirectoryAtom record last
-                # identified, that is, the one closest to the beginning of the
-                # stream.
-                # - Continue adding these pairs to the persist object directory
-                # for each PersistDirectoryAtom record in the reverse order
-                # that they were identified in step 5; that is, the pairs from
-                # the PersistDirectoryAtom record closest to the end of the
-                # stream are added last.
-                # - When adding a new pair to the persist object directory, if
-                # the persist object identifier already exists in the persist
-                # object directory, the persist object stream offset from the
-                # new pair replaces the existing persist object stream offset
-                # for that persist object identifier.
-                for entry in persist_dir_atom.rg_persist_dir_entry:
-                    last_id = entry.persist_id+len(entry.rg_persist_offset)-1
-                    log.debug('for persist IDs {}-{}, save offsets {}'
-                              .format(entry.persist_id, last_id,
-                                      entry.rg_persist_offset))
-                    for count, offset in enumerate(entry.rg_persist_offset):
-                        self.persist_object_directory[entry.persist_id+count] \
-                            = offset
+            # Construct the complete persist object directory for this file
+            # as follows:
+            # - For each PersistDirectoryAtom record previously identified
+            # in step 5, add the persist object identifier and persist
+            # object stream offset pairs to the persist object directory
+            # starting with the PersistDirectoryAtom record last
+            # identified, that is, the one closest to the beginning of the
+            # stream.
+            # - Continue adding these pairs to the persist object directory
+            # for each PersistDirectoryAtom record in the reverse order
+            # that they were identified in step 5; that is, the pairs from
+            # the PersistDirectoryAtom record closest to the end of the
+            # stream are added last.
+            # - When adding a new pair to the persist object directory, if
+            # the persist object identifier already exists in the persist
+            # object directory, the persist object stream offset from the
+            # new pair replaces the existing persist object stream offset
+            # for that persist object identifier.
+            for entry in persist_dir_atom.rg_persist_dir_entry:
+                last_id = entry.persist_id+len(entry.rg_persist_offset)-1
+                log.debug('for persist IDs {}-{}, save offsets {}'
+                          .format(entry.persist_id, last_id,
+                                  entry.rg_persist_offset))
+                for count, offset in enumerate(entry.rg_persist_offset):
+                    self.persist_object_directory[entry.persist_id+count] \
+                        = offset
 
-                # check for more
-                # Step 6: Seek to the offset specified by the offsetLastEdit
-                # field in the UserEditAtom record identified in step 3.
-                offset = user_edit.offset_last_edit
-        except Exception:
-            if self.fast_fail:
-                raise
-            else:
-                self._log_exception()
-        finally:
-            if stream is not None:
-                log.debug('closing stream')
-                stream.close()
+            # check for more
+            # Step 6: Seek to the offset specified by the offsetLastEdit
+            # field in the UserEditAtom record identified in step 3.
+            offset = user_edit.offset_last_edit
 
-    def parse_document_persist_object(self):
+    @with_opened_main_stream
+    def parse_document_persist_object(self, stream):
         """ Part 2: Identify the document persist object """
         if self.document_persist_obj is not None:
             log.warning('re-reading and overwriting '
@@ -1265,27 +1327,13 @@ class PptParser(object):
         log.debug('newest user edit ID is {}, offset is {}'
                   .format(newest_ref, offset))
 
-        stream = None
+        # Step 3:  Seek to the stream offset specified in step 2.
+        log.debug('seek to {}'.format(offset))
+        stream.seek(offset, os.SEEK_SET)
 
-        try:
-            # Step 3:  Seek to the stream offset specified in step 2.
-            log.debug('opening stream')
-            stream = self.ole.openstream(MAIN_STREAM_NAME)
-            log.debug('seek to {}'.format(offset))
-            stream.seek(offset, os.SEEK_SET)
-
-            # Step 4: Read the DocumentContainer record at the current offset.
-            # Let this record be a live record.
-            self.document_persist_obj = DocumentContainer.extract_from(stream)
-        except Exception:
-            if self.fast_fail:
-                raise
-            else:
-                self._log_exception()
-        finally:
-            if stream is not None:
-                log.debug('closing stream')
-                stream.close()
+        # Step 4: Read the DocumentContainer record at the current offset.
+        # Let this record be a live record.
+        self.document_persist_obj = DocumentContainer.extract_from(stream)
 
         log.debug('checking validity')
         errs = self.document_persist_obj.check_validity()
@@ -1297,7 +1345,13 @@ class PptParser(object):
         if errs and self.fast_fail:
             raise errs[0]
 
-    def search_pattern(self, pattern, stream):
+    #--------------------------------------------------------------------------
+    # 2nd attempt: do not parse whole structure but search through stream and
+    # yield results as they become available
+    # Keep in mind that after every yield the stream position may be anything!
+
+    @generator_with_opened_main_stream
+    def search_pattern(self, stream, pattern):
         """ search for pattern in stream, return indices """
 
         BUF_SIZE = 1024
@@ -1308,30 +1362,28 @@ class PptParser(object):
             raise ValueError('need buf > pattern to search!')
 
         n_reads = 0
-        candidates = []
         while True:
             start_pos = stream.tell()
             n_reads += 1
-            #log.debug('read {} starting from {}'
-            #          .format(BUF_SIZE, start_pos))
+            log.debug('read {} starting from {}'
+                      .format(BUF_SIZE, start_pos))
             buf = stream.read(BUF_SIZE)
             idx = buf.find(pattern)
             while idx != -1:
                 log.debug('found pattern at index {}'.format(start_pos+idx))
-                candidates.append(start_pos+idx)
+                yield start_pos + idx
                 idx = buf.find(pattern, idx+1)
 
             if len(buf) == BUF_SIZE:
                 # move back a bit to avoid splitting of pattern through buf
-                stream.seek(-1 * pattern_len, os.SEEK_CUR)
+                stream.seek(start_pos + BUF_SIZE - pattern_len, os.SEEK_SET)
             else:
                 log.debug('reached end of buf (read {}<{}) after {} reads'
                           .format(len(buf), BUF_SIZE, n_reads))
                 break
-        return candidates
 
-
-    def search_vba_info(self):
+    @generator_with_opened_main_stream
+    def search_vba_info(self, stream):
         """ search through stream for VBAInfoContainer, alternative to parse...
 
         quick-and-dirty: do not parse everything, just look for right bytes
@@ -1348,51 +1400,37 @@ class PptParser(object):
                                 rec_len=VBAInfoContainer.RECORD_LENGTH) \
                 + VBAInfoAtom.generate_pattern(
                                 rec_len=VBAInfoAtom.RECORD_LENGTH)
-        stream = None
-        try:
-            log.debug('opening stream')
-            stream = self.ole.openstream(MAIN_STREAM_NAME)
 
-            # look for candidate positions
-            candidates = self.search_pattern(pattern, stream)
+        # try parse
+        for idx in self.search_pattern(pattern):
+            # assume that in stream at idx there is a VBAInfoContainer
+            stream.seek(idx)
+            log.debug('extracting at idx {}'.format(idx))
+            try:
+                container = VBAInfoContainer.extract_from(stream)
+            except Exception:
+                self._log_exception()
+                continue
 
-            # try parse
-            containers = []
-            for idx in candidates:
-                # assume that in stream at idx there is a VBAInfoContainer
-                stream.seek(idx)
-                log.debug('extracting at idx {}'.format(idx))
-                try:
-                    container = VBAInfoContainer.extract_from(stream)
-                except Exception:
-                    self._log_exception()
-                    continue
+            errs = container.check_validity()
+            if errs:
+                log.warning('check_validity found {} issues'
+                            .format(len(errs)))
+            else:
+                log.debug('container is ok')
+                atom = container.vba_info_atom
+                log.debug('persist id ref is {}, has_macros {}, version {}'
+                          .format(atom.persist_id_ref, atom.f_has_macros,
+                                  atom.version))
+                yield container
+            for err in errs:
+                log.warning('check_validity(VBAInfoContainer): {}'
+                            .format(err))
+            if errs and self.fast_fail:
+                raise errs[0]
 
-                errs = container.check_validity()
-                if errs:
-                    log.warning('check_validity found {} issues'
-                                .format(len(errs)))
-                else:
-                    log.debug('container is ok')
-                    atom = container.vba_info_atom
-                    log.debug('persist id ref is {}, has_macros {}, version {}'
-                              .format(atom.persist_id_ref, atom.f_has_macros,
-                                      atom.version))
-                    containers.append(container)
-                for err in errs:
-                    log.warning('check_validity(VBAInfoContainer): {}'
-                                .format(err))
-                if errs and self.fast_fail:
-                    raise errs[0]
-
-            return containers
-
-        finally:
-            if stream is not None:
-                log.debug('closing stream')
-                stream.close()
-
-    def search_vba_storage(self):
+    @generator_with_opened_main_stream
+    def search_vba_storage(self, stream):
         """ search through stream for VBAProjectStg, alternative to parse...
 
         quick-and-dirty: do not parse everything, just look for right bytes
@@ -1403,120 +1441,113 @@ class PptParser(object):
         The storages found could also contain (instead of VBA data): ActiveX
         data or general OLE data
 
+        yields results as it finds them
+
         .. seealso:: :py:meth:`search_vba_info`
         """
 
         logging.debug('looking for VBA storage objects')
-        stream = None
-        try:
-            log.debug('opening stream')
-            stream = self.ole.openstream(MAIN_STREAM_NAME)
+        for obj_type in (ExternalObjectStorageUncompressed,
+                         ExternalObjectStorageCompressed):
+            # re-position stream at start
+            stream.seek(0, os.SEEK_SET)
 
-            storages = []
-            for obj_type in (ExternalObjectStorageUncompressed,
-                             ExternalObjectStorageCompressed):
-                # re-position stream at start
-                stream.seek(0, os.SEEK_SET)
+            pattern = obj_type.generate_pattern()
 
-                # look for candidate positions
-                pattern = obj_type.generate_pattern()
-                candidates = self.search_pattern(pattern, stream)
+            # try parse
+            for idx in self.search_pattern(pattern):
+                # assume a ExternalObjectStorage in stream at idx
+                stream.seek(idx)
+                log.debug('extracting at idx {}'.format(idx))
+                try:
+                    storage = obj_type.extract_from(stream)
+                except Exception:
+                    self._log_exception()
+                    continue
 
-                # try parse
-                for idx in candidates:
-                    # assume a ExternalObjectStorage in stream at idx
-                    stream.seek(idx)
-                    log.debug('extracting at idx {}'.format(idx))
-                    try:
-                        storage = obj_type.extract_from(stream)
-                    except Exception:
-                        self._log_exception()
-                        continue
+                errs = storage.check_validity()
+                if errs:
+                    log.warning('check_validity found {} issues'
+                                .format(len(errs)))
+                else:
+                    log.debug('storage is ok; compressed={}, size={}, '
+                              'size_decomp={}'
+                              .format(storage.is_compressed,
+                                      storage.rec_head.rec_len,
+                                      storage.uncompressed_size))
+                    yield storage
+                for err in errs:
+                    log.warning('check_validity({}): {}'
+                                .format(obj_type.__name__, err))
+                if errs and self.fast_fail:
+                    raise errs[0]
 
-                    errs = storage.check_validity()
-                    if errs:
-                        log.warning('check_validity found {} issues'
-                                    .format(len(errs)))
-                    else:
-                        log.debug('storage is ok; compressed={}, size={}, '
-                                  'size_decomp={}'
-                                  .format(storage.is_compressed,
-                                          storage.rec_head.rec_len,
-                                          storage.uncompressed_size))
-                        storages.append(storage)
-                    for err in errs:
-                        log.warning('check_validity({}): {}'
-                                    .format(obj_type.__name__, err))
-                    if errs and self.fast_fail:
-                        raise errs[0]
-
-            return storages
-
-        finally:
-            if stream is not None:
-                log.debug('closing stream')
-                stream.close()
-
-
-    def decompress_vba_storage(self, storage):
+    @with_opened_main_stream
+    def decompress_vba_storage(self, stream, storage):
         """ return decompressed data from search_vba_storage """
 
         log.debug('decompressing storage for VBA OLE data stream ')
-        stream = None
-        try:
-            log.debug('opening stream')
-            stream = self.ole.openstream(MAIN_STREAM_NAME)
 
-            # decompress iteratively; a zlib.decompress of all data
-            # failed with Error -5 (incomplete or truncated stream)
-            stream.seek(storage.data_offset, os.SEEK_SET)
-            decomp, n_read, err = \
-                iterative_decompress(stream, storage.data_size)
-            log.debug('decompressed {} to {} bytes; found err: {}'
-                      .format(n_read, len(decomp), err))
-            if err and self.fast_fail:
-                raise err
-            # otherwise try to continue with partial data
+        # decompress iteratively; a zlib.decompress of all data
+        # failed with Error -5 (incomplete or truncated stream)
+        stream.seek(storage.data_offset, os.SEEK_SET)
+        decomp, n_read, err = \
+            iterative_decompress(stream, storage.data_size)
+        log.debug('decompressed {} to {} bytes; found err: {}'
+                  .format(n_read, len(decomp), err))
+        if err and self.fast_fail:
+            raise err
+        # otherwise try to continue with partial data
 
-            return decomp
+        return decomp
 
-            ## create OleFileIO from decompressed data
-            #ole = olefile.OleFileIO(decomp)
-            #root_streams = [entry[0].lower() for entry in ole.listdir()]
-            #for required in 'project', 'projectwm', 'vba':
-            #    if required not in root_streams:
-            #        raise ValueError('storage seems to not be a VBA storage '
-            #                         '({} not found in root streams)'
-            #                         .format(required))
-            #log.debug('tests succeeded')
-            #return ole
+        ## create OleFileIO from decompressed data
+        #ole = olefile.OleFileIO(decomp)
+        #root_streams = [entry[0].lower() for entry in ole.listdir()]
+        #for required in 'project', 'projectwm', 'vba':
+        #    if required not in root_streams:
+        #        raise ValueError('storage seems to not be a VBA storage '
+        #                         '({} not found in root streams)'
+        #                         .format(required))
+        #log.debug('tests succeeded')
+        #return ole
 
-        finally:
-            if stream is not None:
-                log.debug('closing stream')
-                stream.close()
-
-
-    def read_vba_storage_data(self, storage):
+    @with_opened_main_stream
+    def read_vba_storage_data(self, stream, storage):
         """ return data pointed to by uncompressed storage """
 
-        log.debug('reading uncompressed VBA OLE data stream')
-        stream = None
-        try:
-            log.debug('opening stream')
-            stream = self.ole.openstream(MAIN_STREAM_NAME)
+        log.debug('reading uncompressed VBA OLE data stream: '
+                  '{} bytes starting at {}'
+                  .format(storage.data_size, storage.data_offset))
+        stream.seek(storage.data_offset, os.SEEK_SET)
+        data = stream.read(storage.data_size)
+        return data
 
-            log.debug('reading {} bytes starting at {}'
-                      .format(storage.data_size, storage.data_offset))
-            stream.seek(storage.data_offset, os.SEEK_SET)
-            data = stream.read(storage.data_size)
+    @generator_with_opened_main_stream
+    def iter_vba_data(self, stream):
+        """ search vba infos and storages, yield uncompressed storage data """
 
-            return data
+        n_infos = 0
+        n_macros = 0
+        for info in self.search_vba_info():
+            n_infos += 1
+            if info.vba_info_atom.f_has_macros > 0:
+                n_macros += 1
+        # TODO: does it make sense at all to continue if n_macros == 0?
+        #       --> no vba-info, so all storages probably ActiveX or other OLE
+        n_storages = 0
+        n_compressed = 0
+        for storage in self.search_vba_storage():
+            n_storages += 1
+            if storage.is_compressed:
+                n_compressed += 1
+                yield self.decompress_vba_storage(storage)
+            else:
+                yield self.read_vba_storage_data(storage)
 
-        finally:
-            if stream is not None:
-                log.debug('closing stream')
-                stream.close()
+        log.info('found {} infos ({} with macros) and {} storages '
+                 '({} compressed)'
+                 .format(n_infos, n_macros, n_storages, n_compressed))
 
 
 def iterative_decompress(stream, size, chunk_size=4096):
@@ -1559,16 +1590,9 @@ def test():
         try:
             ppt = PptParser(file_name, fast_fail=False)
             #ppt.parse_document_persist_object()
-            n_infos = len(ppt.search_vba_info())
-            storages = ppt.search_vba_storage()
-            n_storages = len(storages)
-            log.debug('found {} infos and {} storages'.format(n_infos,
-                                                              n_storages))
-            if n_infos != n_storages:
-                log.warning('found different number of vba infos and storages')
-            for storage in storages:
-                parser = VBA_Parser(None, ppt.decompress_vba_storage(storage),
-                                    container='PptParser')
+
+            for vba_data in ppt.iter_vba_data():
+                parser = VBA_Parser(None, vba_data, container='PptParser')
                 for vba_root, project_path, dir_path in \
                         parser.find_vba_projects():
                     log.info('found vba project: root={}, proj={}, dir={}'
