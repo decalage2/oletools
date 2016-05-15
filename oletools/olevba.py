@@ -168,6 +168,7 @@ https://github.com/unixfreak0037/officeparser
 # 2016-03-16       CH: - added option --no-deobfuscate (temporary)
 # 2016-04-19 v0.46 PL: - new option --deobf instead of --no-deobfuscate
 #                      - updated suspicious keywords
+# 2016-05-04 v0.47 PL: - look for VBA code in any stream including orphans
 
 __version__ = '0.47'
 
@@ -2322,6 +2323,29 @@ class VBA_Parser(object):
             self.contains_macros = False
         else:
             self.contains_macros = True
+        # Also look for VBA code in any stream including orphans
+        # (happens in some malformed files)
+        ole = self.ole_file
+        for sid in xrange(len(ole.direntries)):
+            # check if id is already done above:
+            log.debug('Checking DirEntry #%d' % sid)
+            d = ole.direntries[sid]
+            if d is None:
+                # this direntry is not part of the tree: either unused or an orphan
+                d = ole._load_direntry(sid)
+                log.debug('This DirEntry is an orphan or unused')
+            if d.entry_type == olefile.STGTY_STREAM:
+                # read data
+                log.debug('Reading data from stream %r - size: %d bytes' % (d.name, d.size))
+                try:
+                    data = ole._open(d.isectStart, d.size).read()
+                    log.debug('Read %d bytes' % len(data))
+                    log.debug(repr(data))
+                    if 'Attribut' in data:
+                        log.debug('Found VBA compressed code')
+                        self.contains_macros = True
+                except:
+                    log.exception('Error when reading OLE Stream %r' % d.name)
         return self.contains_macros
 
     def extract_macros(self):
@@ -2333,6 +2357,7 @@ class VBA_Parser(object):
         If the file is OpenXML, filename is the path of the OLE subfile containing VBA macros
         within the zip archive, e.g. word/vbaProject.bin.
         """
+        log.debug('extract_macros:')
         if self.ole_file is None:
             # This may be either an OpenXML or a text file:
             if self.type == TYPE_TEXT:
@@ -2346,11 +2371,41 @@ class VBA_Parser(object):
         else:
             # This is an OLE file:
             self.find_vba_projects()
+            # set of stream ids
+            vba_stream_ids = set()
             for vba_root, project_path, dir_path in self.vba_projects:
                 # extract all VBA macros from that VBA root storage:
                 for stream_path, vba_filename, vba_code in _extract_vba(self.ole_file, vba_root, project_path,
                                                                         dir_path):
+                    # store direntry ids in a set:
+                    vba_stream_ids.add(self.ole_file._find(stream_path))
                     yield (self.filename, stream_path, vba_filename, vba_code)
+            # Also look for VBA code in any stream including orphans
+            # (happens in some malformed files)
+            ole = self.ole_file
+            for sid in xrange(len(ole.direntries)):
+                # check if id is already done above:
+                log.debug('Checking DirEntry #%d' % sid)
+                if sid in vba_stream_ids:
+                    log.debug('Already extracted')
+                    continue
+                d = ole.direntries[sid]
+                if d is None:
+                    # this direntry is not part of the tree: either unused or an orphan
+                    d = ole._load_direntry(sid)
+                    log.debug('This DirEntry is an orphan or unused')
+                if d.entry_type == olefile.STGTY_STREAM:
+                    # read data
+                    log.debug('Reading data from stream %r' % d.name)
+                    data = ole._open(d.isectStart, d.size).read()
+                    for match in re.finditer(r'\x00Attribut[^e]', data, flags=re.IGNORECASE):
+                        start = match.start() - 3
+                        log.debug('Found VBA compressed code at index %X' % start)
+                        compressed_code = data[start:]
+                        vba_code = decompress_stream(compressed_code)
+                        yield (self.filename, d.name, d.name, vba_code)
+
+
 
 
     def extract_all_macros(self):
