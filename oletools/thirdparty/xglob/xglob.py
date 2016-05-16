@@ -52,8 +52,10 @@ For more info and updates: http://www.decalage.info/xglob
 # 2015-01-03 v0.04 PL: - fixed issues in iter_files + yield container name
 # 2016-02-24 v0.05 PL: - do not stop on exceptions, return them as data
 #                      - fixed issue when using wildcards with empty path
+# 2016-04-28 v0.06 CH: - improved handling of non-existing files
+#                        (by Christian Herdtweck)
 
-__version__ = '0.05'
+__version__ = '0.06'
 
 
 #=== IMPORTS =================================================================
