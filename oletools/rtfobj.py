@@ -48,8 +48,11 @@ http://www.decalage.info/python/oletools
 #                      - extract files from OLE Package objects
 # 2016-04-01 v0.04 PL: - fixed logging output to use stdout instead of stderr
 # 2016-04-07 v0.45 PL: - improved parsing to handle some malware tricks
+# 2016-05-06 v0.47 TJ: - added option -d to set the output directory
+#                        (contribution by Thomas Jarosch)
+#                  TJ: - sanitize filenames to avoid special characters
 
-__version__ = '0.45'
+__version__ = '0.47'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -60,7 +63,7 @@ __version__ = '0.45'
 
 #=== IMPORTS =================================================================
 
-import re, sys, string, binascii, logging, optparse
+import re, os, sys, string, binascii, logging, optparse
 
 from thirdparty.xglob import xglob
 from oleobj import OleObject, OleNativeStream
@@ -280,7 +283,42 @@ def rtf_iter_objects (data, min_size=32):
         match = re_hexblock.search(data, pos=current)
 
 
-def process_file(container, filename, data):
+
+def sanitize_filename(filename, replacement='_', max_length=200):
+    """compute basename of filename. Replaces all non-whitelisted characters.
+       The returned filename is always a basename of the file."""
+    basepath = os.path.basename(filename).strip()
+    sane_fname = re.sub(r'[^\w\.\- ]', replacement, basepath)
+
+    while ".." in sane_fname:
+        sane_fname = sane_fname.replace('..', '.')
+
+    while "  " in sane_fname:
+        sane_fname = sane_fname.replace('  ', ' ')
+
+    if not len(filename):
+        sane_fname = 'NONAME'
+
+    # limit filename length
+    if max_length:
+        sane_fname = sane_fname[:max_length]
+
+    return sane_fname
+
+
+def process_file(container, filename, data, output_dir=None):
+    if output_dir:
+        if not os.path.isdir(output_dir):
+            log.info('creating output directory %s' % output_dir)
+            os.mkdir(output_dir)
+
+        fname_prefix = os.path.join(output_dir,
+                                    sanitize_filename(filename))
+    else:
+        base_dir = os.path.dirname(filename)
+        sane_fname = sanitize_filename(filename)
+        fname_prefix = os.path.join(base_dir, sane_fname)
+
     # TODO: option to extract objects to files (false by default)
     if data is None:
         data = open(filename, 'rb').read()
@@ -288,7 +326,7 @@ def process_file(container, filename, data):
     print 'File: %r - %d bytes' % (filename, len(data))
     for index, orig_len, objdata in rtf_iter_objects(data):
         print 'found object size %d at index %08X - end %08X' % (len(objdata), index, index+orig_len)
-        fname = '%s_object_%08X.raw' % (filename, index)
+        fname = '%s_object_%08X.raw' % (fname_prefix, index)
         print 'saving object to file %s' % fname
         open(fname, 'wb').write(objdata)
         # TODO: check if all hex data is extracted properly
@@ -308,7 +346,8 @@ def process_file(container, filename, data):
                 ext = 'package'
             else:
                 ext = 'bin'
-            fname = '%s_object_%08X.%s' % (filename, index, ext)
+
+            fname = '%s_object_%08X.%s' % (fname_prefix, index, ext)
             print 'saving to file %s' % fname
             open(fname, 'wb').write(obj.data)
             if obj.class_name.lower() == 'package':
@@ -318,9 +357,10 @@ def process_file(container, filename, data):
                 print 'Source path = %r' % opkg.src_path
                 print 'Temp path = %r' % opkg.temp_path
                 if opkg.filename:
-                    fname = '%s_%s' % (filename, opkg.filename)
+                    fname = '%s_%s' % (fname_prefix,
+                                       sanitize_filename(opkg.filename))
                 else:
-                    fname = '%s_object_%08X.noname' % (filename, index)
+                    fname = '%s_object_%08X.noname' % (fname_prefix, index)
                 print 'saving to file %s' % fname
                 open(fname, 'wb').write(opkg.data)
         except:
@@ -354,6 +394,8 @@ if __name__ == '__main__':
     #     help='export results to a CSV file')
     parser.add_option("-r", action="store_true", dest="recursive",
         help='find files recursively in subdirectories.')
+    parser.add_option("-d", type="str", dest="output_dir",
+        help='use specified directory to output files.', default=None)
     parser.add_option("-z", "--zip", dest='zip_password', type='str', default=None,
         help='if the file is a zip archive, open first file from it, using the provided password (requires Python 2.6+)')
     parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
@@ -384,7 +426,7 @@ if __name__ == '__main__':
         # ignore directory names stored in zip files:
         if container and filename.endswith('/'):
             continue
-        process_file(container, filename, data)
+        process_file(container, filename, data, options.output_dir)
 
 
 

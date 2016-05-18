@@ -52,13 +52,24 @@ For more info and updates: http://www.decalage.info/xglob
 # 2015-01-03 v0.04 PL: - fixed issues in iter_files + yield container name
 # 2016-02-24 v0.05 PL: - do not stop on exceptions, return them as data
 #                      - fixed issue when using wildcards with empty path
+# 2016-04-28 v0.06 CH: - improved handling of non-existing files
+#                        (by Christian Herdtweck)
 
-__version__ = '0.05'
+__version__ = '0.06'
 
 
 #=== IMPORTS =================================================================
 
 import os, fnmatch, glob, zipfile
+
+#=== EXCEPTIONS ==============================================================
+
+class PathNotFoundException(Exception):
+    """ raised if given a fixed file/dir (not a glob) that does not exist """
+    def __init__(self, path):
+        super(PathNotFoundException, self).__init__(
+            'Given path does not exist: %r' % path)
+
 
 #=== FUNCTIONS ===============================================================
 
@@ -118,8 +129,11 @@ def iter_files(files, recursive=False, zip_password=None, zip_fname='*'):
     - then files matching zip_fname are opened from the zip archive
 
     Iterator: yields (container, filename, data) for each file. If zip_password is None, then
-    only the filename is returned, container and data=None. Otherwise container si the
-    filename of the container (zip file), and data is the file content.
+    only the filename is returned, container and data=None. Otherwise container is the
+    filename of the container (zip file), and data is the file content (or an exception).
+    If a given filename is not a glob and does not exist, the triplet
+    (None, filename, PathNotFoundException) is yielded. (Globs matching nothing
+    do not trigger exceptions)
     """
     #TODO: catch exceptions and yield them for the caller (no file found, file is not zip, wrong password, etc)
     #TODO: use logging instead of printing
@@ -131,6 +145,9 @@ def iter_files(files, recursive=False, zip_password=None, zip_fname='*'):
     else:
         iglob = glob.iglob
     for filespec in files:
+        if not is_glob(filespec) and not os.path.exists(filespec):
+            yield None, filespec, PathNotFoundException(filespec)
+            continue
         for filename in iglob(filespec):
             if zip_password is not None:
                 # Each file is expected to be a zip archive:
@@ -153,3 +170,39 @@ def iter_files(files, recursive=False, zip_password=None, zip_fname='*'):
                 #data = open(filename, 'rb').read()
                 #yield None, filename, data
 
+
+def is_glob(filespec):
+    """ determine if given file specification is a single file name or a glob
+
+    python's glob and fnmatch can only interpret ?, *, [list], and [ra-nge],
+    (and combinations: hex_*_[A-Fabcdef0-9]).
+    The special chars *?[-] can only be escaped using []
+    --> file_name is not a glob
+    --> file?name is a glob
+    --> file* is a glob
+    --> file[-._]name is a glob
+    --> file[?]name is not a glob (matches literal "file?name")
+    --> file[*]name is not a glob (matches literal "file*name")
+    --> file[-]name is not a glob (matches literal "file-name")
+    --> file-name is not a glob
+
+    Also, obviously incorrect globs are treated as non-globs
+    --> file[name is not a glob (matches literal "file[name")
+    --> file]-[name is treated as a glob
+        (it is not a valid glob but detecting errors like this requires
+         sophisticated regular expression matching)
+
+    Python's glob also works with globs in directory-part of path
+    --> dir-part of path is analyzed just like filename-part
+    --> thirdparty/*/xglob.py is a (valid) glob
+    
+    TODO: create a correct regexp to test for validity of ranges
+    """
+
+    # remove escaped special chars
+    cleaned = filespec.replace('[*]', '').replace('[?]', '') \
+                      .replace('[[]', '').replace('[]]', '').replace('[-]', '')
+
+    # check if special chars remain
+    return '*' in cleaned or '?' in cleaned or \
+          ('[' in cleaned and ']' in cleaned)
