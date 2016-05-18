@@ -241,12 +241,8 @@ except ImportError:
 
 import thirdparty.olefile as olefile
 from thirdparty.prettytable import prettytable
-from thirdparty.xglob import xglob, PathNotFoundException
-from thirdparty.pyparsing.pyparsing import \
-        CaselessKeyword, CaselessLiteral, Combine, Forward, Literal, \
-        Optional, QuotedString,Regex, Suppress, Word, WordStart, \
-        alphanums, alphas, hexnums,nums, opAssoc, srange, \
-        infixNotation
+from thirdparty.xglob import xglob
+from thirdparty.pyparsing.pyparsing import *
 
 # monkeypatch email to fix issue #32:
 # allow header lines without ":"
