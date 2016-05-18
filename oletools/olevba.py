@@ -9,8 +9,7 @@ and analyze malicious macros.
 Supported formats:
 - Word 97-2003 (.doc, .dot), Word 2007+ (.docm, .dotm)
 - Excel 97-2003 (.xls), Excel 2007+ (.xlsm, .xlsb)
-- PowerPoint 97-2003 (.ppt)
-- PowerPoint 2007+ (.pptm, .ppsm)
+- PowerPoint 97-2003 (.ppt), PowerPoint 2007+ (.pptm, .ppsm)
 - Word 2003 XML (.xml)
 - Word/Excel Single File Web Page / MHTML (.mht)
 
@@ -173,6 +172,7 @@ https://github.com/unixfreak0037/officeparser
 # 2016-04-28       CH: - return an exit code depending on the results
 #                      - improved error and exception handling
 #                      - improved JSON output
+# 2016-05-12       CH: - added support for PowerPoint 97-2003 files
 
 __version__ = '0.47'
 
