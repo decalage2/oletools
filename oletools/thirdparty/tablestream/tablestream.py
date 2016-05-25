@@ -48,8 +48,9 @@ License: BSD, see source code or documentation
 # 2015-11-01 v0.01 PL: - first version
 # 2016-01-01 v0.02 PL: - added styles, color support
 # 2016-04-19 v0.03 PL: - enable colorclass on Windows, fixed issue #39
+# 2016-05-25 v0.04 PL: - updated for colorclass 2.2.0 (now a package)
 
-__version__ = '0.03'
+__version__ = '0.04'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -64,7 +65,7 @@ __version__ = '0.03'
 import textwrap
 import sys, os
 
-from thirdparty.colorclass import colorclass
+from thirdparty import colorclass
 
 # On Windows, colorclass needs to be enabled:
 if os.name == 'nt':
