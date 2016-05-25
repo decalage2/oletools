@@ -12,9 +12,9 @@ See [http://www.decalage.info/python/oletools](http://www.decalage.info/python/o
 [Home page](http://www.decalage.info/python/oletools) - 
 [Download/Install](https://bitbucket.org/decalage/oletools/wiki/Install) - 
 [Documentation](https://bitbucket.org/decalage/oletools/wiki) - 
-[Report Issues/Suggestions/Questions](https://bitbucket.org/decalage/oletools/issues?status=new&status=open) - 
+[Report Issues/Suggestions/Questions](https://github.com/decalage2/oletools/issues) -
 [Contact the Author](http://decalage.info/contact) - 
-[Repository](https://bitbucket.org/decalage/oletools) - 
+[Repository](https://github.com/decalage2/oletools) -
 [Updates on Twitter](https://twitter.com/decalage2)
 
 Note: python-oletools is not related to OLETools published by BeCubed Software.
@@ -120,12 +120,12 @@ This is a personal open-source project, developed on my spare time. Any contribu
 report is welcome.
 
 To suggest improvements, report a bug or any issue, please use the 
-[issue reporting page](https://bitbucket.org/decalage/olefileio_pl/issues?status=new&status=open), providing all the 
+[issue reporting page](https://github.com/decalage2/oletools/issues), providing all the
 information and files to reproduce the problem. 
 
 You may also [contact the author](http://decalage.info/contact) directly to provide feedback.
 
-The code is available in [a Mercurial repository on Bitbucket](https://bitbucket.org/decalage/oletools). You may use it 
+The code is available in [a GitHub repository](https://github.com/decalage2/oletools). You may use it
 to submit enhancements using forks and pull requests.
 
 License
