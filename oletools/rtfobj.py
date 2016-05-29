@@ -51,6 +51,7 @@ http://www.decalage.info/python/oletools
 # 2016-05-06 v0.47 TJ: - added option -d to set the output directory
 #                        (contribution by Thomas Jarosch)
 #                  TJ: - sanitize filenames to avoid special characters
+# 2016-05-29       PL: - improved parsing, fixed issue #42
 
 __version__ = '0.47'
 
@@ -129,23 +130,26 @@ SINGLE_RTF_TAG = r'[{][^{}]*[}]'
 NESTED_RTF_TAG = r'[{](?:[^{}]|'+SINGLE_RTF_TAG+r')*[}]'
 # ignored whitespaces and tags within a hex block:
 IGNORED = r'(?:\s|'+NESTED_RTF_TAG+r')*'
+#IGNORED = r'\s*'
 
-HEX_CHAR = HEX_DIGIT + IGNORED + HEX_DIGIT
+# HEX_CHAR = HEX_DIGIT + IGNORED + HEX_DIGIT
 
 # several hex chars, at least 4: (?:[0-9A-Fa-f]{2}){4,}
 # + word boundaries
-HEX_CHARS_4orMORE = r'\b(?:' + HEX_CHAR + r'){4,}\b'
+# HEX_CHARS_4orMORE = r'\b(?:' + HEX_CHAR + r'){4,}\b'
 # at least 1 hex char:
-HEX_CHARS_1orMORE = r'(?:' + HEX_CHAR + r')+'
+# HEX_CHARS_1orMORE = r'(?:' + HEX_CHAR + r')+'
 # at least 1 hex char, followed by whitespace or CR/LF:
-HEX_CHARS_1orMORE_WHITESPACES = r'(?:' + HEX_CHAR + r')+\s+'
+# HEX_CHARS_1orMORE_WHITESPACES = r'(?:' + HEX_CHAR + r')+\s+'
 # + word boundaries around hex block
 # HEX_CHARS_1orMORE_WHITESPACES = r'\b(?:' + HEX_CHAR + r')+\b\s*'
 # at least one block of hex and whitespace chars, followed by closing curly bracket:
 # HEX_BLOCK_CURLY_BRACKET = r'(?:' + HEX_CHARS_1orMORE_WHITESPACES + r')+\}'
 # PATTERN = r'(?:' + HEX_CHARS_1orMORE_WHITESPACES + r')*' + HEX_CHARS_1orMORE
 
-PATTERN = r'\b(?:' + HEX_CHAR + IGNORED + r'){4,}\b'
+#TODO PATTERN = r'\b(?:' + HEX_CHAR + IGNORED + r'){4,}\b'
+# PATTERN = r'\b(?:' + HEX_CHAR + IGNORED + r'){4,}' #+ HEX_CHAR + r'\b'
+PATTERN = r'\b(?:' + HEX_DIGIT + IGNORED + r'){7,}' + HEX_DIGIT + r'\b'
 
 # at least 4 hex chars, followed by whitespace or CR/LF: (?:[0-9A-Fa-f]{2}){4,}\s*
 # PATTERN = r'(?:(?:[0-9A-Fa-f]{2})+\s*)*(?:[0-9A-Fa-f]{2}){4,}'
@@ -216,6 +220,7 @@ def rtf_iter_objects (data, min_size=32):
     # Search 1st occurence of a hex block:
     match = re_hexblock.search(data)
     if match is None:
+        log.debug('No hex block found.')
         # no hex block found
         return
     while match is not None:
@@ -224,11 +229,12 @@ def rtf_iter_objects (data, min_size=32):
         start = match.start()
         # current position
         current = match.end()
+        log.debug('Found hex block starting at %08X, end %08X, size=%d' % (start, current, len(found)))
         if len(found) < min_size:
+            log.debug('Too small - size<%d, ignored.' % min_size)
             match = re_hexblock.search(data, pos=current)
             continue
-        log.debug('Found hex block starting at %08X, end %08X' % (start, current))
-        log.debug('Match: %s' % found)
+        #log.debug('Match: %s' % found)
         # remove all whitespace and line feeds:
         #NOTE: with Python 2.6+, we could use None instead of TRANSTABLE_NOCHANGE
         found = found.translate(TRANSTABLE_NOCHANGE, ' \t\r\n\f\v')
@@ -238,8 +244,9 @@ def rtf_iter_objects (data, min_size=32):
         # object data extracted from the RTF file
         # MS Word accepts an extra hex digit, so we need to trim it if present:
         if len(found) & 1:
+            log.debug('Odd length, trimmed last byte.')
             found = found[:-1]
-        log.debug('Cleaned match: %s' % found)
+        #log.debug('Cleaned match: %s' % found)
         objdata = binascii.unhexlify(found)
         # Detect the "\bin" control word, which is sometimes used for obfuscation:
         bin_match = re_delims_bin_decimal.match(data, pos=current)
@@ -365,7 +372,7 @@ def process_file(container, filename, data, output_dir=None):
                 open(fname, 'wb').write(opkg.data)
         except:
             pass
-            # log.exception('*** Not an OLE 1.0 Object')
+            log.exception('*** Not an OLE 1.0 Object')
 
 
 
