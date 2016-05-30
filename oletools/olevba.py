@@ -3068,7 +3068,10 @@ def main():
 
     # with the option --reveal, make sure --deobf is also enabled:
     if options.show_deobfuscated_code and not options.deobfuscate:
+        log.info('set --deobf because --reveal was set')
         options.deobfuscate = True
+    if options.output_mode == 'triage' and options.show_deobfuscated_code:
+        log.info('ignoring option --reveal in triage output mode')
 
     # Column headers (do not know how many files there will be yet, so if no output_mode
     # was specified, we will print triage for first file --> need these headers)
