@@ -2889,6 +2889,7 @@ class VBA_Parser_CLI(VBA_Parser):
         result['json_conversion_successful'] = False
         result['analysis'] = None
         result['code_deobfuscated'] = None
+        result['do_deobfuscate'] = deobfuscate
 
         try:
             #TODO: handle olefile errors, when an OLE file is malformed
@@ -2908,6 +2909,8 @@ class VBA_Parser_CLI(VBA_Parser):
                     curr_macro['ole_stream'] = stream_path
                     if display_code:
                         curr_macro['code'] = vba_code_filtered.strip()
+                    else:
+                        curr_macro['code'] = None
                     macros.append(curr_macro)
                 if not vba_code_only:
                     # analyse the code from all modules at once:
