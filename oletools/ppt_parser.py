@@ -1568,46 +1568,6 @@ def iterative_decompress(stream, size, chunk_size=4096):
 
     return decomp, n_read, return_err
 
-# === TESTING =================================================================
-
-def test():
-    """ for testing and debugging """
-
-    from glob import glob
-    from olevba import VBA_Parser
-
-    # setup logging
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(levelname)-8s %(name)s: %(message)s')
-    log.setLevel(logging.NOTSET)
-
-    test_files = ['gelaber_autostart.ppt', ]
-    #test_files = glob('*.ppt')
-    for file_name in test_files:
-        # parse
-        log.info('-' * 72)
-        log.info('test file: {}'.format(file_name))
-        try:
-            ppt = PptParser(file_name, fast_fail=False)
-            #ppt.parse_document_persist_object()
-
-            for vba_data in ppt.iter_vba_data():
-                parser = VBA_Parser(None, vba_data, container='PptParser')
-                for vba_root, project_path, dir_path in \
-                        parser.find_vba_projects():
-                    log.info('found vba project: root={}, proj={}, dir={}'
-                             .format(vba_root, project_path, dir_path))
-                for subfilename, stream_path, vba_filename, vba_code in \
-                        parser.extract_all_macros():
-                    log.info('found macro: subfile={}, stream={}, vbafile={}'
-                             .format(subfilename, stream_path, vba_filename))
-                    for line in vba_code.splitlines():
-                        log.info('code: {}'.format(line.rstrip()))
-
-
-        except Exception:
-            log.exception('exception')
-
 
 if __name__ == '__main__':
-    test()
+    print 'nothing here to run!'

@@ -2771,12 +2771,14 @@ class VBA_Parser_CLI(VBA_Parser):
         else:
             print 'No suspicious keyword or IOC found.'
 
-    def print_analysis_json(self, show_decoded_strings=False):
+    def print_analysis_json(self, show_decoded_strings=False, deobfuscate=False):
         """
         Analyze the provided VBA code, and return the results in json format
 
         :param vba_code: str, VBA source code to be analyzed
         :param show_decoded_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
+        :param deobfuscate: bool, if True attempt to deobfuscate VBA expressions (slow)
+
         :return: dict
         """
         # print a waiting message only if the output is not redirected to a file:
@@ -2784,7 +2786,7 @@ class VBA_Parser_CLI(VBA_Parser):
             print 'Analysis...\r',
             sys.stdout.flush()
         return [dict(type=kw_type, keyword=keyword, description=description)
-                for kw_type, keyword, description in self.analyze_macros(show_decoded_strings)]
+                for kw_type, keyword, description in self.analyze_macros(show_decoded_strings, deobfuscate)]
 
     def process_file(self, show_decoded_strings=False,
                      display_code=True, hide_attributes=True,
@@ -2856,7 +2858,8 @@ class VBA_Parser_CLI(VBA_Parser):
 
     def process_file_json(self, show_decoded_strings=False,
                           display_code=True, hide_attributes=True,
-                          vba_code_only=False, show_deobfuscated_code=False):
+                          vba_code_only=False, show_deobfuscated_code=False,
+                          deobfuscate=False):
         """
         Process a single file
 
@@ -2869,6 +2872,7 @@ class VBA_Parser_CLI(VBA_Parser):
         :param global_analysis: bool, if True all modules are merged for a single analysis (default),
                                 otherwise each module is analyzed separately (old behaviour)
         :param hide_attributes: bool, if True the first lines starting with "Attribute VB" are hidden (default)
+        :param deobfuscate: bool, if True attempt to deobfuscate VBA expressions (slow)
         """
         #TODO: fix conflicting parameters (?)
 
@@ -2885,6 +2889,7 @@ class VBA_Parser_CLI(VBA_Parser):
         result['json_conversion_successful'] = False
         result['analysis'] = None
         result['code_deobfuscated'] = None
+        result['do_deobfuscate'] = deobfuscate
 
         try:
             #TODO: handle olefile errors, when an OLE file is malformed
@@ -2904,10 +2909,13 @@ class VBA_Parser_CLI(VBA_Parser):
                     curr_macro['ole_stream'] = stream_path
                     if display_code:
                         curr_macro['code'] = vba_code_filtered.strip()
+                    else:
+                        curr_macro['code'] = None
                     macros.append(curr_macro)
                 if not vba_code_only:
                     # analyse the code from all modules at once:
-                    result['analysis'] = self.print_analysis_json(show_decoded_strings)
+                    result['analysis'] = self.print_analysis_json(show_decoded_strings,
+                                                                  deobfuscate)
                 if show_deobfuscated_code:
                     result['code_deobfuscated'] = self.reveal()
             result['macros'] = macros
@@ -3063,7 +3071,10 @@ def main():
 
     # with the option --reveal, make sure --deobf is also enabled:
     if options.show_deobfuscated_code and not options.deobfuscate:
+        log.info('set --deobf because --reveal was set')
         options.deobfuscate = True
+    if options.output_mode == 'triage' and options.show_deobfuscated_code:
+        log.info('ignoring option --reveal in triage output mode')
 
     # Column headers (do not know how many files there will be yet, so if no output_mode
     # was specified, we will print triage for first file --> need these headers)
@@ -3130,7 +3141,8 @@ def main():
                         vba_parser.process_file_json(show_decoded_strings=options.show_decoded_strings,
                                  display_code=options.display_code,
                                  hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
-                                 show_deobfuscated_code=options.show_deobfuscated_code))
+                                 show_deobfuscated_code=options.show_deobfuscated_code,
+                                 deobfuscate=options.deobfuscate))
                 else:  # (should be impossible)
                     raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
                 count += 1
