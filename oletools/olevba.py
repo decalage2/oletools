@@ -1417,122 +1417,127 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
     unused = projectmodules_projectcookierecord_cookie
 
     log.debug("parsing {0} modules".format(projectmodules_count))
-    for _ in xrange(0, projectmodules_count):
-        modulename_id = struct.unpack("<H", dir_stream.read(2))[0]
-        check_value('MODULENAME_Id', 0x0019, modulename_id)
-        modulename_sizeof_modulename = struct.unpack("<L", dir_stream.read(4))[0]
-        modulename_modulename = dir_stream.read(modulename_sizeof_modulename)
-        # account for optional sections
-        section_id = struct.unpack("<H", dir_stream.read(2))[0]
-        if section_id == 0x0047:
-            modulename_unicode_id = section_id
-            modulename_unicode_sizeof_modulename_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-            modulename_unicode_modulename_unicode = dir_stream.read(modulename_unicode_sizeof_modulename_unicode)
-            unused = modulename_unicode_id
-            unused = modulename_unicode_modulename_unicode
+    for projectmodule_index in xrange(0, projectmodules_count):
+        try:
+            modulename_id = struct.unpack("<H", dir_stream.read(2))[0]
+            check_value('MODULENAME_Id', 0x0019, modulename_id)
+            modulename_sizeof_modulename = struct.unpack("<L", dir_stream.read(4))[0]
+            modulename_modulename = dir_stream.read(modulename_sizeof_modulename)
+            # account for optional sections
             section_id = struct.unpack("<H", dir_stream.read(2))[0]
-        if section_id == 0x001A:
-            modulestreamname_id = section_id
-            modulestreamname_sizeof_streamname = struct.unpack("<L", dir_stream.read(4))[0]
-            modulestreamname_streamname = dir_stream.read(modulestreamname_sizeof_streamname)
-            modulestreamname_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-            check_value('MODULESTREAMNAME_Reserved', 0x0032, modulestreamname_reserved)
-            modulestreamname_sizeof_streamname_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-            modulestreamname_streamname_unicode = dir_stream.read(modulestreamname_sizeof_streamname_unicode)
-            unused = modulestreamname_id
-            section_id = struct.unpack("<H", dir_stream.read(2))[0]
-        if section_id == 0x001C:
-            moduledocstring_id = section_id
-            check_value('MODULEDOCSTRING_Id', 0x001C, moduledocstring_id)
-            moduledocstring_sizeof_docstring = struct.unpack("<L", dir_stream.read(4))[0]
-            moduledocstring_docstring = dir_stream.read(moduledocstring_sizeof_docstring)
-            moduledocstring_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-            check_value('MODULEDOCSTRING_Reserved', 0x0048, moduledocstring_reserved)
-            moduledocstring_sizeof_docstring_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-            moduledocstring_docstring_unicode = dir_stream.read(moduledocstring_sizeof_docstring_unicode)
-            unused = moduledocstring_docstring
-            unused = moduledocstring_docstring_unicode
-            section_id = struct.unpack("<H", dir_stream.read(2))[0]
-        if section_id == 0x0031:
-            moduleoffset_id = section_id
-            check_value('MODULEOFFSET_Id', 0x0031, moduleoffset_id)
-            moduleoffset_size = struct.unpack("<L", dir_stream.read(4))[0]
-            check_value('MODULEOFFSET_Size', 0x0004, moduleoffset_size)
-            moduleoffset_textoffset = struct.unpack("<L", dir_stream.read(4))[0]
-            section_id = struct.unpack("<H", dir_stream.read(2))[0]
-        if section_id == 0x001E:
-            modulehelpcontext_id = section_id
-            check_value('MODULEHELPCONTEXT_Id', 0x001E, modulehelpcontext_id)
-            modulehelpcontext_size = struct.unpack("<L", dir_stream.read(4))[0]
-            check_value('MODULEHELPCONTEXT_Size', 0x0004, modulehelpcontext_size)
-            modulehelpcontext_helpcontext = struct.unpack("<L", dir_stream.read(4))[0]
-            unused = modulehelpcontext_helpcontext
-            section_id = struct.unpack("<H", dir_stream.read(2))[0]
-        if section_id == 0x002C:
-            modulecookie_id = section_id
-            check_value('MODULECOOKIE_Id', 0x002C, modulecookie_id)
-            modulecookie_size = struct.unpack("<L", dir_stream.read(4))[0]
-            check_value('MODULECOOKIE_Size', 0x0002, modulecookie_size)
-            modulecookie_cookie = struct.unpack("<H", dir_stream.read(2))[0]
-            unused = modulecookie_cookie
-            section_id = struct.unpack("<H", dir_stream.read(2))[0]
-        if section_id == 0x0021 or section_id == 0x0022:
-            moduletype_id = section_id
-            moduletype_reserved = struct.unpack("<L", dir_stream.read(4))[0]
-            unused = moduletype_id
-            unused = moduletype_reserved
-            section_id = struct.unpack("<H", dir_stream.read(2))[0]
-        if section_id == 0x0025:
-            modulereadonly_id = section_id
-            check_value('MODULEREADONLY_Id', 0x0025, modulereadonly_id)
-            modulereadonly_reserved = struct.unpack("<L", dir_stream.read(4))[0]
-            check_value('MODULEREADONLY_Reserved', 0x0000, modulereadonly_reserved)
-            section_id = struct.unpack("<H", dir_stream.read(2))[0]
-        if section_id == 0x0028:
-            moduleprivate_id = section_id
-            check_value('MODULEPRIVATE_Id', 0x0028, moduleprivate_id)
-            moduleprivate_reserved = struct.unpack("<L", dir_stream.read(4))[0]
-            check_value('MODULEPRIVATE_Reserved', 0x0000, moduleprivate_reserved)
-            section_id = struct.unpack("<H", dir_stream.read(2))[0]
-        if section_id == 0x002B:  # TERMINATOR
-            module_reserved = struct.unpack("<L", dir_stream.read(4))[0]
-            check_value('MODULE_Reserved', 0x0000, module_reserved)
-            section_id = None
-        if section_id != None:
-            log.warning('unknown or invalid module section id {0:04X}'.format(section_id))
+            if section_id == 0x0047:
+                modulename_unicode_id = section_id
+                modulename_unicode_sizeof_modulename_unicode = struct.unpack("<L", dir_stream.read(4))[0]
+                modulename_unicode_modulename_unicode = dir_stream.read(modulename_unicode_sizeof_modulename_unicode)
+                unused = modulename_unicode_id
+                unused = modulename_unicode_modulename_unicode
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x001A:
+                modulestreamname_id = section_id
+                modulestreamname_sizeof_streamname = struct.unpack("<L", dir_stream.read(4))[0]
+                modulestreamname_streamname = dir_stream.read(modulestreamname_sizeof_streamname)
+                modulestreamname_reserved = struct.unpack("<H", dir_stream.read(2))[0]
+                check_value('MODULESTREAMNAME_Reserved', 0x0032, modulestreamname_reserved)
+                modulestreamname_sizeof_streamname_unicode = struct.unpack("<L", dir_stream.read(4))[0]
+                modulestreamname_streamname_unicode = dir_stream.read(modulestreamname_sizeof_streamname_unicode)
+                unused = modulestreamname_id
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x001C:
+                moduledocstring_id = section_id
+                check_value('MODULEDOCSTRING_Id', 0x001C, moduledocstring_id)
+                moduledocstring_sizeof_docstring = struct.unpack("<L", dir_stream.read(4))[0]
+                moduledocstring_docstring = dir_stream.read(moduledocstring_sizeof_docstring)
+                moduledocstring_reserved = struct.unpack("<H", dir_stream.read(2))[0]
+                check_value('MODULEDOCSTRING_Reserved', 0x0048, moduledocstring_reserved)
+                moduledocstring_sizeof_docstring_unicode = struct.unpack("<L", dir_stream.read(4))[0]
+                moduledocstring_docstring_unicode = dir_stream.read(moduledocstring_sizeof_docstring_unicode)
+                unused = moduledocstring_docstring
+                unused = moduledocstring_docstring_unicode
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x0031:
+                moduleoffset_id = section_id
+                check_value('MODULEOFFSET_Id', 0x0031, moduleoffset_id)
+                moduleoffset_size = struct.unpack("<L", dir_stream.read(4))[0]
+                check_value('MODULEOFFSET_Size', 0x0004, moduleoffset_size)
+                moduleoffset_textoffset = struct.unpack("<L", dir_stream.read(4))[0]
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x001E:
+                modulehelpcontext_id = section_id
+                check_value('MODULEHELPCONTEXT_Id', 0x001E, modulehelpcontext_id)
+                modulehelpcontext_size = struct.unpack("<L", dir_stream.read(4))[0]
+                check_value('MODULEHELPCONTEXT_Size', 0x0004, modulehelpcontext_size)
+                modulehelpcontext_helpcontext = struct.unpack("<L", dir_stream.read(4))[0]
+                unused = modulehelpcontext_helpcontext
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x002C:
+                modulecookie_id = section_id
+                check_value('MODULECOOKIE_Id', 0x002C, modulecookie_id)
+                modulecookie_size = struct.unpack("<L", dir_stream.read(4))[0]
+                check_value('MODULECOOKIE_Size', 0x0002, modulecookie_size)
+                modulecookie_cookie = struct.unpack("<H", dir_stream.read(2))[0]
+                unused = modulecookie_cookie
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x0021 or section_id == 0x0022:
+                moduletype_id = section_id
+                moduletype_reserved = struct.unpack("<L", dir_stream.read(4))[0]
+                unused = moduletype_id
+                unused = moduletype_reserved
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x0025:
+                modulereadonly_id = section_id
+                check_value('MODULEREADONLY_Id', 0x0025, modulereadonly_id)
+                modulereadonly_reserved = struct.unpack("<L", dir_stream.read(4))[0]
+                check_value('MODULEREADONLY_Reserved', 0x0000, modulereadonly_reserved)
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x0028:
+                moduleprivate_id = section_id
+                check_value('MODULEPRIVATE_Id', 0x0028, moduleprivate_id)
+                moduleprivate_reserved = struct.unpack("<L", dir_stream.read(4))[0]
+                check_value('MODULEPRIVATE_Reserved', 0x0000, moduleprivate_reserved)
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x002B:  # TERMINATOR
+                module_reserved = struct.unpack("<L", dir_stream.read(4))[0]
+                check_value('MODULE_Reserved', 0x0000, module_reserved)
+                section_id = None
+            if section_id != None:
+                log.warning('unknown or invalid module section id {0:04X}'.format(section_id))
 
-        log.debug('Project CodePage = %d' % projectcodepage_codepage)
-        vba_codec = 'cp%d' % projectcodepage_codepage
-        log.debug("ModuleName = {0}".format(modulename_modulename))
-        log.debug("StreamName = {0}".format(repr(modulestreamname_streamname)))
-        streamname_unicode = modulestreamname_streamname.decode(vba_codec)
-        log.debug("StreamName.decode('%s') = %s" % (vba_codec, repr(streamname_unicode)))
-        log.debug("StreamNameUnicode = {0}".format(repr(modulestreamname_streamname_unicode)))
-        log.debug("TextOffset = {0}".format(moduleoffset_textoffset))
+            log.debug('Project CodePage = %d' % projectcodepage_codepage)
+            vba_codec = 'cp%d' % projectcodepage_codepage
+            log.debug("ModuleName = {0}".format(modulename_modulename))
+            log.debug("StreamName = {0}".format(repr(modulestreamname_streamname)))
+            streamname_unicode = modulestreamname_streamname.decode(vba_codec)
+            log.debug("StreamName.decode('%s') = %s" % (vba_codec, repr(streamname_unicode)))
+            log.debug("StreamNameUnicode = {0}".format(repr(modulestreamname_streamname_unicode)))
+            log.debug("TextOffset = {0}".format(moduleoffset_textoffset))
 
-        code_path = vba_root + u'VBA/' + streamname_unicode
-        #TODO: test if stream exists
-        log.debug('opening VBA code stream %s' % repr(code_path))
-        code_data = ole.openstream(code_path).read()
-        log.debug("length of code_data = {0}".format(len(code_data)))
-        log.debug("offset of code_data = {0}".format(moduleoffset_textoffset))
-        code_data = code_data[moduleoffset_textoffset:]
-        if len(code_data) > 0:
-            code_data = decompress_stream(code_data)
-            # case-insensitive search in the code_modules dict to find the file extension:
-            filext = code_modules.get(modulename_modulename.lower(), 'bin')
-            filename = '{0}.{1}'.format(modulename_modulename, filext)
-            #TODO: also yield the codepage so that callers can decode it properly
-            yield (code_path, filename, code_data)
-            # print '-'*79
-            # print filename
-            # print ''
-            # print code_data
-            # print ''
-            log.debug('extracted file {0}'.format(filename))
-        else:
-            log.warning("module stream {0} has code data length 0".format(modulestreamname_streamname))
-    _ = unused
+            code_path = vba_root + u'VBA/' + streamname_unicode
+            #TODO: test if stream exists
+            log.debug('opening VBA code stream %s' % repr(code_path))
+            code_data = ole.openstream(code_path).read()
+            log.debug("length of code_data = {0}".format(len(code_data)))
+            log.debug("offset of code_data = {0}".format(moduleoffset_textoffset))
+            code_data = code_data[moduleoffset_textoffset:]
+            if len(code_data) > 0:
+                code_data = decompress_stream(code_data)
+                # case-insensitive search in the code_modules dict to find the file extension:
+                filext = code_modules.get(modulename_modulename.lower(), 'bin')
+                filename = '{0}.{1}'.format(modulename_modulename, filext)
+                #TODO: also yield the codepage so that callers can decode it properly
+                yield (code_path, filename, code_data)
+                # print '-'*79
+                # print filename
+                # print ''
+                # print code_data
+                # print ''
+                log.debug('extracted file {0}'.format(filename))
+            else:
+                log.warning("module stream {0} has code data length 0".format(modulestreamname_streamname))
+        except Exception as exc:
+            log.info('Error parsing module {} of {} in _extract_vba:'
+                      .format(projectmodule_index, projectmodules_count),
+                     exc_info=True)
+    _ = unused   # make pylint happy: now variable "unused" is being used ;-)
     return
 
 
