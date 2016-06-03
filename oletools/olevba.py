@@ -1775,13 +1775,13 @@ def json2ascii(json_obj, encoding='utf8', errors='replace'):
         # de-code and re-encode
         dencoded = json_obj.decode(encoding, errors).encode(encoding, errors)
         if dencoded != json_obj:
-            log.info('json2ascii: replaced: {0} (len {1})'
+            log.debug('json2ascii: replaced: {0} (len {1})'
                      .format(json_obj, len(json_obj)))
-            log.info('json2ascii:     with: {0} (len {1})'
+            log.debug('json2ascii:     with: {0} (len {1})'
                      .format(dencoded, len(dencoded)))
         return dencoded
     elif isinstance(json_obj, unicode):
-        log.info('json2ascii: replaced: {0}'
+        log.debug('json2ascii: encode unicode: {0}'
                  .format(json_obj.encode(encoding, errors)))
         # cannot put original into logger
         # print 'original: ' json_obj
