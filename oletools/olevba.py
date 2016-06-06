@@ -1533,6 +1533,9 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
                               .format(uni_out(stream_name), ioe))
 
             if code_data is None:
+                log.warning("Could not find module {}!"
+                            .format('/'.join(uni_out(stream_name)
+                                             for stream_name in try_names)))
                 continue
 
             log.debug("length of code_data = {0}".format(len(code_data)))
@@ -1554,9 +1557,9 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
             else:
                 log.warning("module stream {0} has code data length 0".format(modulestreamname_streamname))
         except Exception as exc:
-            log.info('Error parsing module {} of {} in _extract_vba:'
-                      .format(projectmodule_index, projectmodules_count),
-                     exc_info=True)
+            log.warning('Error parsing module {} of {} in _extract_vba:'
+                        .format(projectmodule_index, projectmodules_count),
+                        exc_info=True)
     _ = unused   # make pylint happy: now variable "unused" is being used ;-)
     return
 
