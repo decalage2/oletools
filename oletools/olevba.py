@@ -299,35 +299,69 @@ log = get_logger('olevba')
 
 #=== EXCEPTIONS ==============================================================
 
-class FileOpenError(Exception):
+class OlevbaBaseException(Exception):
+    """ Base class for exceptions produced here for simpler except clauses """
+    def __init__(self, msg, filename=None, orig_exc=None, **kwargs):
+        if orig_exc:
+            super(OlevbaBaseException, self).__init__(msg +
+                                                      ' ({})'.format(orig_exc),
+                                                      **kwargs)
+        else:
+            super(OlevbaBaseException, self).__init__(msg, **kwargs)
+        self.msg = msg
+        self.filename = filename
+        self.orig_exc = orig_exc
+
+
+class FileOpenError(OlevbaBaseException):
     """ raised by VBA_Parser constructor if all open_... attempts failed
 
     probably means the file type is not supported
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, orig_exc=None):
         super(FileOpenError, self).__init__(
-            'Failed to open file %s ... probably not supported' % filename)
-        self.filename = filename
+            'Failed to open file %s' % filename, filename, orig_exc)
 
 
-class ProcessingError(Exception):
+class ProcessingError(OlevbaBaseException):
     """ raised by VBA_Parser.process_file* functions """
 
-    def __init__(self, filename, orig_exception):
+    def __init__(self, filename, orig_exc):
         super(ProcessingError, self).__init__(
-            'Error processing file %s (%s)' % (filename, orig_exception))
-        self.filename = filename
-        self.orig_exception = orig_exception
+            'Error processing file %s' % filename, filename, orig_exc)
 
 
-class MsoExtractionError(RuntimeError):
+class MsoExtractionError(RuntimeError, OlevbaBaseException):
     """ raised by mso_file_extract if parsing MSO/ActiveMIME data failed """
 
     def __init__(self, msg):
-        super(MsoExtractionError, self).__init__(msg)
-        self.msg = msg
+        MsoExtractionError.__init__(self, msg)
+        OlevbaBaseException.__init__(self, msg)
 
+
+class SubstreamOpenError(FileOpenError):
+    """ special kind of FileOpenError: file is a substream of original file """
+
+    def __init__(self, filename, subfilename, orig_exc=None):
+        super(SubstreamOpenError, self).__init__(
+            str(filename) + '/' + str(subfilename), orig_exc)
+        self.filename = filename   # overwrite setting in OlevbaBaseException
+        self.subfilename = subfilename
+
+
+class UnexpectedDataError(OlevbaBaseException):
+    """ raised when parsing is strict (=not relaxed) and data is unexpected """
+
+    def __init__(self, stream_path, variable, expected, value):
+        super(UnexpectedDataError, self).__init__(self,
+            'Unexpected value in {} for variable {}: '
+            'expected {:04X but found {:04X}!'
+            .format(stream_path, variable, expected, value))
+        self.stream_path = stream_path
+        self.variable = variable
+        self.expected = expected
+        self.value = value
 
 #--- CONSTANTS ----------------------------------------------------------------
 
