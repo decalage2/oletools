@@ -1098,17 +1098,20 @@ def decompress_stream(compressed_container):
     return decompressed_container
 
 
-def _extract_vba(ole, vba_root, project_path, dir_path):
+def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
     """
     Extract VBA macros from an OleFileIO object.
     Internal function, do not call directly.
 
     vba_root: path to the VBA root storage, containing the VBA storage and the PROJECT stream
     vba_project: path to the PROJECT stream
+    :param relaxed: If True, only create info/debug log entry if data is not as expected
+                    (e.g. opening substream fails); if False, raise an error in this case
     This is a generator, yielding (stream path, VBA filename, VBA source code) for each VBA code stream
     """
     # Open the PROJECT stream:
     project = ole.openstream(project_path)
+    log.debug('relaxed is {}'.format(relaxed))
 
     # sample content of the PROJECT stream:
 
@@ -2047,7 +2050,7 @@ class VBA_Parser(object):
     - PowerPoint 2007+ (.pptm, .ppsm)
     """
 
-    def __init__(self, filename, data=None, container=None):
+    def __init__(self, filename, data=None, container=None, relaxed=False):
         """
         Constructor for VBA_Parser
 
@@ -2059,6 +2062,9 @@ class VBA_Parser(object):
 
         :param container: str, path and filename of container if the file is within
         a zip archive, None otherwise.
+
+        :param relaxed: if True, treat mal-formed documents and missing streams more like MS office:
+                        do nothing; if False (default), raise errors in these cases
 
         raises a FileOpenError if all attemps to interpret the data header failed
         """
@@ -2076,6 +2082,7 @@ class VBA_Parser(object):
         self.ole_subfiles = []
         self.filename = filename
         self.container = container
+        self.relaxed = relaxed
         self.type = None
         self.vba_projects = None
         self.vba_forms = None
@@ -2183,7 +2190,9 @@ class VBA_Parser(object):
                     log.debug('Opening OLE file %s within zip' % subfile)
                     ole_data = z.open(subfile).read()
                     try:
-                        self.ole_subfiles.append(VBA_Parser(filename=subfile, data=ole_data))
+                        self.ole_subfiles.append(
+                            VBA_Parser(filename=subfile, data=ole_data,
+                                       relaxed=self.relaxed))
                     except FileOpenError as exc:
                         log.info('%s is not a valid OLE file (%s)' % (subfile, exc))
                         continue
@@ -2220,7 +2229,9 @@ class VBA_Parser(object):
                     # TODO: handle different offsets => separate function
                     try:
                         ole_data = mso_file_extract(mso_data)
-                        self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
+                        self.ole_subfiles.append(
+                            VBA_Parser(filename=fname, data=ole_data,
+                                       relaxed=self.relaxed))
                     except MsoExtractionError:
                         log.info('Failed decompressing an MSO container in %r - %s'
                                  % (fname, MSG_OLEVBA_ISSUES))
@@ -2282,7 +2293,9 @@ class VBA_Parser(object):
 
                         # TODO: check if it is actually an OLE file
                         # TODO: get the MSO filename from content_location?
-                        self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
+                        self.ole_subfiles.append(
+                            VBA_Parser(filename=fname, data=ole_data,
+                                       relaxed=self.relaxed))
                     except MsoExtractionError:
                         log.info('Failed decompressing an MSO container in %r - %s'
                                       % (fname, MSG_OLEVBA_ISSUES))
@@ -2530,8 +2543,9 @@ class VBA_Parser(object):
             vba_stream_ids = set()
             for vba_root, project_path, dir_path in self.vba_projects:
                 # extract all VBA macros from that VBA root storage:
-                for stream_path, vba_filename, vba_code in _extract_vba(self.ole_file, vba_root, project_path,
-                                                                        dir_path):
+                for stream_path, vba_filename, vba_code in \
+                        _extract_vba(self.ole_file, vba_root, project_path,
+                                     dir_path, self.relaxed):
                     # store direntry ids in a set:
                     vba_stream_ids.add(self.ole_file._find(stream_path))
                     yield (self.filename, stream_path, vba_filename, vba_code)
@@ -3139,7 +3153,8 @@ def main():
 
             try:
                 # Open the file
-                vba_parser = VBA_Parser_CLI(filename, data=data, container=container)
+                vba_parser = VBA_Parser_CLI(filename, data=data, container=container,
+                                            relaxed=options.relaxed)
 
                 if options.output_mode == 'detailed':
                     # fully detailed output
