@@ -2517,8 +2517,9 @@ class VBA_Parser(object):
                     if 'Attribut' in data:
                         log.debug('Found VBA compressed code')
                         self.contains_macros = True
-                except:
-                    log.exception('Error when reading OLE Stream %r' % d.name)
+                except IOError as exc:
+                    log.info('Error when reading OLE Stream %r' % d.name)
+                    log.debug('Trace:', exc_trace=True)
         return self.contains_macros
 
     def extract_macros(self):
