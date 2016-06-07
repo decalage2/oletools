@@ -1365,8 +1365,8 @@ class PptParser(object):
         while True:
             start_pos = stream.tell()
             n_reads += 1
-            log.debug('read {} starting from {}'
-                      .format(BUF_SIZE, start_pos))
+            #log.debug('read {} starting from {}'
+            #          .format(BUF_SIZE, start_pos))
             buf = stream.read(BUF_SIZE)
             idx = buf.find(pattern)
             while idx != -1:
