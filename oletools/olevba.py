@@ -3071,6 +3071,8 @@ def main():
                             help="logging level debug/info/warning/error/critical (default=%default)")
     parser.add_option('--deobf', dest="deobfuscate", action="store_true", default=False,
                             help="Attempt to deobfuscate VBA expressions (slow)")
+    parser.add_option('--relaxed', dest="relaxed", action="store_true", default=False,
+                            help="Do not raise errors if opening of substream fails")
 
     (options, args) = parser.parse_args()
 
