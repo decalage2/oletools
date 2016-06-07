@@ -2959,6 +2959,8 @@ class VBA_Parser_CLI(VBA_Parser):
                     print self.reveal()
             else:
                 print 'No VBA macros found.'
+        except OlevbaBaseException:
+            raise
         except Exception as exc:
             # display the exception with full stack trace for debugging
             log.info('Error processing file %s (%s)' % (self.filename, exc))
@@ -3261,6 +3263,18 @@ def main():
                     raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
                 count += 1
 
+            except (SubstreamOpenError, UnexpectedDataError) as exc:
+                if options.output_mode in ('triage', 'unspecified'):
+                    print '%-12s %s - Error opening substream or uenxpected ' \
+                          'content' % ('?', filename)
+                elif options.output_mode == 'json':
+                    print_json(file=filename, type='error',
+                               error=type(exc).__name__, message=str(exc))
+                else:
+                    log.exception('Error opening substream or unexpected '
+                                  'content in %s' % filename)
+                return_code = RETURN_OPEN_ERROR if return_code == 0 \
+                                                else RETURN_SEVERAL_ERRS
             except FileOpenError as exc:
                 if options.output_mode in ('triage', 'unspecified'):
                     print '%-12s %s - File format not supported' % ('?', filename)
