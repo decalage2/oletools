@@ -2470,7 +2470,7 @@ class VBA_Parser(object):
 
         :return: bool, True if at least one VBA project has been found, False otherwise
         """
-        #TODO: return None or raise exception if format not supported like PPT 97-2003
+        #TODO: return None or raise exception if format not supported
         #TODO: return the number of VBA projects found instead of True/False?
         # if this method was already called, return the previous result:
         if self.contains_macros is not None:
