@@ -2751,21 +2751,12 @@ class VBA_Parser_CLI(VBA_Parser):
     of olevba. (see VBA_Parser)
     """
 
-    def __init__(self, filename, data=None, container=None):
+    def __init__(self, *args, **kwargs):
         """
         Constructor for VBA_Parser_CLI.
-        Calls __init__ from VBA_Parser
-
-        :param filename: filename or path of file to parse, or file-like object
-
-        :param data: None or bytes str, if None the file will be read from disk (or from the file-like object).
-        If data is provided as a bytes string, it will be parsed as the content of the file in memory,
-        and not read from disk. Note: files must be read in binary mode, i.e. open(f, 'rb').
-
-        :param container: str, path and filename of container if the file is within
-        a zip archive, None otherwise.
+        Calls __init__ from VBA_Parser with all arguments --> see doc there
         """
-        super(VBA_Parser_CLI, self).__init__(filename, data=data, container=container)
+        super(VBA_Parser_CLI, self).__init__(*args, **kwargs)
 
 
     def print_analysis(self, show_decoded_strings=False, deobfuscate=False):
