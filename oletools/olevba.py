@@ -2242,12 +2242,24 @@ class VBA_Parser(object):
                         self.ole_subfiles.append(
                             VBA_Parser(filename=subfile, data=ole_data,
                                        relaxed=self.relaxed))
-                    except FileOpenError as exc:
-                        log.info('%s is not a valid OLE file (%s)' % (subfile, exc))
-                        continue
+                    except OlevbaBaseException as exc:
+                        if self.relaxed:
+                            log.info('%s is not a valid OLE file (%s)' % (subfile, exc))
+                            log.debug('Trace:', exc_info=True)
+                            continue
+                        else:
+                            raise SubstreamOpenError(self.filename, subfile,
+                                                     exc)
             z.close()
             # set type only if parsing succeeds
             self.type = TYPE_OpenXML
+        except OlevbaBaseException as exc:
+            if self.relaxed:
+                log.info('Error {} caught in Zip/OpenXML parsing for file {}'
+                         .format(exc, self.filename))
+                log.debug('Trace:', exc_info=True)
+            else:
+                raise
         except (RuntimeError, zipfile.BadZipfile, zipfile.LargeZipFile, IOError) as exc:
             # TODO: handle parsing exceptions
             log.info('Failed Zip/OpenXML parsing for file %r (%s)'
@@ -2281,16 +2293,23 @@ class VBA_Parser(object):
                         self.ole_subfiles.append(
                             VBA_Parser(filename=fname, data=ole_data,
                                        relaxed=self.relaxed))
-                    except MsoExtractionError:
-                        log.info('Failed decompressing an MSO container in %r - %s'
-                                 % (fname, MSG_OLEVBA_ISSUES))
-                        log.debug('Trace:', exc_info=True)
-                    except FileOpenError as exc:
-                        log.debug('%s is not a valid OLE sub file (%s)' % (fname, exc))
+                    except OlevbaBaseException as exc:
+                        if relaxed:
+                            log.info('Error parsing subfile {}: {}'
+                                     .format(fname, exc))
+                            log.debug('Trace:', exc_info=True)
+                        else:
+                            raise SubstreamOpenError(self.filename, fname, exc)
                 else:
                     log.info('%s is not a valid MSO file' % fname)
             # set type only if parsing succeeds
             self.type = TYPE_Word2003_XML
+        except OlevbaBaseException as exc:
+            if self.relaxed:
+                log.info('Failed XML parsing for file %r (%s)' % (self.filename, exc))
+                log.debug('Trace:', exc_info=True)
+            else:
+                raise
         except Exception as exc:
             # TODO: differentiate exceptions for each parsing stage
             # (but ET is different libs, no good exception description in API)
@@ -2345,14 +2364,14 @@ class VBA_Parser(object):
                         self.ole_subfiles.append(
                             VBA_Parser(filename=fname, data=ole_data,
                                        relaxed=self.relaxed))
-                    except MsoExtractionError:
-                        log.info('Failed decompressing an MSO container in %r - %s'
-                                      % (fname, MSG_OLEVBA_ISSUES))
-                        log.debug('Trace:', exc_info=True)
-                        # TODO: bug here - need to split in smaller functions/classes?
-                    except FileOpenError as exc:
-                        log.debug('%s does not contain a valid OLE file (%s)'
-                                  % (fname, exc))
+                    except OlevbaBaseException as exc:
+                        if self.relaxed:
+                            log.info('%s does not contain a valid OLE file (%s)'
+                                      % (fname, exc))
+                            log.debug('Trace:', exc_info=True)
+                            # TODO: bug here - need to split in smaller functions/classes?
+                        else:
+                            raise SubstreamOpenError(self.filename, fname, exc)
                 else:
                     log.debug('type(part_data) = %s' % type(part_data))
                     try:
@@ -2361,6 +2380,8 @@ class VBA_Parser(object):
                         log.debug('part_data has no __getitem__')
             # set type only if parsing succeeds
             self.type = TYPE_MHTML
+        except OlevbaBaseException:
+            raise
         except Exception:
             log.info('Failed MIME parsing for file %r - %s'
                           % (self.filename, MSG_OLEVBA_ISSUES))
@@ -2565,8 +2586,11 @@ class VBA_Parser(object):
                         log.debug('Found VBA compressed code')
                         self.contains_macros = True
                 except IOError as exc:
-                    log.info('Error when reading OLE Stream %r' % d.name)
-                    log.debug('Trace:', exc_trace=True)
+                    if self.relaxed:
+                        log.info('Error when reading OLE Stream %r' % d.name)
+                        log.debug('Trace:', exc_trace=True)
+                    else:
+                        raise SubstreamOpenError(self.filename, d.name, exc)
         return self.contains_macros
 
     def extract_macros(self):
