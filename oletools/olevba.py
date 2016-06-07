@@ -1515,7 +1515,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             vba_codec = 'cp%d' % projectcodepage_codepage
             log.debug("ModuleName = {0}".format(modulename_modulename))
             log.debug("ModuleNameUnicode = {0}".format(uni_out(modulename_unicode_modulename_unicode)))
-            log.debug("StreamName = {0}".format(uni_out(modulestreamname_streamname)))
+            log.debug("StreamName = {0}".format(modulestreamname_streamname))
             streamname_unicode = modulestreamname_streamname.decode(vba_codec)
             log.debug("StreamName.decode('%s') = %s" % (vba_codec, uni_out(streamname_unicode)))
             log.debug("StreamNameUnicode = {0}".format(uni_out(modulestreamname_streamname_unicode)))
@@ -1526,13 +1526,15 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
                         modulename_unicode_modulename_unicode, \
                         modulestreamname_streamname_unicode
             for stream_name in try_names:
+                # TODO: if olefile._find were less private, could replace this
+                #        try-except with calls to it
                 try:
                     code_path = vba_root + u'VBA/' + stream_name
                     log.debug('opening VBA code stream %s' % uni_out(code_path))
                     code_data = ole.openstream(code_path).read()
                     break
                 except IOError as ioe:
-                    log.debug('failed to open stream {} ({}), try other name'
+                    log.debug('failed to open stream VBA/{} ({}), try other name'
                               .format(uni_out(stream_name), ioe))
 
             if code_data is None:
@@ -2507,7 +2509,11 @@ class VBA_Parser(object):
                 try:
                     data = ole._open(d.isectStart, d.size).read()
                     log.debug('Read %d bytes' % len(data))
-                    log.debug(repr(data))
+                    if len(data) > 200:
+                        log.debug('{}...[much more data]...{}'
+                                  .format(repr(data[:100]), repr(data[-50:])))
+                    else:
+                        log.debug(repr(data))
                     if 'Attribut' in data:
                         log.debug('Found VBA compressed code')
                         self.contains_macros = True
