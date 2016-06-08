@@ -6,6 +6,25 @@
   <meta name="generator" content="pandoc" />
   <title></title>
   <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; }
+code > span.dt { color: #902000; }
+code > span.dv { color: #40a070; }
+code > span.bn { color: #40a070; }
+code > span.fl { color: #40a070; }
+code > span.ch { color: #4070a0; }
+code > span.st { color: #4070a0; }
+code > span.co { color: #60a0b0; font-style: italic; }
+code > span.ot { color: #007020; }
+code > span.al { color: #ff0000; font-weight: bold; }
+code > span.fu { color: #06287e; }
+code > span.er { color: #ff0000; font-weight: bold; }
+  </style>
 </head>
 <body>
 <h1 id="oleid">oleid</h1>
@@ -34,10 +53,10 @@
 <li>CSV output</li>
 </ul>
 <h2 id="usage">Usage</h2>
-<pre><code>oleid.py &lt;file&gt;</code></pre>
+<pre class="text"><code>oleid.py &lt;file&gt;</code></pre>
 <h3 id="example">Example</h3>
 <p>Analyzing a Word document containing a Flash object and VBA macros:</p>
-<pre><code>C:\oletools&gt;oleid.py word_flash_vba.doc
+<pre class="text"><code>C:\oletools&gt;oleid.py word_flash_vba.doc
 
 Filename: word_flash_vba.doc
 +-------------------------------+-----------------------+
@@ -57,7 +76,7 @@ Filename: word_flash_vba.doc
 +-------------------------------+-----------------------+</code></pre>
 <h2 id="how-to-use-oleid-in-your-python-applications">How to use oleid in your Python applications</h2>
 <p>First, import oletools.oleid, and create an <strong>OleID</strong> object to scan a file:</p>
-<pre><code>import oletools.oleid
+<pre class="sourceCode python"><code class="sourceCode python"><span class="ch">import</span> oletools.oleid
 
 oid = oletools.oleid.OleID(filename)</code></pre>
 <p>Note: filename can be a filename, a file-like object, or a bytes string containing the file to be analyzed.</p>
@@ -71,11 +90,11 @@ oid = oletools.oleid.OleID(filename)</code></pre>
 <li><strong>value</strong>: value of the indicator</li>
 </ul>
 <p>For example, the following code displays all the indicators:</p>
-<pre><code>indicators = oid.check()
-for i in indicators:
-    print &#39;Indicator id=%s name=&quot;%s&quot; type=%s value=%s&#39; % (i.id, i.name, i.type, repr(i.value))
-    print &#39;description:&#39;, i.description
-    print &#39;&#39;</code></pre>
+<pre class="sourceCode python"><code class="sourceCode python">indicators = oid.check()
+<span class="kw">for</span> i in indicators:
+    <span class="dt">print</span> <span class="st">&#39;Indicator id=</span><span class="ot">%s</span><span class="st"> name=&quot;</span><span class="ot">%s</span><span class="st">&quot; type=</span><span class="ot">%s</span><span class="st"> value=</span><span class="ot">%s</span><span class="st">&#39;</span> % (i.<span class="dt">id</span>, i.name, i.<span class="dt">type</span>, <span class="dt">repr</span>(i.value))
+    <span class="dt">print</span> <span class="st">&#39;description:&#39;</span>, i.description
+    <span class="dt">print</span> <span class="st">&#39;&#39;</span></code></pre>
 <p>See the source code of oleid.py for more details.</p>
 <hr />
 <h2 id="python-oletools-documentation">python-oletools documentation</h2>

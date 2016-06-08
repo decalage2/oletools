@@ -1,22 +1,23 @@
-olemeta
-=======
+oleobj
+======
 
-olemeta is a script to parse OLE files such as MS Office documents (e.g. Word,
-Excel), to extract all standard properties present in the OLE file.
+oleobj is a script to extract embedded objects from OLE files.
+
+It can be used either as a command-line tool, or as a python module from your own applications.
 
 It is part of the [python-oletools](http://www.decalage.info/python/oletools) package.
 
 ## Usage
 
 ```text
-olemeta.py <file>
+TODO
 ```
 
-### Example
+--------------------------------------------------------------------------
+    
+## How to use oleobj in Python applications
 
-![](olemeta1.png)
-
-## How to use olemeta in Python applications	
+See rtfobj.py source code.
 
 TODO
 

@@ -13,12 +13,13 @@ To use oletools as command-line tools
 -------------------------------------
 
 To use python-oletools from the command line as analysis tools, you may simply 
-[download the zip archive](https://bitbucket.org/decalage/oletools/downloads) 
-and extract the files into the directory of your choice. Pick the latest release version, or click on 
-**"Download Repository"** to get the latest development version with the most recent features.
+[download the latest release archive](https://github.com/decalage2/oletools/releases)
+and extract the files into the directory of your choice.
 
-Another possibility is to use a Mercurial client (hg) to clone the repository into a folder. You can then update it easily
-in the future.
+You may also download the [latest development version](https://github.com/decalage2/oletools/archive/master.zip) with the most recent features.
+
+Another possibility is to use a git client to clone the repository (https://github.com/decalage2/oletools.git) into a folder.
+You can then update it easily in the future.
 
 ### Windows
 
@@ -27,18 +28,18 @@ You may add the oletools directory to your PATH environment variable to access t
 ### Linux, Mac OSX, Unix
 
 It is very convenient to create symbolic links to each tool in one of the bin directories in order to run them as shell 
-commands from anywhere. For example, here is how to create an executable link "olevba" in /usr/local/bin pointing to 
+commands from anywhere. For example, here is how to create an executable link "olevba" in `/usr/local/bin` pointing to
 olevba.py, assuming oletools was unzipped into /opt/oletools:
 
-    :::text
-    chmod +x /opt/oletools/oletools/olevba.py
-    ln -s /opt/oletools/oletools/olevba.py /usr/local/bin/olevba
-    
+```text
+chmod +x /opt/oletools/oletools/olevba.py
+ln -s /opt/oletools/oletools/olevba.py /usr/local/bin/olevba
+```
 Then the olevba command can be used from any directory:
 
-    :::text
-    user@remnux:~/MalwareZoo/VBA$ olevba dridex427.xls |less
-
+```text
+user@remnux:~/MalwareZoo/VBA$ olevba dridex427.xls |less
+```
 
 For python applications
 -----------------------
@@ -51,7 +52,7 @@ with Python since version 2.7.9.
 will not update it.
 
 Alternatively if you prefer the old school way, you may download the 
-[zip archive](https://bitbucket.org/decalage/oletools/downloads), extract it into 
+[latest archive](https://github.com/decalage2/oletools/releases), extract it into
 a temporary directory and run **"python setup.py install"**.
 
 --------------------------------------------------------------------------

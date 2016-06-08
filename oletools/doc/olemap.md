@@ -1,22 +1,33 @@
-olemeta
-=======
+olemap
+======
 
-olemeta is a script to parse OLE files such as MS Office documents (e.g. Word,
-Excel), to extract all standard properties present in the OLE file.
+olemap is a script to display a map of all the sectors in an OLE file.
+
+It can be used either as a command-line tool, or as a python module from your own applications.
 
 It is part of the [python-oletools](http://www.decalage.info/python/oletools) package.
 
 ## Usage
 
 ```text
-olemeta.py <file>
+Usage: olemap.py <filename>
 ```
 
-### Example
+### Examples
 
-![](olemeta1.png)
+Scan a single file:
 
-## How to use olemeta in Python applications	
+```text
+olemap.py file.doc
+```
+    
+![](olemap1.png)
+
+![](olemap2.png)
+
+--------------------------------------------------------------------------
+    
+## How to use olemap in Python applications
 
 TODO
 

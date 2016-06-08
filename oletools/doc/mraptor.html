@@ -1,0 +1,76 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+</head>
+<body>
+<h1 id="mraptor-macroraptor">mraptor (MacroRaptor)</h1>
+<p>mraptor is a script to detect malicious VBA Macros.</p>
+<p>It can be used either as a command-line tool, or as a python module from your own applications.</p>
+<p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
+<h2 id="usage">Usage</h2>
+<pre class="text"><code>Usage: mraptor.py [options] &lt;filename&gt; [filename2 ...]
+
+Options:
+  -h, --help            show this help message and exit
+  -r                    find files recursively in subdirectories.
+  -z ZIP_PASSWORD, --zip=ZIP_PASSWORD
+                        if the file is a zip archive, open all files from it,
+                        using the provided password (requires Python 2.6+)
+  -f ZIP_FNAME, --zipfname=ZIP_FNAME
+                        if the file is a zip archive, file(s) to be opened
+                        within the zip. Wildcards * and ? are supported.
+                        (default:*)
+  -l LOGLEVEL, --loglevel=LOGLEVEL
+                        logging level debug/info/warning/error/critical
+                        (default=warning)
+  -m, --matches         Show matched strings.
+
+An exit code is returned based on the analysis result:
+ - 0: No Macro
+ - 1: Not MS Office
+ - 2: Macro OK
+ - 10: ERROR
+ - 20: SUSPICIOUS</code></pre>
+<h3 id="examples">Examples</h3>
+<p>Scan a single file:</p>
+<pre class="text"><code>mraptor.py file.doc</code></pre>
+<p>Scan a single file, stored in a Zip archive with password &quot;infected&quot;:</p>
+<pre class="text"><code>mraptor.py malicious_file.xls.zip -z infected</code></pre>
+<p>Scan a collection of files stored in a folder:</p>
+<pre class="text"><code>mraptor.py &quot;MalwareZoo/VBA/*&quot;</code></pre>
+<p><strong>Important</strong>: on Linux/MacOSX, always add double quotes around a file name when you use wildcards such as <code>*</code> and <code>?</code>. Otherwise, the shell may replace the argument with the actual list of files matching the wildcards before starting the script.</p>
+<div class="figure">
+<img src="mraptor1.png" />
+</div>
+<hr />
+<h2 id="how-to-use-mraptor-in-python-applications">How to use mraptor in Python applications</h2>
+<p>TODO</p>
+<hr />
+<h2 id="python-oletools-documentation">python-oletools documentation</h2>
+<ul>
+<li><a href="Home.html">Home</a></li>
+<li><a href="License.html">License</a></li>
+<li><a href="Install.html">Install</a></li>
+<li><a href="Contribute.html">Contribute</a>, Suggest Improvements or Report Issues</li>
+<li>Tools:
+<ul>
+<li><a href="olebrowse.html">olebrowse</a></li>
+<li><a href="oleid.html">oleid</a></li>
+<li><a href="olemeta.html">olemeta</a></li>
+<li><a href="oletimes.html">oletimes</a></li>
+<li><a href="oledir.html">oledir</a></li>
+<li><a href="olemap.html">olemap</a></li>
+<li><a href="olevba.html">olevba</a></li>
+<li><a href="mraptor.html">mraptor</a></li>
+<li><a href="pyxswf.html">pyxswf</a></li>
+<li><a href="oleobj.html">oleobj</a></li>
+<li><a href="rtfobj.html">rtfobj</a></li>
+</ul></li>
+</ul>
+</body>
+</html>

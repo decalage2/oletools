@@ -6,6 +6,25 @@
   <meta name="generator" content="pandoc" />
   <title></title>
   <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; }
+code > span.dt { color: #902000; }
+code > span.dv { color: #40a070; }
+code > span.bn { color: #40a070; }
+code > span.fl { color: #40a070; }
+code > span.ch { color: #4070a0; }
+code > span.st { color: #4070a0; }
+code > span.co { color: #60a0b0; font-style: italic; }
+code > span.ot { color: #007020; }
+code > span.al { color: #ff0000; font-weight: bold; }
+code > span.fu { color: #06287e; }
+code > span.er { color: #ff0000; font-weight: bold; }
+  </style>
 </head>
 <body>
 <h1 id="olevba">olevba</h1>
@@ -54,8 +73,8 @@
 <li>olevba scans the macro source code and the deobfuscated strings to find suspicious keywords, auto-executable macros and potential IOCs (URLs, IP addresses, e-mail addresses, executable filenames, etc).</li>
 </ol>
 <h2 id="usage">Usage</h2>
-<pre><code>Usage: olevba.py [options] &lt;filename&gt; [filename2 ...]
-
+<pre class="text"><code>Usage: olevba.py [options] &lt;filename&gt; [filename2 ...]
+    
 Options:
   -h, --help            show this help message and exit
   -r                    find files recursively in subdirectories.
@@ -84,25 +103,26 @@ Options:
                         obfuscated strings by their decoded content.</code></pre>
 <h3 id="examples">Examples</h3>
 <p>Scan a single file:</p>
-<pre><code>olevba.py file.doc</code></pre>
+<pre class="text"><code>olevba.py file.doc</code></pre>
 <p>Scan a single file, stored in a Zip archive with password &quot;infected&quot;:</p>
-<pre><code>olevba.py malicious_file.xls.zip -z infected</code></pre>
+<pre class="text"><code>olevba.py malicious_file.xls.zip -z infected</code></pre>
 <p>Scan a single file, showing all obfuscated strings decoded:</p>
-<pre><code>olevba.py file.doc --decode</code></pre>
+<pre class="text"><code>olevba.py file.doc --decode</code></pre>
 <p>Scan a single file, showing the macro source code with VBA strings deobfuscated:</p>
-<pre><code>olevba.py file.doc --reveal</code></pre>
+<pre class="text"><code>olevba.py file.doc --reveal</code></pre>
 <p>Scan VBA source code extracted into a text file:</p>
-<pre><code>olevba.py -i source_code.vba</code></pre>
+<pre class="text"><code>olevba.py source_code.vba</code></pre>
 <p>Scan a collection of files stored in a folder:</p>
-<pre><code>olevba.py MalwareZoo/VBA/*</code></pre>
+<pre class="text"><code>olevba.py &quot;MalwareZoo/VBA/*&quot;</code></pre>
+<p>NOTE: On Linux, MacOSX and other Unix variants, it is required to add double quotes around wildcards. Otherwise, they will be expanded by the shell instead of olevba.</p>
 <p>Scan all .doc and .xls files, recursively in all subfolders:</p>
-<pre><code>olevba.py MalwareZoo/VBA/*.doc MalwareZoo/VBA/*.xls -r</code></pre>
+<pre class="text"><code>olevba.py &quot;MalwareZoo/VBA/*.doc&quot; &quot;MalwareZoo/VBA/*.xls&quot; -r</code></pre>
 <p>Scan all .doc files within all .zip files with password, recursively:</p>
-<pre><code>olevba.py MalwareZoo/VBA/*.zip -r -z infected -f *.doc</code></pre>
+<pre class="text"><code>olevba.py &quot;MalwareZoo/VBA/*.zip&quot; -r -z infected -f &quot;*.doc&quot;</code></pre>
 <h3 id="detailed-analysis-mode-default-for-single-file">Detailed analysis mode (default for single file)</h3>
 <p>When a single file is scanned, or when using the option -d, all details of the analysis are displayed.</p>
 <p>For example, checking the malware sample <a href="https://malwr.com/analysis/M2I4YWRhM2IwY2QwNDljN2E3ZWFjYTg3ODk4NmZhYmE/">DIAN_caso-5415.doc</a>:</p>
-<pre><code>&gt;olevba.py c:\MalwareZoo\VBA\DIAN_caso-5415.doc.zip -z infected
+<pre class="text"><code>&gt;olevba.py c:\MalwareZoo\VBA\DIAN_caso-5415.doc.zip -z infected
 ===============================================================================
 FILE: DIAN_caso-5415.doc.malware in c:\MalwareZoo\VBA\DIAN_caso-5415.doc.zip
 Type: OLE
@@ -172,7 +192,7 @@ ANALYSIS:
 <li><strong>V</strong>: VBA string expressions (potential obfuscation)</li>
 </ul>
 <p>Here is an example:</p>
-<pre><code>c:\&gt;olevba.py \MalwareZoo\VBA\samples\*
+<pre class="text"><code>c:\&gt;olevba.py \MalwareZoo\VBA\samples\*
 Flags       Filename
 ----------- -----------------------------------------------------------------
 OLE:MASI--- \MalwareZoo\VBA\samples\DIAN_caso-5415.doc.malware
@@ -197,23 +217,22 @@ OLE:MA----- \MalwareZoo\VBA\samples\Word within Word macro auto.doc</code></pre>
 <p>IMPORTANT: olevba is currently under active development, therefore this API is likely to change.</p>
 <h3 id="import-olevba">Import olevba</h3>
 <p>First, import the <strong>oletools.olevba</strong> package, using at least the VBA_Parser and VBA_Scanner classes:</p>
-<pre><code>from oletools.olevba import VBA_Parser, TYPE_OLE, TYPE_OpenXML, TYPE_Word2003_XML, TYPE_MHTML </code></pre>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="ch">from</span> oletools.olevba <span class="ch">import</span> VBA_Parser, TYPE_OLE, TYPE_OpenXML, TYPE_Word2003_XML, TYPE_MHTML</code></pre>
 <h3 id="parse-a-ms-office-file---vba_parser">Parse a MS Office file - VBA_Parser</h3>
 <p>To parse a file on disk, create an instance of the <strong>VBA_Parser</strong> class, providing the name of the file to open as parameter. For example:</p>
-<pre><code>vbaparser = VBA_Parser(&#39;my_file_with_macros.doc&#39;)</code></pre>
+<pre class="sourceCode python"><code class="sourceCode python">vbaparser = VBA_Parser(<span class="st">&#39;my_file_with_macros.doc&#39;</span>)</code></pre>
 <p>The file may also be provided as a bytes string containing its data. In that case, the actual filename must be provided for reference, and the file content with the data parameter. For example:</p>
-<pre><code>myfile = &#39;my_file_with_macros.doc&#39;
-filedata = open(myfile, &#39;rb&#39;).read()
+<pre class="sourceCode python"><code class="sourceCode python">myfile = <span class="st">&#39;my_file_with_macros.doc&#39;</span>
+filedata = <span class="dt">open</span>(myfile, <span class="st">&#39;rb&#39;</span>).read()
 vbaparser = VBA_Parser(myfile, data=filedata)</code></pre>
 <p>VBA_Parser will raise an exception if the file is not a supported format, such as OLE (MS Office 97-2003), OpenXML (MS Office 2007+), MHTML or Word 2003 XML.</p>
 <p>After parsing the file, the attribute <strong>VBA_Parser.type</strong> is a string indicating the file type. It can be either TYPE_OLE, TYPE_OpenXML, TYPE_Word2003_XML or TYPE_MHTML. (constants defined in the olevba module)</p>
 <h3 id="detect-vba-macros">Detect VBA macros</h3>
 <p>The method <strong>detect_vba_macros</strong> of a VBA_Parser object returns True if VBA macros have been found in the file, False otherwise.</p>
-<pre><code>if vbaparser.detect_vba_macros():
-    print &#39;VBA Macros found&#39;
-else:
-    print &#39;No VBA Macros found&#39;
-    </code></pre>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="kw">if</span> vbaparser.detect_vba_macros():
+    <span class="dt">print</span> <span class="st">&#39;VBA Macros found&#39;</span>
+<span class="kw">else</span>:
+    <span class="dt">print</span> <span class="st">&#39;No VBA Macros found&#39;</span></code></pre>
 <p>Note: The detection algorithm looks for streams and storage with specific names in the OLE structure, which works fine for all the supported formats listed above. However, for some formats such as PowerPoint 97-2003, this method will always return False because VBA Macros are stored in a different way which is not yet supported by olevba.</p>
 <p>Moreover, if the file contains an embedded document (e.g. an Excel workbook inserted into a Word document), this method may return True if the embedded document contains VBA Macros, even if the main document does not.</p>
 <h3 id="extract-vba-macro-source-code">Extract VBA Macro Source Code</h3>
@@ -225,14 +244,13 @@ else:
 <li>vba_code: string containing the VBA source code in clear text</li>
 </ul>
 <p>Example:</p>
-<pre><code>for (filename, stream_path, vba_filename, vba_code) in vbaparser.extract_macros():
-    print &#39;-&#39;*79
-    print &#39;Filename    :&#39;, filename
-    print &#39;OLE stream  :&#39;, stream_path
-    print &#39;VBA filename:&#39;, vba_filename
-    print &#39;- &#39;*39
-    print vba_code
-    </code></pre>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="kw">for</span> (filename, stream_path, vba_filename, vba_code) in vbaparser.extract_macros():
+    <span class="dt">print</span> <span class="st">&#39;-&#39;</span>*<span class="dv">79</span>
+    <span class="dt">print</span> <span class="st">&#39;Filename    :&#39;</span>, filename
+    <span class="dt">print</span> <span class="st">&#39;OLE stream  :&#39;</span>, stream_path
+    <span class="dt">print</span> <span class="st">&#39;VBA filename:&#39;</span>, vba_filename
+    <span class="dt">print</span> <span class="st">&#39;- &#39;</span>*<span class="dv">39</span>
+    <span class="dt">print</span> vba_code</code></pre>
 <p>Alternatively, the VBA_Parser method <strong>extract_all_macros</strong> returns the same results as a list of tuples.</p>
 <h3 id="analyze-vba-source-code">Analyze VBA Source Code</h3>
 <p>Since version 0.40, the VBA_Parser class provides simpler methods than VBA_Scanner to analyze all macros contained in a file:</p>
@@ -245,25 +263,24 @@ else:
 <li>description provides a description of the keyword. For obfuscated strings, it is the encoded value of the string.</li>
 </ul>
 <p>Example:</p>
-<pre><code>results = vbaparser.analyze_macros()
-for kw_type, keyword, description in results:
-    print &#39;type=%s - keyword=%s - description=%s&#39; % (kw_type, keyword, description)
-    </code></pre>
+<pre class="sourceCode python"><code class="sourceCode python">results = vbaparser.analyze_macros()
+<span class="kw">for</span> kw_type, keyword, description in results:
+    <span class="dt">print</span> <span class="st">&#39;type=</span><span class="ot">%s</span><span class="st"> - keyword=</span><span class="ot">%s</span><span class="st"> - description=</span><span class="ot">%s</span><span class="st">&#39;</span> % (kw_type, keyword, description)</code></pre>
 <p>After calling analyze_macros, the following VBA_Parser attributes also provide the number of items found for each category:</p>
-<pre><code>print &#39;AutoExec keywords: %d&#39; % vbaparser.nb_autoexec
-print &#39;Suspicious keywords: %d&#39; % vbaparser.nb_suspicious
-print &#39;IOCs: %d&#39; % vbaparser.nb_iocs
-print &#39;Hex obfuscated strings: %d&#39; % vbaparser.nb_hexstrings
-print &#39;Base64 obfuscated strings: %d&#39; % vbaparser.nb_base64strings
-print &#39;Dridex obfuscated strings: %d&#39; % vbaparser.nb_dridexstrings
-print &#39;VBA obfuscated strings: %d&#39; % vbaparser.nb_vbastrings</code></pre>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="dt">print</span> <span class="st">&#39;AutoExec keywords: </span><span class="ot">%d</span><span class="st">&#39;</span> % vbaparser.nb_autoexec
+<span class="dt">print</span> <span class="st">&#39;Suspicious keywords: </span><span class="ot">%d</span><span class="st">&#39;</span> % vbaparser.nb_suspicious
+<span class="dt">print</span> <span class="st">&#39;IOCs: </span><span class="ot">%d</span><span class="st">&#39;</span> % vbaparser.nb_iocs
+<span class="dt">print</span> <span class="st">&#39;Hex obfuscated strings: </span><span class="ot">%d</span><span class="st">&#39;</span> % vbaparser.nb_hexstrings
+<span class="dt">print</span> <span class="st">&#39;Base64 obfuscated strings: </span><span class="ot">%d</span><span class="st">&#39;</span> % vbaparser.nb_base64strings
+<span class="dt">print</span> <span class="st">&#39;Dridex obfuscated strings: </span><span class="ot">%d</span><span class="st">&#39;</span> % vbaparser.nb_dridexstrings
+<span class="dt">print</span> <span class="st">&#39;VBA obfuscated strings: </span><span class="ot">%d</span><span class="st">&#39;</span> % vbaparser.nb_vbastrings</code></pre>
 <h3 id="deobfuscate-vba-macro-source-code">Deobfuscate VBA Macro Source Code</h3>
 <p>The method <strong>reveal</strong> attempts to deobfuscate the macro source code by replacing all the obfuscated strings by their decoded content. Returns a single string.</p>
 <p>Example:</p>
-<pre><code>print vbaparser.reveal()</code></pre>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="dt">print</span> vbaparser.reveal()</code></pre>
 <h3 id="close-the-vba_parser">Close the VBA_Parser</h3>
 <p>After usage, it is better to call the <strong>close</strong> method of the VBA_Parser object, to make sure the file is closed, especially if your application is parsing many files.</p>
-<pre><code>vbaparser.close()</code></pre>
+<pre class="sourceCode python"><code class="sourceCode python">vbaparser.close()</code></pre>
 <hr />
 <h2 id="deprecated-api">Deprecated API</h2>
 <p>The following methods and functions are still functional, but their usage is not recommended since they have been replaced by better solutions.</p>
@@ -278,55 +295,54 @@ print &#39;VBA obfuscated strings: %d&#39; % vbaparser.nb_vbastrings</code></pre
 <li>description provides a description of the keyword. For obfuscated strings, it is the encoded value of the string.</li>
 </ul>
 <p>Example:</p>
-<pre><code>vba_scanner = VBA_Scanner(vba_code)
-results = vba_scanner.scan(include_decoded_strings=True)
-for kw_type, keyword, description in results:
-    print &#39;type=%s - keyword=%s - description=%s&#39; % (kw_type, keyword, description)</code></pre>
+<pre class="sourceCode python"><code class="sourceCode python">vba_scanner = VBA_Scanner(vba_code)
+results = vba_scanner.scan(include_decoded_strings=<span class="ot">True</span>)
+<span class="kw">for</span> kw_type, keyword, description in results:
+    <span class="dt">print</span> <span class="st">&#39;type=</span><span class="ot">%s</span><span class="st"> - keyword=</span><span class="ot">%s</span><span class="st"> - description=</span><span class="ot">%s</span><span class="st">&#39;</span> % (kw_type, keyword, description)</code></pre>
 <p>The function <strong>scan_vba</strong> is a shortcut for VBA_Scanner(vba_code).scan():</p>
-<pre><code>results = scan_vba(vba_code, include_decoded_strings=True)
-for kw_type, keyword, description in results:
-    print &#39;type=%s - keyword=%s - description=%s&#39; % (kw_type, keyword, description)
-    </code></pre>
+<pre class="sourceCode python"><code class="sourceCode python">results = scan_vba(vba_code, include_decoded_strings=<span class="ot">True</span>)
+<span class="kw">for</span> kw_type, keyword, description in results:
+    <span class="dt">print</span> <span class="st">&#39;type=</span><span class="ot">%s</span><span class="st"> - keyword=</span><span class="ot">%s</span><span class="st"> - description=</span><span class="ot">%s</span><span class="st">&#39;</span> % (kw_type, keyword, description)</code></pre>
 <p><strong>scan_summary</strong> returns a tuple with the number of items found for each category: (autoexec, suspicious, IOCs, hex, base64, dridex).</p>
 <h3 id="detect-auto-executable-macros-deprecated">Detect auto-executable macros (deprecated)</h3>
 <p><strong>Deprecated</strong>: It is preferable to use either scan_vba or VBA_Scanner to get all results at once.</p>
 <p>The function <strong>detect_autoexec</strong> checks if VBA macro code contains specific macro names that will be triggered when the document/workbook is opened, closed, changed, etc.</p>
 <p>It returns a list of tuples containing two strings, the detected keyword, and the description of the trigger. (See the malware example above)</p>
 <p>Sample usage:</p>
-<pre><code>from oletools.olevba import detect_autoexec
+<pre class="sourceCode python"><code class="sourceCode python"><span class="ch">from</span> oletools.olevba <span class="ch">import</span> detect_autoexec
 autoexec_keywords = detect_autoexec(vba_code)
-if autoexec_keywords:
-    print &#39;Auto-executable macro keywords found:&#39;
-    for keyword, description in autoexec_keywords:
-        print &#39;%s: %s&#39; % (keyword, description)
-else:
-    print &#39;Auto-executable macro keywords: None found&#39;</code></pre>
+<span class="kw">if</span> autoexec_keywords:
+    <span class="dt">print</span> <span class="st">&#39;Auto-executable macro keywords found:&#39;</span>
+    <span class="kw">for</span> keyword, description in autoexec_keywords:
+        <span class="dt">print</span> <span class="st">&#39;</span><span class="ot">%s</span><span class="st">: </span><span class="ot">%s</span><span class="st">&#39;</span> % (keyword, description)
+<span class="kw">else</span>:
+    <span class="dt">print</span> <span class="st">&#39;Auto-executable macro keywords: None found&#39;</span></code></pre>
 <h3 id="detect-suspicious-vba-keywords-deprecated">Detect suspicious VBA keywords (deprecated)</h3>
 <p><strong>Deprecated</strong>: It is preferable to use either scan_vba or VBA_Scanner to get all results at once.</p>
 <p>The function <strong>detect_suspicious</strong> checks if VBA macro code contains specific keywords often used by malware to act on the system (create files, run commands or applications, write to the registry, etc).</p>
 <p>It returns a list of tuples containing two strings, the detected keyword, and the description of the corresponding malicious behaviour. (See the malware example above)</p>
 <p>Sample usage:</p>
-<pre><code>from oletools.olevba import detect_suspicious
+<pre class="sourceCode python"><code class="sourceCode python"><span class="ch">from</span> oletools.olevba <span class="ch">import</span> detect_suspicious
 suspicious_keywords = detect_suspicious(vba_code)
-if suspicious_keywords:
-    print &#39;Suspicious VBA keywords found:&#39;
-    for keyword, description in suspicious_keywords:
-        print &#39;%s: %s&#39; % (keyword, description)
-else:
-    print &#39;Suspicious VBA keywords: None found&#39;</code></pre>
+<span class="kw">if</span> suspicious_keywords:
+    <span class="dt">print</span> <span class="st">&#39;Suspicious VBA keywords found:&#39;</span>
+    <span class="kw">for</span> keyword, description in suspicious_keywords:
+        <span class="dt">print</span> <span class="st">&#39;</span><span class="ot">%s</span><span class="st">: </span><span class="ot">%s</span><span class="st">&#39;</span> % (keyword, description)
+<span class="kw">else</span>:
+    <span class="dt">print</span> <span class="st">&#39;Suspicious VBA keywords: None found&#39;</span></code></pre>
 <h3 id="extract-potential-iocs-deprecated">Extract potential IOCs (deprecated)</h3>
 <p><strong>Deprecated</strong>: It is preferable to use either scan_vba or VBA_Scanner to get all results at once.</p>
 <p>The function <strong>detect_patterns</strong> checks if VBA macro code contains specific patterns of interest, that may be useful for malware analysis and detection (potential Indicators of Compromise): IP addresses, e-mail addresses, URLs, executable file names.</p>
 <p>It returns a list of tuples containing two strings, the pattern type, and the extracted value. (See the malware example above)</p>
 <p>Sample usage:</p>
-<pre><code>from oletools.olevba import detect_patterns
+<pre class="sourceCode python"><code class="sourceCode python"><span class="ch">from</span> oletools.olevba <span class="ch">import</span> detect_patterns
 patterns = detect_patterns(vba_code)
-if patterns:
-    print &#39;Patterns found:&#39;
-    for pattern_type, value in patterns:
-        print &#39;%s: %s&#39; % (pattern_type, value)
-else:
-    print &#39;Patterns: None found&#39;</code></pre>
+<span class="kw">if</span> patterns:
+    <span class="dt">print</span> <span class="st">&#39;Patterns found:&#39;</span>
+    <span class="kw">for</span> pattern_type, value in patterns:
+        <span class="dt">print</span> <span class="st">&#39;</span><span class="ot">%s</span><span class="st">: </span><span class="ot">%s</span><span class="st">&#39;</span> % (pattern_type, value)
+<span class="kw">else</span>:
+    <span class="dt">print</span> <span class="st">&#39;Patterns: None found&#39;</span></code></pre>
 <hr />
 <h2 id="python-oletools-documentation">python-oletools documentation</h2>
 <ul>

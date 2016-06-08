@@ -31,41 +31,44 @@ Planned improvements:
 
 ## Usage
 
-	:::text
-	oleid.py <file>
+```text
+oleid.py <file>
+```
 
 ### Example 
 
 Analyzing a Word document containing a Flash object and VBA macros:
 
-	:::text
-	C:\oletools>oleid.py word_flash_vba.doc
+```text
+C:\oletools>oleid.py word_flash_vba.doc
 
-	Filename: word_flash_vba.doc
-	+-------------------------------+-----------------------+
-	| Indicator                     | Value                 |
-	+-------------------------------+-----------------------+
-	| OLE format                    | True                  |
-	| Has SummaryInformation stream | True                  |
-	| Application name              | Microsoft Office Word |
-	| Encrypted                     | False                 |
-	| Word Document                 | True                  |
-	| VBA Macros                    | True                  |
-	| Excel Workbook                | False                 |
-	| PowerPoint Presentation       | False                 |
-	| Visio Drawing                 | False                 |
-	| ObjectPool                    | True                  |
-	| Flash objects                 | 1                     |
-	+-------------------------------+-----------------------+
+Filename: word_flash_vba.doc
++-------------------------------+-----------------------+
+| Indicator                     | Value                 |
++-------------------------------+-----------------------+
+| OLE format                    | True                  |
+| Has SummaryInformation stream | True                  |
+| Application name              | Microsoft Office Word |
+| Encrypted                     | False                 |
+| Word Document                 | True                  |
+| VBA Macros                    | True                  |
+| Excel Workbook                | False                 |
+| PowerPoint Presentation       | False                 |
+| Visio Drawing                 | False                 |
+| ObjectPool                    | True                  |
+| Flash objects                 | 1                     |
++-------------------------------+-----------------------+
+```
 
 ## How to use oleid in your Python applications	
 
 First, import oletools.oleid, and create an **OleID** object to scan a file:
 
-	:::python
-	import oletools.oleid
-	
-	oid = oletools.oleid.OleID(filename)
+```python
+import oletools.oleid
+
+oid = oletools.oleid.OleID(filename)
+```
 
 Note: filename can be a filename, a file-like object, or a bytes string containing the file to be analyzed.
 
@@ -81,12 +84,13 @@ Each Indicator object has the following attributes:
 
 For example, the following code displays all the indicators:
 
-	:::python
-	indicators = oid.check()
-	for i in indicators:
-		print 'Indicator id=%s name="%s" type=%s value=%s' % (i.id, i.name, i.type, repr(i.value))
-		print 'description:', i.description
-		print ''
+```python
+indicators = oid.check()
+for i in indicators:
+    print 'Indicator id=%s name="%s" type=%s value=%s' % (i.id, i.name, i.type, repr(i.value))
+    print 'description:', i.description
+    print ''
+```
 
 See the source code of oleid.py for more details.
 

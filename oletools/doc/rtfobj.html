@@ -6,21 +6,40 @@
   <meta name="generator" content="pandoc" />
   <title></title>
   <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; }
+code > span.dt { color: #902000; }
+code > span.dv { color: #40a070; }
+code > span.bn { color: #40a070; }
+code > span.fl { color: #40a070; }
+code > span.ch { color: #4070a0; }
+code > span.st { color: #4070a0; }
+code > span.co { color: #60a0b0; font-style: italic; }
+code > span.ot { color: #007020; }
+code > span.al { color: #ff0000; font-weight: bold; }
+code > span.fu { color: #06287e; }
+code > span.er { color: #ff0000; font-weight: bold; }
+  </style>
 </head>
 <body>
 <h1 id="rtfobj">rtfobj</h1>
 <p>rtfobj is a Python module to extract embedded objects from RTF files, such as OLE ojects. It can be used as a Python library or a command-line tool.</p>
 <p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
 <h2 id="usage">Usage</h2>
-<pre><code>rtfobj.py &lt;file.rtf&gt;</code></pre>
+<pre class="text"><code>rtfobj.py &lt;file.rtf&gt;</code></pre>
 <p>It extracts and decodes all the data blocks encoded as hexadecimal in the RTF document, and saves them as files named &quot;object_xxxx.bin&quot;, xxxx being the location of the object in the RTF file.</p>
 <h2 id="how-to-use-rtfobj-in-python-applications">How to use rtfobj in Python applications</h2>
 <p>Usage as a python module:</p>
 <p>rtf_iter_objects(filename) is an iterator which yields a tuple (index, object) providing the index of each hexadecimal stream in the RTF file, and the corresponding decoded object.</p>
 <p>Example:</p>
-<pre><code>import rtfobj    
-for index, data in rtfobj.rtf_iter_objects(&quot;myfile.rtf&quot;):
-    print &#39;found object size %d at index %08X&#39; % (len(data), index)</code></pre>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="ch">import</span> rtfobj
+<span class="kw">for</span> index, data in rtfobj.rtf_iter_objects(<span class="st">&quot;myfile.rtf&quot;</span>):
+    <span class="dt">print</span> <span class="st">&#39;found object size </span><span class="ot">%d</span><span class="st"> at index </span><span class="ot">%08X</span><span class="st">&#39;</span> % (<span class="dt">len</span>(data), index)</code></pre>
 <hr />
 <h2 id="python-oletools-documentation">python-oletools documentation</h2>
 <ul>

@@ -1,8 +1,8 @@
-python-oletools v0.44 documentation
+python-oletools v0.47 documentation
 ===================================
 
 This is the home page of the documentation for python-oletools. The latest version can be found 
-[online](https://bitbucket.org/decalage/oletools/wiki), otherwise a copy is provided in the doc subfolder of the package.
+[online](https://github.com/decalage2/oletools/wiki), otherwise a copy is provided in the doc subfolder of the package.
 
 [python-oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze 
 [Microsoft OLE2 files](http://en.wikipedia.org/wiki/Compound_File_Binary_Format)
@@ -11,12 +11,13 @@ such as Microsoft Office documents or Outlook messages, mainly for malware analy
 It is based on the [olefile](http://www.decalage.info/olefile) parser. 
 See [http://www.decalage.info/python/oletools](http://www.decalage.info/python/oletools) for more info.  
 
-**Quick links:** [Home page](http://www.decalage.info/python/oletools) - 
-[Download/Install](https://bitbucket.org/decalage/oletools/wiki/Install) - 
-[Documentation](https://bitbucket.org/decalage/oletools/wiki) - 
-[Report Issues/Suggestions/Questions](https://bitbucket.org/decalage/oletools/issues?status=new&status=open) - 
-[Contact the author](http://decalage.info/contact) - 
-[Repository](https://bitbucket.org/decalage/oletools) - 
+**Quick links:**
+[Home page](http://www.decalage.info/python/oletools) -
+[Download/Install](https://github.com/decalage2/oletools/wiki/Install) -
+[Documentation](https://github.com/decalage2/oletools/wiki) -
+[Report Issues/Suggestions/Questions](https://github.com/decalage2/oletools/issues) -
+[Contact the Author](http://decalage.info/contact) -
+[Repository](https://github.com/decalage2/oletools) -
 [Updates on Twitter](https://twitter.com/decalage2)
 
 Note: python-oletools is not related to OLETools published by BeCubed Software.
