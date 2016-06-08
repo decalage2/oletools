@@ -75,7 +75,8 @@ log = olevba.get_logger('mraptor')
 #--- CONSTANTS ----------------------------------------------------------------
 
 # URL and message to report issues:
-URL_ISSUES = 'https://bitbucket.org/decalage/oletools/issues'
+# TODO: make it a common variable for all oletools
+URL_ISSUES = 'https://github.com/decalage2/oletools/issues'
 MSG_ISSUES = 'Please report this issue on %s' % URL_ISSUES
 
 # 'AutoExec', 'AutoOpen', 'Auto_Open', 'AutoClose', 'Auto_Close', 'AutoNew', 'AutoExit',
