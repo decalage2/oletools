@@ -382,7 +382,7 @@ if __name__ == '__main__':
     # print banner with version
     print ('rtfobj %s - http://decalage.info/python/oletools' % __version__)
     print ('THIS IS WORK IN PROGRESS - Check updates regularly!')
-    print ('Please report any issue at https://bitbucket.org/decalage/oletools/issues')
+    print ('Please report any issue at https://github.com/decalage2/oletools/issues')
     print ('')
 
     DEFAULT_LOG_LEVEL = "warning" # Default log level
