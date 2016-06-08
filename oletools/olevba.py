@@ -343,7 +343,7 @@ RETURN_SEVERAL_ERRS   = 7
 RETURN_UNEXPECTED     = 8
 
 # URL and message to report issues:
-URL_OLEVBA_ISSUES = 'https://bitbucket.org/decalage/oletools/issues'
+URL_OLEVBA_ISSUES = 'https://github.com/decalage2/oletools/issues'
 MSG_OLEVBA_ISSUES = 'Please report this issue on %s' % URL_OLEVBA_ISSUES
 
 # Container types:
@@ -3202,6 +3202,7 @@ def main():
         # and do not care about output mode
         log.exception('Unhandled exception in main: %s' % exc, exc_info=True)
         return_code = RETURN_UNEXPECTED    # even if there were others before -- this is more important
+        # TODO: print msg with URL to report issues (except in JSON mode)
 
     # done. exit
     log.debug('will exit now with code %s' % return_code)
