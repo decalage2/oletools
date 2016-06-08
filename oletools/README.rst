@@ -147,14 +147,17 @@ Download and Install:
 ---------------------
 
 To use python-oletools from the command line as analysis tools, you may
-simply `download the zip
-archive <https://github.com/decalage2/oletools/downloads>`__ and extract
-the files in the directory of your choice.
+simply `download the latest release
+archive <https://github.com/decalage2/oletools/releases>`__ and extract
+the files into the directory of your choice.
 
-To get the latest development version, click on "Download repository" on
-the `downloads
-page <https://github.com/decalage2/oletools/downloads>`__, or use
-mercurial to clone the repository.
+You may also download the `latest development
+version <https://github.com/decalage2/oletools/archive/master.zip>`__
+with the most recent features.
+
+Another possibility is to use a git client to clone the repository
+(https://github.com/decalage2/oletools.git) into a folder. You can then
+update it easily in the future.
 
 If you plan to use python-oletools with other Python applications or
 your own scripts, then the simplest solution is to use "**pip install
