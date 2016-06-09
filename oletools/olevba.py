@@ -1416,6 +1416,9 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
     projectmodules_projectcookierecord_cookie = struct.unpack("<H", dir_stream.read(2))[0]
     unused = projectmodules_projectcookierecord_cookie
 
+    # short function to simplify unicode text output
+    uni_out = lambda unicode_text: unicode_text.encode('utf-8', 'replace')
+
     log.debug("parsing {0} modules".format(projectmodules_count))
     for projectmodule_index in xrange(0, projectmodules_count):
         try:
@@ -1428,9 +1431,10 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
             if section_id == 0x0047:
                 modulename_unicode_id = section_id
                 modulename_unicode_sizeof_modulename_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-                modulename_unicode_modulename_unicode = dir_stream.read(modulename_unicode_sizeof_modulename_unicode)
+                modulename_unicode_modulename_unicode = dir_stream.read(
+                    modulename_unicode_sizeof_modulename_unicode).decode('UTF-16LE', 'replace')
+                    # just guessing that this is the same encoding as used in OleFileIO
                 unused = modulename_unicode_id
-                unused = modulename_unicode_modulename_unicode
                 section_id = struct.unpack("<H", dir_stream.read(2))[0]
             if section_id == 0x001A:
                 modulestreamname_id = section_id
@@ -1439,7 +1443,9 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
                 modulestreamname_reserved = struct.unpack("<H", dir_stream.read(2))[0]
                 check_value('MODULESTREAMNAME_Reserved', 0x0032, modulestreamname_reserved)
                 modulestreamname_sizeof_streamname_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-                modulestreamname_streamname_unicode = dir_stream.read(modulestreamname_sizeof_streamname_unicode)
+                modulestreamname_streamname_unicode = dir_stream.read(
+                    modulestreamname_sizeof_streamname_unicode).decode('UTF-16LE', 'replace')
+                    # just guessing that this is the same encoding as used in OleFileIO
                 unused = modulestreamname_id
                 section_id = struct.unpack("<H", dir_stream.read(2))[0]
             if section_id == 0x001C:
@@ -1505,16 +1511,33 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
             log.debug('Project CodePage = %d' % projectcodepage_codepage)
             vba_codec = 'cp%d' % projectcodepage_codepage
             log.debug("ModuleName = {0}".format(modulename_modulename))
-            log.debug("StreamName = {0}".format(repr(modulestreamname_streamname)))
+            log.debug("ModuleNameUnicode = {0}".format(uni_out(modulename_unicode_modulename_unicode)))
+            log.debug("StreamName = {0}".format(uni_out(modulestreamname_streamname)))
             streamname_unicode = modulestreamname_streamname.decode(vba_codec)
-            log.debug("StreamName.decode('%s') = %s" % (vba_codec, repr(streamname_unicode)))
-            log.debug("StreamNameUnicode = {0}".format(repr(modulestreamname_streamname_unicode)))
+            log.debug("StreamName.decode('%s') = %s" % (vba_codec, uni_out(streamname_unicode)))
+            log.debug("StreamNameUnicode = {0}".format(uni_out(modulestreamname_streamname_unicode)))
             log.debug("TextOffset = {0}".format(moduleoffset_textoffset))
 
-            code_path = vba_root + u'VBA/' + streamname_unicode
-            #TODO: test if stream exists
-            log.debug('opening VBA code stream %s' % repr(code_path))
-            code_data = ole.openstream(code_path).read()
+            code_data = None
+            try_names = streamname_unicode, \
+                        modulename_unicode_modulename_unicode, \
+                        modulestreamname_streamname_unicode
+            for stream_name in try_names:
+                try:
+                    code_path = vba_root + u'VBA/' + stream_name
+                    log.debug('opening VBA code stream %s' % uni_out(code_path))
+                    code_data = ole.openstream(code_path).read()
+                    break
+                except IOError as ioe:
+                    log.debug('failed to open stream {} ({}), try other name'
+                              .format(uni_out(stream_name), ioe))
+
+            if code_data is None:
+                log.warning("Could not find module {}!"
+                            .format('/'.join(uni_out(stream_name)
+                                             for stream_name in try_names)))
+                continue
+
             log.debug("length of code_data = {0}".format(len(code_data)))
             log.debug("offset of code_data = {0}".format(moduleoffset_textoffset))
             code_data = code_data[moduleoffset_textoffset:]
@@ -1534,9 +1557,9 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
             else:
                 log.warning("module stream {0} has code data length 0".format(modulestreamname_streamname))
         except Exception as exc:
-            log.info('Error parsing module {} of {} in _extract_vba:'
-                      .format(projectmodule_index, projectmodules_count),
-                     exc_info=True)
+            log.warning('Error parsing module {} of {} in _extract_vba:'
+                        .format(projectmodule_index, projectmodules_count),
+                        exc_info=True)
     _ = unused   # make pylint happy: now variable "unused" is being used ;-)
     return
 
