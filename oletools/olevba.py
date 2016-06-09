@@ -299,35 +299,69 @@ log = get_logger('olevba')
 
 #=== EXCEPTIONS ==============================================================
 
-class FileOpenError(Exception):
+class OlevbaBaseException(Exception):
+    """ Base class for exceptions produced here for simpler except clauses """
+    def __init__(self, msg, filename=None, orig_exc=None, **kwargs):
+        if orig_exc:
+            super(OlevbaBaseException, self).__init__(msg +
+                                                      ' ({})'.format(orig_exc),
+                                                      **kwargs)
+        else:
+            super(OlevbaBaseException, self).__init__(msg, **kwargs)
+        self.msg = msg
+        self.filename = filename
+        self.orig_exc = orig_exc
+
+
+class FileOpenError(OlevbaBaseException):
     """ raised by VBA_Parser constructor if all open_... attempts failed
 
     probably means the file type is not supported
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, orig_exc=None):
         super(FileOpenError, self).__init__(
-            'Failed to open file %s ... probably not supported' % filename)
-        self.filename = filename
+            'Failed to open file %s' % filename, filename, orig_exc)
 
 
-class ProcessingError(Exception):
+class ProcessingError(OlevbaBaseException):
     """ raised by VBA_Parser.process_file* functions """
 
-    def __init__(self, filename, orig_exception):
+    def __init__(self, filename, orig_exc):
         super(ProcessingError, self).__init__(
-            'Error processing file %s (%s)' % (filename, orig_exception))
-        self.filename = filename
-        self.orig_exception = orig_exception
+            'Error processing file %s' % filename, filename, orig_exc)
 
 
-class MsoExtractionError(RuntimeError):
+class MsoExtractionError(RuntimeError, OlevbaBaseException):
     """ raised by mso_file_extract if parsing MSO/ActiveMIME data failed """
 
     def __init__(self, msg):
-        super(MsoExtractionError, self).__init__(msg)
-        self.msg = msg
+        MsoExtractionError.__init__(self, msg)
+        OlevbaBaseException.__init__(self, msg)
 
+
+class SubstreamOpenError(FileOpenError):
+    """ special kind of FileOpenError: file is a substream of original file """
+
+    def __init__(self, filename, subfilename, orig_exc=None):
+        super(SubstreamOpenError, self).__init__(
+            str(filename) + '/' + str(subfilename), orig_exc)
+        self.filename = filename   # overwrite setting in OlevbaBaseException
+        self.subfilename = subfilename
+
+
+class UnexpectedDataError(OlevbaBaseException):
+    """ raised when parsing is strict (=not relaxed) and data is unexpected """
+
+    def __init__(self, stream_path, variable, expected, value):
+        super(UnexpectedDataError, self).__init__(self,
+            'Unexpected value in {} for variable {}: '
+            'expected {:04X but found {:04X}!'
+            .format(stream_path, variable, expected, value))
+        self.stream_path = stream_path
+        self.variable = variable
+        self.expected = expected
+        self.value = value
 
 #--- CONSTANTS ----------------------------------------------------------------
 
@@ -1098,17 +1132,20 @@ def decompress_stream(compressed_container):
     return decompressed_container
 
 
-def _extract_vba(ole, vba_root, project_path, dir_path):
+def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
     """
     Extract VBA macros from an OleFileIO object.
     Internal function, do not call directly.
 
     vba_root: path to the VBA root storage, containing the VBA storage and the PROJECT stream
     vba_project: path to the PROJECT stream
+    :param relaxed: If True, only create info/debug log entry if data is not as expected
+                    (e.g. opening substream fails); if False, raise an error in this case
     This is a generator, yielding (stream path, VBA filename, VBA source code) for each VBA code stream
     """
     # Open the PROJECT stream:
     project = ole.openstream(project_path)
+    log.debug('relaxed is {}'.format(relaxed))
 
     # sample content of the PROJECT stream:
 
@@ -1158,7 +1195,11 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
 
     def check_value(name, expected, value):
         if expected != value:
-            log.error("invalid value for {0} expected {1:04X} got {2:04X}".format(name, expected, value))
+            if relaxed:
+                log.error("invalid value for {0} expected {1:04X} got {2:04X}"
+                          .format(name, expected, value))
+            else:
+                raise UnexpectedDataError(dir_path, name, expected, value)
 
     dir_stream = cStringIO.StringIO(decompress_stream(dir_compressed))
 
@@ -1512,7 +1553,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
             vba_codec = 'cp%d' % projectcodepage_codepage
             log.debug("ModuleName = {0}".format(modulename_modulename))
             log.debug("ModuleNameUnicode = {0}".format(uni_out(modulename_unicode_modulename_unicode)))
-            log.debug("StreamName = {0}".format(uni_out(modulestreamname_streamname)))
+            log.debug("StreamName = {0}".format(modulestreamname_streamname))
             streamname_unicode = modulestreamname_streamname.decode(vba_codec)
             log.debug("StreamName.decode('%s') = %s" % (vba_codec, uni_out(streamname_unicode)))
             log.debug("StreamNameUnicode = {0}".format(uni_out(modulestreamname_streamname_unicode)))
@@ -1523,20 +1564,27 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
                         modulename_unicode_modulename_unicode, \
                         modulestreamname_streamname_unicode
             for stream_name in try_names:
+                # TODO: if olefile._find were less private, could replace this
+                #        try-except with calls to it
                 try:
                     code_path = vba_root + u'VBA/' + stream_name
                     log.debug('opening VBA code stream %s' % uni_out(code_path))
                     code_data = ole.openstream(code_path).read()
                     break
                 except IOError as ioe:
-                    log.debug('failed to open stream {} ({}), try other name'
+                    log.debug('failed to open stream VBA/{} ({}), try other name'
                               .format(uni_out(stream_name), ioe))
 
             if code_data is None:
-                log.warning("Could not find module {}!"
-                            .format('/'.join(uni_out(stream_name)
-                                             for stream_name in try_names)))
-                continue
+                log.info("Could not open stream {} of {} ('VBA/' + one of {})!"
+                         .format(projectmodule_index, projectmodules_count,
+                                 '/'.join("'" + uni_out(stream_name) + "'"
+                                          for stream_name in try_names)))
+                if relaxed:
+                    continue   # ... with next submodule
+                else:
+                    raise SubstreamOpenError('[BASE]', 'VBA/' +
+                                uni_out(modulename_unicode_modulename_unicode))
 
             log.debug("length of code_data = {0}".format(len(code_data)))
             log.debug("offset of code_data = {0}".format(moduleoffset_textoffset))
@@ -1556,10 +1604,14 @@ def _extract_vba(ole, vba_root, project_path, dir_path):
                 log.debug('extracted file {0}'.format(filename))
             else:
                 log.warning("module stream {0} has code data length 0".format(modulestreamname_streamname))
+        except (UnexpectedDataError, SubstreamOpenError):
+            raise
         except Exception as exc:
-            log.warning('Error parsing module {} of {} in _extract_vba:'
-                        .format(projectmodule_index, projectmodules_count),
-                        exc_info=True)
+            log.info('Error parsing module {} of {} in _extract_vba:'
+                     .format(projectmodule_index, projectmodules_count),
+                     exc_info=True)
+            if not relaxed:
+                raise
     _ = unused   # make pylint happy: now variable "unused" is being used ;-)
     return
 
@@ -2047,7 +2099,7 @@ class VBA_Parser(object):
     - PowerPoint 2007+ (.pptm, .ppsm)
     """
 
-    def __init__(self, filename, data=None, container=None):
+    def __init__(self, filename, data=None, container=None, relaxed=False):
         """
         Constructor for VBA_Parser
 
@@ -2059,6 +2111,9 @@ class VBA_Parser(object):
 
         :param container: str, path and filename of container if the file is within
         a zip archive, None otherwise.
+
+        :param relaxed: if True, treat mal-formed documents and missing streams more like MS office:
+                        do nothing; if False (default), raise errors in these cases
 
         raises a FileOpenError if all attemps to interpret the data header failed
         """
@@ -2076,6 +2131,7 @@ class VBA_Parser(object):
         self.ole_subfiles = []
         self.filename = filename
         self.container = container
+        self.relaxed = relaxed
         self.type = None
         self.vba_projects = None
         self.vba_forms = None
@@ -2183,13 +2239,27 @@ class VBA_Parser(object):
                     log.debug('Opening OLE file %s within zip' % subfile)
                     ole_data = z.open(subfile).read()
                     try:
-                        self.ole_subfiles.append(VBA_Parser(filename=subfile, data=ole_data))
-                    except FileOpenError as exc:
-                        log.info('%s is not a valid OLE file (%s)' % (subfile, exc))
-                        continue
+                        self.ole_subfiles.append(
+                            VBA_Parser(filename=subfile, data=ole_data,
+                                       relaxed=self.relaxed))
+                    except OlevbaBaseException as exc:
+                        if self.relaxed:
+                            log.info('%s is not a valid OLE file (%s)' % (subfile, exc))
+                            log.debug('Trace:', exc_info=True)
+                            continue
+                        else:
+                            raise SubstreamOpenError(self.filename, subfile,
+                                                     exc)
             z.close()
             # set type only if parsing succeeds
             self.type = TYPE_OpenXML
+        except OlevbaBaseException as exc:
+            if self.relaxed:
+                log.info('Error {} caught in Zip/OpenXML parsing for file {}'
+                         .format(exc, self.filename))
+                log.debug('Trace:', exc_info=True)
+            else:
+                raise
         except (RuntimeError, zipfile.BadZipfile, zipfile.LargeZipFile, IOError) as exc:
             # TODO: handle parsing exceptions
             log.info('Failed Zip/OpenXML parsing for file %r (%s)'
@@ -2220,17 +2290,26 @@ class VBA_Parser(object):
                     # TODO: handle different offsets => separate function
                     try:
                         ole_data = mso_file_extract(mso_data)
-                        self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
-                    except MsoExtractionError:
-                        log.info('Failed decompressing an MSO container in %r - %s'
-                                 % (fname, MSG_OLEVBA_ISSUES))
-                        log.debug('Trace:', exc_info=True)
-                    except FileOpenError as exc:
-                        log.debug('%s is not a valid OLE sub file (%s)' % (fname, exc))
+                        self.ole_subfiles.append(
+                            VBA_Parser(filename=fname, data=ole_data,
+                                       relaxed=self.relaxed))
+                    except OlevbaBaseException as exc:
+                        if relaxed:
+                            log.info('Error parsing subfile {}: {}'
+                                     .format(fname, exc))
+                            log.debug('Trace:', exc_info=True)
+                        else:
+                            raise SubstreamOpenError(self.filename, fname, exc)
                 else:
                     log.info('%s is not a valid MSO file' % fname)
             # set type only if parsing succeeds
             self.type = TYPE_Word2003_XML
+        except OlevbaBaseException as exc:
+            if self.relaxed:
+                log.info('Failed XML parsing for file %r (%s)' % (self.filename, exc))
+                log.debug('Trace:', exc_info=True)
+            else:
+                raise
         except Exception as exc:
             # TODO: differentiate exceptions for each parsing stage
             # (but ET is different libs, no good exception description in API)
@@ -2282,15 +2361,17 @@ class VBA_Parser(object):
 
                         # TODO: check if it is actually an OLE file
                         # TODO: get the MSO filename from content_location?
-                        self.ole_subfiles.append(VBA_Parser(filename=fname, data=ole_data))
-                    except MsoExtractionError:
-                        log.info('Failed decompressing an MSO container in %r - %s'
-                                      % (fname, MSG_OLEVBA_ISSUES))
-                        log.debug('Trace:', exc_info=True)
-                        # TODO: bug here - need to split in smaller functions/classes?
-                    except FileOpenError as exc:
-                        log.debug('%s does not contain a valid OLE file (%s)'
-                                  % (fname, exc))
+                        self.ole_subfiles.append(
+                            VBA_Parser(filename=fname, data=ole_data,
+                                       relaxed=self.relaxed))
+                    except OlevbaBaseException as exc:
+                        if self.relaxed:
+                            log.info('%s does not contain a valid OLE file (%s)'
+                                      % (fname, exc))
+                            log.debug('Trace:', exc_info=True)
+                            # TODO: bug here - need to split in smaller functions/classes?
+                        else:
+                            raise SubstreamOpenError(self.filename, fname, exc)
                 else:
                     log.debug('type(part_data) = %s' % type(part_data))
                     try:
@@ -2299,6 +2380,8 @@ class VBA_Parser(object):
                         log.debug('part_data has no __getitem__')
             # set type only if parsing succeeds
             self.type = TYPE_MHTML
+        except OlevbaBaseException:
+            raise
         except Exception:
             log.info('Failed MIME parsing for file %r - %s'
                           % (self.filename, MSG_OLEVBA_ISSUES))
@@ -2457,7 +2540,7 @@ class VBA_Parser(object):
 
         :return: bool, True if at least one VBA project has been found, False otherwise
         """
-        #TODO: return None or raise exception if format not supported like PPT 97-2003
+        #TODO: return None or raise exception if format not supported
         #TODO: return the number of VBA projects found instead of True/False?
         # if this method was already called, return the previous result:
         if self.contains_macros is not None:
@@ -2494,12 +2577,20 @@ class VBA_Parser(object):
                 try:
                     data = ole._open(d.isectStart, d.size).read()
                     log.debug('Read %d bytes' % len(data))
-                    log.debug(repr(data))
+                    if len(data) > 200:
+                        log.debug('{}...[much more data]...{}'
+                                  .format(repr(data[:100]), repr(data[-50:])))
+                    else:
+                        log.debug(repr(data))
                     if 'Attribut' in data:
                         log.debug('Found VBA compressed code')
                         self.contains_macros = True
-                except:
-                    log.exception('Error when reading OLE Stream %r' % d.name)
+                except IOError as exc:
+                    if self.relaxed:
+                        log.info('Error when reading OLE Stream %r' % d.name)
+                        log.debug('Trace:', exc_trace=True)
+                    else:
+                        raise SubstreamOpenError(self.filename, d.name, exc)
         return self.contains_macros
 
     def extract_macros(self):
@@ -2530,8 +2621,9 @@ class VBA_Parser(object):
             vba_stream_ids = set()
             for vba_root, project_path, dir_path in self.vba_projects:
                 # extract all VBA macros from that VBA root storage:
-                for stream_path, vba_filename, vba_code in _extract_vba(self.ole_file, vba_root, project_path,
-                                                                        dir_path):
+                for stream_path, vba_filename, vba_code in \
+                        _extract_vba(self.ole_file, vba_root, project_path,
+                                     dir_path, self.relaxed):
                     # store direntry ids in a set:
                     vba_stream_ids.add(self.ole_file._find(stream_path))
                     yield (self.filename, stream_path, vba_filename, vba_code)
@@ -2751,21 +2843,12 @@ class VBA_Parser_CLI(VBA_Parser):
     of olevba. (see VBA_Parser)
     """
 
-    def __init__(self, filename, data=None, container=None):
+    def __init__(self, *args, **kwargs):
         """
         Constructor for VBA_Parser_CLI.
-        Calls __init__ from VBA_Parser
-
-        :param filename: filename or path of file to parse, or file-like object
-
-        :param data: None or bytes str, if None the file will be read from disk (or from the file-like object).
-        If data is provided as a bytes string, it will be parsed as the content of the file in memory,
-        and not read from disk. Note: files must be read in binary mode, i.e. open(f, 'rb').
-
-        :param container: str, path and filename of container if the file is within
-        a zip archive, None otherwise.
+        Calls __init__ from VBA_Parser with all arguments --> see doc there
         """
-        super(VBA_Parser_CLI, self).__init__(filename, data=data, container=container)
+        super(VBA_Parser_CLI, self).__init__(*args, **kwargs)
 
 
     def print_analysis(self, show_decoded_strings=False, deobfuscate=False):
@@ -2876,6 +2959,8 @@ class VBA_Parser_CLI(VBA_Parser):
                     print self.reveal()
             else:
                 print 'No VBA macros found.'
+        except OlevbaBaseException:
+            raise
         except Exception as exc:
             # display the exception with full stack trace for debugging
             log.info('Error processing file %s (%s)' % (self.filename, exc))
@@ -3071,6 +3156,8 @@ def main():
                             help="logging level debug/info/warning/error/critical (default=%default)")
     parser.add_option('--deobf', dest="deobfuscate", action="store_true", default=False,
                             help="Attempt to deobfuscate VBA expressions (slow)")
+    parser.add_option('--relaxed', dest="relaxed", action="store_true", default=False,
+                            help="Do not raise errors if opening of substream fails")
 
     (options, args) = parser.parse_args()
 
@@ -3146,7 +3233,8 @@ def main():
 
             try:
                 # Open the file
-                vba_parser = VBA_Parser_CLI(filename, data=data, container=container)
+                vba_parser = VBA_Parser_CLI(filename, data=data, container=container,
+                                            relaxed=options.relaxed)
 
                 if options.output_mode == 'detailed':
                     # fully detailed output
@@ -3175,6 +3263,18 @@ def main():
                     raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
                 count += 1
 
+            except (SubstreamOpenError, UnexpectedDataError) as exc:
+                if options.output_mode in ('triage', 'unspecified'):
+                    print '%-12s %s - Error opening substream or uenxpected ' \
+                          'content' % ('?', filename)
+                elif options.output_mode == 'json':
+                    print_json(file=filename, type='error',
+                               error=type(exc).__name__, message=str(exc))
+                else:
+                    log.exception('Error opening substream or unexpected '
+                                  'content in %s' % filename)
+                return_code = RETURN_OPEN_ERROR if return_code == 0 \
+                                                else RETURN_SEVERAL_ERRS
             except FileOpenError as exc:
                 if options.output_mode in ('triage', 'unspecified'):
                     print '%-12s %s - File format not supported' % ('?', filename)
