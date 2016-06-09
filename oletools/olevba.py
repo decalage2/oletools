@@ -173,6 +173,8 @@ https://github.com/unixfreak0037/officeparser
 #                      - improved error and exception handling
 #                      - improved JSON output
 # 2016-05-12       CH: - added support for PowerPoint 97-2003 files
+# 2016-06-06       CH: - improved handling of unicode VBA module names
+# 2016-06-07       CH: - added option --relaxed, stricter parsing by default
 
 __version__ = '0.47'
 
@@ -2294,7 +2296,7 @@ class VBA_Parser(object):
                             VBA_Parser(filename=fname, data=ole_data,
                                        relaxed=self.relaxed))
                     except OlevbaBaseException as exc:
-                        if relaxed:
+                        if self.relaxed:
                             log.info('Error parsing subfile {}: {}'
                                      .format(fname, exc))
                             log.debug('Trace:', exc_info=True)
