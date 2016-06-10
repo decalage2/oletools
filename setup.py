@@ -41,11 +41,11 @@ name         = "oletools"
 version      = '0.47'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
-author       ="Philippe Lagadec"
-author_email ="decalage at laposte dot net"
-url          ="http://www.decalage.info/python/oletools"
-license      ="BSD"
-download_url ="https://bitbucket.org/decalage/oletools/downloads"
+author       = "Philippe Lagadec"
+author_email = "decalage at laposte dot net"
+url          = "http://www.decalage.info/python/oletools"
+license      = "BSD"
+download_url = "https://github.com/decalage2/oletools/releases"
 
 # see https://pypi.python.org/pypi?%3Aaction=list_classifiers
 classifiers=[
