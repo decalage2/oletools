@@ -22,7 +22,12 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2016-04-19 v0.46**: [olevba](https://github.com/decalage2/oletools/wiki/olevba)
+- **2016-06-10 v0.47**: [olevba](https://github.com/decalage2/oletools/wiki/olevba) added PPT97 macros support,
+improved handling of malformed/incomplete documents, improved error handling and JSON output,
+now returns an exit code based on analysis results, new --relaxed option.
+[rtfobj](https://github.com/decalage2/oletools/wiki/rtfobj): improved parsing to handle obfuscated RTF documents,
+added -d option to set output dir. Moved repository and documentation to GitHub.
+- 2016-04-19 v0.46: [olevba](https://github.com/decalage2/oletools/wiki/olevba)
 does not deobfuscate VBA expressions by default (much faster), new option --deobf
 to enable it. Fixed color display bug on Windows for several tools.
 - 2016-04-12 v0.45: improved [rtfobj](https://github.com/decalage2/oletools/wiki/rtfobj)
@@ -31,8 +36,8 @@ improved [olevba](https://github.com/decalage2/oletools/wiki/olevba)
 to export results in JSON format.
 - 2016-03-11 v0.44: improved [olevba](https://github.com/decalage2/oletools/wiki/olevba)
 to extract and analyse strings from VBA Forms.
-- 2016-03-04 v0.43: added new tool MacroRaptor (mraptor) to detect malicious macros, bugfix
-and slight improvements in [olevba](https://github.com/decalage2/oletools/wiki/olevba).
+- 2016-03-04 v0.43: added new tool [MacroRaptor](https://github.com/decalage2/oletools/wiki/mraptor) (mraptor)
+to detect malicious macros, bugfix and slight improvements in [olevba](https://github.com/decalage2/oletools/wiki/olevba).
 - 2016-02-07 v0.42: added two new tools oledir and olemap, better handling of malformed
 files and several bugfixes in [olevba](https://github.com/decalage2/oletools/wiki/olevba),
 improved display for [olemeta](https://github.com/decalage2/oletools/wiki/olemeta).
