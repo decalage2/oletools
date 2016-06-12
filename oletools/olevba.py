@@ -175,8 +175,9 @@ https://github.com/unixfreak0037/officeparser
 # 2016-05-12       CH: - added support for PowerPoint 97-2003 files
 # 2016-06-06       CH: - improved handling of unicode VBA module names
 # 2016-06-07       CH: - added option --relaxed, stricter parsing by default
+# 2016-06-12 v0.48 PL: - fixed small bugs in VBA parsing code
 
-__version__ = '0.47'
+__version__ = '0.48'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -1469,6 +1470,8 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             check_value('MODULENAME_Id', 0x0019, modulename_id)
             modulename_sizeof_modulename = struct.unpack("<L", dir_stream.read(4))[0]
             modulename_modulename = dir_stream.read(modulename_sizeof_modulename)
+            # TODO: preset variables to avoid "referenced before assignment" errors
+            modulename_unicode_modulename_unicode = ''
             # account for optional sections
             section_id = struct.unpack("<H", dir_stream.read(2))[0]
             if section_id == 0x0047:
@@ -3289,14 +3292,14 @@ def main():
                                                 else RETURN_SEVERAL_ERRS
             except ProcessingError as exc:
                 if options.output_mode in ('triage', 'unspecified'):
-                    print '%-12s %s - %s' % ('!ERROR', filename, exc.orig_exception)
+                    print '%-12s %s - %s' % ('!ERROR', filename, exc.orig_exc)
                 elif options.output_mode == 'json':
                     print_json(file=filename, type='error',
                                error=type(exc).__name__,
-                               message=str(exc.orig_exception))
+                               message=str(exc.orig_exc))
                 else:
                     log.exception('Error processing file %s (%s)!'
-                                  % (filename, exc.orig_exception))
+                                  % (filename, exc.orig_exc))
                 return_code = RETURN_PARSE_ERROR if return_code == 0 \
                                                 else RETURN_SEVERAL_ERRS
             finally:
