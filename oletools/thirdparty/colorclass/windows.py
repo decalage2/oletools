@@ -7,8 +7,8 @@ import ctypes
 import re
 import sys
 
-from colorclass.codes import ANSICodeMapping, BASE_CODES
-from colorclass.core import RE_SPLIT
+from .codes import ANSICodeMapping, BASE_CODES
+from .core import RE_SPLIT
 
 ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
 INVALID_HANDLE_VALUE = -1

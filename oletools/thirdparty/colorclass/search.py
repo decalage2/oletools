@@ -1,6 +1,6 @@
 """Determine color of characters that may or may not be adjacent to ANSI escape sequences."""
 
-from colorclass.parse import RE_SPLIT
+from .parse import RE_SPLIT
 
 
 def build_color_index(ansi_string):

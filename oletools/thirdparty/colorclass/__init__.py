@@ -8,16 +8,16 @@ https://github.com/Robpol86/colorclass
 https://pypi.python.org/pypi/colorclass
 """
 
-from colorclass.codes import list_tags  # noqa
-from colorclass.color import Color  # noqa
-from colorclass.toggles import disable_all_colors  # noqa
-from colorclass.toggles import disable_if_no_tty  # noqa
-from colorclass.toggles import enable_all_colors  # noqa
-from colorclass.toggles import is_enabled  # noqa
-from colorclass.toggles import is_light  # noqa
-from colorclass.toggles import set_dark_background  # noqa
-from colorclass.toggles import set_light_background  # noqa
-from colorclass.windows import Windows  # noqa
+from .codes import list_tags  # noqa
+from .color import Color  # noqa
+from .toggles import disable_all_colors  # noqa
+from .toggles import disable_if_no_tty  # noqa
+from .toggles import enable_all_colors  # noqa
+from .toggles import is_enabled  # noqa
+from .toggles import is_light  # noqa
+from .toggles import set_dark_background  # noqa
+from .toggles import set_light_background  # noqa
+from .windows import Windows  # noqa
 
 
 __all__ = (

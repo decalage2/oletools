@@ -9,12 +9,12 @@ from __future__ import print_function
 import fileinput
 import os
 
-from colorclass.color import Color
-from colorclass.toggles import disable_all_colors
-from colorclass.toggles import enable_all_colors
-from colorclass.toggles import set_dark_background
-from colorclass.toggles import set_light_background
-from colorclass.windows import Windows
+from .color import Color
+from .toggles import disable_all_colors
+from .toggles import enable_all_colors
+from .toggles import set_dark_background
+from .toggles import set_light_background
+from .windows import Windows
 
 TRUTHY = ('true', '1', 'yes', 'on')
 

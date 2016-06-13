@@ -2,7 +2,7 @@
 
 import re
 
-from colorclass.codes import ANSICodeMapping, BASE_CODES
+from .codes import ANSICodeMapping, BASE_CODES
 
 CODE_GROUPS = (
     tuple(set(str(i) for i in BASE_CODES.values() if i and (40 <= i <= 49 or 100 <= i <= 109))),  # bg colors
