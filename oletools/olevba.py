@@ -175,9 +175,9 @@ https://github.com/unixfreak0037/officeparser
 # 2016-05-12       CH: - added support for PowerPoint 97-2003 files
 # 2016-06-06       CH: - improved handling of unicode VBA module names
 # 2016-06-07       CH: - added option --relaxed, stricter parsing by default
-# 2016-06-12 v0.48 PL: - fixed small bugs in VBA parsing code
+# 2016-06-12 v0.47.1 PL: - fixed small bugs in VBA parsing code
 
-__version__ = '0.48'
+__version__ = '0.47.1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -2654,11 +2654,14 @@ class VBA_Parser(object):
                         start = match.start() - 3
                         log.debug('Found VBA compressed code at index %X' % start)
                         compressed_code = data[start:]
-                        vba_code = decompress_stream(compressed_code)
-                        yield (self.filename, d.name, d.name, vba_code)
-
-
-
+                        try:
+                            vba_code = decompress_stream(compressed_code)
+                            yield (self.filename, d.name, d.name, vba_code)
+                        except Exception as exc:
+                            # display the exception with full stack trace for debugging
+                            log.debug('Error processing stream %r in file %r (%s)' % (d.name, self.filename, exc))
+                            log.debug('Traceback:', exc_info=True)
+                            # do not raise the error, as it is unlikely to be a compressed macro stream
 
     def extract_all_macros(self):
         """
