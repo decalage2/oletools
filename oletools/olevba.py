@@ -175,9 +175,10 @@ https://github.com/unixfreak0037/officeparser
 # 2016-05-12       CH: - added support for PowerPoint 97-2003 files
 # 2016-06-06       CH: - improved handling of unicode VBA module names
 # 2016-06-07       CH: - added option --relaxed, stricter parsing by default
-# 2016-06-12 v0.47.1 PL: - fixed small bugs in VBA parsing code
+# 2016-06-12 v0.48 PL: - fixed small bugs in VBA parsing code
+# 2016-07-01       PL: - fixed issue #58 with format() to support Python 2.6
 
-__version__ = '0.47.1'
+__version__ = '0.48'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -307,7 +308,7 @@ class OlevbaBaseException(Exception):
     def __init__(self, msg, filename=None, orig_exc=None, **kwargs):
         if orig_exc:
             super(OlevbaBaseException, self).__init__(msg +
-                                                      ' ({})'.format(orig_exc),
+                                                      ' ({0})'.format(orig_exc),
                                                       **kwargs)
         else:
             super(OlevbaBaseException, self).__init__(msg, **kwargs)
@@ -358,8 +359,8 @@ class UnexpectedDataError(OlevbaBaseException):
 
     def __init__(self, stream_path, variable, expected, value):
         super(UnexpectedDataError, self).__init__(self,
-            'Unexpected value in {} for variable {}: '
-            'expected {:04X but found {:04X}!'
+            'Unexpected value in {0} for variable {1}: '
+            'expected {2:04X} but found {3:04X}!'
             .format(stream_path, variable, expected, value))
         self.stream_path = stream_path
         self.variable = variable
@@ -1148,7 +1149,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
     """
     # Open the PROJECT stream:
     project = ole.openstream(project_path)
-    log.debug('relaxed is {}'.format(relaxed))
+    log.debug('relaxed is %s' % relaxed)
 
     # sample content of the PROJECT stream:
 
@@ -1577,12 +1578,12 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
                     code_data = ole.openstream(code_path).read()
                     break
                 except IOError as ioe:
-                    log.debug('failed to open stream VBA/{} ({}), try other name'
-                              .format(uni_out(stream_name), ioe))
+                    log.debug('failed to open stream VBA/%r (%r), try other name'
+                              % (uni_out(stream_name), ioe))
 
             if code_data is None:
-                log.info("Could not open stream {} of {} ('VBA/' + one of {})!"
-                         .format(projectmodule_index, projectmodules_count,
+                log.info("Could not open stream %d of %d ('VBA/' + one of %r)!"
+                         % (projectmodule_index, projectmodules_count,
                                  '/'.join("'" + uni_out(stream_name) + "'"
                                           for stream_name in try_names)))
                 if relaxed:
@@ -1612,7 +1613,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
         except (UnexpectedDataError, SubstreamOpenError):
             raise
         except Exception as exc:
-            log.info('Error parsing module {} of {} in _extract_vba:'
+            log.info('Error parsing module {0} of {1} in _extract_vba:'
                      .format(projectmodule_index, projectmodules_count),
                      exc_info=True)
             if not relaxed:
@@ -1897,7 +1898,7 @@ def print_json(json_dict=None, _json_is_last=False, **json_parts):
                          'key=value parts but got both)')
     elif (json_dict is not None) and (not isinstance(json_dict, dict)):
         raise ValueError('Invalid json argument: want either single dict or '
-                         'key=value parts but got {} instead of dict)'
+                         'key=value parts but got {0} instead of dict)'
                          .format(type(json_dict)))
     if json_parts:
         json_dict = json_parts
@@ -1909,12 +1910,12 @@ def print_json(json_dict=None, _json_is_last=False, **json_parts):
     lines = json.dumps(json2ascii(json_dict), check_circular=False,
                            indent=4, ensure_ascii=False).splitlines()
     for line in lines[:-1]:
-        print '    {}'.format(line)
+        print '    {0}'.format(line)
     if _json_is_last:
-        print '    {}'.format(lines[-1])   # print last line without comma
+        print '    {0}'.format(lines[-1])   # print last line without comma
         print ']'
     else:
-        print '    {},'.format(lines[-1])   # print last line with comma
+        print '    {0},'.format(lines[-1])   # print last line with comma
 
 
 class VBA_Scanner(object):
@@ -2260,7 +2261,7 @@ class VBA_Parser(object):
             self.type = TYPE_OpenXML
         except OlevbaBaseException as exc:
             if self.relaxed:
-                log.info('Error {} caught in Zip/OpenXML parsing for file {}'
+                log.info('Error {0} caught in Zip/OpenXML parsing for file {1}'
                          .format(exc, self.filename))
                 log.debug('Trace:', exc_info=True)
             else:
@@ -2300,7 +2301,7 @@ class VBA_Parser(object):
                                        relaxed=self.relaxed))
                     except OlevbaBaseException as exc:
                         if self.relaxed:
-                            log.info('Error parsing subfile {}: {}'
+                            log.info('Error parsing subfile {0}: {1}'
                                      .format(fname, exc))
                             log.debug('Trace:', exc_info=True)
                         else:
@@ -2583,8 +2584,7 @@ class VBA_Parser(object):
                     data = ole._open(d.isectStart, d.size).read()
                     log.debug('Read %d bytes' % len(data))
                     if len(data) > 200:
-                        log.debug('{}...[much more data]...{}'
-                                  .format(repr(data[:100]), repr(data[-50:])))
+                        log.debug('%r...[much more data]...%r' % (data[:100], data[-50:]))
                     else:
                         log.debug(repr(data))
                     if 'Attribut' in data:
