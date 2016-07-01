@@ -2660,17 +2660,7 @@ class VBA_Parser(object):
                             # display the exception with full stack trace for debugging
                             log.debug('Error processing stream %r in file %r (%s)' % (d.name, self.filename, exc))
                             log.debug('Traceback:', exc_info=True)
-                            log.debug('try uncompressed:')
-                            vba_code = compressed_code
-                            lines = vba_code.splitlines()
-                            for line in lines[:10]:
-                                replaced = ''.join(c if ord(c)<128 else '.' for c in line )
-                                log.debug('code: {}'.format(replaced))
-                            log.debug('...(skipping {} lines here)...'
-                                      .format(len(lines)-15))
-                            for line in lines[-5:]:
-                                replaced = ''.join(c if ord(c)<128 else '.' for c in line )
-                                log.debug('code: {}'.format(replaced))
+                            log.debug('try uncompressed')
                         yield (self.filename, d.name, d.name, vba_code)
 
     def extract_all_macros(self):
