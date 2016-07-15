@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from __future__ import print_function
+
 """
 rtfobj.py
 
@@ -52,12 +54,12 @@ http://www.decalage.info/python/oletools
 #                        (contribution by Thomas Jarosch)
 #                  TJ: - sanitize filenames to avoid special characters
 # 2016-05-29       PL: - improved parsing, fixed issue #42
+# 2016-07-13 v0.48 PL: - new RtfParser and RtfObjParser classes
 
-__version__ = '0.47'
+__version__ = '0.48'
 
 #------------------------------------------------------------------------------
 # TODO:
-# - improve regex pattern for better performance?
 # - allow semicolon within hex, as found in  this sample:
 #   http://contagiodump.blogspot.nl/2011/10/sep-28-cve-2010-3333-manuscript-with.html
 
@@ -69,6 +71,7 @@ import re, os, sys, string, binascii, logging, optparse
 from thirdparty.xglob import xglob
 from oleobj import OleObject, OleNativeStream
 import oleobj
+
 
 # === LOGGING =================================================================
 
@@ -125,11 +128,47 @@ HEX_DIGIT = r'[0-9A-Fa-f]'
 # HEX_CHAR = r'[0-9A-Fa-f]\s*[0-9A-Fa-f]'
 # Even worse, MS Word also allows ANY RTF-style tag {*} in between!!
 # AND the tags can be nested...
-SINGLE_RTF_TAG = r'[{][^{}]*[}]'
+#SINGLE_RTF_TAG = r'[{][^{}]*[}]'
+# Actually RTF tags may contain braces escaped with backslash (\{ \}):
+SINGLE_RTF_TAG = r'[{](?:\\.|[^{}\\])*[}]'
+
 # Nested tags, two levels (because Python's re does not support nested matching):
-NESTED_RTF_TAG = r'[{](?:[^{}]|'+SINGLE_RTF_TAG+r')*[}]'
+# NESTED_RTF_TAG = r'[{](?:[^{}]|'+SINGLE_RTF_TAG+r')*[}]'
+NESTED_RTF_TAG = r'[{](?:\\.|[^{}\\]|'+SINGLE_RTF_TAG+r')*[}]'
+
+# AND it is also allowed to insert ANY control word or control symbol (ignored)
+# According to Rich Text Format (RTF) Specification Version 1.9.1,
+# section "Control Word":
+# control word = \<ASCII Letter [a-zA-Z] Sequence max 32><Delimiter>
+# delimiter = space, OR signed integer followed by any non-digit,
+#             OR any character except letter and digit
+# examples of valid control words:
+# "\AnyThing " "\AnyThing123z" ""\AnyThing-456{" "\AnyThing{"
+# control symbol = \<any char except letter or digit> (followed by anything)
+
+ASCII_NAME = r'([a-zA-Z]{1,250})'
+
+# using Python's re lookahead assumption:
+# (?=...) Matches if ... matches next, but doesn't consume any of the string.
+# This is called a lookahead assertion. For example, Isaac (?=Asimov) will
+# match 'Isaac ' only if it's followed by 'Asimov'.
+
+# TODO: Find the actual limit on the number of digits for Word
+# SIGNED_INTEGER = r'(-?\d{1,250})'
+SIGNED_INTEGER = r'(-?\d+)'
+
+CONTROL_WORD = r'(?:\\' + ASCII_NAME + r'(?:(?=[^a-zA-Z0-9-])|' + SIGNED_INTEGER + r'(?=[^0-9])))'
+re_control_word = re.compile(CONTROL_WORD)
+
+CONTROL_SYMBOL = r'(?:\\[^a-zA-Z0-9])'
+re_control_symbol = re.compile(CONTROL_SYMBOL)
+
+# Text that is not a control word/symbol or a group:
+TEXT = r'[^{}\\]+'
+re_text = re.compile(TEXT)
+
 # ignored whitespaces and tags within a hex block:
-IGNORED = r'(?:\s|'+NESTED_RTF_TAG+r')*'
+IGNORED = r'(?:\s|'+NESTED_RTF_TAG+'|'+CONTROL_SYMBOL+'|'+CONTROL_WORD+r')*'
 #IGNORED = r'\s*'
 
 # HEX_CHAR = HEX_DIGIT + IGNORED + HEX_DIGIT
@@ -174,6 +213,316 @@ DECIMAL_GROUP = r'(\d{1,250})'
 re_delims_bin_decimal = re.compile(DELIMITERS_ZeroOrMore + BACKSLASH_BIN
                                    + DECIMAL_GROUP + DELIMITER)
 re_delim_hexblock = re.compile(DELIMITER + PATTERN)
+
+# Destination Control Words, according to MS RTF Specifications v1.9.1:
+DESTINATION_CONTROL_WORDS = frozenset((
+    "aftncn", "aftnsep", "aftnsepc", "annotation", "atnauthor", "atndate", "atnicn", "atnid", "atnparent", "atnref",
+    "atntime", "atrfend", "atrfstart", "author", "background", "bkmkend", "bkmkstart", "blipuid", "buptim", "category",
+    "colorschememapping", "colortbl", "comment", "company", "creatim", "datafield", "datastore", "defchp", "defpap",
+    "do", "doccomm", "docvar", "dptxbxtext", "ebcend", "ebcstart", "factoidname", "falt", "fchars", "ffdeftext",
+    "ffentrymcr", "ffexitmcr", "ffformat", "ffhelptext", "ffl", "ffname", "ffstattext", "field", "file", "filetbl",
+    "fldinst", "fldrslt", "fldtype", "fname", "fontemb", "fontfile", "fonttbl", "footer", "footerf", "footerl",
+    "footerr", "footnote", "formfield", "ftncn", "ftnsep", "ftnsepc", "g", "generator", "gridtbl", "header", "headerf",
+    "headerl", "headerr", "hl", "hlfr", "hlinkbase", "hlloc", "hlsrc", "hsv", "htmltag", "info", "keycode", "keywords",
+    "latentstyles", "lchars", "levelnumbers", "leveltext", "lfolevel", "linkval", "list", "listlevel", "listname",
+    "listoverride", "listoverridetable", "listpicture", "liststylename", "listtable", "listtext", "lsdlockedexcept",
+    "macc", "maccPr", "mailmerge", "maln", "malnScr", "manager", "margPr", "mbar", "mbarPr", "mbaseJc", "mbegChr",
+    "mborderBox", "mborderBoxPr", "mbox", "mboxPr", "mchr", "mcount", "mctrlPr", "md", "mdeg", "mdegHide", "mden",
+    "mdiff", "mdPr", "me", "mendChr", "meqArr", "meqArrPr", "mf", "mfName", "mfPr", "mfunc", "mfuncPr", "mgroupChr",
+    "mgroupChrPr", "mgrow", "mhideBot", "mhideLeft", "mhideRight", "mhideTop", "mhtmltag", "mlim", "mlimloc", "mlimlow",
+    "mlimlowPr", "mlimupp", "mlimuppPr", "mm", "mmaddfieldname", "mmath", "mmathPict", "mmathPr", "mmaxdist", "mmc",
+    "mmcJc", "mmconnectstr", "mmconnectstrdata", "mmcPr", "mmcs", "mmdatasource", "mmheadersource", "mmmailsubject",
+    "mmodso", "mmodsofilter", "mmodsofldmpdata", "mmodsomappedname", "mmodsoname", "mmodsorecipdata", "mmodsosort",
+    "mmodsosrc", "mmodsotable", "mmodsoudl", "mmodsoudldata", "mmodsouniquetag", "mmPr", "mmquery", "mmr", "mnary",
+    "mnaryPr", "mnoBreak", "mnum", "mobjDist", "moMath", "moMathPara", "moMathParaPr", "mopEmu", "mphant", "mphantPr",
+    "mplcHide", "mpos", "mr", "mrad", "mradPr", "mrPr", "msepChr", "mshow", "mshp", "msPre", "msPrePr", "msSub",
+    "msSubPr", "msSubSup", "msSubSupPr", "msSup", "msSupPr", "mstrikeBLTR", "mstrikeH", "mstrikeTLBR", "mstrikeV",
+    "msub", "msubHide", "msup", "msupHide", "mtransp", "mtype", "mvertJc", "mvfmf", "mvfml", "mvtof", "mvtol",
+    "mzeroAsc", "mzeroDesc", "mzeroWid", "nesttableprops", "nextfile", "nonesttables", "objalias", "objclass",
+    "objdata", "object", "objname", "objsect", "objtime", "oldcprops", "oldpprops", "oldsprops", "oldtprops",
+    "oleclsid", "operator", "panose", "password", "passwordhash", "pgp", "pgptbl", "picprop", "pict", "pn", "pnseclvl",
+    "pntext", "pntxta", "pntxtb", "printim", "private", "propname", "protend", "protstart", "protusertbl", "pxe",
+    "result", "revtbl", "revtim", "rsidtbl", "rtf", "rxe", "shp", "shpgrp", "shpinst", "shppict", "shprslt", "shptxt",
+    "sn", "sp", "staticval", "stylesheet", "subject", "sv", "svb", "tc", "template", "themedata", "title", "txe", "ud",
+    "upr", "userprops", "wgrffmtfilter", "windowcaption", "writereservation", "writereservhash", "xe", "xform",
+    "xmlattrname", "xmlattrvalue", "xmlclose", "xmlname", "xmlnstbl", "xmlopen"
+    ))
+
+
+
+#=== CLASSES =================================================================
+
+class Destination(object):
+    """
+    Stores the data associated with a destination control word
+    """
+    def __init__(self, cword=None):
+        self.cword = cword
+        self.data = ''
+        self.start = None
+        self.end = None
+        self.group_level = 0
+
+
+# class Group(object):
+#     """
+#     Stores the data associated with a group between braces {...}
+#     """
+#     def __init__(self, cword=None):
+#         self.start = None
+#         self.end = None
+#         self.level = None
+
+
+
+class RtfParser(object):
+    """
+    Very simple generic RTF parser
+    """
+
+    def __init__(self, data):
+        self.data = data
+        self.index = 0
+        self.size = len(data)
+        self.group_level = 0
+        # default destination for the document text:
+        document_destination = Destination()
+        self.destinations = [document_destination]
+        self.current_destination = document_destination
+
+    def parse(self):
+        self.index = 0
+        while self.index < self.size:
+            if self.data[self.index] == '{':
+                self._open_group()
+                self.index += 1
+                continue
+            if self.data[self.index] == '}':
+                self._close_group()
+                self.index += 1
+                continue
+            if self.data[self.index] == '\\':
+                m = re_control_word.match(self.data, self.index)
+                if m:
+                    cword = m.group(1)
+                    param = None
+                    if len(m.groups()) > 1:
+                        param = m.group(2)
+                    # log.debug('control word %r at index %Xh - cword=%r param=%r' % (m.group(), self.index, cword, param))
+                    self._control_word(m, cword, param)
+                    self.index += len(m.group())
+                    # if it's \bin, call _bin after updating index
+                    if cword == 'bin':
+                        self._bin(m, param)
+                    continue
+                m = re_control_symbol.match(self.data, self.index)
+                if m:
+                    self.control_symbol(m)
+                    self.index += len(m.group())
+                    continue
+            m = re_text.match(self.data, self.index)
+            if m:
+                self._text(m)
+                self.index += len(m.group())
+                continue
+            raise RuntimeError('Should not have reached this point - index=%Xh' % self.index)
+        self.end_of_file()
+
+
+    def _open_group(self):
+        self.group_level += 1
+        log.debug('{ Open Group at index %Xh - level=%d' % (self.index, self.group_level))
+        # call user method AFTER increasing the level:
+        self.open_group()
+
+    def open_group(self):
+        #log.debug('open group at index %Xh' % self.index)
+        pass
+
+    def _close_group(self):
+        log.debug('} Close Group at index %Xh - level=%d' % (self.index, self.group_level))
+        # call user method BEFORE decreasing the level:
+        self.close_group()
+        # if the destination level is the same as the group level, close the destination:
+        if self.group_level == self.current_destination.group_level:
+            log.debug('Current Destination %r level = %d => Close Destination' % (
+                self.current_destination.cword, self.current_destination.group_level))
+            self._close_destination()
+        else:
+            log.debug('Current Destination %r level = %d => Continue with same Destination' % (
+                self.current_destination.cword, self.current_destination.group_level))
+        self.group_level -= 1
+        log.debug('Decreased group level to %d' % self.group_level)
+
+    def close_group(self):
+        #log.debug('close group at index %Xh' % self.index)
+        pass
+
+    def _open_destination(self, matchobject, cword):
+        # if the current destination is at the same group level, close it first:
+        if self.current_destination.group_level == self.group_level:
+            self._close_destination()
+        new_dest = Destination(cword)
+        new_dest.group_level = self.group_level
+        self.destinations.append(new_dest)
+        self.current_destination = new_dest
+        # start of the destination is right after the control word:
+        new_dest.start = self.index + len(matchobject.group())
+        log.debug("Open Destination %r start=%Xh - level=%d" % (cword, new_dest.start, new_dest.group_level))
+        # call the corresponding user method for additional processing:
+        self.open_destination(self.current_destination)
+
+    def open_destination(self, destination):
+        pass
+
+    def _close_destination(self):
+        log.debug("Close Destination %r end=%Xh - level=%d" % (self.current_destination.cword,
+            self.index, self.current_destination.group_level))
+        self.current_destination.end = self.index
+        # call the corresponding user method for additional processing:
+        self.close_destination(self.current_destination)
+        if len(self.destinations)>0:
+            # remove the current destination from the stack, and go back to the previous one:
+            self.destinations.pop()
+        if len(self.destinations) > 0:
+            self.current_destination = self.destinations[-1]
+        else:
+            log.debug('All destinations are closed, keeping the document destination open')
+
+    def close_destination(self, destination):
+        pass
+
+    def _control_word(self, matchobject, cword, param):
+        #log.debug('control word %r at index %Xh' % (matchobject.group(), self.index))
+        if cword in DESTINATION_CONTROL_WORDS:
+            # log.debug('%r is a destination control word: starting a new destination' % cword)
+            self._open_destination(matchobject, cword)
+        # call the corresponding user method for additional processing:
+        self.control_word(matchobject, cword, param)
+
+    def control_word(self, matchobject, cword, param):
+        pass
+
+    def control_symbol(self, matchobject):
+        #log.debug('control symbol %r at index %Xh' % (matchobject.group(), self.index))
+        pass
+
+    def _text(self, matchobject):
+        text = matchobject.group()
+        self.current_destination.data += text
+        self.text(matchobject, text)
+
+    def text(self, matchobject, text):
+        #log.debug('text %r at index %Xh' % (matchobject.group(), self.index))
+        pass
+
+    def _bin(self, matchobject, param):
+        binlen = int(param)
+        log.debug('\\bin: reading %d bytes of binary data' % binlen)
+        # TODO: handle optional space?
+        # TODO: handle negative length, and length greater than data
+        bindata = self.data[self.index:self.index + binlen]
+        self.index += binlen
+        self.bin(bindata)
+
+    def bin(self, bindata):
+        pass
+
+    def _end_of_file(self):
+        log.debug('%Xh Reached End of File')
+        # close any group/destination that is still open:
+        while self.group_level > 0:
+            log.debug('Group Level = %d, closing group' % self.group_level)
+            self._close_group()
+        self.end_of_file()
+
+    def end_of_file(self):
+        pass
+
+
+class RtfObjParser(RtfParser):
+    """
+    Specialized RTF parser to extract OLE objects
+    """
+
+    def __init__(self, data, fname_prefix='rtf'):
+        super(RtfObjParser, self).__init__(data)
+        self.fname_prefix = fname_prefix
+
+    def open_destination(self, destination):
+        if destination.cword == 'objdata':
+            log.debug('*** Start object data at index %Xh' % destination.start)
+
+    def close_destination(self, destination):
+        if destination.cword == 'objdata':
+            log.debug('*** Close object data at index %Xh' % self.index)
+            # Filter out all whitespaces first (just ignored):
+            hexdata1 = destination.data.translate(TRANSTABLE_NOCHANGE, ' \t\r\n\f\v')
+            # Then filter out any other non-hex character:
+            hexdata = re.sub(r'[^a-hA-H0-9]', '', hexdata1)
+            if len(hexdata) < len(hexdata1):
+                # this is only for debugging:
+                nonhex = re.sub(r'[a-hA-H0-9]', '', hexdata1)
+                log.debug('Found non-hex chars in hexdata: %r' % nonhex)
+            # MS Word accepts an extra hex digit, so we need to trim it if present:
+            if len(hexdata) & 1:
+                log.debug('Odd length, trimmed last byte.')
+                hexdata = hexdata[:-1]
+            object_data = binascii.unhexlify(hexdata)
+            print('found object size %d at index %08X - end %08X' % (len(object_data),
+                                                                     destination.start, self.index))
+            fname = '%s_object_%08X.raw' % (self.fname_prefix, destination.start)
+            print('saving object to file %s' % fname)
+            open(fname, 'wb').write(object_data)
+            # TODO: check if all hex data is extracted properly
+
+            obj = OleObject()
+            try:
+                obj.parse(object_data)
+                print('extract file embedded in OLE object:')
+                print('format_id  = %d' % obj.format_id)
+                print('class name = %r' % obj.class_name)
+                print('data size  = %d' % obj.data_size)
+                # set a file extension according to the class name:
+                class_name = obj.class_name.lower()
+                if class_name.startswith('word'):
+                    ext = 'doc'
+                elif class_name.startswith('package'):
+                    ext = 'package'
+                else:
+                    ext = 'bin'
+
+                fname = '%s_object_%08X.%s' % (self.fname_prefix, destination.start, ext)
+                print('saving to file %s' % fname)
+                open(fname, 'wb').write(obj.data)
+                if obj.class_name.lower() == 'package':
+                    print('Parsing OLE Package')
+                    opkg = OleNativeStream(bindata=obj.data)
+                    print('Filename = %r' % opkg.filename)
+                    print('Source path = %r' % opkg.src_path)
+                    print('Temp path = %r' % opkg.temp_path)
+                    if opkg.filename:
+                        fname = '%s_%s' % (self.fname_prefix,
+                                           sanitize_filename(opkg.filename))
+                    else:
+                        fname = '%s_object_%08X.noname' % (self.fname_prefix, destination.start)
+                    print('saving to file %s' % fname)
+                    open(fname, 'wb').write(opkg.data)
+            except:
+                pass
+                log.exception('*** Not an OLE 1.0 Object')
+
+    def bin(self, bindata):
+        if self.current_destination.cword == 'objdata':
+            # TODO: keep track of this, because it is unusual and indicates potential obfuscation
+            # trick: hexlify binary data, add it to hex data
+            self.current_destination.data += binascii.hexlify(bindata)
+
+    def control_word(self, matchobject, cword, param):
+        # TODO: extract useful cwords such as objclass
+        # TODO: keep track of cwords inside objdata, because it is unusual and indicates potential obfuscation
+        # TODO: same with control symbols, and opening bracket
+        pass
 
 
 #=== FUNCTIONS ===============================================================
@@ -329,50 +678,53 @@ def process_file(container, filename, data, output_dir=None):
     # TODO: option to extract objects to files (false by default)
     if data is None:
         data = open(filename, 'rb').read()
-    print '-'*79
-    print 'File: %r - %d bytes' % (filename, len(data))
-    for index, orig_len, objdata in rtf_iter_objects(data):
-        print 'found object size %d at index %08X - end %08X' % (len(objdata), index, index+orig_len)
-        fname = '%s_object_%08X.raw' % (fname_prefix, index)
-        print 'saving object to file %s' % fname
-        open(fname, 'wb').write(objdata)
-        # TODO: check if all hex data is extracted properly
+    rtfp = RtfObjParser(data, fname_prefix)
+    rtfp.parse()
 
-        obj = OleObject()
-        try:
-            obj.parse(objdata)
-            print 'extract file embedded in OLE object:'
-            print 'format_id  = %d' % obj.format_id
-            print 'class name = %r' % obj.class_name
-            print 'data size  = %d' % obj.data_size
-            # set a file extension according to the class name:
-            class_name = obj.class_name.lower()
-            if class_name.startswith('word'):
-                ext = 'doc'
-            elif class_name.startswith('package'):
-                ext = 'package'
-            else:
-                ext = 'bin'
-
-            fname = '%s_object_%08X.%s' % (fname_prefix, index, ext)
-            print 'saving to file %s' % fname
-            open(fname, 'wb').write(obj.data)
-            if obj.class_name.lower() == 'package':
-                print 'Parsing OLE Package'
-                opkg = OleNativeStream(bindata=obj.data)
-                print 'Filename = %r' % opkg.filename
-                print 'Source path = %r' % opkg.src_path
-                print 'Temp path = %r' % opkg.temp_path
-                if opkg.filename:
-                    fname = '%s_%s' % (fname_prefix,
-                                       sanitize_filename(opkg.filename))
-                else:
-                    fname = '%s_object_%08X.noname' % (fname_prefix, index)
-                print 'saving to file %s' % fname
-                open(fname, 'wb').write(opkg.data)
-        except:
-            pass
-            log.exception('*** Not an OLE 1.0 Object')
+    # print '-'*79
+    # print 'File: %r - %d bytes' % (filename, len(data))
+    # for index, orig_len, objdata in rtf_iter_objects(data):
+    #     print 'found object size %d at index %08X - end %08X' % (len(objdata), index, index+orig_len)
+    #     fname = '%s_object_%08X.raw' % (fname_prefix, index)
+    #     print 'saving object to file %s' % fname
+    #     open(fname, 'wb').write(objdata)
+    #     # TODO: check if all hex data is extracted properly
+    #
+    #     obj = OleObject()
+    #     try:
+    #         obj.parse(objdata)
+    #         print 'extract file embedded in OLE object:'
+    #         print 'format_id  = %d' % obj.format_id
+    #         print 'class name = %r' % obj.class_name
+    #         print 'data size  = %d' % obj.data_size
+    #         # set a file extension according to the class name:
+    #         class_name = obj.class_name.lower()
+    #         if class_name.startswith('word'):
+    #             ext = 'doc'
+    #         elif class_name.startswith('package'):
+    #             ext = 'package'
+    #         else:
+    #             ext = 'bin'
+    #
+    #         fname = '%s_object_%08X.%s' % (fname_prefix, index, ext)
+    #         print 'saving to file %s' % fname
+    #         open(fname, 'wb').write(obj.data)
+    #         if obj.class_name.lower() == 'package':
+    #             print 'Parsing OLE Package'
+    #             opkg = OleNativeStream(bindata=obj.data)
+    #             print 'Filename = %r' % opkg.filename
+    #             print 'Source path = %r' % opkg.src_path
+    #             print 'Temp path = %r' % opkg.temp_path
+    #             if opkg.filename:
+    #                 fname = '%s_%s' % (fname_prefix,
+    #                                    sanitize_filename(opkg.filename))
+    #             else:
+    #                 fname = '%s_object_%08X.noname' % (fname_prefix, index)
+    #             print 'saving to file %s' % fname
+    #             open(fname, 'wb').write(opkg.data)
+    #     except:
+    #         pass
+    #         log.exception('*** Not an OLE 1.0 Object')
 
 
 
@@ -414,7 +766,7 @@ if __name__ == '__main__':
 
     # Print help if no arguments are passed
     if len(args) == 0:
-        print __doc__
+        print (__doc__)
         parser.print_help()
         sys.exit()
 
@@ -436,5 +788,5 @@ if __name__ == '__main__':
         process_file(container, filename, data, options.output_dir)
 
 
-
+# This code was developed while listening to The Mary Onettes "Lost"
 
