@@ -1570,4 +1570,4 @@ def iterative_decompress(stream, size, chunk_size=4096):
 
 
 if __name__ == '__main__':
-    print 'nothing here to run!'
+    print('nothing here to run!')
