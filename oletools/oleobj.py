@@ -162,7 +162,7 @@ def read_LengthPrefixedAnsiString(data):
     ansi_string = data[:length-1]
     # TODO: only in strict mode:
     # check the presence of the null char:
-    assert data[length] == '\x00'
+    assert data[length] == 0
     new_data = data[length:]
     return (ansi_string, new_data)
 
@@ -214,14 +214,14 @@ class OleNativeStream (object):
         # log.debug('OLE native data size = {0:08X} ({0} bytes)'.format(self.native_data_size))
         # I thought this might be an OLE type specifier ???
         self.unknown_short, data = read_uint16(data)
-        self.filename, data = data.split('\x00', 1)
+        self.filename, data = data.split(b'\x00', 1)
         # source path
-        self.src_path, data = data.split('\x00', 1)
+        self.src_path, data = data.split(b'\x00', 1)
         # TODO I bet these next 8 bytes are a timestamp => FILETIME from olefile
         self.unknown_long_1, data = read_uint32(data)
         self.unknown_long_2, data = read_uint32(data)
         # temp path?
-        self.temp_path, data = data.split('\x00', 1)
+        self.temp_path, data = data.split(b'\x00', 1)
         # size of the rest of the data
         self.actual_size, data = read_uint32(data)
         self.data = data[0:self.actual_size]

@@ -120,7 +120,7 @@ log = get_logger('rtfobj')
 # REGEX pattern to extract embedded OLE objects in hexadecimal format:
 
 # alphanum digit: [0-9A-Fa-f]
-HEX_DIGIT = r'[0-9A-Fa-f]'
+HEX_DIGIT = rb'[0-9A-Fa-f]'
 
 # hex char = two alphanum digits: [0-9A-Fa-f]{2}
 # HEX_CHAR = r'[0-9A-Fa-f]{2}'
@@ -130,11 +130,11 @@ HEX_DIGIT = r'[0-9A-Fa-f]'
 # AND the tags can be nested...
 #SINGLE_RTF_TAG = r'[{][^{}]*[}]'
 # Actually RTF tags may contain braces escaped with backslash (\{ \}):
-SINGLE_RTF_TAG = r'[{](?:\\.|[^{}\\])*[}]'
+SINGLE_RTF_TAG = rb'[{](?:\\.|[^{}\\])*[}]'
 
 # Nested tags, two levels (because Python's re does not support nested matching):
 # NESTED_RTF_TAG = r'[{](?:[^{}]|'+SINGLE_RTF_TAG+r')*[}]'
-NESTED_RTF_TAG = r'[{](?:\\.|[^{}\\]|'+SINGLE_RTF_TAG+r')*[}]'
+NESTED_RTF_TAG = rb'[{](?:\\.|[^{}\\]|'+SINGLE_RTF_TAG+b')*[}]'
 
 # AND it is also allowed to insert ANY control word or control symbol (ignored)
 # According to Rich Text Format (RTF) Specification Version 1.9.1,
@@ -146,7 +146,7 @@ NESTED_RTF_TAG = r'[{](?:\\.|[^{}\\]|'+SINGLE_RTF_TAG+r')*[}]'
 # "\AnyThing " "\AnyThing123z" ""\AnyThing-456{" "\AnyThing{"
 # control symbol = \<any char except letter or digit> (followed by anything)
 
-ASCII_NAME = r'([a-zA-Z]{1,250})'
+ASCII_NAME = rb'([a-zA-Z]{1,250})'
 
 # using Python's re lookahead assumption:
 # (?=...) Matches if ... matches next, but doesn't consume any of the string.
@@ -155,20 +155,21 @@ ASCII_NAME = r'([a-zA-Z]{1,250})'
 
 # TODO: Find the actual limit on the number of digits for Word
 # SIGNED_INTEGER = r'(-?\d{1,250})'
-SIGNED_INTEGER = r'(-?\d+)'
+SIGNED_INTEGER = rb'(-?\d+)'
 
-CONTROL_WORD = r'(?:\\' + ASCII_NAME + r'(?:(?=[^a-zA-Z0-9-])|' + SIGNED_INTEGER + r'(?=[^0-9])))'
+CONTROL_WORD = rb'(?:\\' + ASCII_NAME + rb'(?:(?=[^a-zA-Z0-9-])|' + SIGNED_INTEGER + rb'(?=[^0-9])))'
+
 re_control_word = re.compile(CONTROL_WORD)
 
-CONTROL_SYMBOL = r'(?:\\[^a-zA-Z0-9])'
+CONTROL_SYMBOL = rb'(?:\\[^a-zA-Z0-9])'
 re_control_symbol = re.compile(CONTROL_SYMBOL)
 
 # Text that is not a control word/symbol or a group:
-TEXT = r'[^{}\\]+'
+TEXT = rb'[^{}\\]+'
 re_text = re.compile(TEXT)
 
 # ignored whitespaces and tags within a hex block:
-IGNORED = r'(?:\s|'+NESTED_RTF_TAG+'|'+CONTROL_SYMBOL+'|'+CONTROL_WORD+r')*'
+IGNORED = rb'(?:\s|'+NESTED_RTF_TAG+rb'|'+CONTROL_SYMBOL+rb'|'+CONTROL_WORD+rb')*'
 #IGNORED = r'\s*'
 
 # HEX_CHAR = HEX_DIGIT + IGNORED + HEX_DIGIT
@@ -188,7 +189,7 @@ IGNORED = r'(?:\s|'+NESTED_RTF_TAG+'|'+CONTROL_SYMBOL+'|'+CONTROL_WORD+r')*'
 
 #TODO PATTERN = r'\b(?:' + HEX_CHAR + IGNORED + r'){4,}\b'
 # PATTERN = r'\b(?:' + HEX_CHAR + IGNORED + r'){4,}' #+ HEX_CHAR + r'\b'
-PATTERN = r'\b(?:' + HEX_DIGIT + IGNORED + r'){7,}' + HEX_DIGIT + r'\b'
+PATTERN = rb'\b(?:' + HEX_DIGIT + IGNORED + rb'){7,}' + HEX_DIGIT + rb'\b'
 
 # at least 4 hex chars, followed by whitespace or CR/LF: (?:[0-9A-Fa-f]{2}){4,}\s*
 # PATTERN = r'(?:(?:[0-9A-Fa-f]{2})+\s*)*(?:[0-9A-Fa-f]{2}){4,}'
@@ -196,19 +197,19 @@ PATTERN = r'\b(?:' + HEX_DIGIT + IGNORED + r'){7,}' + HEX_DIGIT + r'\b'
 #PATTERN = r'(?:(?:[0-9A-Fa-f]{2})+\s*)*(?:[0-9A-Fa-f]{2}){4,}'
 
 # a dummy translation table for str.translate, which does not change anythying:
-TRANSTABLE_NOCHANGE = string.maketrans('', '')
+TRANSTABLE_NOCHANGE = bytes.maketrans(b'', b'')
 
 re_hexblock = re.compile(PATTERN)
 re_embedded_tags = re.compile(IGNORED)
-re_decimal = re.compile(r'\d+')
+re_decimal = re.compile(rb'\d+')
 
-re_delimiter = re.compile(r'[ \t\r\n\f\v]')
+re_delimiter = re.compile(rb'[ \t\r\n\f\v]')
 
-DELIMITER = r'[ \t\r\n\f\v]'
-DELIMITERS_ZeroOrMore = r'[ \t\r\n\f\v]*'
-BACKSLASH_BIN = r'\\bin'
+DELIMITER = rb'[ \t\r\n\f\v]'
+DELIMITERS_ZeroOrMore = rb'[ \t\r\n\f\v]*'
+BACKSLASH_BIN = rb'\\bin'
 # According to my tests, Word accepts up to 250 digits (leading zeroes)
-DECIMAL_GROUP = r'(\d{1,250})'
+DECIMAL_GROUP = rb'(\d{1,250})'
 
 re_delims_bin_decimal = re.compile(DELIMITERS_ZeroOrMore + BACKSLASH_BIN
                                    + DECIMAL_GROUP + DELIMITER)
@@ -216,36 +217,36 @@ re_delim_hexblock = re.compile(DELIMITER + PATTERN)
 
 # Destination Control Words, according to MS RTF Specifications v1.9.1:
 DESTINATION_CONTROL_WORDS = frozenset((
-    "aftncn", "aftnsep", "aftnsepc", "annotation", "atnauthor", "atndate", "atnicn", "atnid", "atnparent", "atnref",
-    "atntime", "atrfend", "atrfstart", "author", "background", "bkmkend", "bkmkstart", "blipuid", "buptim", "category",
-    "colorschememapping", "colortbl", "comment", "company", "creatim", "datafield", "datastore", "defchp", "defpap",
-    "do", "doccomm", "docvar", "dptxbxtext", "ebcend", "ebcstart", "factoidname", "falt", "fchars", "ffdeftext",
-    "ffentrymcr", "ffexitmcr", "ffformat", "ffhelptext", "ffl", "ffname", "ffstattext", "field", "file", "filetbl",
-    "fldinst", "fldrslt", "fldtype", "fname", "fontemb", "fontfile", "fonttbl", "footer", "footerf", "footerl",
-    "footerr", "footnote", "formfield", "ftncn", "ftnsep", "ftnsepc", "g", "generator", "gridtbl", "header", "headerf",
-    "headerl", "headerr", "hl", "hlfr", "hlinkbase", "hlloc", "hlsrc", "hsv", "htmltag", "info", "keycode", "keywords",
-    "latentstyles", "lchars", "levelnumbers", "leveltext", "lfolevel", "linkval", "list", "listlevel", "listname",
-    "listoverride", "listoverridetable", "listpicture", "liststylename", "listtable", "listtext", "lsdlockedexcept",
-    "macc", "maccPr", "mailmerge", "maln", "malnScr", "manager", "margPr", "mbar", "mbarPr", "mbaseJc", "mbegChr",
-    "mborderBox", "mborderBoxPr", "mbox", "mboxPr", "mchr", "mcount", "mctrlPr", "md", "mdeg", "mdegHide", "mden",
-    "mdiff", "mdPr", "me", "mendChr", "meqArr", "meqArrPr", "mf", "mfName", "mfPr", "mfunc", "mfuncPr", "mgroupChr",
-    "mgroupChrPr", "mgrow", "mhideBot", "mhideLeft", "mhideRight", "mhideTop", "mhtmltag", "mlim", "mlimloc", "mlimlow",
-    "mlimlowPr", "mlimupp", "mlimuppPr", "mm", "mmaddfieldname", "mmath", "mmathPict", "mmathPr", "mmaxdist", "mmc",
-    "mmcJc", "mmconnectstr", "mmconnectstrdata", "mmcPr", "mmcs", "mmdatasource", "mmheadersource", "mmmailsubject",
-    "mmodso", "mmodsofilter", "mmodsofldmpdata", "mmodsomappedname", "mmodsoname", "mmodsorecipdata", "mmodsosort",
-    "mmodsosrc", "mmodsotable", "mmodsoudl", "mmodsoudldata", "mmodsouniquetag", "mmPr", "mmquery", "mmr", "mnary",
-    "mnaryPr", "mnoBreak", "mnum", "mobjDist", "moMath", "moMathPara", "moMathParaPr", "mopEmu", "mphant", "mphantPr",
-    "mplcHide", "mpos", "mr", "mrad", "mradPr", "mrPr", "msepChr", "mshow", "mshp", "msPre", "msPrePr", "msSub",
-    "msSubPr", "msSubSup", "msSubSupPr", "msSup", "msSupPr", "mstrikeBLTR", "mstrikeH", "mstrikeTLBR", "mstrikeV",
-    "msub", "msubHide", "msup", "msupHide", "mtransp", "mtype", "mvertJc", "mvfmf", "mvfml", "mvtof", "mvtol",
-    "mzeroAsc", "mzeroDesc", "mzeroWid", "nesttableprops", "nextfile", "nonesttables", "objalias", "objclass",
-    "objdata", "object", "objname", "objsect", "objtime", "oldcprops", "oldpprops", "oldsprops", "oldtprops",
-    "oleclsid", "operator", "panose", "password", "passwordhash", "pgp", "pgptbl", "picprop", "pict", "pn", "pnseclvl",
-    "pntext", "pntxta", "pntxtb", "printim", "private", "propname", "protend", "protstart", "protusertbl", "pxe",
-    "result", "revtbl", "revtim", "rsidtbl", "rtf", "rxe", "shp", "shpgrp", "shpinst", "shppict", "shprslt", "shptxt",
-    "sn", "sp", "staticval", "stylesheet", "subject", "sv", "svb", "tc", "template", "themedata", "title", "txe", "ud",
-    "upr", "userprops", "wgrffmtfilter", "windowcaption", "writereservation", "writereservhash", "xe", "xform",
-    "xmlattrname", "xmlattrvalue", "xmlclose", "xmlname", "xmlnstbl", "xmlopen"
+    b"aftncn", b"aftnsep", b"aftnsepc", b"annotation", b"atnauthor", b"atndate", b"atnicn", b"atnid", b"atnparent", b"atnref",
+    b"atntime", b"atrfend", b"atrfstart", b"author", b"background", b"bkmkend", b"bkmkstart", b"blipuid", b"buptim", b"category",
+    b"colorschememapping", b"colortbl", b"comment", b"company", b"creatim", b"datafield", b"datastore", b"defchp", b"defpap",
+    b"do", b"doccomm", b"docvar", b"dptxbxtext", b"ebcend", b"ebcstart", b"factoidname", b"falt", b"fchars", b"ffdeftext",
+    b"ffentrymcr", b"ffexitmcr", b"ffformat", b"ffhelptext", b"ffl", b"ffname",b"ffstattext", b"field", b"file", b"filetbl",
+    b"fldinst", b"fldrslt", b"fldtype", b"fname", b"fontemb", b"fontfile", b"fonttbl", b"footer", b"footerf", b"footerl",
+    b"footerr", b"footnote", b"formfield", b"ftncn", b"ftnsep", b"ftnsepc", b"g", b"generator", b"gridtbl", b"header", b"headerf",
+    b"headerl", b"headerr", b"hl", b"hlfr", b"hlinkbase", b"hlloc", b"hlsrc", b"hsv", b"htmltag", b"info", b"keycode", b"keywords",
+    b"latentstyles", b"lchars", b"levelnumbers", b"leveltext", b"lfolevel", b"linkval", b"list", b"listlevel", b"listname",
+    b"listoverride", b"listoverridetable", b"listpicture", b"liststylename", b"listtable", b"listtext", b"lsdlockedexcept",
+    b"macc", b"maccPr", b"mailmerge", b"maln",b"malnScr", b"manager", b"margPr", b"mbar", b"mbarPr", b"mbaseJc", b"mbegChr",
+    b"mborderBox", b"mborderBoxPr", b"mbox", b"mboxPr", b"mchr", b"mcount", b"mctrlPr", b"md", b"mdeg", b"mdegHide", b"mden",
+    b"mdiff", b"mdPr", b"me", b"mendChr", b"meqArr", b"meqArrPr", b"mf", b"mfName", b"mfPr", b"mfunc", b"mfuncPr",b"mgroupChr",
+    b"mgroupChrPr",b"mgrow", b"mhideBot", b"mhideLeft", b"mhideRight", b"mhideTop", b"mhtmltag", b"mlim", b"mlimloc", b"mlimlow",
+    b"mlimlowPr", b"mlimupp", b"mlimuppPr", b"mm", b"mmaddfieldname", b"mmath", b"mmathPict", b"mmathPr",b"mmaxdist", b"mmc",
+    b"mmcJc", b"mmconnectstr", b"mmconnectstrdata", b"mmcPr", b"mmcs", b"mmdatasource", b"mmheadersource", b"mmmailsubject",
+    b"mmodso", b"mmodsofilter", b"mmodsofldmpdata", b"mmodsomappedname", b"mmodsoname", b"mmodsorecipdata", b"mmodsosort",
+    b"mmodsosrc", b"mmodsotable", b"mmodsoudl", b"mmodsoudldata", b"mmodsouniquetag", b"mmPr", b"mmquery", b"mmr", b"mnary",
+    b"mnaryPr", b"mnoBreak", b"mnum", b"mobjDist", b"moMath", b"moMathPara", b"moMathParaPr", b"mopEmu", b"mphant", b"mphantPr",
+    b"mplcHide", b"mpos", b"mr", b"mrad", b"mradPr", b"mrPr", b"msepChr", b"mshow", b"mshp", b"msPre", b"msPrePr", b"msSub",
+    b"msSubPr", b"msSubSup", b"msSubSupPr",  b"msSup", b"msSupPr", b"mstrikeBLTR", b"mstrikeH", b"mstrikeTLBR", b"mstrikeV",
+    b"msub", b"msubHide", b"msup", b"msupHide", b"mtransp", b"mtype", b"mvertJc", b"mvfmf", b"mvfml", b"mvtof", b"mvtol",
+    b"mzeroAsc", b"mzeroDesc", b"mzeroWid", b"nesttableprops", b"nexctfile", b"nonesttables", b"objalias", b"objclass",
+    b"objdata", b"object", b"objname", b"objsect", b"objtime", b"oldcprops", b"oldpprops", b"oldsprops", b"oldtprops",
+    b"oleclsid", b"operator", b"panose", b"password", b"passwordhash", b"pgp", b"pgptbl", b"picprop", b"pict", b"pn", b"pnseclvl",
+    b"pntext", b"pntxta", b"pntxtb", b"printim", b"private", b"propname", b"protend", b"protstart", b"protusertbl", b"pxe",
+    b"result", b"revtbl", b"revtim", b"rsidtbl", b"rtf", b"rxe", b"shp", b"shpgrp", b"shpinst", b"shppict", b"shprslt", b"shptxt",
+    b"sn", b"sp", b"staticval", b"stylesheet", b"subject", b"sv", b"svb", b"tc", b"template", b"themedata", b"title", b"txe", b"ud",
+    b"upr", b"userprops", b"wgrffmtfilter", b"windowcaption", b"writereservation", b"writereservhash", b"xe", b"xform",
+    b"xmlattrname", b"xmlattrvalue", b"xmlclose", b"xmlname", b"xmlnstbl", b"xmlopen"
     ))
 
 
@@ -258,7 +259,7 @@ class Destination(object):
     """
     def __init__(self, cword=None):
         self.cword = cword
-        self.data = ''
+        self.data = b''
         self.start = None
         self.end = None
         self.group_level = 0
@@ -293,15 +294,15 @@ class RtfParser(object):
     def parse(self):
         self.index = 0
         while self.index < self.size:
-            if self.data[self.index] == '{':
+            if self.data[self.index] == ord('{'):
                 self._open_group()
                 self.index += 1
                 continue
-            if self.data[self.index] == '}':
+            if self.data[self.index] == ord('}'):
                 self._close_group()
                 self.index += 1
                 continue
-            if self.data[self.index] == '\\':
+            if self.data[self.index] == ord('\\'):
                 m = re_control_word.match(self.data, self.index)
                 if m:
                     cword = m.group(1)
@@ -312,7 +313,7 @@ class RtfParser(object):
                     self._control_word(m, cword, param)
                     self.index += len(m.group())
                     # if it's \bin, call _bin after updating index
-                    if cword == 'bin':
+                    if cword == b'bin':
                         self._bin(m, param)
                     continue
                 m = re_control_symbol.match(self.data, self.index)
@@ -450,19 +451,19 @@ class RtfObjParser(RtfParser):
         self.fname_prefix = fname_prefix
 
     def open_destination(self, destination):
-        if destination.cword == 'objdata':
+        if destination.cword == b'objdata':
             log.debug('*** Start object data at index %Xh' % destination.start)
 
     def close_destination(self, destination):
-        if destination.cword == 'objdata':
+        if destination.cword == b'objdata':
             log.debug('*** Close object data at index %Xh' % self.index)
             # Filter out all whitespaces first (just ignored):
-            hexdata1 = destination.data.translate(TRANSTABLE_NOCHANGE, ' \t\r\n\f\v')
+            hexdata1 = destination.data.translate(TRANSTABLE_NOCHANGE, b' \t\r\n\f\v')
             # Then filter out any other non-hex character:
-            hexdata = re.sub(r'[^a-hA-H0-9]', '', hexdata1)
+            hexdata = re.sub(b'[^a-hA-H0-9]', b'', hexdata1)
             if len(hexdata) < len(hexdata1):
                 # this is only for debugging:
-                nonhex = re.sub(r'[a-hA-H0-9]', '', hexdata1)
+                nonhex = re.sub(b'[a-hA-H0-9]', b'', hexdata1)
                 log.debug('Found non-hex chars in hexdata: %r' % nonhex)
             # MS Word accepts an extra hex digit, so we need to trim it if present:
             if len(hexdata) & 1:
@@ -485,9 +486,9 @@ class RtfObjParser(RtfParser):
                 print('data size  = %d' % obj.data_size)
                 # set a file extension according to the class name:
                 class_name = obj.class_name.lower()
-                if class_name.startswith('word'):
+                if class_name.startswith(b'word'):
                     ext = 'doc'
-                elif class_name.startswith('package'):
+                elif class_name.startswith(b'package'):
                     ext = 'package'
                 else:
                     ext = 'bin'
