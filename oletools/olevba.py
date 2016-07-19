@@ -239,9 +239,9 @@ except ImportError:
             # Python <2.5: standalone ElementTree install
             import elementtree.cElementTree as ET
         except ImportError:
-            raise ImportError, "lxml or ElementTree are not installed, " \
+            raise(ImportError, "lxml or ElementTree are not installed, " \
                                + "see http://codespeak.net/lxml " \
-                               + "or http://effbot.org/zone/element-index.htm"
+                               + "or http://effbot.org/zone/element-index.htm")
 
 import thirdparty.olefile as olefile
 from thirdparty.prettytable import prettytable
@@ -1105,7 +1105,7 @@ def decompress_stream(compressed_container):
                 # copy tokens (reference to a previous literal token)
                 flag_byte = ord(compressed_container[compressed_current])
                 compressed_current += 1
-                for bit_index in xrange(0, 8):
+                for bit_index in range(0, 8):
                     # log.debug('bit_index=%d / compressed_current=%d / compressed_end=%d' % (bit_index, compressed_current, compressed_end))
                     if compressed_current >= compressed_end:
                         break
@@ -1861,7 +1861,7 @@ def json2ascii(json_obj, encoding='utf8', errors='replace'):
             log.debug('json2ascii:     with: {0} (len {1})'
                      .format(dencoded, len(dencoded)))
         return dencoded
-    elif isinstance(json_obj, unicode):
+    elif isinstance(json_obj, str):
         log.debug('json2ascii: encode unicode: {0}'
                  .format(json_obj.encode(encoding, errors)))
         # cannot put original into logger
@@ -1904,18 +1904,18 @@ def print_json(json_dict=None, _json_is_last=False, **json_parts):
         json_dict = json_parts
 
     if not _have_printed_json_start:
-        print '['
+        print('[')
         _have_printed_json_start = True
 
     lines = json.dumps(json2ascii(json_dict), check_circular=False,
                            indent=4, ensure_ascii=False).splitlines()
     for line in lines[:-1]:
-        print '    {0}'.format(line)
+        print('    {0}'.format(line))
     if _json_is_last:
-        print '    {0}'.format(lines[-1])   # print last line without comma
-        print ']'
+        print('    {0}'.format(lines[-1]))   # print last line without comma
+        print(']')
     else:
-        print '    {0},'.format(lines[-1])   # print last line with comma
+        print('    {0},'.format(lines[-1]))   # print last line with comma
 
 
 class VBA_Scanner(object):
@@ -2569,7 +2569,7 @@ class VBA_Parser(object):
         # Also look for VBA code in any stream including orphans
         # (happens in some malformed files)
         ole = self.ole_file
-        for sid in xrange(len(ole.direntries)):
+        for sid in range(len(ole.direntries)):
             # check if id is already done above:
             log.debug('Checking DirEntry #%d' % sid)
             d = ole.direntries[sid]
@@ -2635,7 +2635,7 @@ class VBA_Parser(object):
             # Also look for VBA code in any stream including orphans
             # (happens in some malformed files)
             ole = self.ole_file
-            for sid in xrange(len(ole.direntries)):
+            for sid in range(len(ole.direntries)):
                 # check if id is already done above:
                 log.debug('Checking DirEntry #%d' % sid)
                 if sid in vba_stream_ids:
@@ -2870,7 +2870,7 @@ class VBA_Parser_CLI(VBA_Parser):
         """
         # print a waiting message only if the output is not redirected to a file:
         if sys.stdout.isatty():
-            print 'Analysis...\r',
+            print('Analysis...\r')
             sys.stdout.flush()
         results = self.analyze_macros(show_decoded_strings, deobfuscate)
         if results:
@@ -2886,9 +2886,9 @@ class VBA_Parser_CLI(VBA_Parser):
                 if not is_printable(description):
                     description = repr(description)
                 t.add_row((kw_type, keyword, description))
-            print t
+            print(t)
         else:
-            print 'No suspicious keyword or IOC found.'
+            print('No suspicious keyword or IOC found.')
 
     def print_analysis_json(self, show_decoded_strings=False, deobfuscate=False):
         """
@@ -2902,7 +2902,7 @@ class VBA_Parser_CLI(VBA_Parser):
         """
         # print a waiting message only if the output is not redirected to a file:
         if sys.stdout.isatty():
-            print 'Analysis...\r',
+            print('Analysis...%s\r')
             sys.stdout.flush()
         return [dict(type=kw_type, keyword=keyword, description=description)
                 for kw_type, keyword, description in self.analyze_macros(show_decoded_strings, deobfuscate)]
@@ -2931,11 +2931,11 @@ class VBA_Parser_CLI(VBA_Parser):
             display_filename = '%s in %s' % (self.filename, self.container)
         else:
             display_filename = self.filename
-        print '=' * 79
-        print 'FILE:', display_filename
+        print('=' * 79)
+        print('FILE:', display_filename)
         try:
             #TODO: handle olefile errors, when an OLE file is malformed
-            print 'Type:', self.type
+            print('Type: %s', self.type)
             if self.detect_vba_macros():
                 #print 'Contains VBA Macros:'
                 for (subfilename, stream_path, vba_filename, vba_code) in self.extract_all_macros():
@@ -2944,29 +2944,29 @@ class VBA_Parser_CLI(VBA_Parser):
                         vba_code_filtered = filter_vba(vba_code)
                     else:
                         vba_code_filtered = vba_code
-                    print '-' * 79
-                    print 'VBA MACRO %s ' % vba_filename
-                    print 'in file: %s - OLE stream: %s' % (subfilename, repr(stream_path))
+                    print('-' * 79)
+                    print('VBA MACRO %s ' % vba_filename)
+                    print('in file: %s - OLE stream: %s' % (subfilename, repr(stream_path)))
                     if display_code:
-                        print '- ' * 39
+                        print('- ' * 39)
                         # detect empty macros:
                         if vba_code_filtered.strip() == '':
-                            print '(empty macro)'
+                            print('(empty macro)')
                         else:
-                            print vba_code_filtered
+                            print(vba_code_filtered)
                 for (subfilename, stream_path, form_string) in self.extract_form_strings():
-                    print '-' * 79
-                    print 'VBA FORM STRING IN %r - OLE stream: %r' % (subfilename, stream_path)
-                    print '- ' * 39
-                    print form_string
+                    print('-' * 79)
+                    print('VBA FORM STRING IN %r - OLE stream: %r' % (subfilename, stream_path))
+                    print('- ' * 39)
+                    print(form_string)
                 if not vba_code_only:
                     # analyse the code from all modules at once:
                     self.print_analysis(show_decoded_strings, deobfuscate)
                 if show_deobfuscated_code:
-                    print 'MACRO SOURCE CODE WITH DEOBFUSCATED VBA STRINGS (EXPERIMENTAL):\n\n'
-                    print self.reveal()
+                    print('MACRO SOURCE CODE WITH DEOBFUSCATED VBA STRINGS (EXPERIMENTAL):\n\n')
+                    print(self.reveal())
             else:
-                print 'No VBA macros found.'
+                print('No VBA macros found.')
         except OlevbaBaseException:
             raise
         except Exception as exc:
@@ -2974,7 +2974,7 @@ class VBA_Parser_CLI(VBA_Parser):
             log.info('Error processing file %s (%s)' % (self.filename, exc))
             log.debug('Traceback:', exc_info=True)
             raise ProcessingError(self.filename, exc)
-        print ''
+        print('')
 
 
     def process_file_json(self, show_decoded_strings=False,
@@ -3060,7 +3060,7 @@ class VBA_Parser_CLI(VBA_Parser):
             if self.detect_vba_macros():
                 # print a waiting message only if the output is not redirected to a file:
                 if sys.stdout.isatty():
-                    print 'Analysis...\r',
+                    print('Analysis...\r')
                     sys.stdout.flush()
                 self.analyze_macros(show_decoded_strings=show_decoded_strings,
                                     deobfuscate=deobfuscate)
@@ -3078,7 +3078,7 @@ class VBA_Parser_CLI(VBA_Parser):
                                          base64obf, dridex, vba_obf)
 
             line = '%-12s %s' % (flags, self.filename)
-            print line
+            print(line)
 
             # old table display:
             # macros = autoexec = suspicious = iocs = hexstrings = 'no'
@@ -3171,7 +3171,7 @@ def main():
 
     # Print help if no arguments are passed
     if len(args) == 0:
-        print __doc__
+        print(__doc__)
         parser.print_help()
         sys.exit(RETURN_WRONG_ARGS)
 
@@ -3182,7 +3182,7 @@ def main():
                    url='http://decalage.info/python/oletools',
                    type='MetaInformation')
     else:
-        print 'olevba %s - http://decalage.info/python/oletools' % __version__
+        print('olevba %s - http://decalage.info/python/oletools' % __version__)
 
     logging.basicConfig(level=LOG_LEVELS[options.loglevel], format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
@@ -3202,8 +3202,8 @@ def main():
     # Column headers (do not know how many files there will be yet, so if no output_mode
     # was specified, we will print triage for first file --> need these headers)
     if options.output_mode in ('triage', 'unspecified'):
-        print '%-12s %-65s' % ('Flags', 'Filename')
-        print '%-12s %-65s' % ('-' * 11, '-' * 65)
+        print('%-12s %-65s' % ('Flags', 'Filename'))
+        print('%-12s %-65s' % ('-' * 11, '-' * 65))
 
     previous_container = None
     count = 0
@@ -3221,14 +3221,14 @@ def main():
             if isinstance(data, Exception):
                 if isinstance(data, PathNotFoundException):
                     if options.output_mode in ('triage', 'unspecified'):
-                        print '%-12s %s - File not found' % ('?', filename)
+                        print('%-12s %s - File not found' % ('?', filename))
                     elif options.output_mode != 'json':
                         log.error('Given path %r does not exist!' % filename)
                     return_code = RETURN_FILE_NOT_FOUND if return_code == 0 \
                                                     else RETURN_SEVERAL_ERRS
                 else:
                     if options.output_mode in ('triage', 'unspecified'):
-                        print '%-12s %s - Failed to read from zip file %s' % ('?', filename, container)
+                        print('%-12s %s - Failed to read from zip file %s' % ('?', filename, container))
                     elif options.output_mode != 'json':
                         log.error('Exception opening/reading %r from zip file %r: %s'
                                       % (filename, container, data))
@@ -3255,7 +3255,7 @@ def main():
                     # print container name when it changes:
                     if container != previous_container:
                         if container is not None:
-                            print '\nFiles in %s:' % container
+                            print('\nFiles in %s:' % container)
                         previous_container = container
                     # summarized output for triage:
                     vba_parser.process_file_triage(show_decoded_strings=options.show_decoded_strings,
@@ -3273,8 +3273,8 @@ def main():
 
             except (SubstreamOpenError, UnexpectedDataError) as exc:
                 if options.output_mode in ('triage', 'unspecified'):
-                    print '%-12s %s - Error opening substream or uenxpected ' \
-                          'content' % ('?', filename)
+                    print('%-12s %s - Error opening substream or uenxpected ' \
+                          'content' % ('?', filename))
                 elif options.output_mode == 'json':
                     print_json(file=filename, type='error',
                                error=type(exc).__name__, message=str(exc))
@@ -3285,7 +3285,7 @@ def main():
                                                 else RETURN_SEVERAL_ERRS
             except FileOpenError as exc:
                 if options.output_mode in ('triage', 'unspecified'):
-                    print '%-12s %s - File format not supported' % ('?', filename)
+                    print('%-12s %s - File format not supported' % ('?', filename))
                 elif options.output_mode == 'json':
                     print_json(file=filename, type='error',
                                error=type(exc).__name__, message=str(exc))
@@ -3295,7 +3295,7 @@ def main():
                                                 else RETURN_SEVERAL_ERRS
             except ProcessingError as exc:
                 if options.output_mode in ('triage', 'unspecified'):
-                    print '%-12s %s - %s' % ('!ERROR', filename, exc.orig_exc)
+                    print('%-12s %s - %s' % ('!ERROR', filename, exc.orig_exc))
                 elif options.output_mode == 'json':
                     print_json(file=filename, type='error',
                                error=type(exc).__name__,
@@ -3310,9 +3310,9 @@ def main():
                     vba_parser.close()
 
         if options.output_mode == 'triage':
-            print '\n(Flags: OpX=OpenXML, XML=Word2003XML, MHT=MHTML, TXT=Text, M=Macros, ' \
+            print('\n(Flags: OpX=OpenXML, XML=Word2003XML, MHT=MHTML, TXT=Text, M=Macros, ' \
                   'A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex strings, ' \
-                  'B=Base64 strings, D=Dridex strings, V=VBA strings, ?=Unknown)\n'
+                  'B=Base64 strings, D=Dridex strings, V=VBA strings, ?=Unknown)\n')
 
         if count == 1 and options.output_mode == 'unspecified':
             # if options -t, -d and -j were not specified and it's a single file, print details:
