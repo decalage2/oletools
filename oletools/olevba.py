@@ -1854,19 +1854,19 @@ def json2ascii(json_obj, encoding='utf8', errors='replace'):
         pass
     elif isinstance(json_obj, str):
         # de-code and re-encode
-        dencoded = json_obj.decode(encoding, errors).encode(encoding, errors)
+        dencoded = json_obj
         if dencoded != json_obj:
             log.debug('json2ascii: replaced: {0} (len {1})'
                      .format(json_obj, len(json_obj)))
             log.debug('json2ascii:     with: {0} (len {1})'
                      .format(dencoded, len(dencoded)))
         return dencoded
-    elif isinstance(json_obj, str):
+    elif isinstance(json_obj, bytes):
         log.debug('json2ascii: encode unicode: {0}'
-                 .format(json_obj.encode(encoding, errors)))
+                 .format(json_obj.decode(encoding, errors)))
         # cannot put original into logger
         # print 'original: ' json_obj
-        return json_obj.encode(encoding, errors)
+        return json_obj.decode(encoding, errors)
     elif isinstance(json_obj, dict):
         for key in json_obj:
             json_obj[key] = json2ascii(json_obj[key])
@@ -3021,7 +3021,7 @@ class VBA_Parser_CLI(VBA_Parser):
                     curr_macro = {}
                     if hide_attributes:
                         # hide attribute lines:
-                        vba_code_filtered = filter_vba(vba_code)
+                        vba_code_filtered = filter_vba(vba_code.decode('utf-8','replace'))
                     else:
                         vba_code_filtered = vba_code
 
