@@ -214,7 +214,7 @@ __version__ = '0.48'
 
 import sys, logging
 import struct
-from _io import StringIO
+from _io import StringIO,BytesIO
 import math
 import zipfile
 import re
@@ -613,7 +613,7 @@ re_dridex_string = re.compile(r'"[0-9A-Za-z]{20,}"')
 re_nothex_check = re.compile(r'[G-Zg-z]')
 
 # regex to extract printable strings (at least 5 chars) from VBA Forms:
-re_printable_string = re.compile(r'[\t\r\n\x20-\xFF]{5,}')
+re_printable_string = re.compile(rb'[\t\r\n\x20-\xFF]{5,}')
 
 
 # === PARTIAL VBA GRAMMAR ====================================================
@@ -1043,10 +1043,10 @@ def decompress_stream(compressed_container):
     # DecompressedChunkStart: The location of the first byte of the DecompressedChunk (section 2.4.1.1.3) within the
     #                         DecompressedBuffer (section 2.4.1.1.2).
 
-    decompressed_container = ''  # result
+    decompressed_container = b''  # result
     compressed_current = 0
 
-    sig_byte = ord(compressed_container[compressed_current])
+    sig_byte = compressed_container[compressed_current]
     if sig_byte != 0x01:
         raise ValueError('invalid signature byte {0:02X}'.format(sig_byte))
 
@@ -1092,7 +1092,7 @@ def decompress_stream(compressed_container):
             # MS-OVBA 2.4.1.3.3 Decompressing a RawChunk
             # uncompressed chunk: read the next 4096 bytes as-is
             #TODO: check if there are at least 4096 bytes left
-            decompressed_container += compressed_container[compressed_current:compressed_current + 4096]
+            decompressed_container += bytes([compressed_container[compressed_current:compressed_current + 4096]])
             compressed_current += 4096
         else:
             # MS-OVBA 2.4.1.3.2 Decompressing a CompressedChunk
@@ -1103,7 +1103,7 @@ def decompress_stream(compressed_container):
                 # log.debug('compressed_current = %d / compressed_end = %d' % (compressed_current, compressed_end))
                 # FlagByte: 8 bits indicating if the following 8 tokens are either literal (1 byte of plain text) or
                 # copy tokens (reference to a previous literal token)
-                flag_byte = ord(compressed_container[compressed_current])
+                flag_byte = compressed_container[compressed_current]
                 compressed_current += 1
                 for bit_index in range(0, 8):
                     # log.debug('bit_index=%d / compressed_current=%d / compressed_end=%d' % (bit_index, compressed_current, compressed_end))
@@ -1115,7 +1115,7 @@ def decompress_stream(compressed_container):
                     #log.debug('bit_index=%d: flag_bit=%d' % (bit_index, flag_bit))
                     if flag_bit == 0:  # LiteralToken
                         # copy one byte directly to output
-                        decompressed_container += compressed_container[compressed_current]
+                        decompressed_container += bytes([compressed_container[compressed_current]])
                         compressed_current += 1
                     else:  # CopyToken
                         # MS-OVBA 2.4.1.3.19.2 Unpack CopyToken
@@ -1130,8 +1130,8 @@ def decompress_stream(compressed_container):
                         offset = (temp1 >> temp2) + 1
                         #log.debug('offset=%d length=%d' % (offset, length))
                         copy_source = len(decompressed_container) - offset
-                        for index in xrange(copy_source, copy_source + length):
-                            decompressed_container += decompressed_container[index]
+                        for index in range(copy_source, copy_source + length):
+                            decompressed_container += bytes([decompressed_container[index]])
                         compressed_current += 2
     return decompressed_container
 
@@ -1174,7 +1174,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
     code_modules = {}
 
     for line in project:
-        line = line.strip()
+        line = line.strip().decode('utf-8','ignore')
         if '=' in line:
             # split line at the 1st equal sign:
             name, value = line.split('=', 1)
@@ -1205,7 +1205,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             else:
                 raise UnexpectedDataError(dir_path, name, expected, value)
 
-    dir_stream = StringIO(decompress_stream(dir_compressed))
+    dir_stream = BytesIO(decompress_stream(dir_compressed))
 
     # PROJECTSYSKIND Record
     projectsyskind_id = struct.unpack("<H", dir_stream.read(2))[0]
@@ -1465,7 +1465,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
     uni_out = lambda unicode_text: unicode_text.encode('utf-8', 'replace')
 
     log.debug("parsing {0} modules".format(projectmodules_count))
-    for projectmodule_index in xrange(0, projectmodules_count):
+    for projectmodule_index in range(0, projectmodules_count):
         try:
             modulename_id = struct.unpack("<H", dir_stream.read(2))[0]
             check_value('MODULENAME_Id', 0x0019, modulename_id)
@@ -1932,10 +1932,10 @@ class VBA_Scanner(object):
         """
         # join long lines ending with " _":
         self.code = vba_collapse_long_lines(vba_code)
-        self.code_hex = ''
+        self.code_hex = b''
         self.code_hex_rev = ''
         self.code_rev_hex = ''
-        self.code_base64 = ''
+        self.code_base64 = b''
         self.code_dridex = ''
         self.code_vba = ''
         self.strReverse = None
@@ -1968,7 +1968,7 @@ class VBA_Scanner(object):
         if 'strreverse' in self.code.lower(): self.strReverse = True
         # Then append the decoded strings to the VBA code, to detect obfuscated IOCs and keywords:
         for encoded, decoded in self.hex_strings:
-            self.code_hex += '\n' + decoded
+            self.code_hex += b'\n' + decoded
             # if the code contains "StrReverse", also append the hex strings in reverse order:
             if self.strReverse:
                 # StrReverse after hex decoding:
@@ -1980,7 +1980,7 @@ class VBA_Scanner(object):
         # Detect Base64-encoded strings
         self.base64_strings = detect_base64_strings(self.code)
         for encoded, decoded in self.base64_strings:
-            self.code_base64 += '\n' + decoded
+            self.code_base64 += b'\n' + decoded
         # Detect Dridex-encoded strings
         self.dridex_strings = detect_dridex_strings(self.code)
         for encoded, decoded in self.dridex_strings:
@@ -1999,10 +1999,10 @@ class VBA_Scanner(object):
 
         for code, obfuscation in (
                 (self.code, None),
-                (self.code_hex, 'Hex'),
+                (self.code_hex.decode('utf-8','replace'), 'Hex'),
                 (self.code_hex_rev, 'Hex+StrReverse'),
                 (self.code_rev_hex, 'StrReverse+Hex'),
-                (self.code_base64, 'Base64'),
+                (self.code_base64.decode('utf-8', 'replace'), 'Base64'),
                 (self.code_dridex, 'Dridex'),
                 (self.code_vba, 'VBA expression'),
         ):
@@ -2587,7 +2587,7 @@ class VBA_Parser(object):
                         log.debug('%r...[much more data]...%r' % (data[:100], data[-50:]))
                     else:
                         log.debug(repr(data))
-                    if 'Attribut' in data:
+                    if 'Attribut' in data.decode('utf-8','ignore'):
                         log.debug('Found VBA compressed code')
                         self.contains_macros = True
                 except IOError as exc:
@@ -2650,7 +2650,7 @@ class VBA_Parser(object):
                     # read data
                     log.debug('Reading data from stream %r' % d.name)
                     data = ole._open(d.isectStart, d.size).read()
-                    for match in re.finditer(r'\x00Attribut[^e]', data, flags=re.IGNORECASE):
+                    for match in re.finditer(rb'\x00Attribut[^e]', data, flags=re.IGNORECASE):
                         start = match.start() - 3
                         log.debug('Found VBA compressed code at index %X' % start)
                         compressed_code = data[start:]
@@ -2693,9 +2693,9 @@ class VBA_Parser(object):
                 self.vba_code_all_modules = ''
                 for (_, _, _, vba_code) in self.extract_all_macros():
                     #TODO: filter code? (each module)
-                    self.vba_code_all_modules += vba_code + '\n'
+                    self.vba_code_all_modules += vba_code.decode('utf-8', 'ignore') + '\n'
                 for (_, _, form_string) in self.extract_form_strings():
-                    self.vba_code_all_modules += form_string + '\n'
+                    self.vba_code_all_modules += form_string.decode('utf-8', 'ignore') + '\n'
             # Analyze the whole code at once:
             scanner = VBA_Scanner(self.vba_code_all_modules)
             self.analysis_results = scanner.scan(show_decoded_strings, deobfuscate)
@@ -2935,13 +2935,13 @@ class VBA_Parser_CLI(VBA_Parser):
         print('FILE:', display_filename)
         try:
             #TODO: handle olefile errors, when an OLE file is malformed
-            print('Type: %s', self.type)
+            print('Type: %s' % self.type)
             if self.detect_vba_macros():
                 #print 'Contains VBA Macros:'
                 for (subfilename, stream_path, vba_filename, vba_code) in self.extract_all_macros():
                     if hide_attributes:
                         # hide attribute lines:
-                        vba_code_filtered = filter_vba(vba_code)
+                        vba_code_filtered = filter_vba(vba_code.decode('utf-8','replace'))
                     else:
                         vba_code_filtered = vba_code
                     print('-' * 79)
@@ -2958,7 +2958,7 @@ class VBA_Parser_CLI(VBA_Parser):
                     print('-' * 79)
                     print('VBA FORM STRING IN %r - OLE stream: %r' % (subfilename, stream_path))
                     print('- ' * 39)
-                    print(form_string)
+                    print(form_string.decode('utf-8', 'ignore'))
                 if not vba_code_only:
                     # analyse the code from all modules at once:
                     self.print_analysis(show_decoded_strings, deobfuscate)
