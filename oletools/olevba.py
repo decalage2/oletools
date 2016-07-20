@@ -2902,7 +2902,7 @@ class VBA_Parser_CLI(VBA_Parser):
         """
         # print a waiting message only if the output is not redirected to a file:
         if sys.stdout.isatty():
-            print('Analysis...%s\r')
+            print('Analysis...\r')
             sys.stdout.flush()
         return [dict(type=kw_type, keyword=keyword, description=description)
                 for kw_type, keyword, description in self.analyze_macros(show_decoded_strings, deobfuscate)]
