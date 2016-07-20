@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 """
 oleobj.py
 
@@ -14,7 +15,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE ==================================================================
 
-# oleobj is copyright (c) 2015 Philippe Lagadec (http://www.decalage.info)
+# oleobj is copyright (c) 2015-2016 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -41,8 +42,11 @@ http://www.decalage.info/python/oletools
 #------------------------------------------------------------------------------
 # CHANGELOG:
 # 2015-12-05 v0.01 PL: - first version
+# 2016-06          PL: - added main and process_file (not working yet)
+# 2016-07-18 v0.48 SL: - added Python 3.5 support
+# 2016-07-19       PL: - fixed Python 2.6-7 support
 
-__version__ = '0.01'
+__version__ = '0.48'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -62,8 +66,10 @@ __version__ = '0.01'
 
 #--- IMPORTS ------------------------------------------------------------------
 
-import logging, struct
+import logging, struct, optparse, os, re, sys
 
+from thirdparty.olefile import olefile
+from thirdparty.xglob import xglob
 
 # === LOGGING =================================================================
 
@@ -105,6 +111,18 @@ def get_logger(name, level=logging.CRITICAL+1):
 
 # a global logger object used for debugging:
 log = get_logger('oleobj')
+
+
+# === CONSTANTS ==============================================================
+
+# some str methods on Python 2.x return characters,
+# while the equivalent bytes methods return integers on Python 3.x:
+if sys.version_info[0] <= 2:
+    # Python 2.x
+    NULL_CHAR = '\x00'
+else:
+    # Python 3.x
+    NULL_CHAR = 0
 
 
 # === GLOBAL VARIABLES =======================================================
@@ -162,7 +180,7 @@ def read_LengthPrefixedAnsiString(data):
     ansi_string = data[:length-1]
     # TODO: only in strict mode:
     # check the presence of the null char:
-    assert data[length] == 0
+    assert data[length] == NULL_CHAR
     new_data = data[length:]
     return (ansi_string, new_data)
 
@@ -285,3 +303,149 @@ class OleObject (object):
             self.data = data[:self.data_size]
             assert len(self.data) == self.data_size
             self.extra_data = data[self.data_size:]
+
+
+
+def sanitize_filename(filename, replacement='_', max_length=200):
+    """compute basename of filename. Replaces all non-whitelisted characters.
+       The returned filename is always a basename of the file."""
+    basepath = os.path.basename(filename).strip()
+    sane_fname = re.sub(r'[^\w\.\- ]', replacement, basepath)
+
+    while ".." in sane_fname:
+        sane_fname = sane_fname.replace('..', '.')
+
+    while "  " in sane_fname:
+        sane_fname = sane_fname.replace('  ', ' ')
+
+    if not len(filename):
+        sane_fname = 'NONAME'
+
+    # limit filename length
+    if max_length:
+        sane_fname = sane_fname[:max_length]
+
+    return sane_fname
+
+
+def process_file(container, filename, data, output_dir=None):
+    if output_dir:
+        if not os.path.isdir(output_dir):
+            log.info('creating output directory %s' % output_dir)
+            os.mkdir(output_dir)
+
+        fname_prefix = os.path.join(output_dir,
+                                    sanitize_filename(filename))
+    else:
+        base_dir = os.path.dirname(filename)
+        sane_fname = sanitize_filename(filename)
+        fname_prefix = os.path.join(base_dir, sane_fname)
+
+    # TODO: option to extract objects to files (false by default)
+    if data is None:
+        data = open(filename, 'rb').read()
+    print ('-'*79)
+    print ('File: %r - %d bytes' % (filename, len(data)))
+    ole = olefile.OleFileIO(data)
+    index = 1
+    for stream in ole.listdir():
+        objdata = ole.openstream(stream).read()
+        stream_path = '/'.join(stream)
+        log.debug('Checking stream %r' % stream_path)
+        obj = OleObject()
+        try:
+            obj.parse(objdata)
+            print('extract file embedded in OLE object from stream %r:' % stream_path)
+            print('format_id  = %d' % obj.format_id)
+            print('class name = %r' % obj.class_name)
+            print('data size  = %d' % obj.data_size)
+            # set a file extension according to the class name:
+            class_name = obj.class_name.lower()
+            if class_name.startswith('word'):
+                ext = 'doc'
+            elif class_name.startswith('package'):
+                ext = 'package'
+            else:
+                ext = 'bin'
+
+            fname = '%s_object_%03d.%s' % (fname_prefix, index, ext)
+            print ('saving to file %s' % fname)
+            open(fname, 'wb').write(obj.data)
+            if obj.class_name.lower() == 'package':
+                print ('Parsing OLE Package')
+                opkg = OleNativeStream(bindata=obj.data)
+                print ('Filename = %r' % opkg.filename)
+                print ('Source path = %r' % opkg.src_path)
+                print ('Temp path = %r' % opkg.temp_path)
+                if opkg.filename:
+                    fname = '%s_%s' % (fname_prefix,
+                                       sanitize_filename(opkg.filename))
+                else:
+                    fname = '%s_object_%03d.noname' % (fname_prefix, index)
+                print ('saving to file %s' % fname)
+                open(fname, 'wb').write(opkg.data)
+            index += 1
+        except:
+            log.info('*** Not an OLE 1.0 Object')
+
+
+
+#=== MAIN =================================================================
+
+if __name__ == '__main__':
+    # print banner with version
+    print ('oleobj %s - http://decalage.info/oletools' % __version__)
+    print ('THIS IS WORK IN PROGRESS - Check updates regularly!')
+    print ('Please report any issue at https://github.com/decalage2/oletools/issues')
+    print ('')
+
+    DEFAULT_LOG_LEVEL = "warning" # Default log level
+    LOG_LEVELS = {'debug':    logging.DEBUG,
+              'info':     logging.INFO,
+              'warning':  logging.WARNING,
+              'error':    logging.ERROR,
+              'critical': logging.CRITICAL
+             }
+
+    usage = 'usage: %prog [options] <filename> [filename2 ...]'
+    parser = optparse.OptionParser(usage=usage)
+    # parser.add_option('-o', '--outfile', dest='outfile',
+    #     help='output file')
+    # parser.add_option('-c', '--csv', dest='csv',
+    #     help='export results to a CSV file')
+    parser.add_option("-r", action="store_true", dest="recursive",
+        help='find files recursively in subdirectories.')
+    parser.add_option("-d", type="str", dest="output_dir",
+        help='use specified directory to output files.', default=None)
+    parser.add_option("-z", "--zip", dest='zip_password', type='str', default=None,
+        help='if the file is a zip archive, open first file from it, using the provided password (requires Python 2.6+)')
+    parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
+        help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
+    parser.add_option('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
+                            help="logging level debug/info/warning/error/critical (default=%default)")
+
+    (options, args) = parser.parse_args()
+
+    # Print help if no arguments are passed
+    if len(args) == 0:
+        print (__doc__)
+        parser.print_help()
+        sys.exit()
+
+    # Setup logging to the console:
+    # here we use stdout instead of stderr by default, so that the output
+    # can be redirected properly.
+    logging.basicConfig(level=LOG_LEVELS[options.loglevel], stream=sys.stdout,
+                        format='%(levelname)-8s %(message)s')
+    # enable logging in the modules:
+    log.setLevel(logging.NOTSET)
+
+
+    for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
+        zip_password=options.zip_password, zip_fname=options.zip_fname):
+        # ignore directory names stored in zip files:
+        if container and filename.endswith('/'):
+            continue
+        process_file(container, filename, data, options.output_dir)
+
+

@@ -55,18 +55,20 @@ http://www.decalage.info/python/oletools
 #                  TJ: - sanitize filenames to avoid special characters
 # 2016-05-29       PL: - improved parsing, fixed issue #42
 # 2016-07-13 v0.48 PL: - new RtfParser and RtfObjParser classes
+# 2016-07-18       SL: - added Python 3.5 support
+# 2016-07-19       PL: - fixed Python 2.6-2.7 support
 
 __version__ = '0.48'
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # TODO:
 # - allow semicolon within hex, as found in  this sample:
 #   http://contagiodump.blogspot.nl/2011/10/sep-28-cve-2010-3333-manuscript-with.html
 
 
-#=== IMPORTS =================================================================
+# === IMPORTS =================================================================
 
-import re, os, sys, string, binascii, logging, optparse
+import re, os, sys, binascii, logging, optparse
 
 from thirdparty.xglob import xglob
 from oleobj import OleObject, OleNativeStream
@@ -120,7 +122,7 @@ log = get_logger('rtfobj')
 # REGEX pattern to extract embedded OLE objects in hexadecimal format:
 
 # alphanum digit: [0-9A-Fa-f]
-HEX_DIGIT = rb'[0-9A-Fa-f]'
+HEX_DIGIT = b'[0-9A-Fa-f]'
 
 # hex char = two alphanum digits: [0-9A-Fa-f]{2}
 # HEX_CHAR = r'[0-9A-Fa-f]{2}'
@@ -130,11 +132,11 @@ HEX_DIGIT = rb'[0-9A-Fa-f]'
 # AND the tags can be nested...
 #SINGLE_RTF_TAG = r'[{][^{}]*[}]'
 # Actually RTF tags may contain braces escaped with backslash (\{ \}):
-SINGLE_RTF_TAG = rb'[{](?:\\.|[^{}\\])*[}]'
+SINGLE_RTF_TAG = b'[{](?:\\\\.|[^{}\\\\])*[}]'
 
 # Nested tags, two levels (because Python's re does not support nested matching):
 # NESTED_RTF_TAG = r'[{](?:[^{}]|'+SINGLE_RTF_TAG+r')*[}]'
-NESTED_RTF_TAG = rb'[{](?:\\.|[^{}\\]|'+SINGLE_RTF_TAG+b')*[}]'
+NESTED_RTF_TAG = b'[{](?:\\\\.|[^{}\\\\]|'+SINGLE_RTF_TAG+b')*[}]'
 
 # AND it is also allowed to insert ANY control word or control symbol (ignored)
 # According to Rich Text Format (RTF) Specification Version 1.9.1,
@@ -146,7 +148,7 @@ NESTED_RTF_TAG = rb'[{](?:\\.|[^{}\\]|'+SINGLE_RTF_TAG+b')*[}]'
 # "\AnyThing " "\AnyThing123z" ""\AnyThing-456{" "\AnyThing{"
 # control symbol = \<any char except letter or digit> (followed by anything)
 
-ASCII_NAME = rb'([a-zA-Z]{1,250})'
+ASCII_NAME = b'([a-zA-Z]{1,250})'
 
 # using Python's re lookahead assumption:
 # (?=...) Matches if ... matches next, but doesn't consume any of the string.
@@ -155,21 +157,21 @@ ASCII_NAME = rb'([a-zA-Z]{1,250})'
 
 # TODO: Find the actual limit on the number of digits for Word
 # SIGNED_INTEGER = r'(-?\d{1,250})'
-SIGNED_INTEGER = rb'(-?\d+)'
+SIGNED_INTEGER = b'(-?\\d+)'
 
-CONTROL_WORD = rb'(?:\\' + ASCII_NAME + rb'(?:(?=[^a-zA-Z0-9-])|' + SIGNED_INTEGER + rb'(?=[^0-9])))'
+CONTROL_WORD = b'(?:\\\\' + ASCII_NAME + b'(?:(?=[^a-zA-Z0-9-])|' + SIGNED_INTEGER + b'(?=[^0-9])))'
 
 re_control_word = re.compile(CONTROL_WORD)
 
-CONTROL_SYMBOL = rb'(?:\\[^a-zA-Z0-9])'
+CONTROL_SYMBOL = b'(?:\\\\[^a-zA-Z0-9])'
 re_control_symbol = re.compile(CONTROL_SYMBOL)
 
 # Text that is not a control word/symbol or a group:
-TEXT = rb'[^{}\\]+'
+TEXT = b'[^{}\\\\]+'
 re_text = re.compile(TEXT)
 
 # ignored whitespaces and tags within a hex block:
-IGNORED = rb'(?:\s|'+NESTED_RTF_TAG+rb'|'+CONTROL_SYMBOL+rb'|'+CONTROL_WORD+rb')*'
+IGNORED = b'(?:\\s|'+NESTED_RTF_TAG+b'|'+CONTROL_SYMBOL+b'|'+CONTROL_WORD+b')*'
 #IGNORED = r'\s*'
 
 # HEX_CHAR = HEX_DIGIT + IGNORED + HEX_DIGIT
@@ -189,27 +191,24 @@ IGNORED = rb'(?:\s|'+NESTED_RTF_TAG+rb'|'+CONTROL_SYMBOL+rb'|'+CONTROL_WORD+rb')
 
 #TODO PATTERN = r'\b(?:' + HEX_CHAR + IGNORED + r'){4,}\b'
 # PATTERN = r'\b(?:' + HEX_CHAR + IGNORED + r'){4,}' #+ HEX_CHAR + r'\b'
-PATTERN = rb'\b(?:' + HEX_DIGIT + IGNORED + rb'){7,}' + HEX_DIGIT + rb'\b'
+PATTERN = b'\\b(?:' + HEX_DIGIT + IGNORED + b'){7,}' + HEX_DIGIT + b'\\b'
 
 # at least 4 hex chars, followed by whitespace or CR/LF: (?:[0-9A-Fa-f]{2}){4,}\s*
 # PATTERN = r'(?:(?:[0-9A-Fa-f]{2})+\s*)*(?:[0-9A-Fa-f]{2}){4,}'
 # improved pattern, allowing semicolons within hex:
 #PATTERN = r'(?:(?:[0-9A-Fa-f]{2})+\s*)*(?:[0-9A-Fa-f]{2}){4,}'
 
-# a dummy translation table for str.translate, which does not change anythying:
-TRANSTABLE_NOCHANGE = bytes.maketrans(b'', b'')
-
 re_hexblock = re.compile(PATTERN)
 re_embedded_tags = re.compile(IGNORED)
-re_decimal = re.compile(rb'\d+')
+re_decimal = re.compile(b'\\d+')
 
-re_delimiter = re.compile(rb'[ \t\r\n\f\v]')
+re_delimiter = re.compile(b'[ \\t\\r\\n\\f\\v]')
 
-DELIMITER = rb'[ \t\r\n\f\v]'
-DELIMITERS_ZeroOrMore = rb'[ \t\r\n\f\v]*'
-BACKSLASH_BIN = rb'\\bin'
+DELIMITER = b'[ \\t\\r\\n\\f\\v]'
+DELIMITERS_ZeroOrMore = b'[ \\t\\r\\n\\f\\v]*'
+BACKSLASH_BIN = b'\\\\bin'
 # According to my tests, Word accepts up to 250 digits (leading zeroes)
-DECIMAL_GROUP = rb'(\d{1,250})'
+DECIMAL_GROUP = b'(\d{1,250})'
 
 re_delims_bin_decimal = re.compile(DELIMITERS_ZeroOrMore + BACKSLASH_BIN
                                    + DECIMAL_GROUP + DELIMITER)
@@ -249,6 +248,19 @@ DESTINATION_CONTROL_WORDS = frozenset((
     b"xmlattrname", b"xmlattrvalue", b"xmlclose", b"xmlname", b"xmlnstbl", b"xmlopen"
     ))
 
+
+# some str methods on Python 2.x return characters,
+# while the equivalent bytes methods return integers on Python 3.x:
+if sys.version_info[0] <= 2:
+    # Python 2.x - Characters (str)
+    BACKSLASH = '\\'
+    BRACE_OPEN = '{'
+    BRACE_CLOSE = '}'
+else:
+    # Python 3.x - Integers
+    BACKSLASH = ord('\\')
+    BRACE_OPEN = ord('{')
+    BRACE_CLOSE = ord('}')
 
 
 #=== CLASSES =================================================================
@@ -294,15 +306,15 @@ class RtfParser(object):
     def parse(self):
         self.index = 0
         while self.index < self.size:
-            if self.data[self.index] == ord('{'):
+            if self.data[self.index] == BRACE_OPEN:
                 self._open_group()
                 self.index += 1
                 continue
-            if self.data[self.index] == ord('}'):
+            if self.data[self.index] == BRACE_CLOSE:
                 self._close_group()
                 self.index += 1
                 continue
-            if self.data[self.index] == ord('\\'):
+            if self.data[self.index] == BACKSLASH:
                 m = re_control_word.match(self.data, self.index)
                 if m:
                     cword = m.group(1)
@@ -332,7 +344,7 @@ class RtfParser(object):
 
     def _open_group(self):
         self.group_level += 1
-        log.debug('{ Open Group at index %Xh - level=%d' % (self.index, self.group_level))
+        #log.debug('{ Open Group at index %Xh - level=%d' % (self.index, self.group_level))
         # call user method AFTER increasing the level:
         self.open_group()
 
@@ -341,19 +353,20 @@ class RtfParser(object):
         pass
 
     def _close_group(self):
-        log.debug('} Close Group at index %Xh - level=%d' % (self.index, self.group_level))
+        #log.debug('} Close Group at index %Xh - level=%d' % (self.index, self.group_level))
         # call user method BEFORE decreasing the level:
         self.close_group()
         # if the destination level is the same as the group level, close the destination:
         if self.group_level == self.current_destination.group_level:
-            log.debug('Current Destination %r level = %d => Close Destination' % (
-                self.current_destination.cword, self.current_destination.group_level))
+            # log.debug('Current Destination %r level = %d => Close Destination' % (
+            #     self.current_destination.cword, self.current_destination.group_level))
             self._close_destination()
         else:
-            log.debug('Current Destination %r level = %d => Continue with same Destination' % (
-                self.current_destination.cword, self.current_destination.group_level))
+            # log.debug('Current Destination %r level = %d => Continue with same Destination' % (
+            #     self.current_destination.cword, self.current_destination.group_level))
+            pass
         self.group_level -= 1
-        log.debug('Decreased group level to %d' % self.group_level)
+        # log.debug('Decreased group level to %d' % self.group_level)
 
     def close_group(self):
         #log.debug('close group at index %Xh' % self.index)
@@ -369,7 +382,7 @@ class RtfParser(object):
         self.current_destination = new_dest
         # start of the destination is right after the control word:
         new_dest.start = self.index + len(matchobject.group())
-        log.debug("Open Destination %r start=%Xh - level=%d" % (cword, new_dest.start, new_dest.group_level))
+        # log.debug("Open Destination %r start=%Xh - level=%d" % (cword, new_dest.start, new_dest.group_level))
         # call the corresponding user method for additional processing:
         self.open_destination(self.current_destination)
 
@@ -377,8 +390,8 @@ class RtfParser(object):
         pass
 
     def _close_destination(self):
-        log.debug("Close Destination %r end=%Xh - level=%d" % (self.current_destination.cword,
-            self.index, self.current_destination.group_level))
+        # log.debug("Close Destination %r end=%Xh - level=%d" % (self.current_destination.cword,
+        #     self.index, self.current_destination.group_level))
         self.current_destination.end = self.index
         # call the corresponding user method for additional processing:
         self.close_destination(self.current_destination)
@@ -388,7 +401,8 @@ class RtfParser(object):
         if len(self.destinations) > 0:
             self.current_destination = self.destinations[-1]
         else:
-            log.debug('All destinations are closed, keeping the document destination open')
+            # log.debug('All destinations are closed, keeping the document destination open')
+            pass
 
     def close_destination(self, destination):
         pass
@@ -430,10 +444,10 @@ class RtfParser(object):
         pass
 
     def _end_of_file(self):
-        log.debug('%Xh Reached End of File')
+        # log.debug('%Xh Reached End of File')
         # close any group/destination that is still open:
         while self.group_level > 0:
-            log.debug('Group Level = %d, closing group' % self.group_level)
+            # log.debug('Group Level = %d, closing group' % self.group_level)
             self._close_group()
         self.end_of_file()
 
@@ -458,7 +472,7 @@ class RtfObjParser(RtfParser):
         if destination.cword == b'objdata':
             log.debug('*** Close object data at index %Xh' % self.index)
             # Filter out all whitespaces first (just ignored):
-            hexdata1 = destination.data.translate(TRANSTABLE_NOCHANGE, b' \t\r\n\f\v')
+            hexdata1 = destination.data.translate(None, b' \t\r\n\f\v')
             # Then filter out any other non-hex character:
             hexdata = re.sub(b'[^a-hA-H0-9]', b'', hexdata1)
             if len(hexdata) < len(hexdata1):
@@ -528,116 +542,116 @@ class RtfObjParser(RtfParser):
 
 #=== FUNCTIONS ===============================================================
 
-def rtf_iter_objects_old (filename, min_size=32):
-    """
-    Open a RTF file, extract each embedded object encoded in hexadecimal of
-    size > min_size, yield the index of the object in the RTF file and its data
-    in binary format.
-    This is an iterator.
-    """
-    data = open(filename, 'rb').read()
-    for m in re.finditer(PATTERN, data):
-        found = m.group(0)
-        orig_len = len(found)
-        # remove all whitespace and line feeds:
-        #NOTE: with Python 2.6+, we could use None instead of TRANSTABLE_NOCHANGE
-        found = found.translate(TRANSTABLE_NOCHANGE, ' \t\r\n\f\v}')
-        found = binascii.unhexlify(found)
-        #print repr(found)
-        if len(found)>min_size:
-            yield m.start(), orig_len, found
+# def rtf_iter_objects_old (filename, min_size=32):
+#     """
+#     Open a RTF file, extract each embedded object encoded in hexadecimal of
+#     size > min_size, yield the index of the object in the RTF file and its data
+#     in binary format.
+#     This is an iterator.
+#     """
+#     data = open(filename, 'rb').read()
+#     for m in re.finditer(PATTERN, data):
+#         found = m.group(0)
+#         orig_len = len(found)
+#         # remove all whitespace and line feeds:
+#         #NOTE: with Python 2.6+, we could use None instead of TRANSTABLE_NOCHANGE
+#         found = found.translate(TRANSTABLE_NOCHANGE, ' \t\r\n\f\v}')
+#         found = binascii.unhexlify(found)
+#         #print repr(found)
+#         if len(found)>min_size:
+#             yield m.start(), orig_len, found
 
 # TODO: backward-compatible API?
 
 
-def search_hex_block(data, pos=0, min_size=32, first=True):
-    if first:
-        # Search 1st occurence of a hex block:
-        match = re_hexblock.search(data, pos=pos)
-    else:
-        # Match next occurences of a hex block, from the current position only:
-        match = re_hexblock.match(data, pos=pos)
-
-
-
-def rtf_iter_objects (data, min_size=32):
-    """
-    Open a RTF file, extract each embedded object encoded in hexadecimal of
-    size > min_size, yield the index of the object in the RTF file and its data
-    in binary format.
-    This is an iterator.
-    """
-    # Search 1st occurence of a hex block:
-    match = re_hexblock.search(data)
-    if match is None:
-        log.debug('No hex block found.')
-        # no hex block found
-        return
-    while match is not None:
-        found = match.group(0)
-        # start index
-        start = match.start()
-        # current position
-        current = match.end()
-        log.debug('Found hex block starting at %08X, end %08X, size=%d' % (start, current, len(found)))
-        if len(found) < min_size:
-            log.debug('Too small - size<%d, ignored.' % min_size)
-            match = re_hexblock.search(data, pos=current)
-            continue
-        #log.debug('Match: %s' % found)
-        # remove all whitespace and line feeds:
-        #NOTE: with Python 2.6+, we could use None instead of TRANSTABLE_NOCHANGE
-        found = found.translate(TRANSTABLE_NOCHANGE, ' \t\r\n\f\v')
-        # TODO: make it a function
-        # Also remove embedded RTF tags:
-        found = re_embedded_tags.sub('', found)
-        # object data extracted from the RTF file
-        # MS Word accepts an extra hex digit, so we need to trim it if present:
-        if len(found) & 1:
-            log.debug('Odd length, trimmed last byte.')
-            found = found[:-1]
-        #log.debug('Cleaned match: %s' % found)
-        objdata = binascii.unhexlify(found)
-        # Detect the "\bin" control word, which is sometimes used for obfuscation:
-        bin_match = re_delims_bin_decimal.match(data, pos=current)
-        while bin_match is not None:
-            log.debug('Found \\bin block starting at %08X : %r'
-                          % (bin_match.start(), bin_match.group(0)))
-            # extract the decimal integer following '\bin'
-            bin_len = int(bin_match.group(1))
-            log.debug('\\bin block length = %d' % bin_len)
-            if current+bin_len > len(data):
-                log.error('\\bin block length is larger than the remaining data')
-                # move the current index, ignore the \bin block
-                current += len(bin_match.group(0))
-                break
-            # read that number of bytes:
-            objdata += data[current:current+bin_len]
-            # TODO: handle exception
-            current += len(bin_match.group(0)) + bin_len
-            # TODO: check if current is out of range
-            # TODO: is Word limiting the \bin length to a number of digits?
-            log.debug('Current position = %08X' % current)
-            match = re_delim_hexblock.match(data, pos=current)
-            if match is not None:
-                log.debug('Found next hex block starting at %08X, end %08X'
-                    % (match.start(), match.end()))
-                found = match.group(0)
-                log.debug('Match: %s' % found)
-                # remove all whitespace and line feeds:
-                #NOTE: with Python 2.6+, we could use None instead of TRANSTABLE_NOCHANGE
-                found = found.translate(TRANSTABLE_NOCHANGE, ' \t\r\n\f\v')
-                # Also remove embedded RTF tags:
-                found = re_embedded_tags.sub(found, '')
-                objdata += binascii.unhexlify(found)
-                current = match.end()
-            bin_match = re_delims_bin_decimal.match(data, pos=current)
-
-        # print repr(found)
-        if len(objdata)>min_size:
-            yield start, current-start, objdata
-        # Search next occurence of a hex block:
-        match = re_hexblock.search(data, pos=current)
+# def search_hex_block(data, pos=0, min_size=32, first=True):
+#     if first:
+#         # Search 1st occurence of a hex block:
+#         match = re_hexblock.search(data, pos=pos)
+#     else:
+#         # Match next occurences of a hex block, from the current position only:
+#         match = re_hexblock.match(data, pos=pos)
+#
+#
+#
+# def rtf_iter_objects (data, min_size=32):
+#     """
+#     Open a RTF file, extract each embedded object encoded in hexadecimal of
+#     size > min_size, yield the index of the object in the RTF file and its data
+#     in binary format.
+#     This is an iterator.
+#     """
+#     # Search 1st occurence of a hex block:
+#     match = re_hexblock.search(data)
+#     if match is None:
+#         log.debug('No hex block found.')
+#         # no hex block found
+#         return
+#     while match is not None:
+#         found = match.group(0)
+#         # start index
+#         start = match.start()
+#         # current position
+#         current = match.end()
+#         log.debug('Found hex block starting at %08X, end %08X, size=%d' % (start, current, len(found)))
+#         if len(found) < min_size:
+#             log.debug('Too small - size<%d, ignored.' % min_size)
+#             match = re_hexblock.search(data, pos=current)
+#             continue
+#         #log.debug('Match: %s' % found)
+#         # remove all whitespace and line feeds:
+#         #NOTE: with Python 2.6+, we could use None instead of TRANSTABLE_NOCHANGE
+#         found = found.translate(TRANSTABLE_NOCHANGE, ' \t\r\n\f\v')
+#         # TODO: make it a function
+#         # Also remove embedded RTF tags:
+#         found = re_embedded_tags.sub('', found)
+#         # object data extracted from the RTF file
+#         # MS Word accepts an extra hex digit, so we need to trim it if present:
+#         if len(found) & 1:
+#             log.debug('Odd length, trimmed last byte.')
+#             found = found[:-1]
+#         #log.debug('Cleaned match: %s' % found)
+#         objdata = binascii.unhexlify(found)
+#         # Detect the "\bin" control word, which is sometimes used for obfuscation:
+#         bin_match = re_delims_bin_decimal.match(data, pos=current)
+#         while bin_match is not None:
+#             log.debug('Found \\bin block starting at %08X : %r'
+#                           % (bin_match.start(), bin_match.group(0)))
+#             # extract the decimal integer following '\bin'
+#             bin_len = int(bin_match.group(1))
+#             log.debug('\\bin block length = %d' % bin_len)
+#             if current+bin_len > len(data):
+#                 log.error('\\bin block length is larger than the remaining data')
+#                 # move the current index, ignore the \bin block
+#                 current += len(bin_match.group(0))
+#                 break
+#             # read that number of bytes:
+#             objdata += data[current:current+bin_len]
+#             # TODO: handle exception
+#             current += len(bin_match.group(0)) + bin_len
+#             # TODO: check if current is out of range
+#             # TODO: is Word limiting the \bin length to a number of digits?
+#             log.debug('Current position = %08X' % current)
+#             match = re_delim_hexblock.match(data, pos=current)
+#             if match is not None:
+#                 log.debug('Found next hex block starting at %08X, end %08X'
+#                     % (match.start(), match.end()))
+#                 found = match.group(0)
+#                 log.debug('Match: %s' % found)
+#                 # remove all whitespace and line feeds:
+#                 #NOTE: with Python 2.6+, we could use None instead of TRANSTABLE_NOCHANGE
+#                 found = found.translate(TRANSTABLE_NOCHANGE, ' \t\r\n\f\v')
+#                 # Also remove embedded RTF tags:
+#                 found = re_embedded_tags.sub(found, '')
+#                 objdata += binascii.unhexlify(found)
+#                 current = match.end()
+#             bin_match = re_delims_bin_decimal.match(data, pos=current)
+#
+#         # print repr(found)
+#         if len(objdata)>min_size:
+#             yield start, current-start, objdata
+#         # Search next occurence of a hex block:
+#         match = re_hexblock.search(data, pos=current)
 
 
 
