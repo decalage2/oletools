@@ -224,7 +224,7 @@ class TableStream(object):
         assert len(row) == self.num_columns
         columns = []
         max_lines = 0
-        for i in xrange(self.num_columns):
+        for i in range(self.num_columns):
             cell = row[i]
             # Convert to string:
             # TODO: handle unicode properly
@@ -233,7 +233,7 @@ class TableStream(object):
                 # encode to UTF8, avoiding errors
                 cell = cell.decode('utf-8', errors='replace')
             else:
-                cell = unicode(cell)
+                cell = cell
             # Wrap cell text according to the column width
             # TODO: use a TextWrapper object for each column instead
             column = textwrap.wrap(cell, width=self.column_width[i])
@@ -241,16 +241,16 @@ class TableStream(object):
             if colors is not None and self.outfile.isatty():
                 color = colors[i]
                 if color:
-                    for j in xrange(len(column)):
+                    for j in range(len(column)):
                         # print '%r: %s' % (column[j], type(column[j]))
                         column[j] = colorclass.Color('{auto%s}%s{/%s}' % (color, column[j], color))
             columns.append(column)
             # determine which column has the highest number of lines
             max_lines = max(len(columns[i]), max_lines)
         # transpose: write output line by line
-        for j in xrange(max_lines):
+        for j in range(max_lines):
             self.write(self.style.vertical_left)
-            for i in xrange(self.num_columns):
+            for i in range(self.num_columns):
                 column = columns[i]
                 if j<len(column):
                     # text to be written

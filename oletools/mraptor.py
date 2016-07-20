@@ -292,7 +292,7 @@ def main():
                 vba_code_all_modules = ''
                 try:
                     for (subfilename, stream_path, vba_filename, vba_code) in vba_parser.extract_all_macros():
-                        vba_code_all_modules += vba_code + '\n'
+                        vba_code_all_modules += vba_code.decode('utf-8','replace') + '\n'
                 except Exception as e:
                     # log.error('Error when parsing VBA macros from file %r' % full_name)
                     result = Result_Error
