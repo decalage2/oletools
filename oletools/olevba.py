@@ -2131,7 +2131,7 @@ class VBA_Parser(object):
             _file = filename
         else:
             # file already read in memory, make it a file-like object for zipfile:
-            _file = StringIO(data)
+            _file = BytesIO(data)
         #self.file = _file
         self.ole_file = None
         self.ole_subfiles = []
