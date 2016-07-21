@@ -1933,8 +1933,8 @@ class VBA_Scanner(object):
         # join long lines ending with " _":
         self.code = vba_collapse_long_lines(vba_code)
         self.code_hex = b''
-        self.code_hex_rev = ''
-        self.code_rev_hex = ''
+        self.code_hex_rev = b''
+        self.code_rev_hex = b''
         self.code_base64 = b''
         self.code_dridex = ''
         self.code_vba = ''
@@ -1972,9 +1972,9 @@ class VBA_Scanner(object):
             # if the code contains "StrReverse", also append the hex strings in reverse order:
             if self.strReverse:
                 # StrReverse after hex decoding:
-                self.code_hex_rev += '\n' + decoded[::-1]
+                self.code_hex_rev += b'\n' + decoded[::-1]
                 # StrReverse before hex decoding:
-                self.code_rev_hex += '\n' + binascii.unhexlify(encoded[::-1])
+                self.code_rev_hex += b'\n' + binascii.unhexlify(encoded[::-1])
                 #example: https://malwr.com/analysis/NmFlMGI4YTY1YzYyNDkwNTg1ZTBiZmY5OGI3YjlhYzU/
         #TODO: also append the full code reversed if StrReverse? (risk of false positives?)
         # Detect Base64-encoded strings
@@ -2006,6 +2006,8 @@ class VBA_Scanner(object):
                 (self.code_dridex, 'Dridex'),
                 (self.code_vba, 'VBA expression'),
         ):
+            if isinstance(code,bytes):
+                code=code.decode('utf-8','replace')
             self.autoexec_keywords += detect_autoexec(code, obfuscation)
             self.suspicious_keywords += detect_suspicious(code, obfuscation)
             self.iocs += detect_patterns(code, obfuscation)
