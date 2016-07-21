@@ -17,10 +17,10 @@ to install this package.
 # 2015-03-23 v0.09: - updated description and classifiers, added shebang line
 # 2015-06-16 v0.10: - added pyparsing
 # 2016-02-08 v0.42: - added colorclass, tablestream
+# 2016-07-19 v0.48: - create CLI scripts using entry points (by 2*yo)
 
 #--- TODO ---------------------------------------------------------------------
 
-# - deploy scripts?
 # - version for python 3 using 2to3
 
 #--- IMPORTS ------------------------------------------------------------------
@@ -38,7 +38,7 @@ import sys, os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.47'
+version      = '0.48'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       = "Philippe Lagadec"
@@ -257,7 +257,9 @@ package_data={
 ##fix_data_files(data_files)
 
 
-#--- SCRIPTS ------------------------------------------------------------------
+# --- SCRIPTS ------------------------------------------------------------------
+
+# Entry points to create convenient scripts automatically
 
 entry_points = {
     'console_scripts': [
@@ -270,9 +272,11 @@ entry_points = {
 }
 
 
-#=== MAIN =====================================================================
+# === MAIN =====================================================================
 
 def main():
+    # TODO: remove this test once all tools are ported to Python 3
+    # TODO: warning about Python 2.6
     if sys.version >= '3.0':
         s = "Sorry, %s %s requires Python 2.x."
         print(s % (name, version))
