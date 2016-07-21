@@ -259,9 +259,15 @@ package_data={
 
 #--- SCRIPTS ------------------------------------------------------------------
 
-# not used for now.
-
-#scripts = ["%s/cherrypy/cherryd" % setupdir]
+entry_points = {
+    'console_scripts': [
+        'olevba=oletools.olevba:main',
+        'mraptor=oletools.mraptor:main',
+        'olebrowse=oletools.olebrowse:main',
+        'oleid=oletools.oleid:main',
+        'pyxswf=oletools.pyxswf:main'
+    ],
+}
 
 
 #=== MAIN =====================================================================
@@ -295,7 +301,7 @@ def main():
         package_data = package_data,
         download_url=download_url,
 #        data_files=data_files,
-#        scripts=scripts,
+        entry_points=entry_points,
     )
 
 
