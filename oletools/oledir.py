@@ -94,7 +94,7 @@ STATUS_COLORS = {
 
 if __name__ == '__main__':
     # print banner with version
-    print 'oledir %s - http://decalage.info/python/oletools' % __version__
+    print('oledir %s - http://decalage.info/python/oletools' % __version__)
 
     if os.name == 'nt':
         colorclass.Windows.enable(auto_colors=True, reset_atexit=True)
@@ -126,7 +126,7 @@ if __name__ == '__main__':
     # TODO: oledir option to hexdump the raw direntries
     # TODO: olefile should be less picky about incorrect directory structures
 
-    for id in xrange(len(ole.direntries)):
+    for id in range(len(ole.direntries)):
         d = ole.direntries[id]
         if d is None:
             # this direntry is not part of the tree: either unused or an orphan
