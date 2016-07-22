@@ -404,7 +404,7 @@ TYPE2TAG = {
 
 
 # MSO files ActiveMime header magic
-MSO_ACTIVEMIME_HEADER = 'ActiveMime'
+MSO_ACTIVEMIME_HEADER = b'ActiveMime'
 
 MODULE_EXTENSION = "bas"
 CLASS_EXTENSION = "cls"
@@ -2333,6 +2333,8 @@ class VBA_Parser(object):
         """
         log.info('Opening MHTML file %s' % self.filename)
         try:
+            if isinstance(data,bytes):
+                data = data.decode('utf8', 'replace')
             # parse the MIME content
             # remove any leading whitespace or newline (workaround for issue in email package)
             stripped_data = data.lstrip('\r\n\t ')
@@ -2362,7 +2364,8 @@ class VBA_Parser(object):
                 # using the ActiveMime/MSO format (zlib-compressed), and Base64 encoded.
                 # decompress the zlib data starting at offset 0x32, which is the OLE container:
                 # check ActiveMime header:
-                if isinstance(part_data, str) and is_mso_file(part_data):
+
+                if (isinstance(part_data, str) or isinstance(part_data, bytes)) and is_mso_file(part_data):
                     log.debug('Found ActiveMime header, decompressing MSO container')
                     try:
                         ole_data = mso_file_extract(part_data)
