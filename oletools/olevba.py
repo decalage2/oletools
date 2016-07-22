@@ -2433,6 +2433,8 @@ class VBA_Parser(object):
         """
         log.info('Opening text file %s' % self.filename)
         # directly store the source code:
+        if isinstance(data,bytes):
+            data=data.decode('utf8','replace')
         self.vba_code_all_modules = data
         self.contains_macros = True
         # set type only if parsing succeeds
@@ -2943,7 +2945,9 @@ class VBA_Parser_CLI(VBA_Parser):
                 for (subfilename, stream_path, vba_filename, vba_code) in self.extract_all_macros():
                     if hide_attributes:
                         # hide attribute lines:
-                        vba_code_filtered = filter_vba(vba_code.decode('utf-8','replace'))
+                        if isinstance(vba_code,bytes):
+                            vba_code =vba_code.decode('utf-8','replace')
+                        vba_code_filtered = filter_vba(vba_code)
                     else:
                         vba_code_filtered = vba_code
                     print('-' * 79)

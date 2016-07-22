@@ -1004,7 +1004,7 @@ class OleFileIO:
     TIFF files).
     """
 
-    def __init__(self, filename = None, raise_defects=DEFECT_FATAL):
+    def     __init__(self, filename = None, raise_defects=DEFECT_FATAL):
         """
         Constructor for OleFileIO class.
 
