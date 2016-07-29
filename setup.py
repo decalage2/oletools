@@ -25,10 +25,10 @@ to install this package.
 
 #--- IMPORTS ------------------------------------------------------------------
 
-##try:
-##    from setuptools import setup
-##except ImportError:
-from distutils.core import setup
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
 
 #from distutils.command.install import INSTALL_SCHEMES
 
