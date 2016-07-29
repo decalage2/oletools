@@ -1,6 +1,6 @@
 """Color class used by library users."""
 
-from .core import ColorStr
+from colorclass.core import ColorStr
 
 
 class Color(ColorStr):

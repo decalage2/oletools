@@ -1,8 +1,8 @@
 """String subclass that handles ANSI color codes."""
 
-from .codes import ANSICodeMapping
-from .parse import parse_input, RE_SPLIT
-from .search import build_color_index, find_char_color
+from colorclass.codes import ANSICodeMapping
+from colorclass.parse import parse_input, RE_SPLIT
+from colorclass.search import build_color_index, find_char_color
 
 PARENT_CLASS = type(u'')
 

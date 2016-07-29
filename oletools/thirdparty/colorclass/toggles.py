@@ -1,6 +1,6 @@
 """Convenience functions to enable/disable features."""
 
-from .codes import ANSICodeMapping
+from colorclass.codes import ANSICodeMapping
 
 
 def disable_all_colors():
