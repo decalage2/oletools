@@ -175,10 +175,11 @@ https://github.com/unixfreak0037/officeparser
 # 2016-05-12       CH: - added support for PowerPoint 97-2003 files
 # 2016-06-06       CH: - improved handling of unicode VBA module names
 # 2016-06-07       CH: - added option --relaxed, stricter parsing by default
-# 2016-06-12 v0.48 PL: - fixed small bugs in VBA parsing code
+# 2016-06-12 v0.50 PL: - fixed small bugs in VBA parsing code
 # 2016-07-01       PL: - fixed issue #58 with format() to support Python 2.6
+# 2016-07-29       CH: - fixed several bugs including #73 (Mac Roman encoding)
 
-__version__ = '0.48'
+__version__ = '0.50'
 
 #------------------------------------------------------------------------------
 # TODO:
