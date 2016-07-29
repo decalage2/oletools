@@ -358,7 +358,7 @@ class UnexpectedDataError(OlevbaBaseException):
     """ raised when parsing is strict (=not relaxed) and data is unexpected """
 
     def __init__(self, stream_path, variable, expected, value):
-        super(UnexpectedDataError, self).__init__(self,
+        super(UnexpectedDataError, self).__init__(
             'Unexpected value in {0} for variable {1}: '
             'expected {2:04X} but found {3:04X}!'
             .format(stream_path, variable, expected, value))
@@ -379,6 +379,22 @@ RETURN_OPEN_ERROR     = 5
 RETURN_PARSE_ERROR    = 6
 RETURN_SEVERAL_ERRS   = 7
 RETURN_UNEXPECTED     = 8
+
+# MAC codepages (from http://stackoverflow.com/questions/1592925/decoding-mac-os-text-in-python)
+MAC_CODEPAGES = {
+    10000: 'mac-roman',
+    10001: 'shiftjis',  # not found: 'mac-shift-jis',
+    10003: 'ascii',     # nothing appropriate found: 'mac-hangul',
+    10008: 'gb2321',    # not found: 'mac-gb2312',
+    10002: 'big5',      # not found: 'mac-big5',
+    10005: 'hebrew',    # not found: 'mac-hebrew',
+    10004: 'mac-arabic',
+    10006: 'mac-greek',
+    10081: 'mac-turkish',
+    10021: 'thai',      # not found: mac-thai',
+    10029: 'maccentraleurope',  # not found: 'mac-east europe',
+    10007: 'ascii',     # nothing appropriate found: 'mac-russian',
+}
 
 # URL and message to report issues:
 URL_OLEVBA_ISSUES = 'https://github.com/decalage2/oletools/issues'
@@ -1347,7 +1363,9 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             reference_sizeof_name = struct.unpack("<L", dir_stream.read(4))[0]
             reference_name = dir_stream.read(reference_sizeof_name)
             reference_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-            check_value('REFERENCE_Reserved', 0x003E, reference_reserved)
+            if reference_reserved not in (0x003E, 0x000D):
+                raise UnexpectedDataError(dir_path, 'REFERENCE_Reserved',
+                                          (0x003E, 0x000D), value)
             reference_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
             reference_name_unicode = dir_stream.read(reference_sizeof_name_unicode)
             unused = reference_id
@@ -1556,11 +1574,19 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
                 log.warning('unknown or invalid module section id {0:04X}'.format(section_id))
 
             log.debug('Project CodePage = %d' % projectcodepage_codepage)
-            vba_codec = 'cp%d' % projectcodepage_codepage
+            if projectcodepage_codepage in MAC_CODEPAGES:
+                vba_codec = MAC_CODEPAGES[projectcodepage_codepage]
+            else:
+                vba_codec = 'cp%d' % projectcodepage_codepage
             log.debug("ModuleName = {0}".format(modulename_modulename))
             log.debug("ModuleNameUnicode = {0}".format(uni_out(modulename_unicode_modulename_unicode)))
             log.debug("StreamName = {0}".format(modulestreamname_streamname))
-            streamname_unicode = modulestreamname_streamname.decode(vba_codec)
+            try:
+                streamname_unicode = modulestreamname_streamname.decode(vba_codec)
+            except UnicodeError as ue:
+                log.debug('failed to decode stream name {0!r} with codec {1}'
+                          .format(uni_out(streamname_unicode), vba_codec))
+                streamname_unicode = modulestreamname_streamname.decode(vba_codec, errors='replace')
             log.debug("StreamName.decode('%s') = %s" % (vba_codec, uni_out(streamname_unicode)))
             log.debug("StreamNameUnicode = {0}".format(uni_out(modulestreamname_streamname_unicode)))
             log.debug("TextOffset = {0}".format(moduleoffset_textoffset))
