@@ -42,6 +42,7 @@ License: BSD, see source code or documentation
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
 
 #------------------------------------------------------------------------------
 # CHANGELOG:
@@ -49,8 +50,9 @@ License: BSD, see source code or documentation
 # 2016-01-01 v0.02 PL: - added styles, color support
 # 2016-04-19 v0.03 PL: - enable colorclass on Windows, fixed issue #39
 # 2016-05-25 v0.04 PL: - updated for colorclass 2.2.0 (now a package)
+# 2016-07-29 v0.05 PL: - fixed oletools issue #57, bug when importing colorclass
 
-__version__ = '0.04'
+__version__ = '0.05'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -65,7 +67,16 @@ __version__ = '0.04'
 import textwrap
 import sys, os
 
-from thirdparty import colorclass
+# add the thirdparty subfolder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+# assumption: this module is in a subfolder of thirdparty:
+_thirdparty_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_thirdparty_dir = %r' % _thirdparty_dir)
+if not _thirdparty_dir in sys.path:
+    sys.path.insert(0, _thirdparty_dir)
+
+import colorclass
 
 # On Windows, colorclass needs to be enabled:
 if os.name == 'nt':
