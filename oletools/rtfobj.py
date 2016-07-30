@@ -559,7 +559,7 @@ class RtfObjParser(RtfParser):
 
 #=== FUNCTIONS ===============================================================
 
-def rtf_iter_objects_old (filename, min_size=32):
+def rtf_iter_objects(filename, min_size=32):
     """
     [DEPRECATED] Backward-compatible API, for applications using the old rtfobj:
     Open a RTF file, extract each embedded object encoded in hexadecimal of
@@ -570,9 +570,9 @@ def rtf_iter_objects_old (filename, min_size=32):
     data = open(filename, 'rb').read()
     rtfp = RtfObjParser(data)
     rtfp.parse()
-    for rtfobj in rtfp.objects:
-        orig_len = rtfobj.end - rtfobj.start
-        yield rtfobj.start, orig_len, rtfobj.rawdata
+    for obj in rtfp.objects:
+        # orig_len = obj.end - obj.start
+        yield obj.start, obj.rawdata
 
 
 
