@@ -58,6 +58,7 @@ http://www.decalage.info/python/oletools
 # 2016-07-18       SL: - added Python 3.5 support
 # 2016-07-19       PL: - fixed Python 2.6-2.7 support
 # 2016-07-30       PL: - new API with class RtfObject
+#                      - backward-compatible API rtf_iter_objects (fixed issue #70)
 
 __version__ = '0.50'
 
@@ -558,26 +559,20 @@ class RtfObjParser(RtfParser):
 
 #=== FUNCTIONS ===============================================================
 
-# def rtf_iter_objects_old (filename, min_size=32):
-#     """
-#     Open a RTF file, extract each embedded object encoded in hexadecimal of
-#     size > min_size, yield the index of the object in the RTF file and its data
-#     in binary format.
-#     This is an iterator.
-#     """
-#     data = open(filename, 'rb').read()
-#     for m in re.finditer(PATTERN, data):
-#         found = m.group(0)
-#         orig_len = len(found)
-#         # remove all whitespace and line feeds:
-#         #NOTE: with Python 2.6+, we could use None instead of TRANSTABLE_NOCHANGE
-#         found = found.translate(TRANSTABLE_NOCHANGE, ' \t\r\n\f\v}')
-#         found = binascii.unhexlify(found)
-#         #print repr(found)
-#         if len(found)>min_size:
-#             yield m.start(), orig_len, found
-
-# TODO: backward-compatible API?
+def rtf_iter_objects_old (filename, min_size=32):
+    """
+    [DEPRECATED] Backward-compatible API, for applications using the old rtfobj:
+    Open a RTF file, extract each embedded object encoded in hexadecimal of
+    size > min_size, yield the index of the object in the RTF file and its data
+    in binary format.
+    This is an iterator.
+    """
+    data = open(filename, 'rb').read()
+    rtfp = RtfObjParser(data)
+    rtfp.parse()
+    for rtfobj in rtfp.objects:
+        orig_len = rtfobj.end - rtfobj.start
+        yield rtfobj.start, orig_len, rtfobj.rawdata
 
 
 
@@ -664,53 +659,6 @@ def process_file(container, filename, data, output_dir=None):
                 print('Not an OLE Package')
         else:
             print('Not a well-formed OLE object')
-
-
-
-        # print '-'*79
-    # print 'File: %r - %d bytes' % (filename, len(data))
-    # for index, orig_len, objdata in rtf_iter_objects(data):
-    #     print 'found object size %d at index %08X - end %08X' % (len(objdata), index, index+orig_len)
-    #     fname = '%s_object_%08X.raw' % (fname_prefix, index)
-    #     print 'saving object to file %s' % fname
-    #     open(fname, 'wb').write(objdata)
-    #     # TODO: check if all hex data is extracted properly
-    #
-    #     obj = OleObject()
-    #     try:
-    #         obj.parse(objdata)
-    #         print 'extract file embedded in OLE object:'
-    #         print 'format_id  = %d' % obj.format_id
-    #         print 'class name = %r' % obj.class_name
-    #         print 'data size  = %d' % obj.data_size
-    #         # set a file extension according to the class name:
-    #         class_name = obj.class_name.lower()
-    #         if class_name.startswith('word'):
-    #             ext = 'doc'
-    #         elif class_name.startswith('package'):
-    #             ext = 'package'
-    #         else:
-    #             ext = 'bin'
-    #
-    #         fname = '%s_object_%08X.%s' % (fname_prefix, index, ext)
-    #         print 'saving to file %s' % fname
-    #         open(fname, 'wb').write(obj.data)
-    #         if obj.class_name.lower() == 'package':
-    #             print 'Parsing OLE Package'
-    #             opkg = OleNativeStream(bindata=obj.data)
-    #             print 'Filename = %r' % opkg.filename
-    #             print 'Source path = %r' % opkg.src_path
-    #             print 'Temp path = %r' % opkg.temp_path
-    #             if opkg.filename:
-    #                 fname = '%s_%s' % (fname_prefix,
-    #                                    sanitize_filename(opkg.filename))
-    #             else:
-    #                 fname = '%s_object_%08X.noname' % (fname_prefix, index)
-    #             print 'saving to file %s' % fname
-    #             open(fname, 'wb').write(opkg.data)
-    #     except:
-    #         pass
-    #         log.exception('*** Not an OLE 1.0 Object')
 
 
 
