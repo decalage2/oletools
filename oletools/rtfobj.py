@@ -54,11 +54,12 @@ http://www.decalage.info/python/oletools
 #                        (contribution by Thomas Jarosch)
 #                  TJ: - sanitize filenames to avoid special characters
 # 2016-05-29       PL: - improved parsing, fixed issue #42
-# 2016-07-13 v0.48 PL: - new RtfParser and RtfObjParser classes
+# 2016-07-13 v0.50 PL: - new RtfParser and RtfObjParser classes
 # 2016-07-18       SL: - added Python 3.5 support
 # 2016-07-19       PL: - fixed Python 2.6-2.7 support
+# 2016-07-30       PL: - new API with class RtfObject
 
-__version__ = '0.48'
+__version__ = '0.50'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -455,14 +456,45 @@ class RtfParser(object):
         pass
 
 
+class RtfObject(object):
+    """
+    An object or a file (OLE Package) embedded into an RTF document
+    """
+    def __init__(self):
+        """
+        RtfObject constructor
+        """
+        # start and end index in the RTF file:
+        self.start = None
+        self.end = None
+        # raw object data encoded in hexadecimal, as found in the RTF file:
+        self.hexdata = None
+        # raw object data in binary form, decoded from hexadecimal
+        self.rawdata = None
+        # OLE object data (extracted from rawdata)
+        self.is_ole = False
+        self.oledata = None
+        self.format_id = None
+        self.class_name = None
+        self.oledata_size = None
+        # OLE Package data (extracted from oledata)
+        self.is_package = False
+        self.olepkgdata = None
+        self.filename = None
+        self.src_path = None
+        self.temp_path = None
+
+
+
 class RtfObjParser(RtfParser):
     """
     Specialized RTF parser to extract OLE objects
     """
 
-    def __init__(self, data, fname_prefix='rtf'):
+    def __init__(self, data):
         super(RtfObjParser, self).__init__(data)
-        self.fname_prefix = fname_prefix
+        # list of RtfObjects found
+        self.objects = []
 
     def open_destination(self, destination):
         if destination.cword == b'objdata':
@@ -471,6 +503,10 @@ class RtfObjParser(RtfParser):
     def close_destination(self, destination):
         if destination.cword == b'objdata':
             log.debug('*** Close object data at index %Xh' % self.index)
+            rtfobj = RtfObject()
+            self.objects.append(rtfobj)
+            rtfobj.start = destination.start
+            rtfobj.end = destination.end
             # Filter out all whitespaces first (just ignored):
             hexdata1 = destination.data.translate(None, b' \t\r\n\f\v')
             # Then filter out any other non-hex character:
@@ -483,46 +519,26 @@ class RtfObjParser(RtfParser):
             if len(hexdata) & 1:
                 log.debug('Odd length, trimmed last byte.')
                 hexdata = hexdata[:-1]
+            rtfobj.hexdata = hexdata
             object_data = binascii.unhexlify(hexdata)
-            print('found object size %d at index %08X - end %08X' % (len(object_data),
-                                                                     destination.start, self.index))
-            fname = '%s_object_%08X.raw' % (self.fname_prefix, destination.start)
-            print('saving object to file %s' % fname)
-            open(fname, 'wb').write(object_data)
+            rtfobj.rawdata = object_data
             # TODO: check if all hex data is extracted properly
 
             obj = OleObject()
             try:
                 obj.parse(object_data)
-                print('extract file embedded in OLE object:')
-                print('format_id  = %d' % obj.format_id)
-                print('class name = %r' % obj.class_name)
-                print('data size  = %d' % obj.data_size)
-                # set a file extension according to the class name:
-                class_name = obj.class_name.lower()
-                if class_name.startswith(b'word'):
-                    ext = 'doc'
-                elif class_name.startswith(b'package'):
-                    ext = 'package'
-                else:
-                    ext = 'bin'
-
-                fname = '%s_object_%08X.%s' % (self.fname_prefix, destination.start, ext)
-                print('saving to file %s' % fname)
-                open(fname, 'wb').write(obj.data)
+                rtfobj.format_id = obj.format_id
+                rtfobj.class_name = obj.class_name
+                rtfobj.oledata_size = obj.data_size
+                rtfobj.oledata = obj.data
+                rtfobj.is_ole = True
                 if obj.class_name.lower() == 'package':
-                    print('Parsing OLE Package')
                     opkg = OleNativeStream(bindata=obj.data)
-                    print('Filename = %r' % opkg.filename)
-                    print('Source path = %r' % opkg.src_path)
-                    print('Temp path = %r' % opkg.temp_path)
-                    if opkg.filename:
-                        fname = '%s_%s' % (self.fname_prefix,
-                                           sanitize_filename(opkg.filename))
-                    else:
-                        fname = '%s_object_%08X.noname' % (self.fname_prefix, destination.start)
-                    print('saving to file %s' % fname)
-                    open(fname, 'wb').write(opkg.data)
+                    rtfobj.filename = opkg.filename
+                    rtfobj.src_path = opkg.src_path
+                    rtfobj.temp_path = opkg.temp_path
+                    rtfobj.olepkgdata = opkg.data
+                    rtfobj.is_package = True
             except:
                 pass
                 log.exception('*** Not an OLE 1.0 Object')
@@ -564,94 +580,6 @@ class RtfObjParser(RtfParser):
 # TODO: backward-compatible API?
 
 
-# def search_hex_block(data, pos=0, min_size=32, first=True):
-#     if first:
-#         # Search 1st occurence of a hex block:
-#         match = re_hexblock.search(data, pos=pos)
-#     else:
-#         # Match next occurences of a hex block, from the current position only:
-#         match = re_hexblock.match(data, pos=pos)
-#
-#
-#
-# def rtf_iter_objects (data, min_size=32):
-#     """
-#     Open a RTF file, extract each embedded object encoded in hexadecimal of
-#     size > min_size, yield the index of the object in the RTF file and its data
-#     in binary format.
-#     This is an iterator.
-#     """
-#     # Search 1st occurence of a hex block:
-#     match = re_hexblock.search(data)
-#     if match is None:
-#         log.debug('No hex block found.')
-#         # no hex block found
-#         return
-#     while match is not None:
-#         found = match.group(0)
-#         # start index
-#         start = match.start()
-#         # current position
-#         current = match.end()
-#         log.debug('Found hex block starting at %08X, end %08X, size=%d' % (start, current, len(found)))
-#         if len(found) < min_size:
-#             log.debug('Too small - size<%d, ignored.' % min_size)
-#             match = re_hexblock.search(data, pos=current)
-#             continue
-#         #log.debug('Match: %s' % found)
-#         # remove all whitespace and line feeds:
-#         #NOTE: with Python 2.6+, we could use None instead of TRANSTABLE_NOCHANGE
-#         found = found.translate(TRANSTABLE_NOCHANGE, ' \t\r\n\f\v')
-#         # TODO: make it a function
-#         # Also remove embedded RTF tags:
-#         found = re_embedded_tags.sub('', found)
-#         # object data extracted from the RTF file
-#         # MS Word accepts an extra hex digit, so we need to trim it if present:
-#         if len(found) & 1:
-#             log.debug('Odd length, trimmed last byte.')
-#             found = found[:-1]
-#         #log.debug('Cleaned match: %s' % found)
-#         objdata = binascii.unhexlify(found)
-#         # Detect the "\bin" control word, which is sometimes used for obfuscation:
-#         bin_match = re_delims_bin_decimal.match(data, pos=current)
-#         while bin_match is not None:
-#             log.debug('Found \\bin block starting at %08X : %r'
-#                           % (bin_match.start(), bin_match.group(0)))
-#             # extract the decimal integer following '\bin'
-#             bin_len = int(bin_match.group(1))
-#             log.debug('\\bin block length = %d' % bin_len)
-#             if current+bin_len > len(data):
-#                 log.error('\\bin block length is larger than the remaining data')
-#                 # move the current index, ignore the \bin block
-#                 current += len(bin_match.group(0))
-#                 break
-#             # read that number of bytes:
-#             objdata += data[current:current+bin_len]
-#             # TODO: handle exception
-#             current += len(bin_match.group(0)) + bin_len
-#             # TODO: check if current is out of range
-#             # TODO: is Word limiting the \bin length to a number of digits?
-#             log.debug('Current position = %08X' % current)
-#             match = re_delim_hexblock.match(data, pos=current)
-#             if match is not None:
-#                 log.debug('Found next hex block starting at %08X, end %08X'
-#                     % (match.start(), match.end()))
-#                 found = match.group(0)
-#                 log.debug('Match: %s' % found)
-#                 # remove all whitespace and line feeds:
-#                 #NOTE: with Python 2.6+, we could use None instead of TRANSTABLE_NOCHANGE
-#                 found = found.translate(TRANSTABLE_NOCHANGE, ' \t\r\n\f\v')
-#                 # Also remove embedded RTF tags:
-#                 found = re_embedded_tags.sub(found, '')
-#                 objdata += binascii.unhexlify(found)
-#                 current = match.end()
-#             bin_match = re_delims_bin_decimal.match(data, pos=current)
-#
-#         # print repr(found)
-#         if len(objdata)>min_size:
-#             yield start, current-start, objdata
-#         # Search next occurence of a hex block:
-#         match = re_hexblock.search(data, pos=current)
 
 
 
@@ -693,10 +621,53 @@ def process_file(container, filename, data, output_dir=None):
     # TODO: option to extract objects to files (false by default)
     if data is None:
         data = open(filename, 'rb').read()
-    rtfp = RtfObjParser(data, fname_prefix)
+    print('='*79)
+    print('File: %r - %d bytes' % (filename, len(data)))
+    rtfp = RtfObjParser(data)
     rtfp.parse()
+    for rtfobj in rtfp.objects:
+        print('-'*79)
+        print('found object size %d at index %08X - end %08X'
+            % (len(rtfobj.rawdata), rtfobj.start, rtfobj.end))
+        fname = '%s_object_%08X.raw' % (fname_prefix, rtfobj.start)
+        print('saving object to file %s' % fname)
+        open(fname, 'wb').write(rtfobj.rawdata)
+        if rtfobj.is_ole:
+            print('extract file embedded in OLE object:')
+            print('format_id  = %d' % rtfobj.format_id)
+            print('class name = %r' % rtfobj.class_name)
+            print('data size  = %d' % rtfobj.oledata_size)
+            # set a file extension according to the class name:
+            class_name = rtfobj.class_name.lower()
+            if class_name.startswith(b'word'):
+                ext = 'doc'
+            elif class_name.startswith(b'package'):
+                ext = 'package'
+            else:
+                ext = 'bin'
+            fname = '%s_object_%08X.%s' % (fname_prefix, rtfobj.start, ext)
+            print('saving to file %s' % fname)
+            open(fname, 'wb').write(rtfobj.oledata)
+            if rtfobj.is_package:
+                print('Parsing OLE Package')
+                print('Filename = %r' % rtfobj.filename)
+                print('Source path = %r' % rtfobj.src_path)
+                print('Temp path = %r' % rtfobj.temp_path)
+                if rtfobj.filename:
+                    fname = '%s_%s' % (fname_prefix,
+                                       sanitize_filename(rtfobj.filename))
+                else:
+                    fname = '%s_object_%08X.noname' % (fname_prefix, rtfobj.start)
+                print('saving to file %s' % fname)
+                open(fname, 'wb').write(rtfobj.olepkgdata)
+            else:
+                print('Not an OLE Package')
+        else:
+            print('Not a well-formed OLE object')
 
-    # print '-'*79
+
+
+        # print '-'*79
     # print 'File: %r - %d bytes' % (filename, len(data))
     # for index, orig_len, objdata in rtf_iter_objects(data):
     #     print 'found object size %d at index %08X - end %08X' % (len(objdata), index, index+orig_len)
@@ -745,7 +716,7 @@ def process_file(container, filename, data, output_dir=None):
 
 #=== MAIN =================================================================
 
-if __name__ == '__main__':
+def main():
     # print banner with version
     print ('rtfobj %s - http://decalage.info/python/oletools' % __version__)
     print ('THIS IS WORK IN PROGRESS - Check updates regularly!')
@@ -753,12 +724,13 @@ if __name__ == '__main__':
     print ('')
 
     DEFAULT_LOG_LEVEL = "warning" # Default log level
-    LOG_LEVELS = {'debug':    logging.DEBUG,
-              'info':     logging.INFO,
-              'warning':  logging.WARNING,
-              'error':    logging.ERROR,
-              'critical': logging.CRITICAL
-             }
+    LOG_LEVELS = {
+        'debug':    logging.DEBUG,
+        'info':     logging.INFO,
+        'warning':  logging.WARNING,
+        'error':    logging.ERROR,
+        'critical': logging.CRITICAL
+        }
 
     usage = 'usage: %prog [options] <filename> [filename2 ...]'
     parser = optparse.OptionParser(usage=usage)
@@ -802,6 +774,9 @@ if __name__ == '__main__':
             continue
         process_file(container, filename, data, options.output_dir)
 
+
+if __name__ == '__main__':
+    main()
 
 # This code was developed while listening to The Mary Onettes "Lost"
 
