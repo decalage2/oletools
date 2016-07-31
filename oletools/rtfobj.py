@@ -59,6 +59,7 @@ http://www.decalage.info/python/oletools
 # 2016-07-19       PL: - fixed Python 2.6-2.7 support
 # 2016-07-30       PL: - new API with class RtfObject
 #                      - backward-compatible API rtf_iter_objects (fixed issue #70)
+# 2016-07-31       PL: - table output with tablestream
 
 __version__ = '0.50'
 
@@ -75,6 +76,8 @@ import re, os, sys, binascii, logging, optparse
 from thirdparty.xglob import xglob
 from oleobj import OleObject, OleNativeStream
 import oleobj
+
+from thirdparty.tablestream import tablestream
 
 
 # === LOGGING =================================================================
@@ -601,6 +604,12 @@ def sanitize_filename(filename, replacement='_', max_length=200):
 
 
 def process_file(container, filename, data, output_dir=None):
+    tstream = tablestream.TableStream(
+        column_width=(3, 10, 31, 31),
+        header_row=('id', 'index', 'OLE Object', 'OLE Package'),
+        style=tablestream.TableStyleSlim
+    )
+
     if output_dir:
         if not os.path.isdir(output_dir):
             log.info('creating output directory %s' % output_dir)
@@ -616,50 +625,62 @@ def process_file(container, filename, data, output_dir=None):
     # TODO: option to extract objects to files (false by default)
     if data is None:
         data = open(filename, 'rb').read()
-    print('='*79)
-    print('File: %r - %d bytes' % (filename, len(data)))
+    # print('='*79)
+    # print('File: %r - %d bytes' % (filename, len(data)))
     rtfp = RtfObjParser(data)
     rtfp.parse()
     for rtfobj in rtfp.objects:
-        print('-'*79)
-        print('found object size %d at index %08X - end %08X'
-            % (len(rtfobj.rawdata), rtfobj.start, rtfobj.end))
-        fname = '%s_object_%08X.raw' % (fname_prefix, rtfobj.start)
-        print('saving object to file %s' % fname)
-        open(fname, 'wb').write(rtfobj.rawdata)
+        # print('-'*79)
+        # print('found object size %d at index %08X - end %08X'
+        #     % (len(rtfobj.rawdata), rtfobj.start, rtfobj.end))
+        # fname = '%s_object_%08X.raw' % (fname_prefix, rtfobj.start)
+        # print('saving object to file %s' % fname)
+        # open(fname, 'wb').write(rtfobj.rawdata)
         if rtfobj.is_ole:
-            print('extract file embedded in OLE object:')
-            print('format_id  = %d' % rtfobj.format_id)
-            print('class name = %r' % rtfobj.class_name)
-            print('data size  = %d' % rtfobj.oledata_size)
+            ole_column = 'format_id: %d\n' % rtfobj.format_id
+            ole_column += 'class name: %r\n' % rtfobj.class_name
+            ole_column += 'data size: %d' % rtfobj.oledata_size
+            # print('extract file embedded in OLE object:')
+            # print('format_id  = %d' % rtfobj.format_id)
+            # print('class name = %r' % rtfobj.class_name)
+            # print('data size  = %d' % rtfobj.oledata_size)
             # set a file extension according to the class name:
-            class_name = rtfobj.class_name.lower()
-            if class_name.startswith(b'word'):
-                ext = 'doc'
-            elif class_name.startswith(b'package'):
-                ext = 'package'
-            else:
-                ext = 'bin'
-            fname = '%s_object_%08X.%s' % (fname_prefix, rtfobj.start, ext)
-            print('saving to file %s' % fname)
-            open(fname, 'wb').write(rtfobj.oledata)
+            # class_name = rtfobj.class_name.lower()
+            # if class_name.startswith(b'word'):
+            #     ext = 'doc'
+            # elif class_name.startswith(b'package'):
+            #     ext = 'package'
+            # else:
+            #     ext = 'bin'
+            # fname = '%s_object_%08X.%s' % (fname_prefix, rtfobj.start, ext)
+            # print('saving to file %s' % fname)
+            # open(fname, 'wb').write(rtfobj.oledata)
             if rtfobj.is_package:
-                print('Parsing OLE Package')
-                print('Filename = %r' % rtfobj.filename)
-                print('Source path = %r' % rtfobj.src_path)
-                print('Temp path = %r' % rtfobj.temp_path)
-                if rtfobj.filename:
-                    fname = '%s_%s' % (fname_prefix,
-                                       sanitize_filename(rtfobj.filename))
-                else:
-                    fname = '%s_object_%08X.noname' % (fname_prefix, rtfobj.start)
-                print('saving to file %s' % fname)
-                open(fname, 'wb').write(rtfobj.olepkgdata)
+                pkg_column = 'Filename: %r\n' % rtfobj.filename
+                pkg_column += 'Source path: %r\n' % rtfobj.src_path
+                pkg_column += 'Temp path = %r' % rtfobj.temp_path
+                # print('Parsing OLE Package')
+                # print('Filename = %r' % rtfobj.filename)
+                # print('Source path = %r' % rtfobj.src_path)
+                # print('Temp path = %r' % rtfobj.temp_path)
+                # if rtfobj.filename:
+                #     fname = '%s_%s' % (fname_prefix,
+                #                        sanitize_filename(rtfobj.filename))
+                # else:
+                #     fname = '%s_object_%08X.noname' % (fname_prefix, rtfobj.start)
+                # print('saving to file %s' % fname)
+                # open(fname, 'wb').write(rtfobj.olepkgdata)
             else:
-                print('Not an OLE Package')
+                pkg_column = 'Not an OLE Package'
         else:
-            print('Not a well-formed OLE object')
-
+            ole_column = 'Not a well-formed OLE object'
+        tstream.write_row((
+            rtfp.objects.index(rtfobj),
+            # filename,
+            '%08Xh' % rtfobj.start,
+            ole_column,
+            pkg_column
+        ))
 
 
 #=== MAIN =================================================================
@@ -713,7 +734,6 @@ def main():
     # enable logging in the modules:
     log.setLevel(logging.NOTSET)
     oleobj.log.setLevel(logging.NOTSET)
-
 
     for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
         zip_password=options.zip_password, zip_fname=options.zip_fname):
