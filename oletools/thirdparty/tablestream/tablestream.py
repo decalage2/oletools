@@ -51,8 +51,9 @@ from __future__ import print_function
 # 2016-04-19 v0.03 PL: - enable colorclass on Windows, fixed issue #39
 # 2016-05-25 v0.04 PL: - updated for colorclass 2.2.0 (now a package)
 # 2016-07-29 v0.05 PL: - fixed oletools issue #57, bug when importing colorclass
+# 2016-07-31 v0.06 PL: - handle newline characters properly in each cell
 
-__version__ = '0.05'
+__version__ = '0.06'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -247,7 +248,11 @@ class TableStream(object):
                 cell = unicode(cell)
             # Wrap cell text according to the column width
             # TODO: use a TextWrapper object for each column instead
-            column = textwrap.wrap(cell, width=self.column_width[i])
+            # split the string if it contains newline characters, otherwise
+            # textwrap replaces them with spaces:
+            column = []
+            for line in cell.splitlines():
+                column.extend(textwrap.wrap(line, width=self.column_width[i]))
             # apply colors to each line of the cell if needed:
             if colors is not None and self.outfile.isatty():
                 color = colors[i]
