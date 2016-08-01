@@ -60,6 +60,7 @@ http://www.decalage.info/python/oletools
 # 2016-07-30       PL: - new API with class RtfObject
 #                      - backward-compatible API rtf_iter_objects (fixed issue #70)
 # 2016-07-31       PL: - table output with tablestream
+# 2016-08-01       PL: - detect executable filenames in OLE Package
 
 __version__ = '0.50'
 
@@ -72,6 +73,7 @@ __version__ = '0.50'
 # === IMPORTS =================================================================
 
 import re, os, sys, binascii, logging, optparse
+import os.path
 
 from thirdparty.xglob import xglob
 from oleobj import OleObject, OleNativeStream
@@ -218,6 +220,10 @@ DECIMAL_GROUP = b'(\d{1,250})'
 re_delims_bin_decimal = re.compile(DELIMITERS_ZeroOrMore + BACKSLASH_BIN
                                    + DECIMAL_GROUP + DELIMITER)
 re_delim_hexblock = re.compile(DELIMITER + PATTERN)
+
+# TODO: use a frozenset instead of a regex?
+re_executable_extensions = re.compile(
+    r"(?i)\.(EXE|COM|PIF|GADGET|MSI|MSP|MSC|VBS|VBE|VB|JSE|JS|WSF|WSC|WSH|WS|BAT|CMD|DLL|SCR|HTA|CPL|CLASS|JAR|PS1XML|PS1|PS2XML|PS2|PSC1|PSC2|SCF|LNK|INF|REG)\b")
 
 # Destination Control Words, according to MS RTF Specifications v1.9.1:
 DESTINATION_CONTROL_WORDS = frozenset((
@@ -604,12 +610,6 @@ def sanitize_filename(filename, replacement='_', max_length=200):
 
 
 def process_file(container, filename, data, output_dir=None):
-    tstream = tablestream.TableStream(
-        column_width=(3, 10, 31, 31),
-        header_row=('id', 'index', 'OLE Object', 'OLE Package'),
-        style=tablestream.TableStyleSlim
-    )
-
     if output_dir:
         if not os.path.isdir(output_dir):
             log.info('creating output directory %s' % output_dir)
@@ -625,8 +625,13 @@ def process_file(container, filename, data, output_dir=None):
     # TODO: option to extract objects to files (false by default)
     if data is None:
         data = open(filename, 'rb').read()
-    # print('='*79)
-    # print('File: %r - %d bytes' % (filename, len(data)))
+    print('='*79)
+    print('File: %r - size: %d bytes' % (filename, len(data)))
+    tstream = tablestream.TableStream(
+        column_width=(3, 10, 31, 31),
+        header_row=('id', 'index', 'OLE Object', 'OLE Package'),
+        style=tablestream.TableStyleSlim
+    )
     rtfp = RtfObjParser(data)
     rtfp.parse()
     for rtfobj in rtfp.objects:
@@ -636,6 +641,7 @@ def process_file(container, filename, data, output_dir=None):
         # fname = '%s_object_%08X.raw' % (fname_prefix, rtfobj.start)
         # print('saving object to file %s' % fname)
         # open(fname, 'wb').write(rtfobj.rawdata)
+        pkg_color = None
         if rtfobj.is_ole:
             ole_column = 'format_id: %d\n' % rtfobj.format_id
             ole_column += 'class name: %r\n' % rtfobj.class_name
@@ -670,9 +676,17 @@ def process_file(container, filename, data, output_dir=None):
                 #     fname = '%s_object_%08X.noname' % (fname_prefix, rtfobj.start)
                 # print('saving to file %s' % fname)
                 # open(fname, 'wb').write(rtfobj.olepkgdata)
+                pkg_color = 'yellow'
+                # check if the file extension is executable:
+                _, ext = os.path.splitext(rtfobj.filename)
+                log.debug('File extension: %r' % ext)
+                if re_executable_extensions.match(ext):
+                    pkg_color = 'red'
+                    pkg_column += '\nEXECUTABLE FILE'
             else:
                 pkg_column = 'Not an OLE Package'
         else:
+            pkg_column = ''
             ole_column = 'Not a well-formed OLE object'
         tstream.write_row((
             rtfp.objects.index(rtfobj),
@@ -680,7 +694,8 @@ def process_file(container, filename, data, output_dir=None):
             '%08Xh' % rtfobj.start,
             ole_column,
             pkg_column
-        ))
+            ), colors=(None, None, None, pkg_color)
+        )
 
 
 #=== MAIN =================================================================
