@@ -8,7 +8,7 @@ documents (e.g. Word, Excel), to detect malicious macros.
 Supported formats:
 - Word 97-2003 (.doc, .dot), Word 2007+ (.docm, .dotm)
 - Excel 97-2003 (.xls), Excel 2007+ (.xlsm, .xlsb)
-- PowerPoint 2007+ (.pptm, .ppsm)
+- PowerPoint 97-2003 (.ppt), PowerPoint 2007+ (.pptm, .ppsm)
 - Word 2003 XML (.xml)
 - Word/Excel Single File Web Page / MHTML (.mht)
 
