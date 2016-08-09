@@ -386,7 +386,7 @@ def process_file(container, filename, data, output_dir=None):
                 open(fname, 'wb').write(opkg.data)
             index += 1
         except:
-            log.info('*** Not an OLE 1.0 Object')
+            log.debug('*** Not an OLE 1.0 Object')
 
 
 

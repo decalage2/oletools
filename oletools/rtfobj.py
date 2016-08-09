@@ -62,6 +62,7 @@ http://www.decalage.info/python/oletools
 # 2016-07-31       PL: - table output with tablestream
 # 2016-08-01       PL: - detect executable filenames in OLE Package
 # 2016-08-08       PL: - added option -s to save objects to files
+# 2016-08-09       PL: - fixed issue #78, improved regex
 
 __version__ = '0.50'
 
@@ -171,11 +172,13 @@ ASCII_NAME = b'([a-zA-Z]{1,250})'
 # SIGNED_INTEGER = r'(-?\d{1,250})'
 SIGNED_INTEGER = b'(-?\\d+)'
 
-CONTROL_WORD = b'(?:\\\\' + ASCII_NAME + b'(?:(?=[^a-zA-Z0-9-])|' + SIGNED_INTEGER + b'(?=[^0-9])))'
+# Note for issue #78: need to match "\A-" not followed by digits
+CONTROL_WORD = b'(?:\\\\' + ASCII_NAME + b'(?:' + SIGNED_INTEGER + b'(?=[^0-9])|(?=[^a-zA-Z0-9])))'
 
 re_control_word = re.compile(CONTROL_WORD)
 
-CONTROL_SYMBOL = b'(?:\\\\[^a-zA-Z0-9])'
+# Note for issue #78: need to match "\" followed by digit (any non-alpha)
+CONTROL_SYMBOL = b'(?:\\\\[^a-zA-Z])'
 re_control_symbol = re.compile(CONTROL_SYMBOL)
 
 # Text that is not a control word/symbol or a group:
