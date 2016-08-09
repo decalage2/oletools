@@ -43,8 +43,9 @@ http://www.decalage.info/python/oletools
 # 2015-04-17 v0.01 PL: - first version
 # 2015-04-21 v0.02 PL: - improved display with prettytable
 # 2016-01-13 v0.03 PL: - replaced prettytable by tablestream, added colors
+# 2016-08-09 v0.50 PL: - fixed issue #77 (imports from thirdparty dir)
 
-__version__ = '0.03'
+__version__ = '0.50'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -54,17 +55,27 @@ __version__ = '0.03'
 # === IMPORTS ================================================================
 
 import sys, os
-from thirdparty.olefile import olefile
-# from thirdparty.prettytable import prettytable
-from thirdparty.tablestream import tablestream
-from thirdparty.colorclass import colorclass
+
+# add the thirdparty subfolder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+# assumption: the thirdparty dir is a subfolder:
+_thirdparty_dir = os.path.normpath(os.path.join(_thismodule_dir, 'thirdparty'))
+# print('_thirdparty_dir = %r' % _thirdparty_dir)
+if not _thirdparty_dir in sys.path:
+    sys.path.insert(0, _thirdparty_dir)
+
+import colorclass
+
+# On Windows, colorclass needs to be enabled:
+if os.name == 'nt':
+    colorclass.Windows.enable(auto_colors=True)
+
+import olefile
+from tablestream import tablestream
 
 
-def sid_display(sid):
-    if sid == olefile.NOSTREAM:
-        return '-' #None
-    else:
-        return sid
+# === CONSTANTS ==============================================================
 
 STORAGE_NAMES = {
     olefile.STGTY_EMPTY:     'Empty',
@@ -90,11 +101,21 @@ STATUS_COLORS = {
     'ORPHAN':   'red',
 }
 
+
+# === FUNCTIONS ==============================================================
+
+def sid_display(sid):
+    if sid == olefile.NOSTREAM:
+        return '-'  # None
+    else:
+        return sid
+
+
 # === MAIN ===================================================================
 
 if __name__ == '__main__':
     # print banner with version
-    print 'oledir %s - http://decalage.info/python/oletools' % __version__
+    print('oledir %s - http://decalage.info/python/oletools' % __version__)
 
     if os.name == 'nt':
         colorclass.Windows.enable(auto_colors=True, reset_atexit=True)
@@ -126,7 +147,7 @@ if __name__ == '__main__':
     # TODO: oledir option to hexdump the raw direntries
     # TODO: olefile should be less picky about incorrect directory structures
 
-    for id in xrange(len(ole.direntries)):
+    for id in range(len(ole.direntries)):
         d = ole.direntries[id]
         if d is None:
             # this direntry is not part of the tree: either unused or an orphan
