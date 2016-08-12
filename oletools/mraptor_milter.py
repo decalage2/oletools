@@ -48,6 +48,10 @@ http://www.decalage.info/python/oletools
 
 # --- CHANGELOG --------------------------------------------------------------
 # 2016-08-08 v0.01 PL: - first version
+# 2016-08-12 v0.02 PL: - added logging to file with time rotation
+#                      - archive each e-mail to a file before filtering
+
+__version__ = '0.02'
 
 
 # --- IMPORTS ----------------------------------------------------------------
@@ -59,6 +63,8 @@ import email
 import sys
 import os
 import logging
+import logging.handlers
+import datetime
 
 from socket import AF_INET6
 
@@ -76,6 +82,25 @@ TIMEOUT = 30  # Milter timeout in seconds
 # CFG_DIR = "/etc/macromilter/"
 # LOG_DIR = "/var/log/macromilter/"
 
+# TODO: different path on Windows:
+LOGFILE_DIR = '/var/log/mraptor_milter'
+# LOGFILE_DIR = '.'
+LOGFILE_NAME = 'mraptor_milter.log'
+LOGFILE_PATH = os.path.join(LOGFILE_DIR, LOGFILE_NAME)
+
+# Directory where to save a copy of each received e-mail:
+ARCHIVE_DIR = '/var/log/mraptor_milter'
+# ARCHIVE_DIR = '.'
+
+# === LOGGING ================================================================
+
+# Set up a specific logger with our desired output level
+log = logging.getLogger('MRMilter')
+
+# disable logging by default - enable it in main app:
+log.setLevel(logging.CRITICAL+1)
+
+# NOTE: all logging config is done in the main app, not here.
 
 # === CLASSES ================================================================
 
@@ -120,7 +145,7 @@ class MacroRaptorMilter(Milter.Base):
             self.scope = None
         self.IPname = IPname  # Name from a reverse IP lookup
         self.message = None  # content
-        logging.info("[%d] connect from host %s at %s" % (self.id, IPname, hostaddr))
+        log.info("[%d] connect from host %s at %s" % (self.id, IPname, hostaddr))
         return Milter.CONTINUE
 
     @Milter.noreply
@@ -137,8 +162,8 @@ class MacroRaptorMilter(Milter.Base):
         # on the MTA.
         self.canon_from = '@'.join(parse_addr(mailfrom))
         self.message.write('From %s %s\n' % (self.canon_from, time.ctime()))
-        logging.debug('[%d] Mail From %s %s\n' % (self.id, self.canon_from, time.ctime()))
-        logging.debug('[%d] mailfrom=%r, rest=%r' % (self.id, mailfrom, rest))
+        log.debug('[%d] Mail From %s %s\n' % (self.id, self.canon_from, time.ctime()))
+        log.debug('[%d] mailfrom=%r, rest=%r' % (self.id, mailfrom, rest))
         return Milter.CONTINUE
 
     @Milter.noreply
@@ -149,7 +174,7 @@ class MacroRaptorMilter(Milter.Base):
         :param str:
         :return: Milter.CONTINUE
         '''
-        logging.debug('[%d] RCPT TO %r, rest=%r\n' % (self.id, to, rest))
+        log.debug('[%d] RCPT TO %r, rest=%r\n' % (self.id, to, rest))
         return Milter.CONTINUE
 
     @Milter.noreply
@@ -192,6 +217,19 @@ class MacroRaptorMilter(Milter.Base):
         '''
         return Milter.CONTINUE
 
+    def archive_message(self):
+        '''
+        Save a copy of the current message in its original form to a file
+        :return: nothing
+        '''
+        date_time = datetime.datetime.utcnow().isoformat('_')
+        # assumption: by combining datetime + milter id, the filename should be unique:
+        # (the only case for duplicates is when restarting the milter twice in less than a second)
+        fname = 'mail_%s_%d.eml' % (date_time, self.id)
+        fname = os.path.join(ARCHIVE_DIR, fname)
+        log.debug('Saving a copy of the original message to file %r' % fname)
+        open(fname, 'wb').write(self.message.getvalue())
+
     def eom(self):
         '''
         This method is called when the end of the email message has been reached.
@@ -201,6 +239,7 @@ class MacroRaptorMilter(Milter.Base):
         try:
             # set data pointer back to 0
             self.message.seek(0)
+            self.archive_message()
             result = self.check_mraptor()
             if result is not None:
                 return result
@@ -210,7 +249,7 @@ class MacroRaptorMilter(Milter.Base):
         except Exception:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            logging.exception("[%d] Unexpected error - fall back to ACCEPT: %s %s %s"
+            log.exception("[%d] Unexpected error - fall back to ACCEPT: %s %s %s"
                               % (self.id, exc_type, fname, exc_tb.tb_lineno))
             return Milter.ACCEPT
 
@@ -225,13 +264,13 @@ class MacroRaptorMilter(Milter.Base):
         try:
             for part in msg.walk():
                 # for name, value in part.items():
-                #     logging.debug(' - %s: %r' % (name, value))
+                #     log.debug(' - %s: %r' % (name, value))
                 content_type = part.get_content_type()
-                logging.debug('[%d] Content-type: %r' % (self.id, content_type))
+                log.debug('[%d] Content-type: %r' % (self.id, content_type))
                 # TODO: handle any content-type, but check the file magic?
                 if not content_type.startswith('multipart'):
                     filename = part.get_filename(None)
-                    logging.debug('[%d] Analyzing attachment %r' % (self.id, filename))
+                    log.debug('[%d] Analyzing attachment %r' % (self.id, filename))
                     attachment = part.get_payload(decode=True)
                     attachment_lowercase = attachment.lower()
                     # check if this is a supported file type (if not, just skip it)
@@ -249,38 +288,48 @@ class MacroRaptorMilter(Milter.Base):
                         m = mraptor.MacroRaptor(vba_code_all_modules)
                         m.scan()
                         if m.suspicious:
-                            logging.warning('[%d] The attachment %r contains a suspicious macro: replace it with a text file'
+                            log.warning('[%d] The attachment %r contains a suspicious macro: replace it with a text file'
                                             % (self.id, filename))
                             part.set_payload('This attachment has been removed because it contains a suspicious macro.')
                             part.set_type('text/plain')
                             # TODO: handle case when CTE is absent
                             part.replace_header('Content-Transfer-Encoding', '7bit')
                             # for name, value in part.items():
-                            #     logging.debug(' - %s: %r' % (name, value))
+                            #     log.debug(' - %s: %r' % (name, value))
                             # TODO: archive filtered e-mail to a file
                         else:
-                            logging.debug('The attachment %r is clean.'
+                            log.debug('The attachment %r is clean.'
                                             % filename)
         except Exception:
-            logging.exception('[%d] Error while processing the message' % self.id)
+            log.exception('[%d] Error while processing the message' % self.id)
             # TODO: depending on error, decide to forward the e-mail as-is or not
             result = Milter.DISCARD
         # TODO: only do this if the body has actually changed
         body = str(msg)
         self.message = io.BytesIO(body)
         self.replacebody(body)
-        logging.info('[%d] Message relayed' % self.id)
+        log.info('[%d] Message relayed' % self.id)
         return result
 
 
 # === MAIN ===================================================================
 
 def main():
-    # TODO: log to file with rotation
-    logging.basicConfig(format='%(levelname)8s: %(message)s', level=logging.DEBUG)
+    # banner
+    print('mraptor_milter v%s - http://decalage.info/python/oletools' % __version__)
+    print('logging to file %s' % LOGFILE_PATH)
+    print('Press Ctrl+C to stop.')
+    # Add the log message handler to the logger
+    # log to files rotating once a day:
+    handler = logging.handlers.TimedRotatingFileHandler(LOGFILE_PATH, when='D', encoding='utf8')
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter('%(asctime)s - %(levelname)8s: %(message)s')
+    handler.setFormatter(formatter)
+    log.addHandler(handler)
+    # enable logging:
+    log.setLevel(logging.DEBUG)
 
-    logging.info('Starting MacroRaptorMilter - listening on %s' % SOCKET)
-    logging.info('Press Ctrl+C to stop.')
+    log.info('Starting mraptor_milter v%s - listening on %s' % (__version__, SOCKET))
 
     # Register to have the Milter factory create instances of the class:
     Milter.factory = MacroRaptorMilter
@@ -291,8 +340,8 @@ def main():
     # set the "last" fall back to ACCEPT if exception occur
     Milter.set_exception_policy(Milter.ACCEPT)
     # start the milter
-    Milter.runmilter("MacroRaptorMilter", SOCKET, TIMEOUT)
-    logging.info('Stopping MacroRaptorMilter.')
+    Milter.runmilter("mraptor_milter", SOCKET, TIMEOUT)
+    log.info('Stopping mraptor_milter.')
 
 if __name__ == "__main__":
     main()
