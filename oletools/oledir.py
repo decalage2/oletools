@@ -113,7 +113,7 @@ def sid_display(sid):
 
 # === MAIN ===================================================================
 
-if __name__ == '__main__':
+def main():
     # print banner with version
     print('oledir %s - http://decalage.info/python/oletools' % __version__)
 
@@ -182,3 +182,5 @@ if __name__ == '__main__':
     # print t
 
 
+if __name__ == '__main__':
+    main()

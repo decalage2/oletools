@@ -268,6 +268,7 @@ entry_points = {
         'mraptor=oletools.mraptor:main',
         'olebrowse=oletools.olebrowse:main',
         'oleid=oletools.oleid:main',
+        'oledir=oletools.oledir:main',
         'pyxswf=oletools.pyxswf:main'
     ],
 }
