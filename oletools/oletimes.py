@@ -94,6 +94,6 @@ for obj in ole.listdir(streams=True, storages=True):
     #print '- %s: mtime=%s ctime=%s' % (repr('/'.join(obj)), ole.getmtime(obj), ole.getctime(obj))
     t.add_row((repr('/'.join(obj)), dt2str(ole.getmtime(obj)), dt2str(ole.getctime(obj))))
 
-print t
+print(t)
 
 ole.close()

@@ -90,14 +90,14 @@ FAT_COLORS = {
 
 if __name__ == '__main__':
     # print banner with version
-    print 'olemap %s - http://decalage.info/python/oletools' % __version__
+    print('olemap %s - http://decalage.info/python/oletools' % __version__)
 
     fname = sys.argv[1]
     ole = olefile.OleFileIO(fname)
 
-    print 'FAT:'
+    print('FAT:')
     t = tablestream.TableStream([8, 12, 8, 8], header_row=['Sector #', 'Type', 'Offset', 'Next #'])
-    for i in xrange(ole.nb_sect):
+    for i in range(ole.nb_sect):
         fat_value = ole.fat[i]
         fat_type = FAT_TYPES.get(fat_value, '<Data>')
         color_type = FAT_COLORS.get(fat_value, FAT_COLORS['default'])
@@ -106,15 +106,15 @@ if __name__ == '__main__':
         # print '%8X: %-12s offset=%08X next=%8X' % (i, fat_type, 0, fat_value)
         t.write_row(['%8X' % i, fat_type, '%08X' % offset, '%8X' % fat_value],
             colors=[None, color_type, None, None])
-    print ''
+    print('')
 
-    print 'MiniFAT:'
+    print('MiniFAT:')
     # load MiniFAT if it wasn't already done:
     ole.loadminifat()
-    for i in xrange(len(ole.minifat)):
+    for i in range(len(ole.minifat)):
         fat_value = ole.minifat[i]
         fat_type = FAT_TYPES.get(fat_value, 'Data')
-        print '%8X: %-12s offset=%08X next=%8X' % (i, fat_type, 0, fat_value)
+        print('%8X: %-12s offset=%08X next=%8X' % (i, fat_type, 0, fat_value))
 
     ole.close()
 

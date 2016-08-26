@@ -1030,10 +1030,11 @@ class OleDirectoryEntry:
         #[PL] this method was added to use simple recursion instead of a complex
         # algorithm.
         # if this is not a storage or a leaf of the tree, nothing to do:
+
         if child_sid == NOSTREAM:
             return
         # check if child SID is in the proper range:
-        if child_sid<0 or child_sid>=len(self.olefile.direntries):
+        if child_sid <= 0 or child_sid >= len(self.olefile.direntries):
             self.olefile._raise_defect(DEFECT_INCORRECT, 'OLE DirEntry index out of range')
         else:
             # get child direntry:
