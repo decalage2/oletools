@@ -50,8 +50,10 @@ http://www.decalage.info/python/oletools
 # 2016-02-29 v0.02 PL: - added Workbook_Activate, FileSaveAs
 # 2016-03-04 v0.03 PL: - returns an exit code based on the overall result
 # 2016-03-08 v0.04 PL: - collapse long lines before analysis
+# 2016-07-19 v0.50 SL: - converted to Python 3
+# 2016-08-26       PL: - changed imports for Python 3
 
-__version__ = '0.04'
+__version__ = '0.50py3'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -62,9 +64,12 @@ __version__ = '0.04'
 import sys, logging, optparse, re
 
 from thirdparty.xglob import xglob
-from thirdparty.tablestream import tablestream
 
-import olevba
+# import the python 3 version of tablestream:
+from thirdparty.tablestream import tablestream3 as tablestream
+
+# import the python 3 version of olevba
+import olevba3 as olevba
 
 # === LOGGING =================================================================
 
