@@ -66,7 +66,7 @@ import sys, logging, optparse, re
 from thirdparty.xglob import xglob
 
 # import the python 3 version of tablestream:
-from thirdparty.tablestream import tablestream3 as tablestream
+from thirdparty.tablestream import tablestream
 
 # import the python 3 version of olevba
 import olevba3 as olevba
