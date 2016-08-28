@@ -13,7 +13,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE ==================================================================
 
-# olemap is copyright (c) 2015 Philippe Lagadec (http://www.decalage.info)
+# olemap is copyright (c) 2015-2016 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -41,8 +41,9 @@ http://www.decalage.info/python/oletools
 # CHANGELOG:
 # 2015-11-01 v0.01 PL: - first version
 # 2016-01-13 v0.02 PL: - improved display with tablestream, added colors
+# 2016-07-20 v0.50 SL: - added Python 3 support
 
-__version__ = '0.02'
+__version__ = '0.50'
 
 #------------------------------------------------------------------------------
 # TODO:

@@ -43,7 +43,8 @@ http://www.decalage.info/python/oletools
 # 2015-04-17 v0.01 PL: - first version
 # 2015-04-21 v0.02 PL: - improved display with prettytable
 # 2016-01-13 v0.03 PL: - replaced prettytable by tablestream, added colors
-# 2016-08-09 v0.50 PL: - fixed issue #77 (imports from thirdparty dir)
+# 2016-07-20 v0.50 SL: - added Python 3 support
+# 2016-08-09       PL: - fixed issue #77 (imports from thirdparty dir)
 
 __version__ = '0.50'
 
