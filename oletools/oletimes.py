@@ -16,7 +16,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# oletimes is copyright (c) 2013-2015, Philippe Lagadec (http://www.decalage.info)
+# oletimes is copyright (c) 2013-2016, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -46,8 +46,9 @@ http://www.decalage.info/python/oletools
 # 2014-11-29 v0.02 PL: - use olefile instead of OleFileIO_PL
 #                      - improved usage display
 # 2014-11-30 v0.03 PL: - improved output with prettytable
+# 2016-07-20 v0.50 SL: - added Python 3 support
 
-__version__ = '0.03'
+__version__ = '0.50'
 
 #------------------------------------------------------------------------------
 # TODO:

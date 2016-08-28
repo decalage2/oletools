@@ -25,8 +25,9 @@ References:
 #
 # CHANGELOG:
 # 2016-05-04 v0.01 CH: - start parsing "Current User" stream
+# 2016-07-20 v0.50 SL: - added Python 3 support
 
-__version__ = '0.02'
+__version__ = '0.50'
 
 
 #--- IMPORTS ------------------------------------------------------------------
