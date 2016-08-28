@@ -52,8 +52,10 @@ from __future__ import print_function
 # 2016-05-25 v0.04 PL: - updated for colorclass 2.2.0 (now a package)
 # 2016-07-29 v0.05 PL: - fixed oletools issue #57, bug when importing colorclass
 # 2016-07-31 v0.06 PL: - handle newline characters properly in each cell
+# 2016-08-28 v0.07 PL: - support for both Python 2.6+ and 3.x
+#                      - all cells are converted to unicode
 
-__version__ = '0.06'
+__version__ = '0.07'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -84,6 +86,43 @@ if os.name == 'nt':
     colorclass.Windows.enable(auto_colors=True)
 
 
+# === PYTHON 2+3 SUPPORT ======================================================
+
+if sys.version_info[0] >= 3:
+    # Python 3 specific adaptations
+    # py3 range = py2 xrange
+    xrange = range
+    ustr = str
+    # byte strings for to_ustr (with py3, bytearray supports encoding):
+    byte_strings = (bytes, bytearray)
+else:
+    # Python 2 specific adaptations
+    ustr = unicode
+    # byte strings for to_ustr (with py2, bytearray does not support encoding):
+    byte_strings = bytes
+
+
+# === FUNCTIONS ==============================================================
+
+def to_ustr(obj, encoding='utf8', errors='replace'):
+    """
+    convert an object to unicode, using the appropriate method
+    :param obj: any object, str, bytes or unicode
+    :return: unicode string (ustr)
+    """
+    # if the object is already unicode, return it unchanged:
+    if isinstance(obj, ustr):
+        return obj
+    # if it is a bytes string, decode it using the provided encoding
+    elif isinstance(obj, byte_strings):
+        return ustr(obj, encoding=encoding, errors=errors)
+    # else just convert it to unicode:
+    # (an exception is raised if we specify encoding in this case)
+    else:
+        return ustr(obj)
+
+
+
 # === CLASSES =================================================================
 
 
@@ -100,47 +139,47 @@ class TableStyle(object):
     """
     # Header rows:
     header_top = True
-    header_top_left = '+'
-    header_top_horiz = '-'
-    header_top_middle = '+'
-    header_top_right = '+'
+    header_top_left = u'+'
+    header_top_horiz = u'-'
+    header_top_middle = u'+'
+    header_top_right = u'+'
 
-    header_vertical_left = '|'
-    header_vertical_middle = '|'
-    header_vertical_right = '|'
+    header_vertical_left = u'|'
+    header_vertical_middle = u'|'
+    header_vertical_right = u'|'
 
     # Separator line between header and normal rows:
     header_sep = True
-    header_sep_left = '+'
-    header_sep_horiz = '-'
-    header_sep_middle = '+'
-    header_sep_right = '+'
+    header_sep_left = u'+'
+    header_sep_horiz = u'-'
+    header_sep_middle = u'+'
+    header_sep_right = u'+'
 
     # Top row if there is no header:
     noheader_top = True
-    noheader_top_left = '+'
-    noheader_top_horiz = '-'
-    noheader_top_middle = '+'
-    noheader_top_right = '+'
+    noheader_top_left = u'+'
+    noheader_top_horiz = u'-'
+    noheader_top_middle = u'+'
+    noheader_top_right = u'+'
 
     # Normal rows
-    vertical_left = '|'
-    vertical_middle = '|'
-    vertical_right = '|'
+    vertical_left = u'|'
+    vertical_middle = u'|'
+    vertical_right = u'|'
 
     # Separator line between rows:
     sep = False
-    sep_left = '+'
-    sep_horiz = '-'
-    sep_middle = '+'
-    sep_right = '+'
+    sep_left = u'+'
+    sep_horiz = u'-'
+    sep_middle = u'+'
+    sep_right = u'+'
 
     # Bottom line
     bottom = True
-    bottom_left = '+'
-    bottom_horiz = '-'
-    bottom_middle = '+'
-    bottom_right = '+'
+    bottom_left = u'+'
+    bottom_horiz = u'-'
+    bottom_middle = u'+'
+    bottom_right = u'+'
 
 
 class TableStyleSlim(object):
@@ -155,47 +194,47 @@ class TableStyleSlim(object):
     """
     # Header rows:
     header_top = True
-    header_top_left = ''
-    header_top_horiz = '-'
-    header_top_middle = '+'
-    header_top_right = ''
+    header_top_left = u''
+    header_top_horiz = u'-'
+    header_top_middle = u'+'
+    header_top_right = u''
 
-    header_vertical_left = ''
-    header_vertical_middle = '|'
-    header_vertical_right = ''
+    header_vertical_left = u''
+    header_vertical_middle = u'|'
+    header_vertical_right = u''
 
     # Separator line between header and normal rows:
     header_sep = True
-    header_sep_left = ''
-    header_sep_horiz = '-'
-    header_sep_middle = '+'
-    header_sep_right = ''
+    header_sep_left = u''
+    header_sep_horiz = u'-'
+    header_sep_middle = u'+'
+    header_sep_right = u''
 
     # Top row if there is no header:
     noheader_top = True
-    noheader_top_left = ''
-    noheader_top_horiz = '-'
-    noheader_top_middle = '+'
-    noheader_top_right = ''
+    noheader_top_left = u''
+    noheader_top_horiz = u'-'
+    noheader_top_middle = u'+'
+    noheader_top_right = u''
 
     # Normal rows
-    vertical_left = ''
-    vertical_middle = '|'
-    vertical_right = ''
+    vertical_left = u''
+    vertical_middle = u'|'
+    vertical_right = u''
 
     # Separator line between rows:
     sep = False
-    sep_left = ''
-    sep_horiz = '-'
-    sep_middle = '+'
-    sep_right = ''
+    sep_left = u''
+    sep_horiz = u'-'
+    sep_middle = u'+'
+    sep_right = u''
 
     # Bottom line
     bottom = True
-    bottom_left = ''
-    bottom_horiz = '-'
-    bottom_middle = '+'
-    bottom_right = ''
+    bottom_left = u''
+    bottom_horiz = u'-'
+    bottom_middle = u'+'
+    bottom_right = u''
 
 
 
@@ -213,10 +252,22 @@ class TableStream(object):
     be processed row by row.
     """
 
-    def __init__(self, column_width, header_row=None, style=TableStyle, outfile=sys.stdout):
+    def __init__(self, column_width, header_row=None, style=TableStyle,
+                 outfile=sys.stdout, encoding_in='utf8', encoding_out='utf8'):
+        '''
+        Constructor for class TableStream
+        :param column_width: tuple or list containing the width of each column
+        :param header_row: tuple or list containing the header row text
+        :param style: style for the table, a TableStyle object
+        :param outfile: output file (sys.stdout by default to print on the console)
+        :param encoding_in: encoding used when the input text is bytes (UTF-8 by default)
+        :param encoding_out: encoding used for the output (UTF-8 by default)
+        '''
         self.column_width = column_width
         self.num_columns = len(column_width)
         self.header_row = header_row
+        self.encoding_in = encoding_in
+        self.encoding_out = encoding_out
         assert (header_row is None) or len(header_row) == self.num_columns
         self.style = style
         self.outfile = outfile
@@ -239,13 +290,7 @@ class TableStream(object):
         for i in xrange(self.num_columns):
             cell = row[i]
             # Convert to string:
-            # TODO: handle unicode properly
-            # TODO: use only unicode for textwrapper, to avoid str length issues
-            if isinstance(cell, bytes):
-                # encode to UTF8, avoiding errors
-                cell = cell.decode('utf-8', errors='replace')
-            else:
-                cell = unicode(cell)
+            cell = to_ustr(cell, encoding=self.encoding_in)
             # Wrap cell text according to the column width
             # TODO: use a TextWrapper object for each column instead
             # split the string if it contains newline characters, otherwise
@@ -259,7 +304,7 @@ class TableStream(object):
                 if color:
                     for j in xrange(len(column)):
                         # print '%r: %s' % (column[j], type(column[j]))
-                        column[j] = colorclass.Color('{auto%s}%s{/%s}' % (color, column[j], color))
+                        column[j] = colorclass.Color(u'{auto%s}%s{/%s}' % (color, column[j], color))
             columns.append(column)
             # determine which column has the highest number of lines
             max_lines = max(len(columns[i]), max_lines)
@@ -271,11 +316,11 @@ class TableStream(object):
                 if j<len(column):
                     # text to be written
                     text_width = len(column[j])
-                    self.write(column[j] + ' '*(self.column_width[i]-text_width))
+                    self.write(column[j] + u' '*(self.column_width[i]-text_width))
                 else:
                     # no more lines for this column
                     # TODO: precompute empty cells once
-                    self.write(' '*(self.column_width[i]))
+                    self.write(u' '*(self.column_width[i]))
                 if i < (self.num_columns - 1):
                     self.write(self.style.vertical_middle)
             self.write(self.style.vertical_right)
@@ -293,7 +338,7 @@ class TableStream(object):
         :param right:
         :return:
         """
-        return left + middle.join([horiz * width for width in self.column_width]) + right + '\n'
+        return left + middle.join([horiz * width for width in self.column_width]) + right + u'\n'
 
     def write_header_top(self):
         s = self.style
@@ -336,6 +381,8 @@ class TableStream(object):
         self.write_bottom()
 
 
+# === MAIN ===================================================================
+
 if __name__ == '__main__':
     t = TableStream([10, 5, 20], header_row=['i', 'i*i', '2**i'], style=TableStyleSlim)
     t.write_row(['test', 'test', 'test'])
@@ -343,6 +390,7 @@ if __name__ == '__main__':
     t.write_row([cell, cell, cell], colors=['blue', None, 'red'])
     for i in range(1, 11):
         t.write_row([i, i*i, 2**i])
+    t.write_row([b'bytes', u'unicode', bytearray(b'bytearray')])
     t.close()
 
 
