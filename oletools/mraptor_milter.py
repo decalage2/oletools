@@ -50,8 +50,18 @@ http://www.decalage.info/python/oletools
 # 2016-08-08 v0.01 PL: - first version
 # 2016-08-12 v0.02 PL: - added logging to file with time rotation
 #                      - archive each e-mail to a file before filtering
+# 2016-08-30 v0.03 PL: - added daemonize to run as a Unix daemon
 
-__version__ = '0.02'
+__version__ = '0.03'
+
+# --- TODO -------------------------------------------------------------------
+
+# TODO: option to run in the foreground for troubleshooting
+# TODO: option to write logs to the console
+# TODO: options to set listening port and interface
+# TODO: config file for all parameters
+# TODO: option to run as a non-privileged user
+# TODO: handle files in archives
 
 
 # --- IMPORTS ----------------------------------------------------------------
@@ -91,6 +101,11 @@ LOGFILE_PATH = os.path.join(LOGFILE_DIR, LOGFILE_NAME)
 # Directory where to save a copy of each received e-mail:
 ARCHIVE_DIR = '/var/log/mraptor_milter'
 # ARCHIVE_DIR = '.'
+
+# file to store PID for daemonize
+PIDFILE = "/tmp/mraptor_milter.pid"
+
+
 
 # === LOGGING ================================================================
 
@@ -319,6 +334,12 @@ def main():
     print('mraptor_milter v%s - http://decalage.info/python/oletools' % __version__)
     print('logging to file %s' % LOGFILE_PATH)
     print('Press Ctrl+C to stop.')
+
+    # make sure the log directory exists:
+    try:
+        os.makedirs(LOGFILE_DIR)
+    except:
+        pass
     # Add the log message handler to the logger
     # log to files rotating once a day:
     handler = logging.handlers.TimedRotatingFileHandler(LOGFILE_PATH, when='D', encoding='utf8')
@@ -343,5 +364,19 @@ def main():
     Milter.runmilter("mraptor_milter", SOCKET, TIMEOUT)
     log.info('Stopping mraptor_milter.')
 
+
 if __name__ == "__main__":
-    main()
+
+    # Using daemonize:
+    # See http://daemonize.readthedocs.io/en/latest/
+    from daemonize import Daemonize
+    daemon = Daemonize(app="mraptor_milter", pid=PIDFILE, action=main)
+    daemon.start()
+
+    # Using python-daemon - Does not work as-is, need to create the PID file
+    # See https://pypi.python.org/pypi/python-daemon/
+    # See PEP-3143: https://www.python.org/dev/peps/pep-3143/
+    # import daemon
+    # import lockfile
+    # with daemon.DaemonContext(pidfile=lockfile.FileLock(PIDFILE)):
+    #     main()
