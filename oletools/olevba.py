@@ -178,6 +178,8 @@ https://github.com/unixfreak0037/officeparser
 # 2016-06-12 v0.50 PL: - fixed small bugs in VBA parsing code
 # 2016-07-01       PL: - fixed issue #58 with format() to support Python 2.6
 # 2016-07-29       CH: - fixed several bugs including #73 (Mac Roman encoding)
+# 2016-08-31       PL: - added autoexec keyword InkPicture_Painted
+#                      - detect_autoexec now returns the exact keyword found
 
 __version__ = '0.50'
 
@@ -450,6 +452,9 @@ AUTOEXEC_KEYWORDS = {
         ('Auto_Open', 'Workbook_Open', 'Workbook_Activate'),
     'Runs when the Excel Workbook is closed':
         ('Auto_Close', 'Workbook_Close'),
+    'Runs when the file is opened (using InkPicture ActiveX object)':
+        # ref:https://twitter.com/joe4security/status/770691099988025345
+        (r'\w+_Painted',),
 
     #TODO: full list in MS specs??
 }
@@ -1709,9 +1714,11 @@ def detect_autoexec(vba_code, obfuscation=None):
         for keyword in keywords:
             #TODO: if keyword is already a compiled regex, use it as-is
             # search using regex to detect word boundaries:
-            if re.search(r'(?i)\b' + keyword + r'\b', vba_code):
+            match = re.search(r'(?i)\b' + keyword + r'\b', vba_code)
+            if match:
                 #if keyword.lower() in vba_code:
-                results.append((keyword, description + obf_text))
+                found_keyword = match.group()
+                results.append((found_keyword, description + obf_text))
     return results
 
 
