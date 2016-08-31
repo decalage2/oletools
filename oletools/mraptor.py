@@ -50,8 +50,9 @@ http://www.decalage.info/python/oletools
 # 2016-02-29 v0.02 PL: - added Workbook_Activate, FileSaveAs
 # 2016-03-04 v0.03 PL: - returns an exit code based on the overall result
 # 2016-03-08 v0.04 PL: - collapse long lines before analysis
+# 2016-08-31 v0.50 PL: - added macro trigger InkPicture_Painted
 
-__version__ = '0.04'
+__version__ = '0.50'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -85,11 +86,13 @@ MSG_ISSUES = 'Please report this issue on %s' % URL_ISSUES
 # 'DocumentChange','Document_New',
 # 'NewDocument'
 # 'Workbook_Open', 'Workbook_Close',
+# *_Painted such as InkPicture1_Painted
 
 # TODO: check if line also contains Sub or Function
 re_autoexec = re.compile(r'(?i)\b(?:Auto(?:Exec|_?Open|_?Close|Exit|New)' +
                          r'|Document(?:_?Open|_Close|BeforeClose|Change|_New)' +
-                         r'|NewDocument|Workbook(?:_Open|_Activate|_Close))\b')
+                         r'|NewDocument|Workbook(?:_Open|_Activate|_Close)' +
+                         r'|\w+_Painted)\b')
 
 # MS-VBAL 5.4.5.1 Open Statement:
 RE_OPEN_WRITE = r'(?:\bOpen\b[^\n]+\b(?:Write|Append|Binary|Output|Random)\b)'
