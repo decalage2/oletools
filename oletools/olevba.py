@@ -546,7 +546,7 @@ SUSPICIOUS_KEYWORDS = {
     'May attempt to obfuscate malicious function calls':
         ('CallByName',),
     #CallByName: http://msdn.microsoft.com/en-us/library/office/gg278760%28v=office.15%29.aspx
-    'May attempt to obfuscate specific strings':
+    'May attempt to obfuscate specific strings (use option --deobf to deobfuscate)':
     #TODO: regex to find several Chr*, not just one
         ('Chr', 'ChrB', 'ChrW', 'StrReverse', 'Xor'),
     #Chr: http://msdn.microsoft.com/en-us/library/office/gg264465%28v=office.15%29.aspx
