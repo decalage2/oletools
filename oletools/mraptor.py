@@ -11,6 +11,7 @@ Supported formats:
 - PowerPoint 97-2003 (.ppt), PowerPoint 2007+ (.pptm, .ppsm)
 - Word 2003 XML (.xml)
 - Word/Excel Single File Web Page / MHTML (.mht)
+- Publisher (.pub)
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -51,6 +52,7 @@ http://www.decalage.info/python/oletools
 # 2016-03-04 v0.03 PL: - returns an exit code based on the overall result
 # 2016-03-08 v0.04 PL: - collapse long lines before analysis
 # 2016-08-31 v0.50 PL: - added macro trigger InkPicture_Painted
+# 2016-09-05       PL: - added Document_BeforeClose keyword for MS Publisher (.pub)
 
 __version__ = '0.50'
 
@@ -82,7 +84,7 @@ MSG_ISSUES = 'Please report this issue on %s' % URL_ISSUES
 
 # 'AutoExec', 'AutoOpen', 'Auto_Open', 'AutoClose', 'Auto_Close', 'AutoNew', 'AutoExit',
 # 'Document_Open', 'DocumentOpen',
-# 'Document_Close', 'DocumentBeforeClose',
+# 'Document_Close', 'DocumentBeforeClose', 'Document_BeforeClose',
 # 'DocumentChange','Document_New',
 # 'NewDocument'
 # 'Workbook_Open', 'Workbook_Close',
@@ -90,7 +92,7 @@ MSG_ISSUES = 'Please report this issue on %s' % URL_ISSUES
 
 # TODO: check if line also contains Sub or Function
 re_autoexec = re.compile(r'(?i)\b(?:Auto(?:Exec|_?Open|_?Close|Exit|New)' +
-                         r'|Document(?:_?Open|_Close|BeforeClose|Change|_New)' +
+                         r'|Document(?:_?Open|_Close|_?BeforeClose|Change|_New)' +
                          r'|NewDocument|Workbook(?:_Open|_Activate|_Close)' +
                          r'|\w+_Painted)\b')
 
