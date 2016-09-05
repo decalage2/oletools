@@ -42,6 +42,7 @@ http://www.decalage.info/python/oletools
 # 2015-11-01 v0.01 PL: - first version
 # 2016-01-13 v0.02 PL: - improved display with tablestream, added colors
 # 2016-07-20 v0.50 SL: - added Python 3 support
+# 2016-09-05       PL: - added main entry point for setup.py
 
 __version__ = '0.50'
 
@@ -89,7 +90,7 @@ FAT_COLORS = {
 
 # === MAIN ===================================================================
 
-if __name__ == '__main__':
+def main():
     # print banner with version
     print('olemap %s - http://decalage.info/python/oletools' % __version__)
 
@@ -119,4 +120,5 @@ if __name__ == '__main__':
 
     ole.close()
 
-
+if __name__ == '__main__':
+    main()

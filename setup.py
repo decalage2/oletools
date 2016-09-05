@@ -19,6 +19,7 @@ to install this package.
 # 2016-02-08 v0.42 PL: - added colorclass, tablestream
 # 2016-07-19 v0.50 PL: - create CLI scripts using entry points (by 2*yo)
 # 2016-07-29       PL: - use setuptools if available
+# 2016-09-05       PL: - added more entry points
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -269,6 +270,7 @@ entry_points = {
         'olebrowse=oletools.olebrowse:main',
         'oleid=oletools.oleid:main',
         'oledir=oletools.oledir:main',
+        'olemap=oletools.olemap:main',
         'pyxswf=oletools.pyxswf:main'
     ],
 }
