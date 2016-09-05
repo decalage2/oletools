@@ -271,7 +271,9 @@ entry_points = {
         'oleid=oletools.oleid:main',
         'oledir=oletools.oledir:main',
         'olemap=oletools.olemap:main',
-        'pyxswf=oletools.pyxswf:main'
+        'oletimes=oletools.oletimes:main',
+        'pyxswf=oletools.pyxswf:main',
+        'rtfobj=oletools.rtfobj:main'
     ],
 }
 

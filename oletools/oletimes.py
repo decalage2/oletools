@@ -47,6 +47,7 @@ http://www.decalage.info/python/oletools
 #                      - improved usage display
 # 2014-11-30 v0.03 PL: - improved output with prettytable
 # 2016-07-20 v0.50 SL: - added Python 3 support
+# 2016-09-05       PL: - added main entry point for setup.py
 
 __version__ = '0.50'
 
@@ -64,37 +65,44 @@ import thirdparty.olefile as olefile
 from thirdparty.prettytable import prettytable
 
 
-#=== MAIN =================================================================
+# === MAIN ===================================================================
 
-try:
-    ole = olefile.OleFileIO(sys.argv[1])
-except IndexError:
-    sys.exit(__doc__)
+def main():
+    # print banner with version
+    print('oletimes %s - http://decalage.info/python/oletools' % __version__)
 
-def dt2str (dt):
-    """
-    Convert a datetime object to a string for display, without microseconds
+    try:
+        ole = olefile.OleFileIO(sys.argv[1])
+    except IndexError:
+        sys.exit(__doc__)
 
-    :param dt: datetime.datetime object, or None
-    :return: str, or None
-    """
-    if dt is None:
-        return None
-    dt = dt.replace(microsecond = 0)
-    return str(dt)
+    def dt2str (dt):
+        """
+        Convert a datetime object to a string for display, without microseconds
 
-t = prettytable.PrettyTable(['Stream/Storage name', 'Modification Time', 'Creation Time'])
-t.align = 'l'
-t.max_width = 26
-#t.border = False
+        :param dt: datetime.datetime object, or None
+        :return: str, or None
+        """
+        if dt is None:
+            return None
+        dt = dt.replace(microsecond = 0)
+        return str(dt)
 
-#print'- Root mtime=%s ctime=%s' % (ole.root.getmtime(), ole.root.getctime())
-t.add_row(('Root', dt2str(ole.root.getmtime()), dt2str(ole.root.getctime())))
+    t = prettytable.PrettyTable(['Stream/Storage name', 'Modification Time', 'Creation Time'])
+    t.align = 'l'
+    t.max_width = 26
+    #t.border = False
 
-for obj in ole.listdir(streams=True, storages=True):
-    #print '- %s: mtime=%s ctime=%s' % (repr('/'.join(obj)), ole.getmtime(obj), ole.getctime(obj))
-    t.add_row((repr('/'.join(obj)), dt2str(ole.getmtime(obj)), dt2str(ole.getctime(obj))))
+    #print'- Root mtime=%s ctime=%s' % (ole.root.getmtime(), ole.root.getctime())
+    t.add_row(('Root', dt2str(ole.root.getmtime()), dt2str(ole.root.getctime())))
 
-print(t)
+    for obj in ole.listdir(streams=True, storages=True):
+        #print '- %s: mtime=%s ctime=%s' % (repr('/'.join(obj)), ole.getmtime(obj), ole.getctime(obj))
+        t.add_row((repr('/'.join(obj)), dt2str(ole.getmtime(obj)), dt2str(ole.getctime(obj))))
 
-ole.close()
+    print(t)
+
+    ole.close()
+
+if __name__ == '__main__':
+    main()
