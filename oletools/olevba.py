@@ -12,6 +12,7 @@ Supported formats:
 - PowerPoint 97-2003 (.ppt), PowerPoint 2007+ (.pptm, .ppsm)
 - Word 2003 XML (.xml)
 - Word/Excel Single File Web Page / MHTML (.mht)
+- Publisher (.pub)
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -180,6 +181,7 @@ https://github.com/unixfreak0037/officeparser
 # 2016-07-29       CH: - fixed several bugs including #73 (Mac Roman encoding)
 # 2016-08-31       PL: - added autoexec keyword InkPicture_Painted
 #                      - detect_autoexec now returns the exact keyword found
+# 2016-09-05       PL: - added autoexec keywords for MS Publisher (.pub)
 
 __version__ = '0.50'
 
@@ -439,7 +441,7 @@ ATTR_NAME = NS_W + 'name'
 AUTOEXEC_KEYWORDS = {
     # MS Word:
     'Runs when the Word document is opened':
-        ('AutoExec', 'AutoOpen', 'Document_Open', 'DocumentOpen'),
+        ('AutoExec', 'AutoOpen', 'DocumentOpen'),
     'Runs when the Word document is closed':
         ('AutoExit', 'AutoClose', 'Document_Close', 'DocumentBeforeClose'),
     'Runs when the Word document is modified':
@@ -447,11 +449,19 @@ AUTOEXEC_KEYWORDS = {
     'Runs when a new Word document is created':
         ('AutoNew', 'Document_New', 'NewDocument'),
 
+    # MS Word and Publisher:
+    'Runs when the Word or Publisher document is opened':
+        ('Document_Open',),
+    'Runs when the Publisher document is closed':
+        ('Document_BeforeClose',),
+
     # MS Excel:
     'Runs when the Excel Workbook is opened':
         ('Auto_Open', 'Workbook_Open', 'Workbook_Activate'),
     'Runs when the Excel Workbook is closed':
         ('Auto_Close', 'Workbook_Close'),
+
+    # any MS Office application:
     'Runs when the file is opened (using InkPicture ActiveX object)':
         # ref:https://twitter.com/joe4security/status/770691099988025345
         (r'\w+_Painted',),
