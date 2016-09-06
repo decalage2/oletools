@@ -13,6 +13,7 @@ Supported formats:
 - PowerPoint 97-2003 (.ppt), PowerPoint 2007+ (.pptm, .ppsm)
 - Word 2003 XML (.xml)
 - Word/Excel Single File Web Page / MHTML (.mht)
+- Publisher (.pub)
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -51,8 +52,9 @@ http://www.decalage.info/python/oletools
 # 2016-08-12 v0.02 PL: - added logging to file with time rotation
 #                      - archive each e-mail to a file before filtering
 # 2016-08-30 v0.03 PL: - added daemonize to run as a Unix daemon
+# 2016-09-06 v0.50 PL: - fixed issue #20, is_zipfile on Python 2.6
 
-__version__ = '0.03'
+__version__ = '0.50'
 
 # --- TODO -------------------------------------------------------------------
 
@@ -75,12 +77,27 @@ import os
 import logging
 import logging.handlers
 import datetime
+import StringIO
 
 from socket import AF_INET6
 
 from oletools import olevba, mraptor
 
 from Milter.utils import parse_addr
+
+if sys.version_info[0] <= 2:
+    # Python 2.x
+    if sys.version_info[1] <= 6:
+        # Python 2.6
+        # use is_zipfile backported from Python 2.7:
+        from oletools.thirdparty.zipfile27 import is_zipfile
+    else:
+        # Python 2.7
+        from zipfile import is_zipfile
+else:
+    # Python 3.x+
+    from zipfile import is_zipfile
+
 
 
 # --- CONSTANTS --------------------------------------------------------------
@@ -289,10 +306,9 @@ class MacroRaptorMilter(Milter.Base):
                     attachment = part.get_payload(decode=True)
                     attachment_lowercase = attachment.lower()
                     # check if this is a supported file type (if not, just skip it)
-                    # TODO: use is_zipfile instead of 'PK'
                     # TODO: this function should be provided by olevba
                     if attachment.startswith(olevba.olefile.MAGIC) \
-                        or attachment.startswith('PK') \
+                        or is_zipfile(StringIO.StringIO(attachment)) \
                         or 'http://schemas.microsoft.com/office/word/2003/wordml' in attachment \
                         or ('mime' in attachment_lowercase and 'version' in attachment_lowercase
                             and 'multipart' in attachment_lowercase):
@@ -351,6 +367,7 @@ def main():
     log.setLevel(logging.DEBUG)
 
     log.info('Starting mraptor_milter v%s - listening on %s' % (__version__, SOCKET))
+    log.debug('Python version: %s' % sys.version)
 
     # Register to have the Milter factory create instances of the class:
     Milter.factory = MacroRaptorMilter

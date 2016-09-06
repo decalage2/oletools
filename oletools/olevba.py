@@ -182,6 +182,7 @@ https://github.com/unixfreak0037/officeparser
 # 2016-08-31       PL: - added autoexec keyword InkPicture_Painted
 #                      - detect_autoexec now returns the exact keyword found
 # 2016-09-05       PL: - added autoexec keywords for MS Publisher (.pub)
+# 2016-09-06       PL: - fixed issue #20, is_zipfile on Python 2.6
 
 __version__ = '0.50'
 
@@ -263,6 +264,18 @@ import ppt_parser
 import email.feedparser
 email.feedparser.headerRE = re.compile(r'^(From |[\041-\071\073-\176]{1,}:?|[\t ])')
 
+if sys.version_info[0] <= 2:
+    # Python 2.x
+    if sys.version_info[1] <= 6:
+        # Python 2.6
+        # use is_zipfile backported from Python 2.7:
+        from thirdparty.zipfile27 import is_zipfile
+    else:
+        # Python 2.7
+        from zipfile import is_zipfile
+else:
+    # Python 3.x+
+    from zipfile import is_zipfile
 
 # === LOGGING =================================================================
 
@@ -2215,7 +2228,7 @@ class VBA_Parser(object):
 
             # if this worked, try whether it is a ppt file (special ole file)
             self.open_ppt()
-        if self.type is None and zipfile.is_zipfile(_file):
+        if self.type is None and is_zipfile(_file):
             # Zip file, which may be an OpenXML document
             self.open_openxml(_file)
         if self.type is None:
