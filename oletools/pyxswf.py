@@ -25,7 +25,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# pyxswf is copyright (c) 2012-2015, Philippe Lagadec (http://www.decalage.info)
+# pyxswf is copyright (c) 2012-2016, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -54,8 +54,9 @@ http://www.decalage.info/python/oletools
 # 2012-11-09 v0.02 PL: - added RTF embedded objects extraction
 # 2014-11-29 v0.03 PL: - use olefile instead of OleFileIO_PL
 #                      - improved usage display with -h
+# 2016-09-06 v0.50 PL: - updated to match the rtfobj API
 
-__version__ = '0.03'
+__version__ = '0.50'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -126,7 +127,7 @@ def main():
     # RTF MODE:
     elif options.rtf:
         for filename in args:
-            for index, data in rtfobj.rtf_iter_objects(filename):
+            for index, orig_len, data in rtfobj.rtf_iter_objects(filename):
                 if 'FWS' in data or 'CWS' in data:
                     print 'RTF embedded object size %d at index %08X' % (len(data), index)
                     f = StringIO.StringIO(data)

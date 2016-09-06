@@ -63,6 +63,7 @@ http://www.decalage.info/python/oletools
 # 2016-08-01       PL: - detect executable filenames in OLE Package
 # 2016-08-08       PL: - added option -s to save objects to files
 # 2016-08-09       PL: - fixed issue #78, improved regex
+# 2016-09-06       PL: - fixed issue #83, backward compatible API
 
 __version__ = '0.50'
 
@@ -580,16 +581,20 @@ def rtf_iter_objects(filename, min_size=32):
     """
     [DEPRECATED] Backward-compatible API, for applications using the old rtfobj:
     Open a RTF file, extract each embedded object encoded in hexadecimal of
-    size > min_size, yield the index of the object in the RTF file and its data
-    in binary format.
+    size > min_size, yield the index of the object in the RTF file, the original
+    length in the RTF file, and the decoded object data in binary format.
     This is an iterator.
+
+    :param filename: str, RTF file name/path to open on disk
+    :param min_size: ignored, kept for backward compatibility
+    :returns: iterator, yielding tuples (start index, original length, binary data)
     """
     data = open(filename, 'rb').read()
     rtfp = RtfObjParser(data)
     rtfp.parse()
     for obj in rtfp.objects:
-        # orig_len = obj.end - obj.start
-        yield obj.start, obj.rawdata
+        orig_len = obj.end - obj.start
+        yield obj.start, orig_len, obj.rawdata
 
 
 
