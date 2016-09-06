@@ -79,6 +79,10 @@ import thirdparty.olefile as olefile
 #=== MAIN =================================================================
 
 def main():
+    # print banner with version
+    print ('pyxswf %s - http://decalage.info/python/oletools' % __version__)
+    print ('Please report any issue at https://github.com/decalage2/oletools/issues')
+    print ('')
     # Scenarios:
     # Scan file for SWF(s)
     # Scan file for SWF(s) and extract them
