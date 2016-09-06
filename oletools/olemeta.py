@@ -15,7 +15,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# olemeta is copyright (c) 2013-2015, Philippe Lagadec (http://www.decalage.info)
+# olemeta is copyright (c) 2013-2016, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -44,8 +44,9 @@ http://www.decalage.info/python/oletools
 # 2014-11-29 v0.02 PL: - use olefile instead of OleFileIO_PL
 #                      - improved usage display
 # 2015-12-29 v0.03 PL: - only display properties present in the file
+# 2016-09-06 v0.50 PL: - added main entry point for setup.py
 
-__version__ = '0.03'
+__version__ = '0.50'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -63,50 +64,54 @@ from thirdparty.tablestream import tablestream
 
 #=== MAIN =================================================================
 
-try:
-    ole = olefile.OleFileIO(sys.argv[1])
-except IndexError:
-    sys.exit(__doc__)
+def main():
+    try:
+        ole = olefile.OleFileIO(sys.argv[1])
+    except IndexError:
+        sys.exit(__doc__)
 
-# parse and display metadata:
-meta = ole.get_metadata()
+    # parse and display metadata:
+    meta = ole.get_metadata()
 
-# console output with UTF8 encoding:
-console_utf8 = codecs.getwriter('utf8')(sys.stdout)
+    # console output with UTF8 encoding:
+    console_utf8 = codecs.getwriter('utf8')(sys.stdout)
 
-# TODO: move similar code to a function
+    # TODO: move similar code to a function
 
-print('Properties from the SummaryInformation stream:')
-t = tablestream.TableStream([21, 30], header_row=['Property', 'Value'], outfile=console_utf8)
-for prop in meta.SUMMARY_ATTRIBS:
-    value = getattr(meta, prop)
-    if value is not None:
-        # TODO: pretty printing for strings, dates, numbers
-        # TODO: better unicode handling
-        # print('- %s: %s' % (prop, value))
-        if isinstance(value, unicode):
-            # encode to UTF8, avoiding errors
-            value = value.encode('utf-8', errors='replace')
-        else:
-            value = str(value)
-        t.write_row([prop, value], colors=[None, 'yellow'])
-t.close()
-print ''
+    print('Properties from the SummaryInformation stream:')
+    t = tablestream.TableStream([21, 30], header_row=['Property', 'Value'], outfile=console_utf8)
+    for prop in meta.SUMMARY_ATTRIBS:
+        value = getattr(meta, prop)
+        if value is not None:
+            # TODO: pretty printing for strings, dates, numbers
+            # TODO: better unicode handling
+            # print('- %s: %s' % (prop, value))
+            if isinstance(value, unicode):
+                # encode to UTF8, avoiding errors
+                value = value.encode('utf-8', errors='replace')
+            else:
+                value = str(value)
+            t.write_row([prop, value], colors=[None, 'yellow'])
+    t.close()
+    print ''
 
-print('Properties from the DocumentSummaryInformation stream:')
-t = tablestream.TableStream([21, 30], header_row=['Property', 'Value'], outfile=console_utf8)
-for prop in meta.DOCSUM_ATTRIBS:
-    value = getattr(meta, prop)
-    if value is not None:
-        # TODO: pretty printing for strings, dates, numbers
-        # TODO: better unicode handling
-        # print('- %s: %s' % (prop, value))
-        if isinstance(value, unicode):
-            # encode to UTF8, avoiding errors
-            value = value.encode('utf-8', errors='replace')
-        else:
-            value = str(value)
-        t.write_row([prop, value], colors=[None, 'yellow'])
-t.close()
+    print('Properties from the DocumentSummaryInformation stream:')
+    t = tablestream.TableStream([21, 30], header_row=['Property', 'Value'], outfile=console_utf8)
+    for prop in meta.DOCSUM_ATTRIBS:
+        value = getattr(meta, prop)
+        if value is not None:
+            # TODO: pretty printing for strings, dates, numbers
+            # TODO: better unicode handling
+            # print('- %s: %s' % (prop, value))
+            if isinstance(value, unicode):
+                # encode to UTF8, avoiding errors
+                value = value.encode('utf-8', errors='replace')
+            else:
+                value = str(value)
+            t.write_row([prop, value], colors=[None, 'yellow'])
+    t.close()
 
-ole.close()
+    ole.close()
+
+if __name__ == '__main__':
+    main()
