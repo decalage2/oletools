@@ -16,7 +16,7 @@ Usage in a python application:
 
 ezhexviewer project website: http://www.decalage.info/python/ezhexviewer
 
-ezhexviewer is copyright (c) 2012-2015, Philippe Lagadec (http://www.decalage.info)
+ezhexviewer is copyright (c) 2012-2016, Philippe Lagadec (http://www.decalage.info)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -40,12 +40,13 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-__version__ = '0.02'
-
 #------------------------------------------------------------------------------
 # CHANGELOG:
 # 2012-09-17 v0.01 PL: - first version
 # 2012-10-04 v0.02 PL: - added license
+# 2016-09-06 v0.50 PL: - added main function for entry points in setup.py
+
+__version__ = '0.50'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -93,7 +94,9 @@ def hexview_file (filename, msg='', title='ezhexviewer', length=16, startindex=0
     hexview_data(data, msg=msg, title=title, length=length, startindex=startindex)
 
 
-if __name__ == '__main__':
+# === MAIN ===================================================================
+
+def main():
     try:
         filename = sys.argv[1]
     except:
@@ -103,3 +106,7 @@ if __name__ == '__main__':
             hexview_file(filename, msg='File: %s' % filename)
         except:
             easygui.exceptionbox(msg='Error:', title='ezhexviewer')
+
+
+if __name__ == '__main__':
+    main()
