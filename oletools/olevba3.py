@@ -244,15 +244,15 @@ except ImportError:
                                + "see http://codespeak.net/lxml " \
                                + "or http://effbot.org/zone/element-index.htm")
 
-import thirdparty.olefile as olefile
-from thirdparty.prettytable import prettytable
-from thirdparty.xglob import xglob, PathNotFoundException
-from thirdparty.pyparsing.pyparsing import \
+import oletools.thirdparty.olefile as olefile
+from oletools.thirdparty.prettytable import prettytable
+from oletools.thirdparty.xglob import xglob, PathNotFoundException
+from oletools.thirdparty.pyparsing.pyparsing import \
         CaselessKeyword, CaselessLiteral, Combine, Forward, Literal, \
         Optional, QuotedString,Regex, Suppress, Word, WordStart, \
         alphanums, alphas, hexnums,nums, opAssoc, srange, \
         infixNotation
-import ppt_parser
+import oletools.ppt_parser as ppt_parser
 
 # monkeypatch email to fix issue #32:
 # allow header lines without ":"
@@ -1814,7 +1814,7 @@ def detect_dridex_strings(vba_code):
     :param vba_code: str, VBA source code
     :return: list of str tuples (encoded string, decoded string)
     """
-    from thirdparty.DridexUrlDecoder.DridexUrlDecoder import DridexUrlDecode
+    from oletools.thirdparty.DridexUrlDecoder.DridexUrlDecoder import DridexUrlDecode
 
     results = []
     found = set()
