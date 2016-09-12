@@ -1774,7 +1774,7 @@ def detect_hex_strings(vba_code):
         value = match.group()
         if value not in found:
             decoded = binascii.unhexlify(value)
-            results.append((value, decoded))
+            results.append((value, decoded.decode('utf-8','replace')))
             found.add(value)
     return results
 
@@ -1799,7 +1799,7 @@ def detect_base64_strings(vba_code):
         if value not in found and value.lower() not in BASE64_WHITELIST:
             try:
                 decoded = base64.b64decode(value)
-                results.append((value, decoded))
+                results.append((value, decoded.decode('utf-8','replace')))
                 found.add(value)
             except (TypeError, ValueError) as exc:
                 log.debug('Failed to base64-decode (%s)' % exc)
@@ -1959,10 +1959,10 @@ class VBA_Scanner(object):
         """
         # join long lines ending with " _":
         self.code = vba_collapse_long_lines(vba_code)
-        self.code_hex = b''
-        self.code_hex_rev = b''
-        self.code_rev_hex = b''
-        self.code_base64 = b''
+        self.code_hex = ''
+        self.code_hex_rev = ''
+        self.code_rev_hex = ''
+        self.code_base64 = ''
         self.code_dridex = ''
         self.code_vba = ''
         self.strReverse = None
@@ -1995,19 +1995,19 @@ class VBA_Scanner(object):
         if 'strreverse' in self.code.lower(): self.strReverse = True
         # Then append the decoded strings to the VBA code, to detect obfuscated IOCs and keywords:
         for encoded, decoded in self.hex_strings:
-            self.code_hex += b'\n' + decoded
+            self.code_hex += '\n' + decoded
             # if the code contains "StrReverse", also append the hex strings in reverse order:
             if self.strReverse:
                 # StrReverse after hex decoding:
-                self.code_hex_rev += b'\n' + decoded[::-1]
+                self.code_hex_rev += '\n' + decoded[::-1]
                 # StrReverse before hex decoding:
-                self.code_rev_hex += b'\n' + binascii.unhexlify(encoded[::-1])
+                self.code_rev_hex += '\n' + str(binascii.unhexlify(encoded[::-1]))
                 #example: https://malwr.com/analysis/NmFlMGI4YTY1YzYyNDkwNTg1ZTBiZmY5OGI3YjlhYzU/
         #TODO: also append the full code reversed if StrReverse? (risk of false positives?)
         # Detect Base64-encoded strings
         self.base64_strings = detect_base64_strings(self.code)
         for encoded, decoded in self.base64_strings:
-            self.code_base64 += b'\n' + decoded
+            self.code_base64 += '\n' + decoded
         # Detect Dridex-encoded strings
         self.dridex_strings = detect_dridex_strings(self.code)
         for encoded, decoded in self.dridex_strings:
@@ -2026,10 +2026,10 @@ class VBA_Scanner(object):
 
         for code, obfuscation in (
                 (self.code, None),
-                (self.code_hex.decode('utf-8','replace'), 'Hex'),
+                (self.code_hex, 'Hex'),
                 (self.code_hex_rev, 'Hex+StrReverse'),
                 (self.code_rev_hex, 'StrReverse+Hex'),
-                (self.code_base64.decode('utf-8', 'replace'), 'Base64'),
+                (self.code_base64, 'Base64'),
                 (self.code_dridex, 'Dridex'),
                 (self.code_vba, 'VBA expression'),
         ):
