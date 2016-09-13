@@ -3,7 +3,7 @@
 Based on olefile, parse the ppt-specific info
 
 Code much influenced by olevba._extract_vba but much more object-oriented
-(possibly slightly excessivly so)
+(possibly slightly excessively so)
 
 Currently quite narrowly focused on extracting VBA from ppt files, no slides or
 stuff, but built to be extended to parsing more/all of the file
@@ -26,18 +26,27 @@ References:
 # CHANGELOG:
 # 2016-05-04 v0.01 CH: - start parsing "Current User" stream
 # 2016-07-20 v0.50 SL: - added Python 3 support
+# 2016-09-13       PL: - fixed olefile import for Python 2+3
 
 __version__ = '0.50'
 
 
-#--- IMPORTS ------------------------------------------------------------------
+# --- IMPORTS ------------------------------------------------------------------
+
 import sys
 import logging
 import struct
 import traceback
 import os
 
-import oletools.thirdparty.olefile as olefile
+try:
+    # absolute import when oletools is installed
+    import oletools.thirdparty.olefile as olefile
+except:
+    # relative import otherwise
+    import thirdparty.olefile as olefile
+
+# TODO: fix zlib import for Python 2.6
 import zlib
 
 
