@@ -183,6 +183,7 @@ https://github.com/unixfreak0037/officeparser
 #                      - detect_autoexec now returns the exact keyword found
 # 2016-09-05       PL: - added autoexec keywords for MS Publisher (.pub)
 # 2016-09-06       PL: - fixed issue #20, is_zipfile on Python 2.6
+# 2016-09-12       PL: - enabled packrat to improve pyparsing performance
 
 __version__ = '0.50'
 
@@ -256,7 +257,7 @@ from thirdparty.pyparsing.pyparsing import \
         CaselessKeyword, CaselessLiteral, Combine, Forward, Literal, \
         Optional, QuotedString,Regex, Suppress, Word, WordStart, \
         alphanums, alphas, hexnums,nums, opAssoc, srange, \
-        infixNotation
+        infixNotation, ParserElement
 import ppt_parser
 
 # monkeypatch email to fix issue #32:
@@ -670,6 +671,10 @@ re_printable_string = re.compile(r'[\t\r\n\x20-\xFF]{5,}')
 
 # TODO: set whitespaces according to VBA
 # TODO: merge extended lines before parsing
+
+# Enable PackRat for better performance:
+# (see https://pythonhosted.org/pyparsing/pyparsing.ParserElement-class.html#enablePackrat)
+ParserElement.enablePackrat()
 
 # VBA identifier chars (from MS-VBAL 3.3.5)
 vba_identifier_chars = alphanums + '_'
