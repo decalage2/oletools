@@ -1,7 +1,7 @@
 python-oletools
 ===============
 
-[python-oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze 
+[oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze
 [Microsoft OLE2 files](http://en.wikipedia.org/wiki/Compound_File_Binary_Format) 
 (also called Structured Storage, Compound File Binary Format or Compound Document File Format), 
 such as Microsoft Office documents or Outlook messages, mainly for malware analysis, forensics and debugging. 
@@ -93,6 +93,20 @@ Tools in python-oletools:
 - [oleobj](https://github.com/decalage2/oletools/wiki/oleobj): to extract embedded objects from OLE files.
 - [rtfobj](https://github.com/decalage2/oletools/wiki/rtfobj): to extract embedded objects from RTF files.
 - and a few others (coming soon)
+
+Projects using oletools:
+------------------------
+
+oletools are used by a number of projects and online malware analysis services,
+including [Viper](http://viper.li/), [REMnux](https://remnux.org/),
+[Hybrid-analysis.com](https://www.hybrid-analysis.com/),
+[Joe Sandbox](https://www.document-analyzer.net/),
+[Deepviz](https://sandbox.deepviz.com/),
+[Laika BOSS](https://github.com/lmco/laikaboss),
+[Cuckoo-modified](https://github.com/brad-accuvant/cuckoo-modified)
+and probably [VirusTotal](https://www.virustotal.com).
+(Please [contact me]((http://decalage.info/contact)) if you have or know
+a project using oletools)
 
 Download and Install:
 ---------------------
