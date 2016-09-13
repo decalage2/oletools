@@ -37,7 +37,7 @@ import struct
 import traceback
 import os
 
-import thirdparty.olefile as olefile
+import oletools.thirdparty.olefile as olefile
 import zlib
 
 
