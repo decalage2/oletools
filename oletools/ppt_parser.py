@@ -27,6 +27,7 @@ References:
 # 2016-05-04 v0.01 CH: - start parsing "Current User" stream
 # 2016-07-20 v0.50 SL: - added Python 3 support
 # 2016-09-13       PL: - fixed olefile import for Python 2+3
+#                      - fixed format strings for Python 2.6 (issue #75)
 
 __version__ = '0.50'
 
@@ -46,7 +47,6 @@ except:
     # relative import otherwise
     import thirdparty.olefile as olefile
 
-# TODO: fix zlib import for Python 2.6
 import zlib
 
 
@@ -80,7 +80,7 @@ class PptUnexpectedData(Exception):
     """ raise by PptParser if some field's value is not as expected """
     def __init__(self, stream, field_name, found_value, expected_value):
         self.msg = \
-            'In stream "{}" for field "{}" found value "{}" but expected {}!' \
+            'In stream "{0}" for field "{1}" found value "{2}" but expected {3}!' \
             .format(stream, field_name, found_value, expected_value)
         super(PptUnexpectedData, self).__init__(self.msg)
 
@@ -425,14 +425,14 @@ class UserEditAtom(PptType):
             if self.offset_last_edit >= offset:
                 errs.append(PptUnexpectedData(
                     'PowerPoint Document', 'UserEditAtom.offsetLastEdit',
-                    self.offset_last_edit, '< {}'.format(offset)))
+                    self.offset_last_edit, '< {0}'.format(offset)))
             if self.offset_persist_directory >= offset or \
                     self.offset_persist_directory <= self.offset_last_edit:
                 errs.append(PptUnexpectedData(
                     'PowerPoint Document',
                     'UserEditAtom.offsetPersistDirectory',
                     self.offset_last_edit,
-                    'in ({}, {})'.format(self.offset_last_edit, offset)))
+                    'in ({0}, {1})'.format(self.offset_last_edit, offset)))
         errs.extend(self.check_value('docPersistIdRef',
                                      self.doc_persist_id_ref, 1))
         return errs
@@ -469,11 +469,11 @@ class DummyType(PptType):
         (e.g. returns self)
         """
         self.read_rec_head(stream)
-        log.debug('skipping over {} Byte for type {}'
+        log.debug('skipping over {0} Byte for type {1}'
                   .format(self.rec_head.rec_len, self.type_name))
-        log.debug('start at pos {}'.format(stream.tell()))
+        log.debug('start at pos {0}'.format(stream.tell()))
         stream.seek(self.rec_head.rec_len, os.SEEK_CUR)
-        log.debug('now at pos {}'.format(stream.tell()))
+        log.debug('now at pos {0}'.format(stream.tell()))
         return self
 
     def check_validity(self):
@@ -511,7 +511,7 @@ class PersistDirectoryAtom(PptType):
         # read directory entries from list until reach size for this object
         curr_pos = stream.tell()
         stop_pos = curr_pos + obj.rec_head.rec_len
-        log.debug('start reading at pos {}, read until {}'
+        log.debug('start reading at pos {0}, read until {1}'
                   .format(curr_pos, stop_pos))
         obj.rg_persist_dir_entry = []
 
@@ -519,7 +519,7 @@ class PersistDirectoryAtom(PptType):
             new_entry = PersistDirectoryEntry.extract_from(stream)
             obj.rg_persist_dir_entry.append(new_entry)
             curr_pos = stream.tell()
-            log.debug('at pos {}'.format(curr_pos))
+            log.debug('at pos {0}'.format(curr_pos))
         return obj
 
     def check_validity(self, user_edit_last_offset=None):
@@ -578,7 +578,7 @@ class PersistDirectoryEntry(object):
         # Stream (section 2.1.2) to a persist object.
         obj.rg_persist_offset = [struct.unpack('<L', stream.read(4))[0] \
                                  for _ in range(obj.c_persist)]
-        log.debug('offsets are: {}'.format(obj.rg_persist_offset))
+        log.debug('offsets are: {0}'.format(obj.rg_persist_offset))
         return obj
 
     def check_validity(self, user_edit_last_offset=None,
@@ -587,7 +587,7 @@ class PersistDirectoryEntry(object):
         if self.persist_id > 0xFFFFE:  # (--> == 0xFFFFF since 20bit)
             errs.append(PptUnexpectedData(
                 MAIN_STREAM_NAME, 'PersistDirectoryEntry.persist_id',
-                self.persist_id, '< 0xFFFFE (dec: {})'.format(0xFFFFE)))
+                self.persist_id, '< 0xFFFFE (dec: {0})'.format(0xFFFFE)))
         if self.c_persist == 0:
             errs.append(PptUnexpectedData(
                 MAIN_STREAM_NAME, 'PersistDirectoryEntry.c_persist',
@@ -597,14 +597,14 @@ class PersistDirectoryEntry(object):
             errs.append(PptUnexpectedData(
                 MAIN_STREAM_NAME, 'PersistDirectoryEntry.rg_persist_offset',
                 min(self.rg_persist_offset),
-                '> UserEdit.offsetLastEdit ({})'
+                '> UserEdit.offsetLastEdit ({0})'
                 .format(user_edit_last_offset)))
         if persist_obj_dir_offset is not None \
                 and max(self.rg_persist_offset) > persist_obj_dir_offset:
             errs.append(PptUnexpectedData(
                 MAIN_STREAM_NAME, 'PersistDirectoryEntry.rg_persist_offset',
                 max(self.rg_persist_offset),
-                '> PersistObjectDirectory offset ({})'
+                '> PersistObjectDirectory offset ({0})'
                 .format(persist_obj_dir_offset)))
         return errs
 
@@ -643,11 +643,11 @@ class DocInfoListSubContainerOrAtom(PptType):
         if obj.rec_head.rec_type == VBAInfoContainer.RECORD_TYPE:
             obj = VBAInfoContainer.extract_from(stream, obj.rec_head)
         else:
-            log.debug('skipping over {} Byte in DocInfoListSubContainerOrAtom'
+            log.debug('skipping over {0} Byte in DocInfoListSubContainerOrAtom'
                       .format(obj.rec_head.rec_len))
-            log.debug('start at pos {}'.format(stream.tell()))
+            log.debug('start at pos {0}'.format(stream.tell()))
             stream.seek(obj.rec_head.rec_len, os.SEEK_CUR)
-            log.debug('now at pos {}'.format(stream.tell()))
+            log.debug('now at pos {0}'.format(stream.tell()))
         return obj
 
     def check_validity(self):
@@ -683,7 +683,7 @@ class DocInfoListContainer(PptType):
         # specified by rh.recLen
         curr_pos = stream.tell()
         end_pos = curr_pos + obj.rec_head.rec_len
-        log.debug('start reading at pos {}, will read until {}'
+        log.debug('start reading at pos {0}, will read until {1}'
                   .format(curr_pos, end_pos))
         obj.rg_child_rec = []
 
@@ -691,9 +691,9 @@ class DocInfoListContainer(PptType):
             new_obj = DocInfoListSubContainerOrAtom().extract_from(stream)
             obj.rg_child_rec.append(new_obj)
             curr_pos = stream.tell()
-            log.debug('now at pos {}'.format(curr_pos))
+            log.debug('now at pos {0}'.format(curr_pos))
 
-        log.debug('reached end pos {} ({}). stop reading DocInfoListContainer'
+        log.debug('reached end pos {0} ({1}). stop reading DocInfoListContainer'
                   .format(end_pos, curr_pos))
 
     def check_validity(self):
@@ -747,20 +747,20 @@ class DocumentContainer(PptType):
 
         # parse record header
         obj.read_rec_head(stream)
-        log.info('validity: {} errs'.format(len(obj.check_rec_head())))
+        log.info('validity: {0} errs'.format(len(obj.check_rec_head())))
 
         # documentAtom (48 bytes): A DocumentAtom record (section 2.4.2) that
         # specifies size information for presentation slides and notes slides.
         obj.document_atom = DummyType('DocumentAtom', 0x03E9, rec_ver=0x1,
                                       rec_len=0x28).extract_from(stream)
-        log.info('validity: {} errs'
+        log.info('validity: {0} errs'
                  .format(len(obj.document_atom.check_validity())))
 
         # exObjList (variable): An optional ExObjListContainer record (section
         # 2.10.1) that specifies the list of external objects in the document.
         obj.ex_obj_list = DummyType('ExObjListContainer', 0x0409, rec_ver=0xF)\
                           .extract_from(stream)
-        log.info('validity: {} errs'
+        log.info('validity: {0} errs'
                  .format(len(obj.ex_obj_list.check_validity())))
 
         # documentTextInfo (variable): A DocumentTextInfoContainer record
@@ -768,7 +768,7 @@ class DocumentContainer(PptType):
         # document.
         obj.document_text_info = DummyType('DocumentTextInfoContainer', 0x03F2,
                                            rec_ver=0xF).extract_from(stream)
-        log.info('validity: {} errs'
+        log.info('validity: {0} errs'
                  .format(len(obj.document_text_info.check_validity())))
 
         # soundCollection (variable): An optional SoundCollectionContainer
@@ -777,14 +777,14 @@ class DocumentContainer(PptType):
         obj.sound_collection = DummyType('SoundCollectionContainer', 0x07E4,
                                          rec_ver=0xF, rec_instance=0x005)\
                                .extract_from(stream)
-        log.info('validity: {} errs'
+        log.info('validity: {0} errs'
                  .format(len(obj.sound_collection.check_validity())))
 
         # drawingGroup (variable): A DrawingGroupContainer record (section
         # 2.4.3) that specifies drawing information for the document.
         obj.drawing_group = DummyType('DrawingGroupContainer', 0x040B,
                                       rec_ver=0xF).extract_from(stream)
-        log.info('validity: {} errs'
+        log.info('validity: {0} errs'
                  .format(len(obj.drawing_group.check_validity())))
 
         # masterList (variable): A MasterListWithTextContainer record (section
@@ -792,7 +792,7 @@ class DocumentContainer(PptType):
         # master slides.
         obj.master_list = DummyType('MasterListWithContainer', 0x0FF0,
                                     rec_ver=0xF).extract_from(stream)
-        log.info('validity: {} errs'
+        log.info('validity: {0} errs'
                  .format(len(obj.master_list.check_validity())))
 
         # docInfoList (variable): An optional DocInfoListContainer record
@@ -993,7 +993,7 @@ class ExternalObjectStorage(PptType):
 
         see also: DummyType
         """
-        log.debug('Parsing ExternalObjectStorage (compressed={}) from stream'
+        log.debug('Parsing ExternalObjectStorage (compressed={0}) from stream'
                   .format(self.is_compressed))
         self.read_rec_head(stream)
         self.data_size = self.rec_head.rec_len
@@ -1055,7 +1055,7 @@ def with_opened_main_stream(func):
         try:
             # open stream if required
             if self._open_main_stream is None:
-                log.debug('opening stream {!r} for {}'
+                log.debug('opening stream {0!r} for {1}'
                           .format(MAIN_STREAM_NAME, func.__name__))
                 self._open_main_stream = self.ole.openstream(MAIN_STREAM_NAME)
                 stream_opened_by_me = True
@@ -1072,7 +1072,7 @@ def with_opened_main_stream(func):
         finally:
             # ensure stream is closed by the one who opened it (even if error)
             if stream_opened_by_me:
-                log.debug('closing stream {!r} after {}'
+                log.debug('closing stream {0!r} after {1}'
                           .format(MAIN_STREAM_NAME, func.__name__))
                 self._open_main_stream.close()
                 self._open_main_stream = None
@@ -1088,7 +1088,7 @@ def generator_with_opened_main_stream(func):
         try:
             # open stream if required
             if self._open_main_stream is None:
-                log.debug('opening stream {!r} for {}'
+                log.debug('opening stream {0!r} for {1}'
                           .format(MAIN_STREAM_NAME, func.__name__))
                 self._open_main_stream = self.ole.openstream(MAIN_STREAM_NAME)
                 stream_opened_by_me = True
@@ -1106,7 +1106,7 @@ def generator_with_opened_main_stream(func):
         finally:
             # ensure stream is closed by the one who opened it (even if error)
             if stream_opened_by_me:
-                log.debug('closing stream {!r} after {}'
+                log.debug('closing stream {0!r} after {1}'
                           .format(MAIN_STREAM_NAME, func.__name__))
                 self._open_main_stream.close()
                 self._open_main_stream = None
@@ -1147,7 +1147,7 @@ class PptParser(object):
         #  ['PowerPoint Document']]
         root_streams = self.ole.listdir()
         #for stream in root_streams:
-        #    log.debug('found root stream {!r}'.format(stream))
+        #    log.debug('found root stream {0!r}'.format(stream))
         if any(len(stream) != 1 for stream in root_streams):
             self._fail('root', 'listdir', root_streams, 'len = 1')
         root_streams = [stream[0].lower() for stream in root_streams]
@@ -1178,7 +1178,7 @@ class PptParser(object):
 
         for i_entry, entry in enumerate(traceback.format_list(stack)):
             for line in entry.splitlines():
-                log.debug('trace {}: {}'.format(i_entry, line))
+                log.debug('trace {0}: {1}'.format(i_entry, line))
 
     def _fail(self, *args):
         """ depending on self.fast_fail raise PptUnexpectedData or just log err
@@ -1254,17 +1254,17 @@ class PptParser(object):
             log.debug('checking validity')
             errs = user_edit.check_validity()
             if errs:
-                log.warning('check_validity found {} issues'
+                log.warning('check_validity found {0} issues'
                             .format(len(errs)))
             for err in errs:
-                log.warning('UserEditAtom.check_validity: {}'.format(err))
+                log.warning('UserEditAtom.check_validity: {0}'.format(err))
             if errs and self.fast_fail:
                 raise errs[0]
 
             # Step 4: Seek to the offset specified by the
             # offsetPersistDirectory field of the UserEditAtom record
             # identified in step 3.
-            log.debug('seeking to pos {}'
+            log.debug('seeking to pos {0}'
                       .format(user_edit.offset_persist_directory))
             stream.seek(user_edit.offset_persist_directory, os.SEEK_SET)
 
@@ -1275,10 +1275,10 @@ class PptParser(object):
             log.debug('checking validity')
             errs = persist_dir_atom.check_validity(offset)
             if errs:
-                log.warning('check_validity found {} issues'
+                log.warning('check_validity found {0} issues'
                             .format(len(errs)))
             for err in errs:
-                log.warning('PersistDirectoryAtom.check_validity: {}'
+                log.warning('PersistDirectoryAtom.check_validity: {0}'
                             .format(err))
             if errs and self.fast_fail:
                 raise errs[0]
@@ -1304,7 +1304,7 @@ class PptParser(object):
             # for that persist object identifier.
             for entry in persist_dir_atom.rg_persist_dir_entry:
                 last_id = entry.persist_id+len(entry.rg_persist_offset)-1
-                log.debug('for persist IDs {}-{}, save offsets {}'
+                log.debug('for persist IDs {0}-{1}, save offsets {2}'
                           .format(entry.persist_id, last_id,
                                   entry.rg_persist_offset))
                 for count, offset in enumerate(entry.rg_persist_offset):
@@ -1334,11 +1334,11 @@ class PptParser(object):
         # offset of a persist object.
         newest_ref = self.newest_user_edit.doc_persist_id_ref
         offset = self.persist_object_directory[newest_ref]
-        log.debug('newest user edit ID is {}, offset is {}'
+        log.debug('newest user edit ID is {0}, offset is {1}'
                   .format(newest_ref, offset))
 
         # Step 3:  Seek to the stream offset specified in step 2.
-        log.debug('seek to {}'.format(offset))
+        log.debug('seek to {0}'.format(offset))
         stream.seek(offset, os.SEEK_SET)
 
         # Step 4: Read the DocumentContainer record at the current offset.
@@ -1348,9 +1348,9 @@ class PptParser(object):
         log.debug('checking validity')
         errs = self.document_persist_obj.check_validity()
         if errs:
-            log.warning('check_validity found {} issues'.format(len(errs)))
+            log.warning('check_validity found {0} issues'.format(len(errs)))
         for err in errs:
-            log.warning('check_validity(document_persist_obj): {}'
+            log.warning('check_validity(document_persist_obj): {0}'
                         .format(err))
         if errs and self.fast_fail:
             raise errs[0]
@@ -1367,7 +1367,7 @@ class PptParser(object):
         BUF_SIZE = 1024
 
         pattern_len = len(pattern)
-        log.debug('pattern length is {}'.format(pattern_len))
+        log.debug('pattern length is {0}'.format(pattern_len))
         if pattern_len > BUF_SIZE:
             raise ValueError('need buf > pattern to search!')
 
@@ -1375,12 +1375,12 @@ class PptParser(object):
         while True:
             start_pos = stream.tell()
             n_reads += 1
-            #log.debug('read {} starting from {}'
+            #log.debug('read {0} starting from {1}'
             #          .format(BUF_SIZE, start_pos))
             buf = stream.read(BUF_SIZE)
             idx = buf.find(pattern)
             while idx != -1:
-                log.debug('found pattern at index {}'.format(start_pos+idx))
+                log.debug('found pattern at index {0}'.format(start_pos+idx))
                 yield start_pos + idx
                 idx = buf.find(pattern, idx+1)
 
@@ -1388,7 +1388,7 @@ class PptParser(object):
                 # move back a bit to avoid splitting of pattern through buf
                 stream.seek(start_pos + BUF_SIZE - pattern_len, os.SEEK_SET)
             else:
-                log.debug('reached end of buf (read {}<{}) after {} reads'
+                log.debug('reached end of buf (read {0}<{1}) after {2} reads'
                           .format(len(buf), BUF_SIZE, n_reads))
                 break
 
@@ -1415,7 +1415,7 @@ class PptParser(object):
         for idx in self.search_pattern(pattern):
             # assume that in stream at idx there is a VBAInfoContainer
             stream.seek(idx)
-            log.debug('extracting at idx {}'.format(idx))
+            log.debug('extracting at idx {0}'.format(idx))
             try:
                 container = VBAInfoContainer.extract_from(stream)
             except Exception:
@@ -1424,17 +1424,17 @@ class PptParser(object):
 
             errs = container.check_validity()
             if errs:
-                log.warning('check_validity found {} issues'
+                log.warning('check_validity found {0} issues'
                             .format(len(errs)))
             else:
                 log.debug('container is ok')
                 atom = container.vba_info_atom
-                log.debug('persist id ref is {}, has_macros {}, version {}'
+                log.debug('persist id ref is {0}, has_macros {1}, version {2}'
                           .format(atom.persist_id_ref, atom.f_has_macros,
                                   atom.version))
                 yield container
             for err in errs:
-                log.warning('check_validity(VBAInfoContainer): {}'
+                log.warning('check_validity(VBAInfoContainer): {0}'
                             .format(err))
             if errs and self.fast_fail:
                 raise errs[0]
@@ -1468,7 +1468,7 @@ class PptParser(object):
             for idx in self.search_pattern(pattern):
                 # assume a ExternalObjectStorage in stream at idx
                 stream.seek(idx)
-                log.debug('extracting at idx {}'.format(idx))
+                log.debug('extracting at idx {0}'.format(idx))
                 try:
                     storage = obj_type.extract_from(stream)
                 except Exception:
@@ -1477,17 +1477,17 @@ class PptParser(object):
 
                 errs = storage.check_validity()
                 if errs:
-                    log.warning('check_validity found {} issues'
+                    log.warning('check_validity found {0} issues'
                                 .format(len(errs)))
                 else:
-                    log.debug('storage is ok; compressed={}, size={}, '
-                              'size_decomp={}'
+                    log.debug('storage is ok; compressed={0}, size={1}, '
+                              'size_decomp={2}'
                               .format(storage.is_compressed,
                                       storage.rec_head.rec_len,
                                       storage.uncompressed_size))
                     yield storage
                 for err in errs:
-                    log.warning('check_validity({}): {}'
+                    log.warning('check_validity({0}): {1}'
                                 .format(obj_type.__name__, err))
                 if errs and self.fast_fail:
                     raise errs[0]
@@ -1503,7 +1503,7 @@ class PptParser(object):
         stream.seek(storage.data_offset, os.SEEK_SET)
         decomp, n_read, err = \
             iterative_decompress(stream, storage.data_size)
-        log.debug('decompressed {} to {} bytes; found err: {}'
+        log.debug('decompressed {0} to {1} bytes; found err: {2}'
                   .format(n_read, len(decomp), err))
         if err and self.fast_fail:
             raise err
@@ -1517,7 +1517,7 @@ class PptParser(object):
         #for required in 'project', 'projectwm', 'vba':
         #    if required not in root_streams:
         #        raise ValueError('storage seems to not be a VBA storage '
-        #                         '({} not found in root streams)'
+        #                         '({0} not found in root streams)'
         #                         .format(required))
         #log.debug('tests succeeded')
         #return ole
@@ -1527,7 +1527,7 @@ class PptParser(object):
         """ return data pointed to by uncompressed storage """
 
         log.debug('reading uncompressed VBA OLE data stream: '
-                  '{} bytes starting at {}'
+                  '{0} bytes starting at {1}'
                   .format(storage.data_size, storage.data_offset))
         stream.seek(storage.data_offset, os.SEEK_SET)
         data = stream.read(storage.data_size)
@@ -1555,8 +1555,8 @@ class PptParser(object):
             else:
                 yield self.read_vba_storage_data(storage)
 
-        log.info('found {} infos ({} with macros) and {} storages '
-                 '({} compressed)'
+        log.info('found {0} infos ({1} with macros) and {2} storages '
+                 '({3} compressed)'
                  .format(n_infos, n_macros, n_storages, n_compressed))
 
 
