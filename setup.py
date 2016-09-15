@@ -265,16 +265,16 @@ package_data={
 
 entry_points = {
     'console_scripts': [
-        'olevba=oletools.olevba:main',
+        'ezhexviewer=oletools.ezhexviewer:main',
         'mraptor=oletools.mraptor:main',
         'olebrowse=oletools.olebrowse:main',
-        'oleid=oletools.oleid:main',
         'oledir=oletools.oledir:main',
+        'oleid=oletools.oleid:main',
         'olemap=oletools.olemap:main',
         'olemeta=oletools.olemeta:main',
         'oletimes=oletools.oletimes:main',
+        'olevba=oletools.olevba:main',
         'pyxswf=oletools.pyxswf:main',
-        'ezhexviewer=oletools.ezhexviewer:main',
         'rtfobj=oletools.rtfobj:main'
     ],
 }
