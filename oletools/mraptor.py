@@ -89,12 +89,13 @@ MSG_ISSUES = 'Please report this issue on %s' % URL_ISSUES
 # 'NewDocument'
 # 'Workbook_Open', 'Workbook_Close',
 # *_Painted such as InkPicture1_Painted
+# *_GotFocus|LostFocus|MouseHover for other ActiveX objects
 
 # TODO: check if line also contains Sub or Function
 re_autoexec = re.compile(r'(?i)\b(?:Auto(?:Exec|_?Open|_?Close|Exit|New)' +
                          r'|Document(?:_?Open|_Close|_?BeforeClose|Change|_New)' +
                          r'|NewDocument|Workbook(?:_Open|_Activate|_Close)' +
-                         r'|\w+_Painted)\b')
+                         r'|\w+_(?:Painted|GotFocus|LostFocus|MouseHover))\b')
 
 # MS-VBAL 5.4.5.1 Open Statement:
 RE_OPEN_WRITE = r'(?:\bOpen\b[^\n]+\b(?:Write|Append|Binary|Output|Random)\b)'
