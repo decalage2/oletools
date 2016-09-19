@@ -103,7 +103,8 @@ including [Viper](http://viper.li/), [REMnux](https://remnux.org/),
 [Joe Sandbox](https://www.document-analyzer.net/),
 [Deepviz](https://sandbox.deepviz.com/),
 [Laika BOSS](https://github.com/lmco/laikaboss),
-[Cuckoo Sandbox](https://github.com/cuckoosandbox/cuckoo)
+[Cuckoo Sandbox](https://github.com/cuckoosandbox/cuckoo),
+[pcodedmp](https://github.com/bontchev/pcodedmp)
 and probably [VirusTotal](https://www.virustotal.com).
 (Please [contact me]((http://decalage.info/contact)) if you have or know
 a project using oletools)
