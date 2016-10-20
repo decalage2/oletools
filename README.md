@@ -22,7 +22,13 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2016-06-10 v0.47**: [olevba](https://github.com/decalage2/oletools/wiki/olevba) added PPT97 macros support,
+- **2016-10-?? v0.50 (development version)**: most tools now support python 2 and 3.
+    - olevba: Several bugfixes and improvements.
+    - mraptor: improved detection, added mraptor_milter for Sendmail/Postfix integration.
+    - rtfobj: brand new RTF parser, obfuscation-aware, improved display, detect
+    executable files in OLE Package objects.
+    - setup: now creates handy command-line scripts to run oletools from anywhere.
+- 2016-06-10 v0.47: [olevba](https://github.com/decalage2/oletools/wiki/olevba) added PPT97 macros support,
 improved handling of malformed/incomplete documents, improved error handling and JSON output,
 now returns an exit code based on analysis results, new --relaxed option.
 [rtfobj](https://github.com/decalage2/oletools/wiki/rtfobj): improved parsing to handle obfuscated RTF documents,
