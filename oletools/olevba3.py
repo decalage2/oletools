@@ -630,7 +630,7 @@ re_dridex_string = re.compile(r'"[0-9A-Za-z]{20,}"')
 re_nothex_check = re.compile(r'[G-Zg-z]')
 
 # regex to extract printable strings (at least 5 chars) from VBA Forms:
-re_printable_string = re.compile(rb'[\t\r\n\x20-\xFF]{5,}')
+re_printable_string = re.compile(r'[\t\r\n\x20-\xFF]{5,}')
 
 
 # === PARTIAL VBA GRAMMAR ====================================================
@@ -2684,7 +2684,7 @@ class VBA_Parser(object):
                     # read data
                     log.debug('Reading data from stream %r' % d.name)
                     data = ole._open(d.isectStart, d.size).read()
-                    for match in re.finditer(rb'\x00Attribut[^e]', data, flags=re.IGNORECASE):
+                    for match in re.finditer(r'\x00Attribut[^e]', data, flags=re.IGNORECASE):
                         start = match.start() - 3
                         log.debug('Found VBA compressed code at index %X' % start)
                         compressed_code = data[start:]
