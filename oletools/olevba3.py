@@ -570,6 +570,8 @@ SUSPICIOUS_KEYWORDS = {
     'May detect WinJail Sandbox':
     # ref: http://www.cplusplus.com/forum/windows/96874/
         ('Afx:400000:0',),
+    'Memory manipulation':
+        ('VirtualAllocEx', 'RtlMoveMemory'),
 }
 
 # Regular Expression for a URL:
