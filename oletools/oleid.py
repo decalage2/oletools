@@ -41,6 +41,7 @@ http://www.decalage.info/python/oletools
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
 
 #------------------------------------------------------------------------------
 # CHANGELOG:
@@ -48,7 +49,7 @@ http://www.decalage.info/python/oletools
 # 2014-11-29 v0.02 PL: - use olefile instead of OleFileIO_PL
 #                      - improved usage display with -h
 # 2014-11-30 v0.03 PL: - improved output with prettytable
-# 2016-10-25 v0.50 PL: - fixed print for Python 3
+# 2016-10-25 v0.50 PL: - fixed print and bytes strings for Python 3
 
 __version__ = '0.50'
 
@@ -89,7 +90,7 @@ def detect_flash (data):
     """
     #TODO: report
     found = []
-    for match in re.finditer('CWS|FWS', data):
+    for match in re.finditer(b'CWS|FWS', data):
         start = match.start()
         if start+8 > len(data):
             # header size larger than remaining data, this is not a SWF
@@ -112,7 +113,7 @@ def detect_flash (data):
         # Read SWF into buffer. If compressed read uncompressed size.
         swf = data[start:start+size]
         compressed = False
-        if 'CWS' in header:
+        if b'CWS' in header:
             compressed = True
             # compressed SWF: data after header (8 bytes) until the end is
             # compressed with zlib. Attempt to decompress it to check if it is
