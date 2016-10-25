@@ -55,6 +55,7 @@ http://www.decalage.info/python/oletools
 # 2014-11-29 v0.03 PL: - use olefile instead of OleFileIO_PL
 #                      - improved usage display with -h
 # 2016-09-06 v0.50 PL: - updated to match the rtfobj API
+# 2016-10-25       PL: - fixed print for Python 3
 
 __version__ = '0.50'
 
@@ -122,7 +123,7 @@ def main():
                     # check if data contains the SWF magic: FWS or CWS
                     data = f.getvalue()
                     if 'FWS' in data or 'CWS' in data:
-                        print 'OLE stream: %s' % repr(direntry.name)
+                        print('OLE stream: %s' % repr(direntry.name))
                         # call xxxswf to scan or extract Flash files:
                         xxxswf.disneyland(f, direntry.name, options)
                     f.close()
@@ -133,7 +134,7 @@ def main():
         for filename in args:
             for index, orig_len, data in rtfobj.rtf_iter_objects(filename):
                 if 'FWS' in data or 'CWS' in data:
-                    print 'RTF embedded object size %d at index %08X' % (len(data), index)
+                    print('RTF embedded object size %d at index %08X' % (len(data), index))
                     f = StringIO.StringIO(data)
                     name = 'RTF_embedded_object_%08X' % index
                     # call xxxswf to scan or extract Flash files:

@@ -53,6 +53,7 @@ http://www.decalage.info/python/oletools
 # 2016-03-08 v0.04 PL: - collapse long lines before analysis
 # 2016-08-31 v0.50 PL: - added macro trigger InkPicture_Painted
 # 2016-09-05       PL: - added Document_BeforeClose keyword for MS Publisher (.pub)
+# 2016-10-25       PL: - fixed print for Python 3
 
 __version__ = '0.50'
 
@@ -239,16 +240,16 @@ def main():
 
     # Print help if no arguments are passed
     if len(args) == 0:
-        print __doc__
+        print(__doc__)
         parser.print_help()
-        print '\nAn exit code is returned based on the analysis result:'
+        print('\nAn exit code is returned based on the analysis result:')
         for result in (Result_NoMacro, Result_NotMSOffice, Result_MacroOK, Result_Error, Result_Suspicious):
-            print ' - %d: %s' % (result.exit_code, result.name)
+            print(' - %d: %s' % (result.exit_code, result.name))
         sys.exit()
 
     # print banner with version
-    print 'MacroRaptor %s - http://decalage.info/python/oletools' % __version__
-    print 'This is work in progress, please report issues at %s' % URL_ISSUES
+    print('MacroRaptor %s - http://decalage.info/python/oletools' % __version__)
+    print('This is work in progress, please report issues at %s' % URL_ISSUES)
 
     logging.basicConfig(level=LOG_LEVELS[options.loglevel], format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
@@ -325,9 +326,9 @@ def main():
             global_result = result
             exitcode = result.exit_code
 
-    print ''
-    print 'Flags: A=AutoExec, W=Write, X=Execute'
-    print 'Exit code: %d - %s' % (exitcode, global_result.name)
+    print('')
+    print('Flags: A=AutoExec, W=Write, X=Execute')
+    print('Exit code: %d - %s' % (exitcode, global_result.name))
     sys.exit(exitcode)
 
 if __name__ == '__main__':

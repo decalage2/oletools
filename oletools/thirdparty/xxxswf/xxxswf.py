@@ -24,7 +24,7 @@ def checkMD5(md5):
 # For { 'MD5':'CVE', 'MD5-1':'CVE-1', 'MD5-2':'CVE-2'}
     MD5Dict = {'c46299a5015c6d31ad5766cb49e4ab4b':'CVE-XXXX-XXXX'}
     if MD5Dict.get(md5):
-        print '\t[BAD] MD5 Match on', MD5Dict.get(md5)
+        print('\t[BAD] MD5 Match on', MD5Dict.get(md5))
     return    
 
 def bad(f):
@@ -44,20 +44,20 @@ def yaraScan(d):
         imp.find_module('yara')
         import yara 
     except ImportError:
-        print '\t[ERROR] Yara module not installed - aborting scan'
+        print('\t[ERROR] Yara module not installed - aborting scan')
         return
     # test for yara compile errors
     try:
         r = yara.compile(r'rules.yar')
     except:
         pass
-        print '\t[ERROR] Yara compile error - aborting scan'
+        print('\t[ERROR] Yara compile error - aborting scan')
         return
     # get matches
     m = r.match(data=d)
     # print matches
     for X in m:
-        print '\t[BAD] Yara Signature Hit:', X
+        print('\t[BAD] Yara Signature Hit: %s' % X)
     return
 
 def findSWF(d):
@@ -96,40 +96,40 @@ def verifySWF(f,addr):
     except:
         pass
         # Error check for invalid SWF
-        print ' - [ERROR] Invalid SWF Size'
+        print(' - [ERROR] Invalid SWF Size')
         return None
     if type(t) is str:
       f = StringIO(t)
     # Error check for version above 20
     if ver > 20:
-        print ' - [ERROR] Invalid SWF Version'
+        print(' - [ERROR] Invalid SWF Version')
         return None
     
     if 'CWS' in header:
         try:
             f.read(3)
             tmp = 'FWS' + f.read(5) + zlib.decompress(f.read())
-            print ' - CWS Header'
+            print(' - CWS Header')
             return tmp
         
         except:
             pass
-            print '- [ERROR]: Zlib decompression error. Invalid CWS SWF'
+            print('- [ERROR]: Zlib decompression error. Invalid CWS SWF')
             return None
         
     elif 'FWS' in header:
         try:
             tmp = f.read(size)
-            print ' - FWS Header'
+            print(' - FWS Header')
             return tmp
         
         except:
             pass
-            print ' - [ERROR] Invalid SWF Size'
+            print(' - [ERROR] Invalid SWF Size')
             return None
         
     else:
-        print ' - [Error] Logic Error Blame Programmer'
+        print(' - [Error] Logic Error Blame Programmer')
         return None
     
 def headerInfo(f):
@@ -146,13 +146,13 @@ def headerInfo(f):
     if type(f) is str:
       f = StringIO(f)
     sig = f.read(3)             
-    print '\t[HEADER] File header:', sig
+    print('\t[HEADER] File header: %s' % sig)
     if 'C' in sig:
-        print '\t[HEADER] File is zlib compressed.'
+        print('\t[HEADER] File is zlib compressed.')
     version = struct.unpack('<b', f.read(1))[0]
-    print '\t[HEADER] File version:', version
+    print('\t[HEADER] File version: %d' % version)
     size = struct.unpack('<i', f.read(4))[0]
-    print '\t[HEADER] File size:', size
+    print('\t[HEADER] File size: %d' % size)
     # deflate compressed SWF
     if 'C' in sig:
         f = verifySWF(f,0)
@@ -163,7 +163,7 @@ def headerInfo(f):
     ta = f.tell()
     tmp = struct.unpack('<b', f.read(1))[0]
     nbit =  tmp >> 3
-    print '\t[HEADER] Rect Nbit:', nbit
+    print('\t[HEADER] Rect Nbit: %d' % nbit)
     # Curretely the nbit is static at 15. This could be modified in the
     # future. If larger than 9 this will break the struct unpack. Will have
     # to revist must be a more effective way to deal with bits. Tried to keep
@@ -176,18 +176,18 @@ def headerInfo(f):
     # skips string '0b' and the nbit 
     rect =  bin(rect)[7:] 
     xmin = int(rect[0:nbit-1],2)
-    print '\t[HEADER] Rect Xmin:', xmin
+    print('\t[HEADER] Rect Xmin: %d' % xmin)
     xmax = int(rect[nbit:(nbit*2)-1],2)
-    print '\t[HEADER] Rect Xmax:', xmax
+    print('\t[HEADER] Rect Xmax: %d' % xmax)
     ymin = int(rect[nbit*2:(nbit*3)-1],2)
-    print '\t[HEADER] Rect Ymin:', ymin
+    print('\t[HEADER] Rect Ymin: %d' % ymin)
     # one bit needs to be added, my math might be off here
     ymax = int(rect[nbit*3:(nbit*4)-1] + str(tmp) ,2)
-    print '\t[HEADER] Rect Ymax:', ymax
+    print('\t[HEADER] Rect Ymax: %d' % ymax)
     framerate = struct.unpack('<H', f.read(2))[0]
-    print '\t[HEADER] Frame Rate:', framerate
+    print('\t[HEADER] Frame Rate: %d' % framerate)
     framecount = struct.unpack('<H', f.read(2))[0] 
-    print '\t[HEADER] Frame Count:', framecount
+    print('\t[HEADER] Frame Count: %d' % framecount)
        
 def walk4SWF(path):
     # returns a list of [folder-path, [addr1,addrw2]]
@@ -195,7 +195,7 @@ def walk4SWF(path):
     p = ['',[]]
     r = p*0
     if os.path.isdir(path) != True and path != '':
-        print '\t[ERROR] walk4SWF path must be a dir.'
+        print('\t[ERROR] walk4SWF path must be a dir.')
         return 
     for root, dirs, files in os.walk(path):
         for name in files:
@@ -229,7 +229,7 @@ def fileExist(n, ext):
                 while os.path.exists(n + '.' + str(c) + '.' + ext):
                     c =  c + 1
                     if c == 50:
-                        print '\t[ERROR] Skipped 50 Matching MD5 SWFs'
+                        print('\t[ERROR] Skipped 50 Matching MD5 SWFs')
                         break
                 n = n + '.' + str(c)
                 
@@ -252,7 +252,7 @@ def compressSWF(f):
         return tmp
     except:
         pass
-        print '\t[ERROR] SWF Zlib Compression Failed'
+        print('\t[ERROR] SWF Zlib Compression Failed')
         return None
 
 def disneyland(f,filename, options):
@@ -260,10 +260,10 @@ def disneyland(f,filename, options):
     # but seriously I did the recursion part last..
     retfindSWF = findSWF(f)
     f.seek(0)
-    print '\n[SUMMARY] %d SWF(s) in MD5:%s:%s' % ( len(retfindSWF),hashBuff(f), filename )
+    print('\n[SUMMARY] %d SWF(s) in MD5:%s:%s' % ( len(retfindSWF),hashBuff(f), filename ))
     # for each SWF in file 
     for idx, x in enumerate(retfindSWF):
-        print '\t[ADDR] SWF %d at %s' % (idx+1, hex(x)),
+        print('\t[ADDR] SWF %d at %s' % (idx+1, hex(x)))
         f.seek(x)
         h = f.read(1)
         f.seek(x)
@@ -272,11 +272,11 @@ def disneyland(f,filename, options):
             continue
         if options.extract != None:
             name = fileExist(hashBuff(swf), 'swf')
-            print '\t\t[FILE] Carved SWF MD5: %s' % name 
+            print('\t\t[FILE] Carved SWF MD5: %s' % name)
             try:
                 o = open(name, 'wb+')
-            except IOError, e:
-                print '\t[ERROR] Could Not Create %s ' % e
+            except IOError as e:
+                print('\t[ERROR] Could Not Create %s ' % e)
                 continue 
             o.write(swf)
             o.close()
@@ -286,11 +286,11 @@ def disneyland(f,filename, options):
             checkMD5(hashBuff(swf))
         if options.decompress != None:
             name = fileExist(hashBuff(swf), 'swf')
-            print '\t\t[FILE] Carved SWF MD5: %s' % name 
+            print('\t\t[FILE] Carved SWF MD5: %s' % name)
             try:
                 o = open(name, 'wb+')
-            except IOError, e:
-                print '\t[ERROR] Could Not Create %s ' % e
+            except IOError as e:
+                print('\t[ERROR] Could Not Create %s ' % e)
                 continue
             o.write(swf)
             o.close()
@@ -301,11 +301,11 @@ def disneyland(f,filename, options):
             if swf == None:
                 continue 
             name = fileExist(hashBuff(swf), 'swf')
-            print '\t\t[FILE] Compressed SWF MD5: %s' % name
+            print('\t\t[FILE] Compressed SWF MD5: %s' % name)
             try:
                 o = open(name, 'wb+')
-            except IOError, e:
-                print '\t[ERROR] Could Not Create %s ' % e
+            except IOError as e:
+                print('\t[ERROR] Could Not Create %s ' % e)
                 continue
             o.write(swf)
             o.close()
@@ -359,7 +359,7 @@ def main():
         f = open(sys.argv[len(sys.argv)-1],'rb+')
         filename = sys.argv[len(sys.argv)-1]
     except Exception:
-        print '[ERROR] File can not be opended/accessed'
+        print('[ERROR] File can not be opended/accessed')
         return
 
     disneyland(f,filename,options)

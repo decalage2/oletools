@@ -45,6 +45,7 @@ http://www.decalage.info/python/oletools
 #                      - improved usage display
 # 2015-12-29 v0.03 PL: - only display properties present in the file
 # 2016-09-06 v0.50 PL: - added main entry point for setup.py
+# 2016-10-25       PL: - fixed print for Python 3
 
 __version__ = '0.50'
 
@@ -93,7 +94,7 @@ def main():
                 value = str(value)
             t.write_row([prop, value], colors=[None, 'yellow'])
     t.close()
-    print ''
+    print('')
 
     print('Properties from the DocumentSummaryInformation stream:')
     t = tablestream.TableStream([21, 30], header_row=['Property', 'Value'], outfile=console_utf8)

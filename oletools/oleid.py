@@ -18,7 +18,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# oleid is copyright (c) 2012-2015, Philippe Lagadec (http://www.decalage.info)
+# oleid is copyright (c) 2012-2016, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -48,8 +48,9 @@ http://www.decalage.info/python/oletools
 # 2014-11-29 v0.02 PL: - use olefile instead of OleFileIO_PL
 #                      - improved usage display with -h
 # 2014-11-30 v0.03 PL: - improved output with prettytable
+# 2016-10-25 v0.50 PL: - fixed print for Python 3
 
-__version__ = '0.03'
+__version__ = '0.50'
 
 
 #------------------------------------------------------------------------------
@@ -275,7 +276,7 @@ def main():
         return
 
     for filename in args:
-        print '\nFilename:', filename
+        print('\nFilename:', filename)
         oleid = OleID(filename)
         indicators = oleid.check()
 
@@ -290,7 +291,7 @@ def main():
             #print '%s: %s' % (indicator.name, indicator.value)
             t.add_row((indicator.name, indicator.value))
 
-        print t
+        print(t)
 
 if __name__ == '__main__':
     main()
