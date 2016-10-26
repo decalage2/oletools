@@ -3,7 +3,7 @@
 ezhexviewer.py
 
 A simple hexadecimal viewer based on easygui. It should work on any platform
-with Python 2.x.
+with Python 2.x or 3.x.
 
 Usage: ezhexviewer.py [file]
 
@@ -45,6 +45,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # 2012-09-17 v0.01 PL: - first version
 # 2012-10-04 v0.02 PL: - added license
 # 2016-09-06 v0.50 PL: - added main function for entry points in setup.py
+# 2016-10-26       PL: - fixed to run on Python 2+3
 
 __version__ = '0.50'
 
@@ -56,6 +57,44 @@ __version__ = '0.50'
 from thirdparty.easygui import easygui
 import sys
 
+# === PYTHON 2+3 SUPPORT ======================================================
+
+if sys.version_info[0] >= 3:
+    # Python 3 specific adaptations
+    # py3 range = py2 xrange
+    xrange = range
+
+def xord(char):
+    '''
+    workaround for ord() to work on characters from a bytes string with
+    Python 2 and 3. If s is a bytes string, s[i] is a bytes string of
+    length 1 on Python 2, but it is an integer on Python 3...
+    xord(c) returns ord(c) if c is a bytes string, or c if it is already
+    an integer.
+    :param char: int or bytes of length 1
+    :return: ord(c) if bytes, c if int
+    '''
+    if isinstance(char, int):
+        return char
+    else:
+        return ord(char)
+
+def bchr(x):
+    '''
+    workaround for chr() to return a bytes string of length 1 with
+    Python 2 and 3. On Python 3, chr returns a unicode string, but
+    on Python 2 it is a bytes string.
+    bchr() always returns a bytes string on Python 2+3.
+    :param x: int
+    :return: chr(x) as a bytes string
+    '''
+    if sys.version_info[0] <= 2:
+        return chr(x)
+    else:
+        # According to the Python 3 documentation, bytes() can be
+        # initialized with an iterable:
+        return bytes([x])
+
 #------------------------------------------------------------------------------
 # The following code (hexdump3 only) is a modified version of the hex dumper
 # recipe published on ASPN by Sebastien Keim and Raymond Hattinger under the
@@ -64,7 +103,7 @@ import sys
 # PSF license: http://docs.python.org/license.html
 # Copyright (c) 2001-2012 Python Software Foundation; All Rights Reserved
 
-FILTER=''.join([(len(repr(chr(x)))==3) and chr(x) or '.' for x in range(256)])
+FILTER = b''.join([(len(repr(bchr(x)))<=4) and bchr(x) or b'.' for x in range(256)])
 
 def hexdump3(src, length=8, startindex=0):
     """
@@ -75,8 +114,9 @@ def hexdump3(src, length=8, startindex=0):
     result=[]
     for i in xrange(0, len(src), length):
        s = src[i:i+length]
-       hexa = ' '.join(["%02X"%ord(x) for x in s])
+       hexa = ' '.join(["%02X" % xord(x) for x in s])
        printable = s.translate(FILTER)
+       printable = printable.decode('latin1')
        result.append("%08X   %-*s   %s\n" % (i+startindex, length*3, hexa, printable))
     return ''.join(result)
 
