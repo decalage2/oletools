@@ -63,6 +63,9 @@ if sys.version_info[0] >= 3:
     # Python 3 specific adaptations
     # py3 range = py2 xrange
     xrange = range
+    PYTHON3 = True
+else:
+    PYTHON3 = False
 
 def xord(char):
     '''
@@ -88,12 +91,12 @@ def bchr(x):
     :param x: int
     :return: chr(x) as a bytes string
     '''
-    if sys.version_info[0] <= 2:
-        return chr(x)
-    else:
+    if PYTHON3:
         # According to the Python 3 documentation, bytes() can be
         # initialized with an iterable:
         return bytes([x])
+    else:
+        return chr(x)
 
 #------------------------------------------------------------------------------
 # The following code (hexdump3 only) is a modified version of the hex dumper
@@ -103,7 +106,7 @@ def bchr(x):
 # PSF license: http://docs.python.org/license.html
 # Copyright (c) 2001-2012 Python Software Foundation; All Rights Reserved
 
-FILTER = b''.join([(len(repr(bchr(x)))<=4) and bchr(x) or b'.' for x in range(256)])
+FILTER = b''.join([(len(repr(bchr(x)))<=4 and x != 0x0A) and bchr(x) or b'.' for x in range(256)])
 
 def hexdump3(src, length=8, startindex=0):
     """
@@ -113,11 +116,13 @@ def hexdump3(src, length=8, startindex=0):
     """
     result=[]
     for i in xrange(0, len(src), length):
-       s = src[i:i+length]
-       hexa = ' '.join(["%02X" % xord(x) for x in s])
-       printable = s.translate(FILTER)
-       printable = printable.decode('latin1')
-       result.append("%08X   %-*s   %s\n" % (i+startindex, length*3, hexa, printable))
+        s = src[i:i+length]
+        hexa = ' '.join(["%02X" % xord(x) for x in s])
+        printable = s.translate(FILTER)
+        if PYTHON3:
+            # On Python 3, need to convert printable from bytes to str:
+            printable = printable.decode('latin1')
+        result.append("%08X   %-*s   %s\n" % (i+startindex, length*3, hexa, printable))
     return ''.join(result)
 
 # end of PSF-licensed code.
