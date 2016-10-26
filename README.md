@@ -110,6 +110,7 @@ including [Viper](http://viper.li/), [REMnux](https://remnux.org/),
 [Deepviz](https://sandbox.deepviz.com/),
 [Laika BOSS](https://github.com/lmco/laikaboss),
 [Cuckoo Sandbox](https://github.com/cuckoosandbox/cuckoo),
+[Anlyz.io](https://sandbox.anlyz.io/),
 [pcodedmp](https://github.com/bontchev/pcodedmp)
 and probably [VirusTotal](https://www.virustotal.com).
 (Please [contact me]((http://decalage.info/contact)) if you have or know
