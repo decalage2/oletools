@@ -46,6 +46,7 @@ http://www.decalage.info/python/oletools
 # 2015-12-29 v0.03 PL: - only display properties present in the file
 # 2016-09-06 v0.50 PL: - added main entry point for setup.py
 # 2016-10-25       PL: - fixed print for Python 3
+# 2016-10-28       PL: - removed the UTF8 codec for console display
 
 __version__ = '0.50'
 
@@ -75,7 +76,8 @@ def main():
     meta = ole.get_metadata()
 
     # console output with UTF8 encoding:
-    console_utf8 = codecs.getwriter('utf8')(sys.stdout)
+    # It looks like we do not need the UTF8 codec anymore, both for Python 2 and 3
+    console_utf8 = sys.stdout #codecs.getwriter('utf8')(sys.stdout)
 
     # TODO: move similar code to a function
 
@@ -87,11 +89,11 @@ def main():
             # TODO: pretty printing for strings, dates, numbers
             # TODO: better unicode handling
             # print('- %s: %s' % (prop, value))
-            if isinstance(value, unicode):
-                # encode to UTF8, avoiding errors
-                value = value.encode('utf-8', errors='replace')
-            else:
-                value = str(value)
+            # if isinstance(value, unicode):
+            #     # encode to UTF8, avoiding errors
+            #     value = value.encode('utf-8', errors='replace')
+            # else:
+            #     value = str(value)
             t.write_row([prop, value], colors=[None, 'yellow'])
     t.close()
     print('')
@@ -104,11 +106,11 @@ def main():
             # TODO: pretty printing for strings, dates, numbers
             # TODO: better unicode handling
             # print('- %s: %s' % (prop, value))
-            if isinstance(value, unicode):
-                # encode to UTF8, avoiding errors
-                value = value.encode('utf-8', errors='replace')
-            else:
-                value = str(value)
+            # if isinstance(value, unicode):
+            #     # encode to UTF8, avoiding errors
+            #     value = value.encode('utf-8', errors='replace')
+            # else:
+            #     value = str(value)
             t.write_row([prop, value], colors=[None, 'yellow'])
     t.close()
 
