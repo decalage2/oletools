@@ -1,8 +1,8 @@
 python-oletools
 ===============
 
-`python-oletools <http://www.decalage.info/python/oletools>`__ is a
-package of python tools to analyze `Microsoft OLE2
+`oletools <http://www.decalage.info/python/oletools>`__ is a package of
+python tools to analyze `Microsoft OLE2
 files <http://en.wikipedia.org/wiki/Compound_File_Binary_Format>`__
 (also called Structured Storage, Compound File Binary Format or Compound
 Document File Format), such as Microsoft Office documents or Outlook
@@ -26,7 +26,18 @@ Software.
 News
 ----
 
--  **2016-06-10 v0.47**:
+-  **2016-10-?? v0.50 (development version)**: most tools now support
+   python 2 and 3.
+
+   -  olevba: Several bugfixes and improvements.
+   -  mraptor: improved detection, added mraptor\_milter for
+      Sendmail/Postfix integration.
+   -  rtfobj: brand new RTF parser, obfuscation-aware, improved display,
+      detect executable files in OLE Package objects.
+   -  setup: now creates handy command-line scripts to run oletools from
+      anywhere.
+
+-  2016-06-10 v0.47:
    `olevba <https://github.com/decalage2/oletools/wiki/olevba>`__ added
    PPT97 macros support, improved handling of malformed/incomplete
    documents, improved error handling and JSON output, now returns an
@@ -151,6 +162,23 @@ Tools in python-oletools:
 -  `rtfobj <https://github.com/decalage2/oletools/wiki/rtfobj>`__: to
    extract embedded objects from RTF files.
 -  and a few others (coming soon)
+
+Projects using oletools:
+------------------------
+
+oletools are used by a number of projects and online malware analysis
+services, including `Viper <http://viper.li/>`__,
+`REMnux <https://remnux.org/>`__,
+`Hybrid-analysis.com <https://www.hybrid-analysis.com/>`__, `Joe
+Sandbox <https://www.document-analyzer.net/>`__,
+`Deepviz <https://sandbox.deepviz.com/>`__, `Laika
+BOSS <https://github.com/lmco/laikaboss>`__, `Cuckoo
+Sandbox <https://github.com/cuckoosandbox/cuckoo>`__,
+`Anlyz.io <https://sandbox.anlyz.io/>`__,
+`pcodedmp <https://github.com/bontchev/pcodedmp>`__ and probably
+`VirusTotal <https://www.virustotal.com>`__. (Please `contact
+me <(http://decalage.info/contact)>`__ if you have or know a project
+using oletools)
 
 Download and Install:
 ---------------------

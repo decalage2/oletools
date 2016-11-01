@@ -10,24 +10,39 @@
 <body>
 <h1 id="how-to-download-and-install-python-oletools">How to Download and Install python-oletools</h1>
 <h2 id="pre-requisites">Pre-requisites</h2>
-<p>For now, python-oletools require <strong>Python 2.x</strong>, if possible 2.7 or 2.6 to enable all features.</p>
-<p>They are not compatible with Python 3.x yet. (Please contact me if that is a strong requirement)</p>
-<h2 id="to-use-oletools-as-command-line-tools">To use oletools as command-line tools</h2>
-<p>To use python-oletools from the command line as analysis tools, you may simply <a href="https://github.com/decalage2/oletools/releases">download the latest release archive</a> and extract the files into the directory of your choice.</p>
-<p>You may also download the <a href="https://github.com/decalage2/oletools/archive/master.zip">latest development version</a> with the most recent features.</p>
-<p>Another possibility is to use a git client to clone the repository (https://github.com/decalage2/oletools.git) into a folder. You can then update it easily in the future.</p>
-<h3 id="windows">Windows</h3>
-<p>You may add the oletools directory to your PATH environment variable to access the tools from anywhere.</p>
+<p>The recommended Python version to run oletools is <strong>Python 2.7</strong>. Python 2.6 is also supported, but as it is not tested as often as 2.7, some features might not work as expected.</p>
+<p>Since oletools v0.50, thanks to contributions by <span class="citation">[@Sebdraven]</span>(https://twitter.com/Sebdraven), most tools can also run with <strong>Python 3.x</strong>. As this is quite new, please <a href="(https://github.com/decalage2/oletools/issues)">report any issue</a> you may encounter.</p>
+<h2 id="recommended-way-to-downloadinstallupdate-oletools-pip">Recommended way to Download+Install/Update oletools: pip</h2>
+<p>Pip is included with Python since version 2.7.9 and 3.4. If it is not installed on your system, either upgrade Python or see https://pip.pypa.io/en/stable/installing/</p>
 <h3 id="linux-mac-osx-unix">Linux, Mac OSX, Unix</h3>
-<p>It is very convenient to create symbolic links to each tool in one of the bin directories in order to run them as shell commands from anywhere. For example, here is how to create an executable link &quot;olevba&quot; in <code>/usr/local/bin</code> pointing to olevba.py, assuming oletools was unzipped into /opt/oletools:</p>
-<pre class="text"><code>chmod +x /opt/oletools/oletools/olevba.py
-ln -s /opt/oletools/oletools/olevba.py /usr/local/bin/olevba</code></pre>
-<p>Then the olevba command can be used from any directory:</p>
-<pre class="text"><code>user@remnux:~/MalwareZoo/VBA$ olevba dridex427.xls |less</code></pre>
-<h2 id="for-python-applications">For python applications</h2>
-<p>If you plan to use python-oletools with other Python applications or your own scripts, the simplest solution is to use <strong>&quot;pip install oletools&quot;</strong> or <strong>&quot;easy_install oletools&quot;</strong> to download and install the package in one go. Pip is included with Python since version 2.7.9.</p>
-<p><strong>Important: to update oletools</strong> if it is already installed, you must run <strong>&quot;pip install -U oletools&quot;</strong>, otherwise pip will not update it.</p>
-<p>Alternatively if you prefer the old school way, you may download the <a href="https://github.com/decalage2/oletools/releases">latest archive</a>, extract it into a temporary directory and run <strong>&quot;python setup.py install&quot;</strong>.</p>
+<p>To download and install/update the latest release version of oletools, run the following command in a shell:</p>
+<pre class="text"><code>sudo -H pip install -U oletools</code></pre>
+<p><strong>Important</strong>: Since version 0.50, pip will automatically create convenient command-line scripts in /usr/local/bin to run all the oletools from any directory.</p>
+<h3 id="windows">Windows</h3>
+<p>To download and install/update the latest release version of oletools, run the following command in a cmd window:</p>
+<pre class="text"><code>pip install -U oletools</code></pre>
+<p><strong>Important</strong>: Since version 0.50, pip will automatically create convenient command-line scripts to run all the oletools from any directory: olevba, mraptor, oleid, rtfobj, etc.</p>
+<h2 id="how-to-install-the-latest-development-version">How to install the latest development version</h2>
+<p>If you want to benefit from the latest improvements in the development version, you may also use pip:</p>
+<h3 id="linux-mac-osx-unix-1">Linux, Mac OSX, Unix</h3>
+<pre class="text"><code>sudo -H pip install -U https://github.com/decalage2/oletools/archive/master.zip</code></pre>
+<h3 id="windows-1">Windows</h3>
+<pre class="text"><code>pip install -U https://github.com/decalage2/oletools/archive/master.zip</code></pre>
+<h2 id="how-to-install-offline---computer-without-internet-access">How to install offline - Computer without Internet access</h2>
+<p>First, download the oletools archive on a computer with Internet access: * Latest stable version: from https://github.com/decalage2/oletools/releases * Development version: https://github.com/decalage2/oletools/archive/master.zip</p>
+<p>Copy the archive file to the target computer.</p>
+<p>On Linux, Mac OSX, Unix, run the following command using the filename of the archive that you downloaded:</p>
+<pre class="text"><code>sudo -H pip install -U oletools.zip</code></pre>
+<p>On Windows:</p>
+<pre class="text"><code>pip install -U oletools.zip</code></pre>
+<h2 id="old-school-install-using-setup.py">Old school install using setup.py</h2>
+<p>If you cannot use pip, it is still possible to run the setup.py script directly. However, this method will not create the command-line scripts automatically.</p>
+<p>First, download the oletools archive: * Latest stable version: from https://github.com/decalage2/oletools/releases * Development version: https://github.com/decalage2/oletools/archive/master.zip</p>
+<p>Then extract the archive, open a shell and go to the oletools directory.</p>
+<h3 id="linux-mac-osx-unix-2">Linux, Mac OSX, Unix</h3>
+<pre class="text"><code>sudo -H python setup.py install</code></pre>
+<h3 id="windows-2">Windows:</h3>
+<pre class="text"><code>python setup.py install</code></pre>
 <hr />
 <h2 id="python-oletools-documentation">python-oletools documentation</h2>
 <ul>

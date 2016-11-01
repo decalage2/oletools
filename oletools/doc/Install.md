@@ -4,56 +4,113 @@ How to Download and Install python-oletools
 Pre-requisites
 --------------
 
-For now, python-oletools require **Python 2.x**, if possible 2.7 or 2.6 to enable all features. 
+The recommended Python version to run oletools is **Python 2.7**.
+Python 2.6 is also supported, but as it is not tested as often as 2.7, some features
+might not work as expected.
 
-They are not compatible with Python 3.x yet. (Please contact me if that is a strong requirement)
+Since oletools v0.50, thanks to contributions by [@Sebdraven](https://twitter.com/Sebdraven),
+most tools can also run with **Python 3.x**. As this is quite new, please
+[report any issue]((https://github.com/decalage2/oletools/issues)) you may encounter.
 
 
-To use oletools as command-line tools
--------------------------------------
 
-To use python-oletools from the command line as analysis tools, you may simply 
-[download the latest release archive](https://github.com/decalage2/oletools/releases)
-and extract the files into the directory of your choice.
+Recommended way to Download+Install/Update oletools: pip
+--------------------------------------------------------
 
-You may also download the [latest development version](https://github.com/decalage2/oletools/archive/master.zip) with the most recent features.
-
-Another possibility is to use a git client to clone the repository (https://github.com/decalage2/oletools.git) into a folder.
-You can then update it easily in the future.
-
-### Windows
-
-You may add the oletools directory to your PATH environment variable to access the tools from anywhere.
+Pip is included with Python since version 2.7.9 and 3.4. If it is not installed on your
+system, either upgrade Python or see https://pip.pypa.io/en/stable/installing/
 
 ### Linux, Mac OSX, Unix
 
-It is very convenient to create symbolic links to each tool in one of the bin directories in order to run them as shell 
-commands from anywhere. For example, here is how to create an executable link "olevba" in `/usr/local/bin` pointing to
-olevba.py, assuming oletools was unzipped into /opt/oletools:
+To download and install/update the latest release version of oletools,
+run the following command in a shell:
 
 ```text
-chmod +x /opt/oletools/oletools/olevba.py
-ln -s /opt/oletools/oletools/olevba.py /usr/local/bin/olevba
+sudo -H pip install -U oletools
 ```
-Then the olevba command can be used from any directory:
+
+**Important**: Since version 0.50, pip will automatically create convenient command-line scripts
+in /usr/local/bin to run all the oletools from any directory.
+
+### Windows
+
+To download and install/update the latest release version of oletools,
+run the following command in a cmd window:
 
 ```text
-user@remnux:~/MalwareZoo/VBA$ olevba dridex427.xls |less
+pip install -U oletools
 ```
 
-For python applications
------------------------
+**Important**: Since version 0.50, pip will automatically create convenient command-line scripts
+to run all the oletools from any directory: olevba, mraptor, oleid, rtfobj, etc.
 
-If you plan to use python-oletools with other Python applications or your own scripts, the simplest solution is to use 
-**"pip install oletools"** or **"easy_install oletools"** to download and install the package in one go. Pip is included
-with Python since version 2.7.9.
 
-**Important: to update oletools** if it is already installed, you must run **"pip install -U oletools"**, otherwise pip
-will not update it.
+How to install the latest development version
+---------------------------------------------
 
-Alternatively if you prefer the old school way, you may download the 
-[latest archive](https://github.com/decalage2/oletools/releases), extract it into
-a temporary directory and run **"python setup.py install"**.
+If you want to benefit from the latest improvements in the development version,
+you may also use pip:
+
+### Linux, Mac OSX, Unix
+
+```text
+sudo -H pip install -U https://github.com/decalage2/oletools/archive/master.zip
+```
+
+### Windows
+
+```text
+pip install -U https://github.com/decalage2/oletools/archive/master.zip
+```
+
+How to install offline - Computer without Internet access
+---------------------------------------------------------
+
+First, download the oletools archive on a computer with Internet access:
+* Latest stable version: from https://github.com/decalage2/oletools/releases
+* Development version: https://github.com/decalage2/oletools/archive/master.zip
+
+Copy the archive file to the target computer.
+
+On Linux, Mac OSX, Unix, run the following command using the filename of the
+archive that you downloaded:
+
+```text
+sudo -H pip install -U oletools.zip
+```
+
+On Windows:
+
+```text
+pip install -U oletools.zip
+```
+
+
+Old school install using setup.py
+---------------------------------
+
+If you cannot use pip, it is still possible to run the setup.py script
+directly. However, this method will not create the command-line scripts
+automatically.
+
+First, download the oletools archive:
+* Latest stable version: from https://github.com/decalage2/oletools/releases
+* Development version: https://github.com/decalage2/oletools/archive/master.zip
+
+Then extract the archive, open a shell and go to the oletools directory.
+
+### Linux, Mac OSX, Unix
+
+```text
+sudo -H python setup.py install
+```
+
+### Windows:
+
+```text
+python setup.py install
+```
+
 
 --------------------------------------------------------------------------
 

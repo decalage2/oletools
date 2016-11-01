@@ -28,18 +28,48 @@ code > span.er { color: #ff0000; font-weight: bold; }
 </head>
 <body>
 <h1 id="rtfobj">rtfobj</h1>
-<p>rtfobj is a Python module to extract embedded objects from RTF files, such as OLE ojects. It can be used as a Python library or a command-line tool.</p>
+<p>rtfobj is a Python module to detect and extract embedded objects stored in RTF files, such as OLE objects. It can also detect OLE Package objects, and extract the embedded files.</p>
+<p>Since v0.50, rtfobj contains a custom RTF parser that has been designed to match MS Word's behaviour, in order to handle obfuscated RTF files. See my article <a href="http://decalage.info/rtf_tricks">&quot;Anti-Analysis Tricks in Weaponized RTF&quot;</a> for some concrete examples.</p>
+<p>rtfobj can be used as a Python library or a command-line tool.</p>
 <p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
 <h2 id="usage">Usage</h2>
-<pre class="text"><code>rtfobj.py &lt;file.rtf&gt;</code></pre>
-<p>It extracts and decodes all the data blocks encoded as hexadecimal in the RTF document, and saves them as files named &quot;object_xxxx.bin&quot;, xxxx being the location of the object in the RTF file.</p>
-<h2 id="how-to-use-rtfobj-in-python-applications">How to use rtfobj in Python applications</h2>
-<p>Usage as a python module:</p>
-<p>rtf_iter_objects(filename) is an iterator which yields a tuple (index, object) providing the index of each hexadecimal stream in the RTF file, and the corresponding decoded object.</p>
+<pre class="text"><code>rtfobj [options] &lt;filename&gt; [filename2 ...]
+
+Options:
+  -h, --help            show this help message and exit
+  -r                    find files recursively in subdirectories.
+  -z ZIP_PASSWORD, --zip=ZIP_PASSWORD
+                        if the file is a zip archive, open first file from it,
+                        using the provided password (requires Python 2.6+)
+  -f ZIP_FNAME, --zipfname=ZIP_FNAME
+                        if the file is a zip archive, file(s) to be opened
+                        within the zip. Wildcards * and ? are supported.
+                        (default:*)
+  -l LOGLEVEL, --loglevel=LOGLEVEL
+                        logging level debug/info/warning/error/critical
+                        (default=warning)
+  -s SAVE_OBJECT, --save=SAVE_OBJECT
+                        Save the object corresponding to the provided number
+                        to a file, for example &quot;-s 2&quot;. Use &quot;-s all&quot; to save
+                        all objects at once.
+  -d OUTPUT_DIR         use specified directory to save output files.</code></pre>
+<p>rtfobj displays a list of the OLE and Package objects that have been detected, with their attributes such as class and filename.</p>
+<p>When an OLE Package object contains an executable file or script, it is highlighted as such. For example:</p>
+<div class="figure">
+<img src="rtfobj1.png" />
+</div>
+<p>To extract an object or file, use the option -s followed by the object number as shown in the table.</p>
 <p>Example:</p>
-<pre class="sourceCode python"><code class="sourceCode python"><span class="ch">import</span> rtfobj
-<span class="kw">for</span> index, data in rtfobj.rtf_iter_objects(<span class="st">&quot;myfile.rtf&quot;</span>):
-    <span class="dt">print</span> <span class="st">&#39;found object size </span><span class="ot">%d</span><span class="st"> at index </span><span class="ot">%08X</span><span class="st">&#39;</span> % (<span class="dt">len</span>(data), index)</code></pre>
+<pre class="text"><code>rtfobj -s 0</code></pre>
+<p>It extracts and decodes the corresponding object, and saves it as a file named &quot;object_xxxx.bin&quot;, xxxx being the location of the object in the RTF file.</p>
+<h2 id="how-to-use-rtfobj-in-python-applications">How to use rtfobj in Python applications</h2>
+<p>As of v0.50, the API has changed significantly and it is not final yet. For now, see the class RtfObjectParser in the code.</p>
+<h3 id="deprecated-api-still-functional">Deprecated API (still functional):</h3>
+<p>rtf_iter_objects(filename) is an iterator which yields a tuple (index, orig_len, object) providing the index of each hexadecimal stream in the RTF file, and the corresponding decoded object.</p>
+<p>Example:</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="ch">from</span> oletools <span class="ch">import</span> rtfobj
+<span class="kw">for</span> index, orig_len, data in rtfobj.rtf_iter_objects(<span class="st">&quot;myfile.rtf&quot;</span>):
+    <span class="dt">print</span>(<span class="st">&#39;found object size </span><span class="ot">%d</span><span class="st"> at index </span><span class="ot">%08X</span><span class="st">&#39;</span> % (<span class="dt">len</span>(data), index))</code></pre>
 <hr />
 <h2 id="python-oletools-documentation">python-oletools documentation</h2>
 <ul>

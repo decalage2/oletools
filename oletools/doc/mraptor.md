@@ -1,9 +1,23 @@
 mraptor (MacroRaptor)
 =====================
 
-mraptor is a script to detect malicious VBA Macros.
+mraptor is a tool designed to detect most malicious VBA Macros using
+generic heuristics. Unlike antivirus engines, it does not rely on signatures.
 
-It can be used either as a command-line tool, or as a python module from your own applications.
+In a nutshell, mraptor detects keywords corresponding to the three
+following types of behaviour that are present in clear text in almost
+any macro malware:
+- A: Auto-execution trigger
+- W: Write to the file system or memory
+- X: Execute a file or any payload outside the VBA context
+
+mraptor considers that a macro is suspicious when A and (W or X) is true.
+
+For more information about mraptor's detection algorithm, see the article
+[How to detect most malicious macros without an antivirus](http://www.decalage.info/mraptor).
+
+mraptor can be used either as a command-line tool, or as a python module
+from your own applications.
 
 It is part of the [python-oletools](http://www.decalage.info/python/oletools) package.
 
@@ -61,11 +75,20 @@ list of files matching the wildcards before starting the script.
 
 ![](mraptor1.png)
 
+## Python 3 support - mraptor3
+
+As of v0.50, mraptor has been ported to Python 3 thanks to @sebdraven.
+However, the differences between Python 2 and 3 are significant and for now
+there is a separate version of mraptor named mraptor3 to be used with
+Python 3.
+
+
 --------------------------------------------------------------------------
     
 ## How to use mraptor in Python applications
 
 TODO
+
 
 --------------------------------------------------------------------------
 

@@ -11,6 +11,12 @@
 <h1 id="olebrowse">olebrowse</h1>
 <p>olebrowse is a simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to view and extract individual data streams.</p>
 <p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
+<h2 id="dependencies">Dependencies</h2>
+<p>olebrowse requires <a href="https://en.wikipedia.org/wiki/Tkinter">Tkinter</a>. On Windows and MacOSX, it should be installed with Python, and olebrowse should work out of the box.</p>
+<p>However, on Linux it might be necessary to install the tkinter package for Python separately. For example, on Ubuntu this is done with the following command:</p>
+<pre><code>sudo apt-get install python-tk</code></pre>
+<p>And for Python 3:</p>
+<pre><code>sudo apt-get install python3-tk</code></pre>
 <h2 id="usage">Usage</h2>
 <pre><code>olebrowse.py [file]</code></pre>
 <p>If you provide a file it will be opened, else a dialog will allow you to browse folders to open a file. Then if it is a valid OLE file, the list of data streams will be displayed. You can select a stream, and then either view its content in a builtin hexadecimal viewer, or save it to a file for further analysis.</p>

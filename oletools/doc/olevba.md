@@ -253,7 +253,14 @@ OpX:MASI--- \MalwareZoo\VBA\samples\RottenKitten.xlsb.malware
 OLE:MASI-B- \MalwareZoo\VBA\samples\ROVNIX.doc.malware
 OLE:MA----- \MalwareZoo\VBA\samples\Word within Word macro auto.doc
 ```
-  
+
+## Python 3 support - olevba3
+
+As of v0.50, olevba has been ported to Python 3 thanks to @sebdraven.
+However, the differences between Python 2 and 3 are significant and for now
+there is a separate version of olevba named olevba3 to be used with
+Python 3.
+
 --------------------------------------------------------------------------
     
 ## How to use olevba in Python applications	
