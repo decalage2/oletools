@@ -26,16 +26,15 @@ Software.
 News
 ----
 
--  **2016-10-?? v0.50 (development version)**: most tools now support
-   python 2 and 3.
+-  **2016-11-01 v0.50**: all oletools now support python 2 and 3.
 
-   -  olevba: Several bugfixes and improvements.
+   -  olevba: several bugfixes and improvements.
    -  mraptor: improved detection, added mraptor\_milter for
       Sendmail/Postfix integration.
    -  rtfobj: brand new RTF parser, obfuscation-aware, improved display,
       detect executable files in OLE Package objects.
    -  setup: now creates handy command-line scripts to run oletools from
-      anywhere.
+      any directory.
 
 -  2016-06-10 v0.47:
    `olevba <https://github.com/decalage2/oletools/wiki/olevba>`__ added
