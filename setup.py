@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""Installs oletools using distutils
+"""
+Installs oletools using distutils
 
 Run:
     python setup.py install
@@ -23,7 +24,6 @@ to install this package.
 
 #--- TODO ---------------------------------------------------------------------
 
-# - version for python 3 using 2to3
 
 #--- IMPORTS ------------------------------------------------------------------
 
@@ -61,8 +61,7 @@ classifiers=[
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 2",
-    "Programming Language :: Python :: 2 :: Only",
-#    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3",
     "Topic :: Security",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
