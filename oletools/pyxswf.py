@@ -56,11 +56,13 @@ http://www.decalage.info/python/oletools
 #                      - improved usage display with -h
 # 2016-09-06 v0.50 PL: - updated to match the rtfobj API
 # 2016-10-25       PL: - fixed print for Python 3
+# 2016-11-01       PL: - replaced StringIO by BytesIO for Python 3
 
 __version__ = '0.50'
 
 #------------------------------------------------------------------------------
 # TODO:
+# + update xxxswf to latest version
 # + add support for LZMA-compressed flash files (ZWS header)
 #   references: http://blog.malwaretracker.com/2014/01/cve-2013-5331-evaded-av-by-using.html
 #   http://code.metager.de/source/xref/adobe/flash/crossbridge/tools/swf-info.py
@@ -72,7 +74,8 @@ __version__ = '0.50'
 
 #=== IMPORTS =================================================================
 
-import optparse, sys, os, rtfobj, StringIO
+import optparse, sys, os, rtfobj
+from io import BytesIO
 from thirdparty.xxxswf import xxxswf
 import thirdparty.olefile as olefile
 
@@ -122,7 +125,7 @@ def main():
                     f = ole._open(direntry.isectStart, direntry.size)
                     # check if data contains the SWF magic: FWS or CWS
                     data = f.getvalue()
-                    if 'FWS' in data or 'CWS' in data:
+                    if b'FWS' in data or b'CWS' in data:
                         print('OLE stream: %s' % repr(direntry.name))
                         # call xxxswf to scan or extract Flash files:
                         xxxswf.disneyland(f, direntry.name, options)
@@ -133,9 +136,9 @@ def main():
     elif options.rtf:
         for filename in args:
             for index, orig_len, data in rtfobj.rtf_iter_objects(filename):
-                if 'FWS' in data or 'CWS' in data:
+                if b'FWS' in data or b'CWS' in data:
                     print('RTF embedded object size %d at index %08X' % (len(data), index))
-                    f = StringIO.StringIO(data)
+                    f = BytesIO(data)
                     name = 'RTF_embedded_object_%08X' % index
                     # call xxxswf to scan or extract Flash files:
                     xxxswf.disneyland(f, name, options)

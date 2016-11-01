@@ -5,6 +5,8 @@
 #   - Tag Parser
 #   - ActionScript Decompiler
 
+# 2016-11-01 PL: - A few changes for Python 2+3 compatibility
+
 import fnmatch 
 import hashlib
 import imp
@@ -14,7 +16,7 @@ import re
 import struct
 import sys
 import time
-from StringIO import StringIO
+from io import BytesIO
 from optparse import OptionParser
 import zlib
 
@@ -63,14 +65,14 @@ def yaraScan(d):
 def findSWF(d):
 # d = buffer of the read file 
 # Search for SWF Header Sigs in files
-    return [tmp.start() for tmp in re.finditer('CWS|FWS', d.read())]
+    return [tmp.start() for tmp in re.finditer(b'CWS|FWS', d.read())]
 
 def hashBuff(d):
 # d = buffer of the read file 
 # This function hashes the buffer
 # source: http://stackoverflow.com/q/5853830
     if type(d) is str:
-      d = StringIO(d)
+      d = BytesIO(d)
     md5 = hashlib.md5()
     while True:
         data = d.read(128)
@@ -99,16 +101,16 @@ def verifySWF(f,addr):
         print(' - [ERROR] Invalid SWF Size')
         return None
     if type(t) is str:
-      f = StringIO(t)
+      f = BytesIO(t)
     # Error check for version above 20
     if ver > 20:
         print(' - [ERROR] Invalid SWF Version')
         return None
     
-    if 'CWS' in header:
+    if b'CWS' in header:
         try:
             f.read(3)
-            tmp = 'FWS' + f.read(5) + zlib.decompress(f.read())
+            tmp = b'FWS' + f.read(5) + zlib.decompress(f.read())
             print(' - CWS Header')
             return tmp
         
@@ -117,7 +119,7 @@ def verifySWF(f,addr):
             print('- [ERROR]: Zlib decompression error. Invalid CWS SWF')
             return None
         
-    elif 'FWS' in header:
+    elif b'FWS' in header:
         try:
             tmp = f.read(size)
             print(' - FWS Header')
@@ -144,20 +146,20 @@ def headerInfo(f):
     # [HEADER]        Movie width: 217.00
     # [HEADER]        Movie height: 85.00
     if type(f) is str:
-      f = StringIO(f)
+      f = BytesIO(f)
     sig = f.read(3)             
     print('\t[HEADER] File header: %s' % sig)
-    if 'C' in sig:
+    if b'C' in sig:
         print('\t[HEADER] File is zlib compressed.')
     version = struct.unpack('<b', f.read(1))[0]
     print('\t[HEADER] File version: %d' % version)
     size = struct.unpack('<i', f.read(4))[0]
     print('\t[HEADER] File size: %d' % size)
     # deflate compressed SWF
-    if 'C' in sig:
+    if b'C' in sig:
         f = verifySWF(f,0)
         if type(f) is str:
-            f = StringIO(f)
+            f = BytesIO(f)
         f.seek(0, 0)
         x = f.read(8)
     ta = f.tell()
@@ -245,10 +247,10 @@ def CWSize(f):
 
 def compressSWF(f):
     if type(f) is str:
-      f = StringIO(f)
+      f = BytesIO(f)
     try:
         f.read(3)
-        tmp = 'CWS' + f.read(5) + zlib.compress(f.read())
+        tmp = b'CWS' + f.read(5) + zlib.compress(f.read())
         return tmp
     except:
         pass
