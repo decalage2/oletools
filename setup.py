@@ -34,7 +34,7 @@ except ImportError:
 
 #from distutils.command.install import INSTALL_SCHEMES
 
-import sys, os, fnmatch
+import os, fnmatch
 
 
 #--- METADATA -----------------------------------------------------------------
