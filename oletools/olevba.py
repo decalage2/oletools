@@ -187,8 +187,9 @@ from __future__ import print_function
 # 2016-09-06       PL: - fixed issue #20, is_zipfile on Python 2.6
 # 2016-09-12       PL: - enabled packrat to improve pyparsing performance
 # 2016-10-25       PL: - fixed raise and print statements for Python 3
+# 2016-11-03 v0.51 PL: - added EnumDateFormats and EnumSystemLanguageGroupsW
 
-__version__ = '0.50'
+__version__ = '0.51a'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -547,7 +548,11 @@ SUSPICIOUS_KEYWORDS = {
         ('Lib',),
     'May inject code into another process':
         ('CreateThread', 'VirtualAlloc', # (issue #9) suggested by Davy Douhine - used by MSF payload
+        'VirtualAllocEx', 'RtlMoveMemory',
         ),
+    'May run a shellcode in memory':
+        ('EnumSystemLanguageGroupsW?', # Used by Hancitor in Oct 2016
+         'EnumDateFormats(?:W|(?:Ex){1,2})?'), # see https://msdn.microsoft.com/en-us/library/windows/desktop/dd317810(v=vs.85).aspx
     'May download files from the Internet':
     #TODO: regex to find urlmon+URLDownloadToFileA on same line
         ('URLDownloadToFileA', 'Msxml2.XMLHTTP', 'Microsoft.XMLHTTP',
@@ -602,8 +607,6 @@ SUSPICIOUS_KEYWORDS = {
     'May detect WinJail Sandbox':
     # ref: http://www.cplusplus.com/forum/windows/96874/
         ('Afx:400000:0',),
-    'Memory manipulation':
-        ('VirtualAllocEx', 'RtlMoveMemory'),
 }
 
 # Regular Expression for a URL:
@@ -1773,9 +1776,11 @@ def detect_suspicious(vba_code, obfuscation=None):
     for description, keywords in SUSPICIOUS_KEYWORDS.items():
         for keyword in keywords:
             # search using regex to detect word boundaries:
-            if re.search(r'(?i)\b' + keyword + r'\b', vba_code):
+            match = re.search(r'(?i)\b' + keyword + r'\b', vba_code)
+            if match:
                 #if keyword.lower() in vba_code:
-                results.append((keyword, description + obf_text))
+                found_keyword = match.group()
+                results.append((found_keyword, description + obf_text))
     return results
 
 
