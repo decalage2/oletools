@@ -73,7 +73,9 @@ including [Viper](http://viper.li/), [REMnux](https://remnux.org/),
 [Laika BOSS](https://github.com/lmco/laikaboss),
 [Cuckoo Sandbox](https://github.com/cuckoosandbox/cuckoo),
 [Anlyz.io](https://sandbox.anlyz.io/),
-[pcodedmp](https://github.com/bontchev/pcodedmp)
+[ViperMonkey](https://github.com/decalage2/ViperMonkey),
+[pcodedmp](https://github.com/bontchev/pcodedmp),
+[dridex.malwareconfig.com](https://dridex.malwareconfig.com),
 and probably [VirusTotal](https://www.virustotal.com).
 (Please [contact me]((http://decalage.info/contact)) if you have or know
 a project using oletools)
@@ -96,6 +98,8 @@ To get the **latest development version** instead:
 - On Linux/Mac: `sudo -H pip install -U https://github.com/decalage2/oletools/archive/master.zip`
 - On Windows: `pip install -U https://github.com/decalage2/oletools/archive/master.zip`
 
+See the [documentation](https://github.com/decalage2/oletools/wiki/Install)
+for other installation options.
 
 Documentation:
 --------------
