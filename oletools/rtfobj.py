@@ -535,6 +535,7 @@ class RtfObjParser(RtfParser):
                 nonhex = re.sub(b'[a-hA-H0-9]', b'', hexdata1)
                 log.debug('Found non-hex chars in hexdata: %r' % nonhex)
             # MS Word accepts an extra hex digit, so we need to trim it if present:
+            hexdata = filter(lambda x: x in "0123456789abcdef", hexdata)
             if len(hexdata) & 1:
                 log.debug('Odd length, trimmed last byte.')
                 hexdata = hexdata[:-1]
