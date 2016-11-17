@@ -64,8 +64,9 @@ http://www.decalage.info/python/oletools
 # 2016-08-08       PL: - added option -s to save objects to files
 # 2016-08-09       PL: - fixed issue #78, improved regex
 # 2016-09-06       PL: - fixed issue #83, backward compatible API
+# 2016-11-17 v0.51 PL: - updated call to oleobj.OleNativeStream
 
-__version__ = '0.50'
+__version__ = '0.51'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -552,7 +553,7 @@ class RtfObjParser(RtfParser):
                 rtfobj.oledata = obj.data
                 rtfobj.is_ole = True
                 if obj.class_name.lower() == 'package':
-                    opkg = OleNativeStream(bindata=obj.data)
+                    opkg = OleNativeStream(bindata=obj.data, package=True)
                     rtfobj.filename = opkg.filename
                     rtfobj.src_path = opkg.src_path
                     rtfobj.temp_path = opkg.temp_path

@@ -45,8 +45,9 @@ http://www.decalage.info/python/oletools
 # 2016-06          PL: - added main and process_file (not working yet)
 # 2016-07-18 v0.48 SL: - added Python 3.5 support
 # 2016-07-19       PL: - fixed Python 2.6-7 support
+# 2016-11-17 v0.51 PL: - fixed OLE native object extraction
 
-__version__ = '0.48'
+__version__ = '0.51'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -198,12 +199,13 @@ class OleNativeStream (object):
     TYPE_EMBEDDED = 0x02
 
 
-    def __init__(self, bindata=None):
+    def __init__(self, bindata=None, package=False):
         """
         Constructor for OleNativeStream.
         If bindata is provided, it will be parsed using the parse() method.
 
         :param bindata: bytes, OLENativeStream structure containing an OLE object
+        :param package: bool, set to True when extracting from an OLE Package object
         """
         self.filename = None
         self.src_path = None
@@ -213,6 +215,7 @@ class OleNativeStream (object):
         self.temp_path = None
         self.actual_size = None
         self.data = None
+        self.package = package
         if bindata is not None:
             self.parse(data=bindata)
 
@@ -227,9 +230,11 @@ class OleNativeStream (object):
         """
         # TODO: strict mode to raise exceptions when values are incorrect
         # (permissive mode by default)
-        # self.native_data_size = struct.unpack('<L', data[0:4])[0]
-        # data = data[4:]
-        # log.debug('OLE native data size = {0:08X} ({0} bytes)'.format(self.native_data_size))
+        # An OLE Package object does not have the native data size field
+        if not self.package:
+            self.native_data_size = struct.unpack('<L', data[0:4])[0]
+            data = data[4:]
+            log.debug('OLE native data size = {0:08X} ({0} bytes)'.format(self.native_data_size))
         # I thought this might be an OLE type specifier ???
         self.unknown_short, data = read_uint16(data)
         self.filename, data = data.split(b'\x00', 1)
@@ -349,31 +354,14 @@ def process_file(container, filename, data, output_dir=None):
     ole = olefile.OleFileIO(data)
     index = 1
     for stream in ole.listdir():
-        objdata = ole.openstream(stream).read()
-        stream_path = '/'.join(stream)
-        log.debug('Checking stream %r' % stream_path)
-        obj = OleObject()
-        try:
-            obj.parse(objdata)
-            print('extract file embedded in OLE object from stream %r:' % stream_path)
-            print('format_id  = %d' % obj.format_id)
-            print('class name = %r' % obj.class_name)
-            print('data size  = %d' % obj.data_size)
-            # set a file extension according to the class name:
-            class_name = obj.class_name.lower()
-            if class_name.startswith('word'):
-                ext = 'doc'
-            elif class_name.startswith('package'):
-                ext = 'package'
-            else:
-                ext = 'bin'
-
-            fname = '%s_object_%03d.%s' % (fname_prefix, index, ext)
-            print ('saving to file %s' % fname)
-            open(fname, 'wb').write(obj.data)
-            if obj.class_name.lower() == 'package':
+        if stream[-1] == '\x01Ole10Native':
+            objdata = ole.openstream(stream).read()
+            stream_path = '/'.join(stream)
+            log.debug('Checking stream %r' % stream_path)
+            try:
+                print('extract file embedded in OLE object from stream %r:' % stream_path)
                 print ('Parsing OLE Package')
-                opkg = OleNativeStream(bindata=obj.data)
+                opkg = OleNativeStream(bindata=objdata)
                 print ('Filename = %r' % opkg.filename)
                 print ('Source path = %r' % opkg.src_path)
                 print ('Temp path = %r' % opkg.temp_path)
@@ -384,9 +372,9 @@ def process_file(container, filename, data, output_dir=None):
                     fname = '%s_object_%03d.noname' % (fname_prefix, index)
                 print ('saving to file %s' % fname)
                 open(fname, 'wb').write(opkg.data)
-            index += 1
-        except:
-            log.debug('*** Not an OLE 1.0 Object')
+                index += 1
+            except:
+                log.debug('*** Not an OLE 1.0 Object')
 
 
 
