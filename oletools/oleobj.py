@@ -46,6 +46,7 @@ http://www.decalage.info/python/oletools
 # 2016-07-18 v0.48 SL: - added Python 3.5 support
 # 2016-07-19       PL: - fixed Python 2.6-7 support
 # 2016-11-17 v0.51 PL: - fixed OLE native object extraction
+# 2016-11-18       PL: - added main for setup.py entry point
 
 __version__ = '0.51'
 
@@ -380,7 +381,7 @@ def process_file(container, filename, data, output_dir=None):
 
 #=== MAIN =================================================================
 
-if __name__ == '__main__':
+def main():
     # print banner with version
     print ('oleobj %s - http://decalage.info/oletools' % __version__)
     print ('THIS IS WORK IN PROGRESS - Check updates regularly!')
@@ -436,4 +437,6 @@ if __name__ == '__main__':
             continue
         process_file(container, filename, data, options.output_dir)
 
+if __name__ == '__main__':
+    main()
 
