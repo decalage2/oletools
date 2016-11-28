@@ -12,6 +12,7 @@ Supported formats:
 - PowerPoint 97-2003 (.ppt), PowerPoint 2007+ (.pptm, .ppsm)
 - Word 2003 XML (.xml)
 - Word/Excel Single File Web Page / MHTML (.mht)
+- Publisher (.pub)
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -71,6 +72,8 @@ https://github.com/unixfreak0037/officeparser
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+
+from __future__ import print_function
 
 #------------------------------------------------------------------------------
 # CHANGELOG:
@@ -178,9 +181,16 @@ https://github.com/unixfreak0037/officeparser
 # 2016-06-12 v0.50 PL: - fixed small bugs in VBA parsing code
 # 2016-07-01       PL: - fixed issue #58 with format() to support Python 2.6
 # 2016-07-29       CH: - fixed several bugs including #73 (Mac Roman encoding)
+# 2016-08-31       PL: - added autoexec keyword InkPicture_Painted
+#                      - detect_autoexec now returns the exact keyword found
+# 2016-09-05       PL: - added autoexec keywords for MS Publisher (.pub)
+# 2016-09-06       PL: - fixed issue #20, is_zipfile on Python 2.6
+# 2016-09-12       PL: - enabled packrat to improve pyparsing performance
+# 2016-10-25       PL: - fixed raise and print statements for Python 3
 # 2016-10-25       PL: - fixed regex bytes strings (PR/issue #100)
+# 2016-11-03 v0.51 PL: - added EnumDateFormats and EnumSystemLanguageGroupsW
 
-__version__ = '0.50'
+__version__ = '0.51a'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -260,6 +270,22 @@ import oletools.ppt_parser as ppt_parser
 import email.feedparser
 email.feedparser.headerRE = re.compile(r'^(From |[\041-\071\073-\176]{1,}:?|[\t ])')
 
+# === PYTHON 2+3 SUPPORT ======================================================
+
+if sys.version_info[0] <= 2:
+    # Python 2.x
+    if sys.version_info[1] <= 6:
+        # Python 2.6
+        # use is_zipfile backported from Python 2.7:
+        from thirdparty.zipfile27 import is_zipfile
+    else:
+        # Python 2.7
+        from zipfile import is_zipfile
+else:
+    # Python 3.x+
+    from zipfile import is_zipfile
+    # xrange is now called range:
+    xrange = range
 
 # === LOGGING =================================================================
 
@@ -438,7 +464,7 @@ ATTR_NAME = NS_W + 'name'
 AUTOEXEC_KEYWORDS = {
     # MS Word:
     'Runs when the Word document is opened':
-        ('AutoExec', 'AutoOpen', 'Document_Open', 'DocumentOpen'),
+        ('AutoExec', 'AutoOpen', 'DocumentOpen'),
     'Runs when the Word document is closed':
         ('AutoExit', 'AutoClose', 'Document_Close', 'DocumentBeforeClose'),
     'Runs when the Word document is modified':
@@ -446,13 +472,24 @@ AUTOEXEC_KEYWORDS = {
     'Runs when a new Word document is created':
         ('AutoNew', 'Document_New', 'NewDocument'),
 
+    # MS Word and Publisher:
+    'Runs when the Word or Publisher document is opened':
+        ('Document_Open',),
+    'Runs when the Publisher document is closed':
+        ('Document_BeforeClose',),
+
     # MS Excel:
     'Runs when the Excel Workbook is opened':
         ('Auto_Open', 'Workbook_Open', 'Workbook_Activate'),
     'Runs when the Excel Workbook is closed':
         ('Auto_Close', 'Workbook_Close'),
 
-    #TODO: full list in MS specs??
+    # any MS Office application:
+    'Runs when the file is opened (using InkPicture ActiveX object)':
+        # ref:https://twitter.com/joe4security/status/770691099988025345
+        (r'\w+_Painted',),
+    'Runs when the file is opened and ActiveX objects trigger events':
+        (r'\w+_(?:GotFocus|LostFocus|MouseHover)',),
 }
 
 # Suspicious Keywords that may be used by malware
@@ -516,7 +553,11 @@ SUSPICIOUS_KEYWORDS = {
         ('Lib',),
     'May inject code into another process':
         ('CreateThread', 'VirtualAlloc', # (issue #9) suggested by Davy Douhine - used by MSF payload
+        'VirtualAllocEx', 'RtlMoveMemory',
         ),
+    'May run a shellcode in memory':
+        ('EnumSystemLanguageGroupsW?', # Used by Hancitor in Oct 2016
+         'EnumDateFormats(?:W|(?:Ex){1,2})?'), # see https://msdn.microsoft.com/en-us/library/windows/desktop/dd317810(v=vs.85).aspx
     'May download files from the Internet':
     #TODO: regex to find urlmon+URLDownloadToFileA on same line
         ('URLDownloadToFileA', 'Msxml2.XMLHTTP', 'Microsoft.XMLHTTP',
@@ -532,7 +573,7 @@ SUSPICIOUS_KEYWORDS = {
     'May attempt to obfuscate malicious function calls':
         ('CallByName',),
     #CallByName: http://msdn.microsoft.com/en-us/library/office/gg278760%28v=office.15%29.aspx
-    'May attempt to obfuscate specific strings':
+    'May attempt to obfuscate specific strings (use option --deobf to deobfuscate)':
     #TODO: regex to find several Chr*, not just one
         ('Chr', 'ChrB', 'ChrW', 'StrReverse', 'Xor'),
     #Chr: http://msdn.microsoft.com/en-us/library/office/gg264465%28v=office.15%29.aspx
@@ -571,8 +612,6 @@ SUSPICIOUS_KEYWORDS = {
     'May detect WinJail Sandbox':
     # ref: http://www.cplusplus.com/forum/windows/96874/
         ('Afx:400000:0',),
-    'Memory manipulation':
-        ('VirtualAllocEx', 'RtlMoveMemory'),
 }
 
 # Regular Expression for a URL:
@@ -645,6 +684,10 @@ re_printable_string = re.compile(b'[\\t\\r\\n\\x20-\\xFF]{5,}')
 
 # TODO: set whitespaces according to VBA
 # TODO: merge extended lines before parsing
+
+# Enable PackRat for better performance:
+# (see https://pythonhosted.org/pyparsing/pyparsing.ParserElement-class.html#enablePackrat)
+ParserElement.enablePackrat()
 
 # VBA identifier chars (from MS-VBAL 3.3.5)
 vba_identifier_chars = alphanums + '_'
@@ -1712,9 +1755,11 @@ def detect_autoexec(vba_code, obfuscation=None):
         for keyword in keywords:
             #TODO: if keyword is already a compiled regex, use it as-is
             # search using regex to detect word boundaries:
-            if re.search(r'(?i)\b' + keyword + r'\b', vba_code):
+            match = re.search(r'(?i)\b' + keyword + r'\b', vba_code)
+            if match:
                 #if keyword.lower() in vba_code:
-                results.append((keyword, description + obf_text))
+                found_keyword = match.group()
+                results.append((found_keyword, description + obf_text))
     return results
 
 
@@ -1736,9 +1781,11 @@ def detect_suspicious(vba_code, obfuscation=None):
     for description, keywords in SUSPICIOUS_KEYWORDS.items():
         for keyword in keywords:
             # search using regex to detect word boundaries:
-            if re.search(r'(?i)\b' + keyword + r'\b', vba_code):
+            match = re.search(r'(?i)\b' + keyword + r'\b', vba_code)
+            if match:
                 #if keyword.lower() in vba_code:
-                results.append((keyword, description + obf_text))
+                found_keyword = match.group()
+                results.append((found_keyword, description + obf_text))
     return results
 
 
@@ -2203,7 +2250,7 @@ class VBA_Parser(object):
 
             # if this worked, try whether it is a ppt file (special ole file)
             self.open_ppt()
-        if self.type is None and zipfile.is_zipfile(_file):
+        if self.type is None and is_zipfile(_file):
             # Zip file, which may be an OpenXML document
             self.open_openxml(_file)
         if self.type is None:
@@ -2606,7 +2653,7 @@ class VBA_Parser(object):
         # Also look for VBA code in any stream including orphans
         # (happens in some malformed files)
         ole = self.ole_file
-        for sid in range(len(ole.direntries)):
+        for sid in xrange(len(ole.direntries)):
             # check if id is already done above:
             log.debug('Checking DirEntry #%d' % sid)
             d = ole.direntries[sid]
@@ -2672,7 +2719,7 @@ class VBA_Parser(object):
             # Also look for VBA code in any stream including orphans
             # (happens in some malformed files)
             ole = self.ole_file
-            for sid in range(len(ole.direntries)):
+            for sid in xrange(len(ole.direntries)):
                 # check if id is already done above:
                 log.debug('Checking DirEntry #%d' % sid)
                 if sid in vba_stream_ids:
@@ -3099,7 +3146,7 @@ class VBA_Parser_CLI(VBA_Parser):
             if self.detect_vba_macros():
                 # print a waiting message only if the output is not redirected to a file:
                 if sys.stdout.isatty():
-                    print('Analysis...\r')
+                    print('Analysis...\r', end='')
                     sys.stdout.flush()
                 self.analyze_macros(show_decoded_strings=show_decoded_strings,
                                     deobfuscate=deobfuscate)

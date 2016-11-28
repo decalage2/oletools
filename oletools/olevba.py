@@ -269,6 +269,8 @@ import ppt_parser
 import email.feedparser
 email.feedparser.headerRE = re.compile(r'^(From |[\041-\071\073-\176]{1,}:?|[\t ])')
 
+# === PYTHON 2+3 SUPPORT ======================================================
+
 if sys.version_info[0] <= 2:
     # Python 2.x
     if sys.version_info[1] <= 6:
@@ -281,6 +283,8 @@ if sys.version_info[0] <= 2:
 else:
     # Python 3.x+
     from zipfile import is_zipfile
+    # xrange is now called range:
+    xrange = range
 
 # === LOGGING =================================================================
 
@@ -443,7 +447,7 @@ TYPE2TAG = {
 
 
 # MSO files ActiveMime header magic
-MSO_ACTIVEMIME_HEADER = 'ActiveMime'
+MSO_ACTIVEMIME_HEADER = b'ActiveMime'
 
 MODULE_EXTENSION = "bas"
 CLASS_EXTENSION = "cls"
@@ -2252,7 +2256,7 @@ class VBA_Parser(object):
             if data is None:
                 data = open(filename, 'rb').read()
             # check if it is a Word 2003 XML file (WordProcessingML): must contain the namespace
-            if 'http://schemas.microsoft.com/office/word/2003/wordml' in data:
+            if b'http://schemas.microsoft.com/office/word/2003/wordml' in data:
                 self.open_word2003xml(data)
             # store a lowercase version for the next tests:
             data_lowercase = data.lower()
@@ -2262,14 +2266,14 @@ class VBA_Parser(object):
             # and even whitespaces in between "MIME", "-", "Version" and ":". The version number is ignored.
             # And the line is case insensitive.
             # so we'll just check the presence of mime, version and multipart anywhere:
-            if self.type is None and 'mime' in data_lowercase and 'version' in data_lowercase \
-                and 'multipart' in data_lowercase:
+            if self.type is None and b'mime' in data_lowercase and b'version' in data_lowercase \
+                and b'multipart' in data_lowercase:
                 self.open_mht(data)
         #TODO: handle exceptions
         #TODO: Excel 2003 XML
             # Check if this is a plain text VBA or VBScript file:
             # To avoid scanning binary files, we simply check for some control chars:
-            if self.type is None and '\x00' not in data:
+            if self.type is None and b'\x00' not in data:
                 self.open_text(data)
         if self.type is None:
             # At this stage, could not match a known format:
