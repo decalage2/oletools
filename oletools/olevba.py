@@ -1672,8 +1672,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
                 # case-insensitive search in the code_modules dict to find the file extension:
                 filext = code_modules.get(modulename_modulename.lower(), 'bin')
                 filename = '{0}.{1}'.format(modulename_modulename, filext)
-                #TODO: also yield the codepage so that callers can decode it properly
-                yield (code_path, filename, code_data)
+                yield (code_path, filename, code_data, vba_codec)
                 # print '-'*79
                 # print filename
                 # print ''
@@ -2702,9 +2701,14 @@ class VBA_Parser(object):
             vba_stream_ids = set()
             for vba_root, project_path, dir_path in self.vba_projects:
                 # extract all VBA macros from that VBA root storage:
-                for stream_path, vba_filename, vba_code in \
+                for stream_path, vba_filename, vba_code, vba_codec in \
                         _extract_vba(self.ole_file, vba_root, project_path,
                                      dir_path, self.relaxed):
+                    try:
+                        vba_code = vba_code.decode(vba_codec)
+                    except:
+                        log.debug('Failed to decode VBA using %s' % vba_codec)
+                        vba_code = vba_code.decode('utf-8', 'ignore')
                     # store direntry ids in a set:
                     vba_stream_ids.add(self.ole_file._find(stream_path))
                     yield (self.filename, stream_path, vba_filename, vba_code)
@@ -2731,7 +2735,7 @@ class VBA_Parser(object):
                         log.debug('Found VBA compressed code at index %X' % start)
                         compressed_code = data[start:]
                         try:
-                            vba_code = decompress_stream(compressed_code)
+                            vba_code = decompress_stream(compressed_code).encode('utf-8', 'ignore')
                             yield (self.filename, d.name, d.name, vba_code)
                         except Exception as exc:
                             # display the exception with full stack trace for debugging
@@ -2771,7 +2775,7 @@ class VBA_Parser(object):
                     #TODO: filter code? (each module)
                     self.vba_code_all_modules += vba_code + '\n'
                 for (_, _, form_string) in self.extract_form_strings():
-                    self.vba_code_all_modules += form_string + '\n'
+                    self.vba_code_all_modules += form_string.decode('utf-8', 'ignore') + '\n'
             # Analyze the whole code at once:
             scanner = VBA_Scanner(self.vba_code_all_modules)
             self.analysis_results = scanner.scan(show_decoded_strings, deobfuscate)
