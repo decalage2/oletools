@@ -40,12 +40,7 @@ import struct
 import traceback
 import os
 
-try:
-    # absolute import when oletools is installed
-    import oletools.thirdparty.olefile as olefile
-except:
-    # relative import otherwise
-    import thirdparty.olefile as olefile
+import thirdparty.olefile as olefile
 
 import zlib
 
