@@ -80,6 +80,7 @@ packages=[
     'oletools.thirdparty.pyparsing',
     'oletools.thirdparty.colorclass',
     'oletools.thirdparty.tablestream',
+    'oletools.thirdparty.zipfile27',
 ]
 ##setupdir = '.'
 ##package_dir={'': setupdir}
@@ -178,6 +179,9 @@ package_data={
         'LICENSE', 'README',
         ],
     'oletools.thirdparty.colorclass': [
+        'LICENSE.txt',
+        ],
+    'oletools.thirdparty.zipfile27': [
         'LICENSE.txt',
         ],
     # 'oletools.thirdparty.tablestream': [
