@@ -2201,7 +2201,10 @@ class OleFileIO:
             self._raise_defect(DEFECT_INCORRECT, msg, type(exc))
             return data
 
-        for i in range(num_props):
+        # clamp num_props based on the data length
+        num_props = min(num_props, len(s) / 8)
+        
+        for i in xrange(num_props):
             property_id = 0 # just in case of an exception
             try:
                 property_id = i32(s, 8+i*8)
