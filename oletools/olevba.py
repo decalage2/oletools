@@ -1411,7 +1411,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             reference_reserved = struct.unpack("<H", dir_stream.read(2))[0]
             if reference_reserved not in (0x003E, 0x000D):
                 raise UnexpectedDataError(dir_path, 'REFERENCE_Reserved',
-                                          (0x003E, 0x000D), value)
+                                          (0x003E, 0x000D), reference_reserved)
             reference_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
             reference_name_unicode = dir_stream.read(reference_sizeof_name_unicode)
             unused = reference_id
