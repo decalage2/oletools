@@ -41,7 +41,9 @@ http://www.decalage.info/python/oletools
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# To improve Python 2+3 compatibility:
 from __future__ import print_function
+#from __future__ import absolute_import
 
 #------------------------------------------------------------------------------
 # CHANGELOG:
@@ -50,8 +52,9 @@ from __future__ import print_function
 #                      - improved usage display with -h
 # 2014-11-30 v0.03 PL: - improved output with prettytable
 # 2016-10-25 v0.50 PL: - fixed print and bytes strings for Python 3
+# 2016-12-12 v0.51 PL: - fixed relative imports for Python 3 (issue #115)
 
-__version__ = '0.50'
+__version__ = '0.51'
 
 
 #------------------------------------------------------------------------------
@@ -73,8 +76,21 @@ __version__ = '0.50'
 #=== IMPORTS =================================================================
 
 import optparse, sys, os, re, zlib, struct
-import thirdparty.olefile as olefile
-from thirdparty.prettytable import prettytable
+
+try:
+    # Relative imports (only works when imported from package):
+    from .thirdparty import olefile
+    from .thirdparty.prettytable import prettytable
+except:
+    # if it does not work, fall back to absolute imports:
+    # add this module's folder to sys.path (absolute+normalized path):
+    _thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+    if not _thismodule_dir in sys.path:
+        sys.path.insert(0, _thismodule_dir)
+    # absolute imports:
+    from thirdparty import olefile
+    from thirdparty.prettytable import prettytable
+
 
 
 #=== FUNCTIONS ===============================================================
@@ -265,6 +281,12 @@ class OleID:
 #=== MAIN =================================================================
 
 def main():
+    # print banner with version
+    print ('oleid %s - http://decalage.info/oletools' % __version__)
+    print ('THIS IS WORK IN PROGRESS - Check updates regularly!')
+    print ('Please report any issue at https://github.com/decalage2/oletools/issues')
+    print ('')
+
     usage = 'usage: %prog [options] <file>'
     parser = optparse.OptionParser(usage=__doc__ + '\n' + usage)
 ##    parser.add_option('-o', '--ole', action='store_true', dest='ole', help='Parse an OLE file (e.g. Word, Excel) to look for SWF in each stream')
@@ -277,7 +299,7 @@ def main():
         return
 
     for filename in args:
-        print('\nFilename:', filename)
+        print('Filename:', filename)
         oleid = OleID(filename)
         indicators = oleid.check()
 
@@ -293,6 +315,7 @@ def main():
             t.add_row((indicator.name, indicator.value))
 
         print(t)
+        print ('')
 
 if __name__ == '__main__':
     main()
