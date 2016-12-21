@@ -54,8 +54,9 @@ http://www.decalage.info/python/oletools
 # 2016-08-31 v0.50 PL: - added macro trigger InkPicture_Painted
 # 2016-09-05       PL: - added Document_BeforeClose keyword for MS Publisher (.pub)
 # 2016-10-25       PL: - fixed print for Python 3
+# 2016-12-21 v0.51 PL: - added more ActiveX macro triggers
 
-__version__ = '0.50'
+__version__ = '0.51'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -96,7 +97,7 @@ MSG_ISSUES = 'Please report this issue on %s' % URL_ISSUES
 re_autoexec = re.compile(r'(?i)\b(?:Auto(?:Exec|_?Open|_?Close|Exit|New)' +
                          r'|Document(?:_?Open|_Close|_?BeforeClose|Change|_New)' +
                          r'|NewDocument|Workbook(?:_Open|_Activate|_Close)' +
-                         r'|\w+_(?:Painted|GotFocus|LostFocus|MouseHover))\b')
+                         r'|\w+_(?:Painted|GotFocus|LostFocus|MouseHover|Layout|Click))\b')
 
 # MS-VBAL 5.4.5.1 Open Statement:
 RE_OPEN_WRITE = r'(?:\bOpen\b[^\n]+\b(?:Write|Append|Binary|Output|Random)\b)'
