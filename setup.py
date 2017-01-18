@@ -21,6 +21,7 @@ to install this package.
 # 2016-07-19 v0.50 PL: - create CLI scripts using entry points (by 2*yo)
 # 2016-07-29       PL: - use setuptools if available
 # 2016-09-05       PL: - added more entry points
+# 2017-01-18 v0.51 PL: - added package zipfile27 (issue #121)
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -80,6 +81,7 @@ packages=[
     'oletools.thirdparty.pyparsing',
     'oletools.thirdparty.colorclass',
     'oletools.thirdparty.tablestream',
+    'oletools.thirdparty.zipfile27',
 ]
 ##setupdir = '.'
 ##package_dir={'': setupdir}
@@ -178,6 +180,9 @@ package_data={
         'LICENSE', 'README',
         ],
     'oletools.thirdparty.colorclass': [
+        'LICENSE.txt',
+        ],
+    'oletools.thirdparty.zipfile27': [
         'LICENSE.txt',
         ],
     # 'oletools.thirdparty.tablestream': [
@@ -285,16 +290,7 @@ entry_points = {
 # === MAIN =====================================================================
 
 def main():
-    # TODO: remove this test once all tools are ported to Python 3
     # TODO: warning about Python 2.6
-#     if sys.version >= '3.0':
-#         s = "Sorry, %s %s requires Python 2.x."
-#         print(s % (name, version))
-#         sys.exit(1)
-# ##    if sys.version < required_python_version:
-##        s = "I'm sorry, but %s %s requires Python %s or later."
-##        print(s % (name, version, required_python_version))
-##        sys.exit(1)
 ##    # set default location for "data_files" to
 ##    # platform specific "site-packages" location
 ##    for scheme in list(INSTALL_SCHEMES.values()):
