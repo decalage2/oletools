@@ -254,6 +254,8 @@ except ImportError:
                                + "see http://codespeak.net/lxml " \
                                + "or http://effbot.org/zone/element-index.htm")
 
+from oleform import OleFormVariables
+
 import thirdparty.olefile as olefile
 from thirdparty.prettytable import prettytable
 from thirdparty.xglob import xglob, PathNotFoundException
@@ -2906,6 +2908,24 @@ class VBA_Parser(object):
                     log.debug('Printable string found in form: %r' % m.group())
                     yield (self.filename, '/'.join(o_stream), m.group())
 
+    def extract_form_strings_extended(self):
+        if self.ole_file is None:
+            # This may be either an OpenXML/PPT or a text file:
+            if self.type == TYPE_TEXT:
+                # This is a text file, return no results:
+                return
+            else:
+                # OpenXML/PPT: recursively yield results from each OLE subfile:
+                for ole_subfile in self.ole_subfiles:
+                    for results in ole_subfile.extract_form_strings_extended():
+                        yield results
+        else:
+            # This is an OLE file:
+            self.find_vba_forms()
+            ole = self.ole_file
+            for form_storage in self.vba_forms:
+                for variable in OleFormVariables(ole, form_storage):
+                    yield (self.filename, '/'.join(form_storage), variable)
 
     def close(self):
         """
@@ -3035,6 +3055,11 @@ class VBA_Parser_CLI(VBA_Parser):
                     print('VBA FORM STRING IN %r - OLE stream: %r' % (subfilename, stream_path))
                     print('- ' * 39)
                     print(form_string)
+                for (subfilename, stream_path, form_variables) in self.extract_form_strings_extended():
+                    print('-' * 79)
+                    print('VBA FORM Variable "%s" IN %r - OLE stream: %r' % (form_variables['name'], subfilename, stream_path))
+                    print('- ' * 39)
+                    print(str(form_variables['value']))
                 if not vba_code_only:
                     # analyse the code from all modules at once:
                     self.print_analysis(show_decoded_strings, deobfuscate)
