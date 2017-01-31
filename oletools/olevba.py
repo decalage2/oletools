@@ -254,7 +254,7 @@ except ImportError:
                                + "see http://codespeak.net/lxml " \
                                + "or http://effbot.org/zone/element-index.htm")
 
-from oleform import OleFormVariables
+from oleform import extract_OleFormVariables
 
 import thirdparty.olefile as olefile
 from thirdparty.prettytable import prettytable
@@ -2924,7 +2924,7 @@ class VBA_Parser(object):
             self.find_vba_forms()
             ole = self.ole_file
             for form_storage in self.vba_forms:
-                for variable in OleFormVariables(ole, form_storage):
+                for variable in extract_OleFormVariables(ole, form_storage):
                     yield (self.filename, '/'.join(form_storage), variable)
 
     def close(self):
