@@ -7,36 +7,60 @@ class OleFormParsingError(Exception):
 
 class Mask(object):
     def __init__(self, val):
-        self._val = [(val & (1<<i))>>i for i in range(32)]
+        self._val = [(val & (1<<i))>>i for i in range(self._size)]
 
     def __str__(self):
-        return ', '.join(self._names[i] for i in range(32) if self._val[i])
+        return ', '.join(self._names[i] for i in range(self._size) if self._val[i])
 
     def __getattr__(self, name):
         return self._val[self._names.index(name)]
 
-class PropMask(Mask):
+    def __len__(self):
+        return self.size
+
+    def __getitem__(self, key):
+        return self._val[self._names.index(key)]
+
+class FormPropMask(Mask):
+    """FormPropMask: [MS-OFORMS] 2.2.10.2"""
+    _size = 28
     _names = ['Unused1', 'fBackColor', 'fForeColor', 'fNextAvailableID', 'Unused2_0', 'Unused2_1',
               'fBooleanProperties', 'fBooleanProperties', 'fMousePointer', 'fScrollBars',
               'fDisplayedSize', 'fLogicalSize', 'fScrollPosition', 'fGroupCnt', 'Reserved',
               'fMouseIcon', 'fCycle', 'fSpecialEffect', 'fBorderColor', 'fCaption', 'fFont',
               'fPicture', 'fZoom', 'fPictureAlignment', 'fPictureTiling', 'fPictureSizeMode',
-              'fShapeCookie', 'fDrawBuffer', 'Unused3_0', 'Unused3_1', 'Unused3_2', 'Unused3_3']
+              'fShapeCookie', 'fDrawBuffer']
 
 class SitePropMask(Mask):
+    """SitePropMask: [MS-OFORMS] 2.2.10.12.2"""
+    _size = 15
     _names = ['fName', 'fTag', 'fID', 'fHelpContextID', 'fBitFlags', 'fObjectStreamSize',
               'fTabIndex', 'fClsidCacheIndex', 'fPosition', 'fGroupID', 'Unused1',
-              'fControlTipText', 'fRuntimeLicKey', 'fControlSource', 'fRowSource', 'Unused2_0',
-              'Unused2_1', 'Unused2_2', 'Unused2_3', 'Unused2_4', 'Unused2_5', 'Unused2_6',
-              'Unused2_7', 'Unused2_8', 'Unused2_9', 'Unused2_10', 'Unused2_11', 'Unused2_12',
-              'Unused2_13', 'Unused2_14', 'Unused2_15', 'Unused2_16']
+              'fControlTipText', 'fRuntimeLicKey', 'fControlSource', 'fRowSource']
+
+class MorphDataPropMask(Mask):
+    """MorphDataPropMask: [MS-OFORMS] 2.2.5.2"""
+    _size = 33
+    _names = ['fVariousPropertyBits', 'fBackColor', 'fForeColor', 'fMaxLength', 'fBorderStyle',
+              'fScrollBars', 'fDisplayStyle', 'fMousePointer', 'fSize', 'fPasswordChar',
+              'fListWidth', 'fBoundColumn', 'fTextColumn', 'fColumnCount', 'fListRows',
+              'fcColumnInfo', 'fMatchEntry', 'fListStyle', 'fShowDropButtonWhen', 'UnusedBits1',
+              'fDropButtonStyle', 'fMultiSelect', 'fValue', 'fCaption', 'fPicturePosition',
+              'fBorderColor', 'fSpecialEffect', 'fMouseIcon', 'fPicture', 'fAccelerator',
+              'UnusedBits2', 'Reserved', 'fGroupName']
 
 class OleUserFormParser(object):
-    def __init__(self, stream):
-        self.content = []
-        self._stream = stream
+    def __init__(self, control_stream, data_stream):
+        self.variables = []
+        self.set_stream(control_stream)
+        self.consume_FormControl()
+        self.set_stream(data_stream)
+        self.consume_stored_data()
+
+    def set_stream(self, stream):
         self._pos = 0
         self._frozen_pos = []
+        self._stream = stream
 
     def read(self, size):
         self._pos += size
@@ -67,6 +91,12 @@ class OleUserFormParser(object):
     def check_value(self, name, format, size, expected):
         self.check_values(name, format, size, (expected,))
 
+    def consume_TextProps(self):
+        # TextProps: [MS-OFORMS] 2.3.1
+        self.check_values('TextProps (versions)', '<BB', 2, (0, 2))
+        cbTextProps = self.unpack('<H', 2)
+        self.read(cbTextProps)
+
     def consume_GuidAndFont(self):
         # GuidAndFont: [MS-OFORMS] 2.4.7
         UUIDS = self.unpacks('<LHH', 8) + self.unpacks('>Q', 8)
@@ -80,10 +110,7 @@ class OleUserFormParser(object):
             self.read(bFaceLen)
         elif UUIDs == (2948729120, 55886, 4558, 13349514450607572916L):
             # UUID == {AFC20920-DA4E-11CE-B94300AA006887B4}
-            # TextProps: [MS-OFORMS] 2.3.1
-            self.check_value('TextProps (versions)', '<BB', 2, (0, 2))
-            cbTextProps = self.unpack('<H', 2)
-            self.read(cbTextProps)
+            self.consume_TextProps()
         else:
             raise OleFormParsingError('Invalid GuidAndFont at {0}: UUID'.format(self._pos - 16))
 
@@ -101,7 +128,6 @@ class OleUserFormParser(object):
         # CountOfBytesWithCompressionFlag or CountOfCharsWithCompressionFlag: [MS-OFORMS] 2.4.14.2 or 2.4.14.3
         count = self.unpack('<L', 4)
         if not count & 0x80000000 and count != 0:
-            print(count)
             raise OleFormParsingError('Uncompress string length at {0}', self._pos - 4)
         return count & 0x7FFFFFFF
 
@@ -126,45 +152,37 @@ class OleUserFormParser(object):
         self.check_value('OleSiteConcreteControl (version)', '<H', 2, 0)
         cbSite = self.unpack('<H', 2)
         self.freeze()
-        sitepropmask = SitePropMask(self.unpack('<L', 4))
+        propmask = SitePropMask(self.unpack('<L', 4))
         # SiteDataBlock: [MS-OFORMS] 2.2.10.12.3
         name_len = tag_len = id = 0
-        if sitepropmask.fName:
+        if propmask.fName:
             name_len = self.consume_CountOfBytesWithCompressionFlag()
-        if sitepropmask.fTag:
+        if propmask.fTag:
             tag_len = self.consume_CountOfBytesWithCompressionFlag()
-        if sitepropmask.fID:
+        if propmask.fID:
             id = self.unpack('<L', 4)
-        if sitepropmask.fHelpContextID:
-            self.read(4)
-        if sitepropmask.fBitFlags:
-            self.read(4)
-        if sitepropmask.fObjectStreamSize:
-            self.read(4)
+        for prop in ['fHelpContextID', 'fBitFlags', 'fObjectStreamSize']:
+            if propmask[prop]:
+                self.read(4)
         tabindex = ClsidCacheIndex = 0
         self.freeze()
-        if sitepropmask.fTabIndex:
+        if propmask.fTabIndex:
             tabindex = self.unpack('<H', 2)
-        if sitepropmask.fClsidCacheIndex:
+        if propmask.fClsidCacheIndex:
             ClsidCacheIndex = self.unpack('<H', 2)
-        if sitepropmask.fGroupID:
+        if propmask.fGroupID:
             self.read(2)
         self.unfreeze_pad()
         # For the next 4 entries, the documentation adds padding, but it should already be aligned??
-        if sitepropmask.fControlTipText:
-            self.read(4)
-        if sitepropmask.fRuntimeLicKey:
-            self.read(4)
-        if sitepropmask.fControlSource:
-            self.read(4)
-        if sitepropmask.fRowSource:
-            self.read(4)
+        for prop in ['fControlTipText', 'fRuntimeLicKey', 'fControlSource', 'fRowSource']:
+            if propmask[prop]:
+                self.read(4)
         # SiteExtraDataBlock: [MS-OFORMS] 2.2.10.12.4
         name = self.read(name_len)
         tag = self.read(tag_len)
-        self.content.append({'name': name, 'tag': tag, 'id': id,
-                          'tabindex': tabindex,
-                          'ClsidCacheIndex': ClsidCacheIndex})
+        self.variables.append({'name': name, 'tag': tag, 'id': id,
+                               'tabindex': tabindex,
+                               'ClsidCacheIndex': ClsidCacheIndex})
         self.unfreeze(cbSite)
 
     def consume_FormControl(self):
@@ -172,14 +190,11 @@ class OleUserFormParser(object):
         self.check_values('FormControl (versions)', '<BB', 2, (0, 4))
         cbform = self.unpack('<H', 2)
         self.freeze()
-        propmask = PropMask(self.unpack('<L', 4))
+        propmask = FormPropMask(self.unpack('<L', 4))
         # FormDataBlock: [MS-OFORMS] 2.2.10.3
-        if propmask.fBackColor:
-            self.read(4)
-        if propmask.fForeColor:
-            self.read(4)
-        if propmask.fNextAvailableID:
-            self.read(4)
+        for prop in ['fBackColor', 'fForeColor', 'fNextAvailableID']:
+            if propmask[prop]:
+                self.read(4)
         if propmask.fBooleanProperties:
             BooleanProperties = self.unpack('<L', 4)
             FORM_FLAG_DONTSAVECLASSTABLE = (BooleanProperties & (1<<15)) >> 15
@@ -208,36 +223,65 @@ class OleUserFormParser(object):
         for i in range(CountOfSites):
             self.consume_OleSiteConcreteControl()
 
-    def consume_stream_o(self):
-        # Adapted from plugin_stream_o.py from Didier Stevens's oledump.py
-        while(True):
-            try:
-                (code, length) = self.unpacks('<HH', 4)
-            except struct.error:
-                break
-            self.freeze()
-            if code == 0x200:
-                fieldtype = self.unpack('<I', 4)
-                if fieldtype == 0x80400101:
-                    self.read(8)
-                    lengthString = self.unpack('<I', 4) & 0x7FFFFFFF #self.consume_CountOfBytesWithCompressionFlag()
-                    self.read(8)
-                    self.content.append(self.read(lengthString))
-                elif fieldtype == 0x80000101:
-                    self.content.append('')
-            self.unfreeze(length)
+    def consume_MorphDataControl(self):
+        # MorphDataControl: [MS-OFORMS] 2.2.5.1
+        self.check_values('MorphDataControl (versions)', '<BB', 2, (0, 2))
+        cbMorphData = self.unpack('<H', 2)
+        self.freeze()
+        propmask = MorphDataPropMask(self.unpack('<Q', 8))
+        # MorphDataDataBlock: [MS-OFORMS] 2.2.5.3
+        for prop in ['fVariousPropertyBits', 'fBackColor', 'fForeColor', 'fMaxLength']:
+            if propmask[prop]:
+                self.read(4)
+        self.freeze()
+        for prop in ['fBorderStyle', 'fScrollBars', 'fDisplayStyle', 'fMousePointer']:
+            if propmask[prop]:
+                self.read(1)
+        self.unfreeze_pad()
+        # PasswordChar, BoundColumn, TextColumn, ColumnCount, and ListRows are 2B + pad = 4B
+        # ListWidth is 4B + pad = 4B
+        for prop in ['fPasswordChar', 'fListWidth', 'fBoundColumn', 'fTextColumn', 'fColumnCount',
+                     'fListRows']:
+            if propmask[prop]:
+                self.read(4)
+        self.freeze()
+	if propmask.fcColumnInfo:
+            self.read(2)
+        for prop in ['fMatchEntry', 'fListStyle', 'fShowDropButtonWhen', 'fDropButtonStyle',
+                     'fMultiSelect']:
+            if propmask[prop]:
+                self.read(1)
+        self.unfreeze_pad()
+        if propmask.fValue:
+            value_size = self.consume_CountOfBytesWithCompressionFlag()
+        else:
+            value_size = 0
+        # Caption, PicturePosition, BorderColor, SpecialEffect, GroupName  are 4B + pad = 4B
+        # MouseIcon, Picture, Accelerator are 2B + pad = 4B
+        for prop in ['fCaption', 'fPicturePosition', 'fBorderColor', 'fSpecialEffect',
+                     'fMouseIcon', 'fPicture', 'fAccelerator', 'fGroupName']:
+            if propmask[prop]:
+                self.read(4)
+        # MorphDataExtraDataBlock: [MS-OFORMS] 2.2.5.4
+        self.read(8)
+        value = self.read(value_size)
+        self.unfreeze(cbMorphData)
+        # MorphDataStreamData: [MS-OFORMS] 2.2.5.5
+        if propmask.fMouseIcon:
+            self.consume_GuidAndPicture()
+        if propmask.fPicture:
+            self.consume_GuidAndPicture()
+        self.consume_TextProps()
+        return value
+
+    def consume_stored_data(self):
+        for var in self.variables:
+            if var['ClsidCacheIndex'] != 23:
+                raise OleFormParsingError('Unsupported stored type: {0}'.format(str(var['ClsidCacheIndex'])))
+            var['value'] = self.consume_MorphDataControl()
 
 def OleFormVariables(ole_file, stream_dir):
     control_stream = ole_file.openstream('/'.join(stream_dir + ['f']))
-    control_form = OleUserFormParser(control_stream)
-    control_form.consume_FormControl()
-    variables = control_form.content
     data_stream = ole_file.openstream('/'.join(stream_dir + ['o']))
-    data = OleUserFormParser(data_stream)
-    data.consume_stream_o()
-    values = data.content
-    if len(variables) != len(values):
-        raise OleFormParsingError('Incompatible number of variables: {0} VS {1}'.format(len(variables), len(values)))
-    for i in range(len(variables)):
-        variables[i]['value'] = values[i]
-    return variables
+    form = OleUserFormParser(control_stream, data_stream)
+    return form.variables
