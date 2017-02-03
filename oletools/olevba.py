@@ -385,10 +385,17 @@ class UnexpectedDataError(OlevbaBaseException):
     """ raised when parsing is strict (=not relaxed) and data is unexpected """
 
     def __init__(self, stream_path, variable, expected, value):
+        if isinstance(expected, int):
+            es = '{0:04X}'.format(expected)
+        elif isinstance(expected, tuple):
+            es = ','.join('{0:04X}'.format(e) for e in expected)
+            es =  '({0})'.format(es)
+        else:
+            raise ValueError('Unknown type encountered: {0}'.format(type(expected)))
         super(UnexpectedDataError, self).__init__(
             'Unexpected value in {0} for variable {1}: '
-            'expected {2:04X} but found {3:04X}!'
-            .format(stream_path, variable, expected, value))
+            'expected {2} but found {3:04X}!'
+            .format(stream_path, variable, es, value))
         self.stream_path = stream_path
         self.variable = variable
         self.expected = expected
