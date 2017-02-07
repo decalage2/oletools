@@ -26,7 +26,7 @@ https://github.com/unixfreak0037/officeparser
 
 # === LICENSE ==================================================================
 
-# olevba is copyright (c) 2014-2016 Philippe Lagadec (http://www.decalage.info)
+# olevba is copyright (c) 2014-2017 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -188,8 +188,9 @@ from __future__ import print_function
 # 2016-09-12       PL: - enabled packrat to improve pyparsing performance
 # 2016-10-25       PL: - fixed raise and print statements for Python 3
 # 2016-11-03 v0.51 PL: - added EnumDateFormats and EnumSystemLanguageGroupsW
+# 2017-02-07       PL: - temporary fix for issue #132
 
-__version__ = '0.51a'
+__version__ = '0.51dev1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -1416,9 +1417,12 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             reference_sizeof_name = struct.unpack("<L", dir_stream.read(4))[0]
             reference_name = dir_stream.read(reference_sizeof_name)
             reference_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-            if reference_reserved not in (0x003E, 0x000D):
-                raise UnexpectedDataError(dir_path, 'REFERENCE_Reserved',
-                                          (0x003E, 0x000D), reference_reserved)
+            # According to [MS-OVBA] 2.3.4.2.2.2 REFERENCENAME Record:
+            # "Reserved (2 bytes): MUST be 0x003E. MUST be ignored."
+            # So let's ignore it, otherwise it crashes on some files (issue #132)
+            # if reference_reserved not in (0x003E, 0x000D):
+            #     raise UnexpectedDataError(dir_path, 'REFERENCE_Reserved',
+            #                               (0x003E, 0x000D), reference_reserved)
             reference_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
             reference_name_unicode = dir_stream.read(reference_sizeof_name_unicode)
             unused = reference_id
@@ -1442,9 +1446,11 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             referencecontrol_sizeof_libidtwiddled = struct.unpack("<L", dir_stream.read(4))[0]
             referencecontrol_libidtwiddled = dir_stream.read(referencecontrol_sizeof_libidtwiddled)
             referencecontrol_reserved1 = struct.unpack("<L", dir_stream.read(4))[0]  # ignore
-            check_value('REFERENCECONTROL_Reserved1', 0x0000, referencecontrol_reserved1)
+            # MS-OVBA: "Reserved1 (4 bytes): MUST be 0x00000000. MUST be ignored."
+            # check_value('REFERENCECONTROL_Reserved1', 0x0000, referencecontrol_reserved1)
             referencecontrol_reserved2 = struct.unpack("<H", dir_stream.read(2))[0]  # ignore
-            check_value('REFERENCECONTROL_Reserved2', 0x0000, referencecontrol_reserved2)
+            # MS-OVBA: "Reserved2 (2 bytes): MUST be 0x0000. MUST be ignored."
+            # check_value('REFERENCECONTROL_Reserved2', 0x0000, referencecontrol_reserved2)
             unused = referencecontrol_id
             unused = referencecontrol_sizetwiddled
             unused = referencecontrol_libidtwiddled
@@ -1456,8 +1462,8 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
                 referencecontrol_namerecordextended_name = dir_stream.read(
                     referencecontrol_namerecordextended_sizeof_name)
                 referencecontrol_namerecordextended_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-                check_value('REFERENCECONTROL_NameRecordExtended_Reserved', 0x003E,
-                            referencecontrol_namerecordextended_reserved)
+                # check_value('REFERENCECONTROL_NameRecordExtended_Reserved', 0x003E,
+                #             referencecontrol_namerecordextended_reserved)
                 referencecontrol_namerecordextended_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
                 referencecontrol_namerecordextended_name_unicode = dir_stream.read(
                     referencecontrol_namerecordextended_sizeof_name_unicode)
@@ -1468,7 +1474,8 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             else:
                 referencecontrol_reserved3 = check2
 
-            check_value('REFERENCECONTROL_Reserved3', 0x0030, referencecontrol_reserved3)
+            # MS-OVBA: "Reserved3 (2 bytes): MUST be 0x0030. MUST be ignored."
+            # check_value('REFERENCECONTROL_Reserved3', 0x0030, referencecontrol_reserved3)
             referencecontrol_sizeextended = struct.unpack("<L", dir_stream.read(4))[0]
             referencecontrol_sizeof_libidextended = struct.unpack("<L", dir_stream.read(4))[0]
             referencecontrol_libidextended = dir_stream.read(referencecontrol_sizeof_libidextended)
@@ -1491,9 +1498,9 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             referenceregistered_sizeof_libid = struct.unpack("<L", dir_stream.read(4))[0]
             referenceregistered_libid = dir_stream.read(referenceregistered_sizeof_libid)
             referenceregistered_reserved1 = struct.unpack("<L", dir_stream.read(4))[0]
-            check_value('REFERENCEREGISTERED_Reserved1', 0x0000, referenceregistered_reserved1)
+            # check_value('REFERENCEREGISTERED_Reserved1', 0x0000, referenceregistered_reserved1)
             referenceregistered_reserved2 = struct.unpack("<H", dir_stream.read(2))[0]
-            check_value('REFERENCEREGISTERED_Reserved2', 0x0000, referenceregistered_reserved2)
+            # check_value('REFERENCEREGISTERED_Reserved2', 0x0000, referenceregistered_reserved2)
             unused = referenceregistered_id
             unused = referenceregistered_size
             unused = referenceregistered_libid
@@ -2709,12 +2716,16 @@ class VBA_Parser(object):
             vba_stream_ids = set()
             for vba_root, project_path, dir_path in self.vba_projects:
                 # extract all VBA macros from that VBA root storage:
-                for stream_path, vba_filename, vba_code in \
-                        _extract_vba(self.ole_file, vba_root, project_path,
-                                     dir_path, self.relaxed):
-                    # store direntry ids in a set:
-                    vba_stream_ids.add(self.ole_file._find(stream_path))
-                    yield (self.filename, stream_path, vba_filename, vba_code)
+                # The function _extract_vba may fail on some files (issue #132)
+                try:
+                    for stream_path, vba_filename, vba_code in \
+                            _extract_vba(self.ole_file, vba_root, project_path,
+                                         dir_path, self.relaxed):
+                        # store direntry ids in a set:
+                        vba_stream_ids.add(self.ole_file._find(stream_path))
+                        yield (self.filename, stream_path, vba_filename, vba_code)
+                except Exception as e:
+                    log.exception('Error in _extract_vba')
             # Also look for VBA code in any stream including orphans
             # (happens in some malformed files)
             ole = self.ole_file
