@@ -189,6 +189,7 @@ from __future__ import print_function
 # 2016-10-25       PL: - fixed raise and print statements for Python 3
 # 2016-11-03 v0.51 PL: - added EnumDateFormats and EnumSystemLanguageGroupsW
 # 2017-02-07       PL: - temporary fix for issue #132
+#                      - added keywords for Mac-specific macros (issue #130)
 
 __version__ = '0.51dev1'
 
@@ -526,6 +527,11 @@ SUSPICIOUS_KEYWORDS = {
     'May run an executable file or a system command':
         ('Shell', 'vbNormal', 'vbNormalFocus', 'vbHide', 'vbMinimizedFocus', 'vbMaximizedFocus', 'vbNormalNoFocus',
          'vbMinimizedNoFocus', 'WScript.Shell', 'Run', 'ShellExecute'),
+    # MacScript: see https://msdn.microsoft.com/en-us/library/office/gg264812.aspx
+    'May run an executable file or a system command on a Mac':
+        ('MacScript',),
+    'May run an executable file or a system command on a Mac (if combined with libc.dylib)':
+        ('system', 'popen', r'exec[lv][ep]?'),
     #Shell: http://msdn.microsoft.com/en-us/library/office/gg278437%28v=office.15%29.aspx
     #WScript.Shell+Run sample: http://pastebin.com/Z4TMyuq6
     'May run PowerShell commands':
@@ -556,8 +562,11 @@ SUSPICIOUS_KEYWORDS = {
     'May enumerate application windows (if combined with Shell.Application object)':
         ('Windows', 'FindWindow'),
     'May run code from a DLL':
-    #TODO: regex to find declare+lib on same line
+    #TODO: regex to find declare+lib on same line - see mraptor
         ('Lib',),
+    'May run code from a library on a Mac':
+    #TODO: regex to find declare+lib on same line - see mraptor
+        ('libc.dylib', 'dylib'),
     'May inject code into another process':
         ('CreateThread', 'VirtualAlloc', # (issue #9) suggested by Davy Douhine - used by MSF payload
         'VirtualAllocEx', 'RtlMoveMemory',
