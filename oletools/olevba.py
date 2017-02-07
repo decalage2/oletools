@@ -1426,18 +1426,24 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             reference_sizeof_name = struct.unpack("<L", dir_stream.read(4))[0]
             reference_name = dir_stream.read(reference_sizeof_name)
             reference_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-            # According to [MS-OVBA] 2.3.4.2.2.2 REFERENCENAME Record:
-            # "Reserved (2 bytes): MUST be 0x003E. MUST be ignored."
-            # So let's ignore it, otherwise it crashes on some files (issue #132)
-            # if reference_reserved not in (0x003E, 0x000D):
-            #     raise UnexpectedDataError(dir_path, 'REFERENCE_Reserved',
-            #                               (0x003E, 0x000D), reference_reserved)
-            reference_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-            reference_name_unicode = dir_stream.read(reference_sizeof_name_unicode)
-            unused = reference_id
-            unused = reference_name
-            unused = reference_name_unicode
-            continue
+
+            # contrary to the specification I think that the unicode name
+            # is optional. if reference_reserved is not 0x003E I think it 
+            # is actually the start of another REFERENCE record
+            # at least when projectsyskind_syskind == 0x02 (Macintosh)
+            if reference_reserved == 0x003E:
+                #if reference_reserved not in (0x003E, 0x000D):
+                #    raise UnexpectedDataError(dir_path, 'REFERENCE_Reserved',
+                #                              0x0003E, reference_reserved)
+                reference_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
+                reference_name_unicode = dir_stream.read(reference_sizeof_name_unicode)
+                unused = reference_id
+                unused = reference_name
+                unused = reference_name_unicode
+                continue
+            else:
+                check = reference_reserved
+                log.debug("reference type = {0:04X}".format(check))
 
         if check == 0x0033:
             # REFERENCEORIGINAL (followed by REFERENCECONTROL)
@@ -1455,11 +1461,9 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             referencecontrol_sizeof_libidtwiddled = struct.unpack("<L", dir_stream.read(4))[0]
             referencecontrol_libidtwiddled = dir_stream.read(referencecontrol_sizeof_libidtwiddled)
             referencecontrol_reserved1 = struct.unpack("<L", dir_stream.read(4))[0]  # ignore
-            # MS-OVBA: "Reserved1 (4 bytes): MUST be 0x00000000. MUST be ignored."
-            # check_value('REFERENCECONTROL_Reserved1', 0x0000, referencecontrol_reserved1)
+            check_value('REFERENCECONTROL_Reserved1', 0x0000, referencecontrol_reserved1)
             referencecontrol_reserved2 = struct.unpack("<H", dir_stream.read(2))[0]  # ignore
-            # MS-OVBA: "Reserved2 (2 bytes): MUST be 0x0000. MUST be ignored."
-            # check_value('REFERENCECONTROL_Reserved2', 0x0000, referencecontrol_reserved2)
+            check_value('REFERENCECONTROL_Reserved2', 0x0000, referencecontrol_reserved2)
             unused = referencecontrol_id
             unused = referencecontrol_sizetwiddled
             unused = referencecontrol_libidtwiddled
@@ -1471,20 +1475,20 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
                 referencecontrol_namerecordextended_name = dir_stream.read(
                     referencecontrol_namerecordextended_sizeof_name)
                 referencecontrol_namerecordextended_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-                # check_value('REFERENCECONTROL_NameRecordExtended_Reserved', 0x003E,
-                #             referencecontrol_namerecordextended_reserved)
-                referencecontrol_namerecordextended_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-                referencecontrol_namerecordextended_name_unicode = dir_stream.read(
-                    referencecontrol_namerecordextended_sizeof_name_unicode)
-                referencecontrol_reserved3 = struct.unpack("<H", dir_stream.read(2))[0]
-                unused = referencecontrol_namerecordextended_id
-                unused = referencecontrol_namerecordextended_name
-                unused = referencecontrol_namerecordextended_name_unicode
+                if referencecontrol_namerecordextended_reserved == 0x003E:
+                    referencecontrol_namerecordextended_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
+                    referencecontrol_namerecordextended_name_unicode = dir_stream.read(
+                        referencecontrol_namerecordextended_sizeof_name_unicode)
+                    referencecontrol_reserved3 = struct.unpack("<H", dir_stream.read(2))[0]
+                    unused = referencecontrol_namerecordextended_id
+                    unused = referencecontrol_namerecordextended_name
+                    unused = referencecontrol_namerecordextended_name_unicode
+                else:
+                    referencecontrol_reserved3 = referencecontrol_namerecordextended_reserved
             else:
                 referencecontrol_reserved3 = check2
 
-            # MS-OVBA: "Reserved3 (2 bytes): MUST be 0x0030. MUST be ignored."
-            # check_value('REFERENCECONTROL_Reserved3', 0x0030, referencecontrol_reserved3)
+            check_value('REFERENCECONTROL_Reserved3', 0x0030, referencecontrol_reserved3)
             referencecontrol_sizeextended = struct.unpack("<L", dir_stream.read(4))[0]
             referencecontrol_sizeof_libidextended = struct.unpack("<L", dir_stream.read(4))[0]
             referencecontrol_libidextended = dir_stream.read(referencecontrol_sizeof_libidextended)
@@ -1507,9 +1511,9 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             referenceregistered_sizeof_libid = struct.unpack("<L", dir_stream.read(4))[0]
             referenceregistered_libid = dir_stream.read(referenceregistered_sizeof_libid)
             referenceregistered_reserved1 = struct.unpack("<L", dir_stream.read(4))[0]
-            # check_value('REFERENCEREGISTERED_Reserved1', 0x0000, referenceregistered_reserved1)
+            check_value('REFERENCEREGISTERED_Reserved1', 0x0000, referenceregistered_reserved1)
             referenceregistered_reserved2 = struct.unpack("<H", dir_stream.read(2))[0]
-            # check_value('REFERENCEREGISTERED_Reserved2', 0x0000, referenceregistered_reserved2)
+            check_value('REFERENCEREGISTERED_Reserved2', 0x0000, referenceregistered_reserved2)
             unused = referenceregistered_id
             unused = referenceregistered_size
             unused = referenceregistered_libid
