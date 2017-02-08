@@ -72,6 +72,7 @@ import logging, struct, optparse, os, re, sys
 
 from thirdparty.olefile import olefile
 from thirdparty.xglob import xglob
+import zlib
 
 # === LOGGING =================================================================
 
@@ -334,7 +335,7 @@ def sanitize_filename(filename, replacement='_', max_length=200):
     return sane_fname
 
 
-def process_file(container, filename, data, output_dir=None):
+def process_file(container, filename, data, output_dir=None, binary=False):
     if output_dir:
         if not os.path.isdir(output_dir):
             log.info('creating output directory %s' % output_dir)
@@ -376,6 +377,32 @@ def process_file(container, filename, data, output_dir=None):
                 index += 1
             except:
                 log.debug('*** Not an OLE 1.0 Object')
+        else:
+            if binary:
+                objdata = ole.openstream(stream).read()
+                stream_path = '/'.join(stream)
+                log.debug('Checking stream %r' % stream_path)
+                try:
+                    print('extract object in OLE object from stream %r:' % stream_path)
+
+
+                    fname = '%s_%s' % (fname_prefix,
+                                       sanitize_filename(stream[-1]))
+
+                    (size, new_data)  = read_uint32(objdata)
+                    header = read_uint16(new_data)[0]
+
+                    if header == int("0x9c78",0):
+                        print ("Zlib Stream Detected")
+                        objdata = zlib.decompress(new_data)
+                    else:
+                        size = len(objdata)
+
+                    print ('saving to file %s (%d)' % (fname, size))
+                    open(fname, 'wb').write(objdata)
+                    index += 1
+                except:
+                    log.debug('*** Not an OLE 1.0 Object')
 
 
 
@@ -412,6 +439,8 @@ def main():
         help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
     parser.add_option('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
                             help="logging level debug/info/warning/error/critical (default=%default)")
+    parser.add_option("-b", action="store_true", dest="binary",
+        help='extract binary objects.')
 
     (options, args) = parser.parse_args()
 
@@ -435,8 +464,7 @@ def main():
         # ignore directory names stored in zip files:
         if container and filename.endswith('/'):
             continue
-        process_file(container, filename, data, options.output_dir)
+        process_file(container, filename, data, options.output_dir, options.binary)
 
 if __name__ == '__main__':
     main()
-
