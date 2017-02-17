@@ -52,9 +52,9 @@ __version__ = '0.02'
 # - stream info: magic, entropy, ... ?
 
 import optparse, sys, os
-from thirdparty.easygui import easygui
-import thirdparty.olefile as olefile
-import ezhexviewer
+from .thirdparty.easygui import easygui
+from .thirdparty import olefile
+from . import ezhexviewer
 
 ABOUT = '~ About olebrowse'
 QUIT  = '~ Quit'

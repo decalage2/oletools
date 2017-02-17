@@ -74,10 +74,11 @@ __version__ = '0.50'
 
 #=== IMPORTS =================================================================
 
-import optparse, sys, os, rtfobj
+import optparse, sys, os
+from . import rtfobj
 from io import BytesIO
-from thirdparty.xxxswf import xxxswf
-import thirdparty.olefile as olefile
+from .thirdparty.xxxswf import xxxswf
+from .thirdparty import olefile
 
 
 #=== MAIN =================================================================

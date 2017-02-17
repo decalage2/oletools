@@ -63,13 +63,13 @@ __version__ = '0.50py3'
 
 import sys, logging, optparse, re
 
-from thirdparty.xglob import xglob
+from .thirdparty.xglob import xglob
 
 # import the python 3 version of tablestream:
-from thirdparty.tablestream import tablestream
+from .thirdparty.tablestream import tablestream
 
 # import the python 3 version of olevba
-import olevba3 as olevba
+from . import olevba3 as olevba
 
 # === LOGGING =================================================================
 

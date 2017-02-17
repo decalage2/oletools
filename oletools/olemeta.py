@@ -60,8 +60,8 @@ __version__ = '0.50'
 #=== IMPORTS =================================================================
 
 import sys, codecs
-import thirdparty.olefile as olefile
-from thirdparty.tablestream import tablestream
+import .thirdparty import olefile
+from .thirdparty.tablestream import tablestream
 
 
 #=== MAIN =================================================================

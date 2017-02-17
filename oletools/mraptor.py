@@ -66,8 +66,8 @@ __version__ = '0.51'
 
 import sys, logging, optparse, re
 
-from thirdparty.xglob import xglob
-from thirdparty.tablestream import tablestream
+from .thirdparty.xglob import xglob
+from .thirdparty.tablestream import tablestream
 
 import olevba
 
