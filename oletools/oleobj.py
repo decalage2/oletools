@@ -70,8 +70,8 @@ __version__ = '0.51'
 
 import logging, struct, optparse, os, re, sys
 
-from thirdparty.olefile import olefile
-from thirdparty.xglob import xglob
+from .thirdparty.olefile import olefile
+from .thirdparty.xglob import xglob
 
 # === LOGGING =================================================================
 

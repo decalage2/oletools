@@ -54,7 +54,7 @@ __version__ = '0.50'
 # + options to set title and msg
 
 
-from thirdparty.easygui import easygui
+from .thirdparty.easygui import easygui
 import sys
 
 # === PYTHON 2+3 SUPPORT ======================================================

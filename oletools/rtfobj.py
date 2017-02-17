@@ -83,12 +83,10 @@ __version__ = '0.51'
 import re, os, sys, binascii, logging, optparse
 import os.path
 
-from thirdparty.xglob import xglob
-from oleobj import OleObject, OleNativeStream
-import oleobj
-
-from thirdparty.tablestream import tablestream
-
+from .thirdparty.xglob import xglob
+from .thirdparty.tablestream import tablestream
+from .oleobj import OleObject, OleNativeStream
+from . import oleobj
 
 # === LOGGING =================================================================
 

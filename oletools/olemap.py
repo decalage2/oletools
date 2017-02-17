@@ -52,8 +52,8 @@ __version__ = '0.50'
 # === IMPORTS ================================================================
 
 import sys
-from thirdparty.olefile import olefile
-from thirdparty.tablestream import tablestream
+from .thirdparty.olefile import olefile
+from .thirdparty.tablestream import tablestream
 
 
 

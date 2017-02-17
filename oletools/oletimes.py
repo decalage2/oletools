@@ -61,8 +61,8 @@ __version__ = '0.50'
 #=== IMPORTS =================================================================
 
 import sys, datetime
-import thirdparty.olefile as olefile
-from thirdparty.prettytable import prettytable
+from .thirdparty import olefile
+from .thirdparty.prettytable import prettytable
 
 
 # === MAIN ===================================================================
