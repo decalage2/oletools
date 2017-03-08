@@ -269,7 +269,7 @@ _thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
 _parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
 # print('_parent_dir = %r' % _thirdparty_dir)
 if not _parent_dir in sys.path:
-    pass #sys.path.insert(0, _parent_dir)
+    sys.path.insert(0, _parent_dir)
 from oletools.thirdparty import olefile
 from oletools.thirdparty.prettytable import prettytable
 from oletools.thirdparty.xglob import xglob, PathNotFoundException
