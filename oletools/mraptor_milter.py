@@ -137,6 +137,7 @@ log.setLevel(logging.CRITICAL+1)
 # === CLASSES ================================================================
 
 # Inspired from https://github.com/jmehnle/pymilter/blob/master/milter-template.py
+# TODO: check https://github.com/sdgathman/pymilter which looks more recent
 
 class MacroRaptorMilter(Milter.Base):
     '''
