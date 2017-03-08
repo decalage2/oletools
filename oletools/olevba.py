@@ -270,6 +270,7 @@ _parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
 # print('_parent_dir = %r' % _thirdparty_dir)
 if not _parent_dir in sys.path:
     sys.path.insert(0, _parent_dir)
+
 from oletools.thirdparty import olefile
 from oletools.thirdparty.prettytable import prettytable
 from oletools.thirdparty.xglob import xglob, PathNotFoundException
@@ -3243,7 +3244,7 @@ def main():
         'critical': logging.CRITICAL
         }
 
-    usage = 'usage: %prog [options] <filename> [filename2 ...]'
+    usage = 'usage: olevba [options] <filename> [filename2 ...]'
     parser = optparse.OptionParser(usage=usage)
     # parser.add_option('-o', '--outfile', dest='outfile',
     #     help='output file')
