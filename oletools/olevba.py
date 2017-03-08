@@ -190,8 +190,9 @@ from __future__ import print_function
 # 2016-11-03 v0.51 PL: - added EnumDateFormats and EnumSystemLanguageGroupsW
 # 2017-02-07       PL: - temporary fix for issue #132
 #                      - added keywords for Mac-specific macros (issue #130)
+# 2017-03-08       PL: - fixed absolute imports
 
-__version__ = '0.51dev1'
+__version__ = '0.51dev2'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -225,7 +226,9 @@ __version__ = '0.51dev1'
 
 #--- IMPORTS ------------------------------------------------------------------
 
-import sys, logging
+import sys
+import os
+import logging
 import struct
 import cStringIO
 import math
@@ -256,15 +259,26 @@ except ImportError:
                                + "see http://codespeak.net/lxml " \
                                + "or http://effbot.org/zone/element-index.htm")
 
-from .thirdparty import olefile
-from .thirdparty.prettytable import prettytable
-from .thirdparty.xglob import xglob, PathNotFoundException
-from .thirdparty.pyparsing.pyparsing import \
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if not _parent_dir in sys.path:
+    pass #sys.path.insert(0, _parent_dir)
+from oletools.thirdparty import olefile
+from oletools.thirdparty.prettytable import prettytable
+from oletools.thirdparty.xglob import xglob, PathNotFoundException
+from oletools.thirdparty.pyparsing.pyparsing import \
         CaselessKeyword, CaselessLiteral, Combine, Forward, Literal, \
         Optional, QuotedString,Regex, Suppress, Word, WordStart, \
         alphanums, alphas, hexnums,nums, opAssoc, srange, \
         infixNotation, ParserElement
-from . import ppt_parser
+from oletools import ppt_parser
 
 
 # monkeypatch email to fix issue #32:
@@ -3275,6 +3289,7 @@ def main():
 
     # Print help if no arguments are passed
     if len(args) == 0:
+        print('olevba %s - http://decalage.info/python/oletools' % __version__)
         print(__doc__)
         parser.print_help()
         sys.exit(RETURN_WRONG_ARGS)
