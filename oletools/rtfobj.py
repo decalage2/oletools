@@ -451,7 +451,10 @@ class RtfParser(object):
         pass
 
     def _bin(self, matchobject, param):
-        binlen = int(param.strip('-'))
+        binlen = int(param)
+        if binlen < 0:
+            binlen = int(param.strip('-'))
+            
         log.debug('\\bin: reading %d bytes of binary data' % binlen)
         # TODO: handle optional space?
         # TODO: handle negative length, and length greater than data
