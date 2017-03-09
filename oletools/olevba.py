@@ -496,11 +496,9 @@ AUTOEXEC_KEYWORDS = {
     # any MS Office application:
     'Runs when the file is opened (using InkPicture ActiveX object)':
         # ref:https://twitter.com/joe4security/status/770691099988025345
-        (r'\w+_Painted|Painting',),
+        (r'\w+_Painted',),
     'Runs when the file is opened and ActiveX objects trigger events':
         (r'\w+_(?:GotFocus|LostFocus|MouseHover)',),
-    'Runs when the file is opened and a layout is initialised':
-        (r'(?:\w+_Layout',),
 }
 
 # Suspicious Keywords that may be used by malware
