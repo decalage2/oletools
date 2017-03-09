@@ -499,8 +499,8 @@ AUTOEXEC_KEYWORDS = {
         (r'\w+_Painted|Painting',),
     'Runs when the file is opened and ActiveX objects trigger events':
         (r'\w+_(?:GotFocus|LostFocus|MouseHover)',),
-    'Runs when the file is opened and a Form frame layout is initialised':
-        (r'(?:Frame|MultiPage)1_Layout',),        
+    'Runs when the file is opened and a layout is initialised':
+        (r'(?:\w+_Layout',),
 }
 
 # Suspicious Keywords that may be used by malware
