@@ -65,8 +65,10 @@ http://www.decalage.info/python/oletools
 # 2016-08-09       PL: - fixed issue #78, improved regex
 # 2016-09-06       PL: - fixed issue #83, backward compatible API
 # 2016-11-17 v0.51 PL: - updated call to oleobj.OleNativeStream
+# 2017-03-12       PL: - fixed imports for Python 2+3
+#                      - fixed hex decoding bug in RtfObjParser (issue #103)
 
-__version__ = '0.51'
+__version__ = '0.51dev2'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -83,10 +85,22 @@ __version__ = '0.51'
 import re, os, sys, binascii, logging, optparse
 import os.path
 
-from .thirdparty.xglob import xglob
-from .thirdparty.tablestream import tablestream
-from .oleobj import OleObject, OleNativeStream
-from . import oleobj
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if not _parent_dir in sys.path:
+    sys.path.insert(0, _parent_dir)
+
+from oletools.thirdparty.xglob import xglob
+from oletools.thirdparty.tablestream import tablestream
+from oletools.oleobj import OleObject, OleNativeStream
+from oletools import oleobj
 
 # === LOGGING =================================================================
 
@@ -528,10 +542,10 @@ class RtfObjParser(RtfParser):
             # Filter out all whitespaces first (just ignored):
             hexdata1 = destination.data.translate(None, b' \t\r\n\f\v')
             # Then filter out any other non-hex character:
-            hexdata = re.sub(b'[^a-hA-H0-9]', b'', hexdata1)
+            hexdata = re.sub(b'[^a-fA-F0-9]', b'', hexdata1)
             if len(hexdata) < len(hexdata1):
                 # this is only for debugging:
-                nonhex = re.sub(b'[a-hA-H0-9]', b'', hexdata1)
+                nonhex = re.sub(b'[a-fA-F0-9]', b'', hexdata1)
                 log.debug('Found non-hex chars in hexdata: %r' % nonhex)
             # MS Word accepts an extra hex digit, so we need to trim it if present:
             if len(hexdata) & 1:
