@@ -191,7 +191,7 @@ from __future__ import print_function
 # 2017-02-07       PL: - temporary fix for issue #132
 #                      - added keywords for Mac-specific macros (issue #130)
 # 2017-03-08       PL: - fixed absolute imports
-# 2017-03-16       PL: - fixed issue #148 for option --reveal
+# 2017-03-16       PL: - fixed issues #148 and #149 for option --reveal
 
 __version__ = '0.51dev3'
 
@@ -2841,13 +2841,21 @@ class VBA_Parser(object):
         # normally now self.vba_code_all_modules contains source code from all modules
         # Need to collapse long lines:
         deobf_code = vba_collapse_long_lines(self.vba_code_all_modules)
+        deobf_code = filter_vba(deobf_code)
         for kw_type, decoded, encoded in analysis:
             if kw_type == 'VBA string':
                 #print '%3d occurences: %r => %r' % (deobf_code.count(encoded), encoded, decoded)
                 # need to add double quotes around the decoded strings
                 # after escaping double-quotes as double-double-quotes for VBA:
                 decoded = decoded.replace('"', '""')
-                deobf_code = deobf_code.replace(encoded, '"%s"' % decoded)
+                decoded = '"%s"' % decoded
+                # if the encoded string is enclosed in parentheses,
+                # keep them in the decoded version:
+                if encoded.startswith('(') and encoded.endswith(')'):
+                    decoded = '(%s)' % decoded
+                deobf_code = deobf_code.replace(encoded, decoded)
+        # # TODO: there is a bug somewhere which creates double returns '\r\r'
+        # deobf_code = deobf_code.replace('\r\r', '\r')
         return deobf_code
         #TODO: repasser l'analyse plusieurs fois si des chaines hex ou base64 sont revelees
 
