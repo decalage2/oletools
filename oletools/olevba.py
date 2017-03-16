@@ -191,8 +191,9 @@ from __future__ import print_function
 # 2017-02-07       PL: - temporary fix for issue #132
 #                      - added keywords for Mac-specific macros (issue #130)
 # 2017-03-08       PL: - fixed absolute imports
+# 2017-03-16       PL: - fixed issue #148 for option --reveal
 
-__version__ = '0.51dev2'
+__version__ = '0.51dev3'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -1902,7 +1903,8 @@ def detect_dridex_strings(vba_code):
     :param vba_code: str, VBA source code
     :return: list of str tuples (encoded string, decoded string)
     """
-    from .thirdparty.DridexUrlDecoder.DridexUrlDecoder import DridexUrlDecode
+    # TODO: move this at the beginning of script
+    from oletools.thirdparty.DridexUrlDecoder.DridexUrlDecoder import DridexUrlDecode
 
     results = []
     found = set()
@@ -2837,7 +2839,8 @@ class VBA_Parser(object):
         # based on the length of the encoded string, in reverse order:
         analysis = sorted(analysis, key=lambda type_decoded_encoded: len(type_decoded_encoded[2]), reverse=True)
         # normally now self.vba_code_all_modules contains source code from all modules
-        deobf_code = self.vba_code_all_modules
+        # Need to collapse long lines:
+        deobf_code = vba_collapse_long_lines(self.vba_code_all_modules)
         for kw_type, decoded, encoded in analysis:
             if kw_type == 'VBA string':
                 #print '%3d occurences: %r => %r' % (deobf_code.count(encoded), encoded, decoded)
