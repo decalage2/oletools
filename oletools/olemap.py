@@ -13,7 +13,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE ==================================================================
 
-# olemap is copyright (c) 2015-2016 Philippe Lagadec (http://www.decalage.info)
+# olemap is copyright (c) 2015-2017 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -43,25 +43,33 @@ http://www.decalage.info/python/oletools
 # 2016-01-13 v0.02 PL: - improved display with tablestream, added colors
 # 2016-07-20 v0.50 SL: - added Python 3 support
 # 2016-09-05       PL: - added main entry point for setup.py
+# 2017-03-20 v0.51 PL: - fixed absolute imports
 
-__version__ = '0.50'
+__version__ = '0.51dev3'
 
 #------------------------------------------------------------------------------
 # TODO:
 
 # === IMPORTS ================================================================
 
-import sys
-from .thirdparty.olefile import olefile
-from .thirdparty.tablestream import tablestream
+import sys, os
 
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if not _parent_dir in sys.path:
+    sys.path.insert(0, _parent_dir)
 
+from oletools.thirdparty.olefile import olefile
+from oletools.thirdparty.tablestream import tablestream
 
-def sid_display(sid):
-    if sid == olefile.NOSTREAM:
-        return None
-    else:
-        return sid
+# === CONSTANTS ==============================================================
 
 STORAGE_NAMES = {
     olefile.STGTY_EMPTY:     'Empty',
@@ -86,6 +94,15 @@ FAT_COLORS = {
     olefile.DIFSECT:    "blue",
     'default':          None,
     }
+
+
+# === FUNCTIONS ==============================================================
+
+def sid_display(sid):
+    if sid == olefile.NOSTREAM:
+        return None
+    else:
+        return sid
 
 
 # === MAIN ===================================================================
