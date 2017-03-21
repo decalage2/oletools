@@ -45,6 +45,7 @@ http://www.decalage.info/python/oletools
 # 2016-09-05       PL: - added main entry point for setup.py
 # 2017-03-20 v0.51 PL: - fixed absolute imports, added optparse
 #                      - added support for zip files and wildcards
+#                      - improved MiniFAT display with tablestream
 
 
 __version__ = '0.51dev3'
@@ -166,15 +167,22 @@ def main():
             # print '%8X: %-12s offset=%08X next=%8X' % (i, fat_type, 0, fat_value)
             t.write_row(['%8X' % i, fat_type, '%08X' % offset, '%8X' % fat_value],
                 colors=[None, color_type, None, None])
+        t.close()
         print('')
 
         print('MiniFAT:')
         # load MiniFAT if it wasn't already done:
         ole.loadminifat()
+        t = tablestream.TableStream([8, 12, 8, 8], header_row=['Sector #', 'Type', 'Offset', 'Next #'])
         for i in range(len(ole.minifat)):
             fat_value = ole.minifat[i]
             fat_type = FAT_TYPES.get(fat_value, 'Data')
-            print('%8X: %-12s offset=%08X next=%8X' % (i, fat_type, 0, fat_value))
+            color_type = FAT_COLORS.get(fat_value, FAT_COLORS['default'])
+            # TODO: compute offset
+            # print('%8X: %-12s offset=%08X next=%8X' % (i, fat_type, 0, fat_value))
+            t.write_row(['%8X' % i, fat_type, 'N/A', '%8X' % fat_value],
+                colors=[None, color_type, None, None])
+        t.close()
 
         ole.close()
 
