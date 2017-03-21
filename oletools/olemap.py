@@ -46,6 +46,8 @@ http://www.decalage.info/python/oletools
 # 2017-03-20 v0.51 PL: - fixed absolute imports, added optparse
 #                      - added support for zip files and wildcards
 #                      - improved MiniFAT display with tablestream
+# 2017-03-21       PL: - added header display
+#                      - added options --header, --fat and --minifat
 
 
 __version__ = '0.51dev3'
@@ -55,7 +57,7 @@ __version__ = '0.51dev3'
 
 # === IMPORTS ================================================================
 
-import sys, os, optparse
+import sys, os, optparse, binascii
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
@@ -111,6 +113,21 @@ def sid_display(sid):
         return sid
 
 
+def show_header(ole):
+    print("OLE HEADER:")
+    t = tablestream.TableStream([20, 20, 79-(4+20+20)], header_row=['Attribute', 'Value', 'Description'])
+    t.write_row(['OLE Signature (hex)', binascii.b2a_hex(ole.header_signature).upper(), 'Should be D0CF11E0A1B11AE1'])
+    t.write_row(['Header CLSID (hex)', binascii.b2a_hex(ole.header_clsid).upper(), 'Should be 0'])
+    t.write_row(['Minor Version', '%04X' % ole.minor_version, 'Should be 003E'])
+    t.write_row(['Major Version', '%04X' % ole.dll_version, 'Should be 3 or 4'])
+    t.write_row(['Byte Order', '%04X' % ole.byte_order, 'Should be FFFE (little endian)'])
+    t.write_row(['Sector Shift', '%04X' % ole.sector_shift, 'Should be 0009 or 000C'])
+    t.write_row(['Sector Size (bytes)', '%d' % ole.sector_size, 'Should be 512 or 4096 bytes'])
+    t.write_row(['Number of Directory Sectors', ole.num_dir_sectors, 'Should be 0 if major version is 3'])
+    t.close()
+    print('')
+
+
 def show_fat(ole):
     print('FAT:')
     t = tablestream.TableStream([8, 12, 8, 8], header_row=['Sector #', 'Type', 'Offset', 'Next #'])
@@ -156,6 +173,12 @@ def main():
                       help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
     # parser.add_option('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
     #                         help="logging level debug/info/warning/error/critical (default=%default)")
+    parser.add_option("--header", action="store_true", dest="header",
+                      help='Display the OLE header (default: yes)')
+    parser.add_option("--fat", action="store_true", dest="fat",
+                      help='Display the FAT (default: yes)')
+    parser.add_option("--minifat", action="store_true", dest="minifat",
+                      help='Display the MiniFAT (default: yes)')
 
     # TODO: add logfile option
 
@@ -167,6 +190,12 @@ def main():
         print(__doc__)
         parser.print_help()
         sys.exit()
+
+    # if no diplay option is provided, set defaults:
+    if not (options.header or options.fat or options.minifat):
+        options.header = True
+        options.fat = True
+        options.minifat = True
 
     # print banner with version
     print(BANNER)
@@ -187,8 +216,12 @@ def main():
             # normal filename
             ole = olefile.OleFileIO(filename)
 
-        show_fat(ole)
-        show_minifat(ole)
+        if options.header:
+            show_header(ole)
+        if options.fat:
+            show_fat(ole)
+        if options.minifat:
+            show_minifat(ole)
 
         ole.close()
 
