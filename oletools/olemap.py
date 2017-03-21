@@ -43,7 +43,9 @@ http://www.decalage.info/python/oletools
 # 2016-01-13 v0.02 PL: - improved display with tablestream, added colors
 # 2016-07-20 v0.50 SL: - added Python 3 support
 # 2016-09-05       PL: - added main entry point for setup.py
-# 2017-03-20 v0.51 PL: - fixed absolute imports
+# 2017-03-20 v0.51 PL: - fixed absolute imports, added optparse
+#                      - added support for zip files and wildcards
+
 
 __version__ = '0.51dev3'
 
@@ -52,7 +54,7 @@ __version__ = '0.51dev3'
 
 # === IMPORTS ================================================================
 
-import sys, os
+import sys, os, optparse
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
@@ -68,8 +70,11 @@ if not _parent_dir in sys.path:
 
 from oletools.thirdparty.olefile import olefile
 from oletools.thirdparty.tablestream import tablestream
+from oletools.thirdparty.xglob import xglob
 
 # === CONSTANTS ==============================================================
+
+BANNER = 'olemap %s - http://decalage.info/python/oletools' % __version__
 
 STORAGE_NAMES = {
     olefile.STGTY_EMPTY:     'Empty',
@@ -108,34 +113,70 @@ def sid_display(sid):
 # === MAIN ===================================================================
 
 def main():
+    usage = 'usage: olemap [options] <filename> [filename2 ...]'
+    parser = optparse.OptionParser(usage=usage)
+    parser.add_option("-r", action="store_true", dest="recursive",
+                      help='find files recursively in subdirectories.')
+    parser.add_option("-z", "--zip", dest='zip_password', type='str', default=None,
+                      help='if the file is a zip archive, open all files from it, using the provided password (requires Python 2.6+)')
+    parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
+                      help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
+    # parser.add_option('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
+    #                         help="logging level debug/info/warning/error/critical (default=%default)")
+
+    # TODO: add logfile option
+
+    (options, args) = parser.parse_args()
+
+    # Print help if no arguments are passed
+    if len(args) == 0:
+        print(BANNER)
+        print(__doc__)
+        parser.print_help()
+        sys.exit()
+
+    # print banner with version
+    print(BANNER)
     # print banner with version
     print('olemap %s - http://decalage.info/python/oletools' % __version__)
 
-    fname = sys.argv[1]
-    ole = olefile.OleFileIO(fname)
+    for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
+                                                      zip_password=options.zip_password, zip_fname=options.zip_fname):
+        # TODO: handle xglob errors
+        # ignore directory names stored in zip files:
+        if container and filename.endswith('/'):
+            continue
+        full_name = '%s in %s' % (filename, container) if container else filename
+        print("-" * 79)
+        print('FILE: %s\n' % full_name)
+        if data is not None:
+            # data extracted from zip file
+            ole = olefile.OleFileIO(data)
+        else:
+            # normal filename
+            ole = olefile.OleFileIO(filename)
+        print('FAT:')
+        t = tablestream.TableStream([8, 12, 8, 8], header_row=['Sector #', 'Type', 'Offset', 'Next #'])
+        for i in range(ole.nb_sect):
+            fat_value = ole.fat[i]
+            fat_type = FAT_TYPES.get(fat_value, '<Data>')
+            color_type = FAT_COLORS.get(fat_value, FAT_COLORS['default'])
+            # compute offset based on sector size:
+            offset = ole.sectorsize * (i+1)
+            # print '%8X: %-12s offset=%08X next=%8X' % (i, fat_type, 0, fat_value)
+            t.write_row(['%8X' % i, fat_type, '%08X' % offset, '%8X' % fat_value],
+                colors=[None, color_type, None, None])
+        print('')
 
-    print('FAT:')
-    t = tablestream.TableStream([8, 12, 8, 8], header_row=['Sector #', 'Type', 'Offset', 'Next #'])
-    for i in range(ole.nb_sect):
-        fat_value = ole.fat[i]
-        fat_type = FAT_TYPES.get(fat_value, '<Data>')
-        color_type = FAT_COLORS.get(fat_value, FAT_COLORS['default'])
-        # compute offset based on sector size:
-        offset = ole.sectorsize * (i+1)
-        # print '%8X: %-12s offset=%08X next=%8X' % (i, fat_type, 0, fat_value)
-        t.write_row(['%8X' % i, fat_type, '%08X' % offset, '%8X' % fat_value],
-            colors=[None, color_type, None, None])
-    print('')
+        print('MiniFAT:')
+        # load MiniFAT if it wasn't already done:
+        ole.loadminifat()
+        for i in range(len(ole.minifat)):
+            fat_value = ole.minifat[i]
+            fat_type = FAT_TYPES.get(fat_value, 'Data')
+            print('%8X: %-12s offset=%08X next=%8X' % (i, fat_type, 0, fat_value))
 
-    print('MiniFAT:')
-    # load MiniFAT if it wasn't already done:
-    ole.loadminifat()
-    for i in range(len(ole.minifat)):
-        fat_value = ole.minifat[i]
-        fat_type = FAT_TYPES.get(fat_value, 'Data')
-        print('%8X: %-12s offset=%08X next=%8X' % (i, fat_type, 0, fat_value))
-
-    ole.close()
+        ole.close()
 
 if __name__ == '__main__':
     main()
