@@ -111,6 +111,38 @@ def sid_display(sid):
         return sid
 
 
+def show_fat(ole):
+    print('FAT:')
+    t = tablestream.TableStream([8, 12, 8, 8], header_row=['Sector #', 'Type', 'Offset', 'Next #'])
+    for i in range(ole.nb_sect):
+        fat_value = ole.fat[i]
+        fat_type = FAT_TYPES.get(fat_value, '<Data>')
+        color_type = FAT_COLORS.get(fat_value, FAT_COLORS['default'])
+        # compute offset based on sector size:
+        offset = ole.sectorsize * (i + 1)
+        # print '%8X: %-12s offset=%08X next=%8X' % (i, fat_type, 0, fat_value)
+        t.write_row(['%8X' % i, fat_type, '%08X' % offset, '%8X' % fat_value],
+                    colors=[None, color_type, None, None])
+    t.close()
+    print('')
+
+
+def show_minifat(ole):
+    print('MiniFAT:')
+    # load MiniFAT if it wasn't already done:
+    ole.loadminifat()
+    t = tablestream.TableStream([8, 12, 8, 8], header_row=['Sector #', 'Type', 'Offset', 'Next #'])
+    for i in range(len(ole.minifat)):
+        fat_value = ole.minifat[i]
+        fat_type = FAT_TYPES.get(fat_value, 'Data')
+        color_type = FAT_COLORS.get(fat_value, FAT_COLORS['default'])
+        # TODO: compute offset
+        # print('%8X: %-12s offset=%08X next=%8X' % (i, fat_type, 0, fat_value))
+        t.write_row(['%8X' % i, fat_type, 'N/A', '%8X' % fat_value],
+                    colors=[None, color_type, None, None])
+    t.close()
+    print('')
+
 # === MAIN ===================================================================
 
 def main():
@@ -138,8 +170,6 @@ def main():
 
     # print banner with version
     print(BANNER)
-    # print banner with version
-    print('olemap %s - http://decalage.info/python/oletools' % __version__)
 
     for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
                                                       zip_password=options.zip_password, zip_fname=options.zip_fname):
@@ -156,33 +186,9 @@ def main():
         else:
             # normal filename
             ole = olefile.OleFileIO(filename)
-        print('FAT:')
-        t = tablestream.TableStream([8, 12, 8, 8], header_row=['Sector #', 'Type', 'Offset', 'Next #'])
-        for i in range(ole.nb_sect):
-            fat_value = ole.fat[i]
-            fat_type = FAT_TYPES.get(fat_value, '<Data>')
-            color_type = FAT_COLORS.get(fat_value, FAT_COLORS['default'])
-            # compute offset based on sector size:
-            offset = ole.sectorsize * (i+1)
-            # print '%8X: %-12s offset=%08X next=%8X' % (i, fat_type, 0, fat_value)
-            t.write_row(['%8X' % i, fat_type, '%08X' % offset, '%8X' % fat_value],
-                colors=[None, color_type, None, None])
-        t.close()
-        print('')
 
-        print('MiniFAT:')
-        # load MiniFAT if it wasn't already done:
-        ole.loadminifat()
-        t = tablestream.TableStream([8, 12, 8, 8], header_row=['Sector #', 'Type', 'Offset', 'Next #'])
-        for i in range(len(ole.minifat)):
-            fat_value = ole.minifat[i]
-            fat_type = FAT_TYPES.get(fat_value, 'Data')
-            color_type = FAT_COLORS.get(fat_value, FAT_COLORS['default'])
-            # TODO: compute offset
-            # print('%8X: %-12s offset=%08X next=%8X' % (i, fat_type, 0, fat_value))
-            t.write_row(['%8X' % i, fat_type, 'N/A', '%8X' % fat_value],
-                colors=[None, color_type, None, None])
-        t.close()
+        show_fat(ole)
+        show_minifat(ole)
 
         ole.close()
 
