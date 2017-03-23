@@ -46,8 +46,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # 2012-10-04 v0.02 PL: - added license
 # 2016-09-06 v0.50 PL: - added main function for entry points in setup.py
 # 2016-10-26       PL: - fixed to run on Python 2+3
+# 2017-03-23 v0.51 PL: - fixed display of control characters (issue #151)
 
-__version__ = '0.50'
+__version__ = '0.51'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -106,7 +107,7 @@ def bchr(x):
 # PSF license: http://docs.python.org/license.html
 # Copyright (c) 2001-2012 Python Software Foundation; All Rights Reserved
 
-FILTER = b''.join([(len(repr(bchr(x)))<=4 and x != 0x0A) and bchr(x) or b'.' for x in range(256)])
+FILTER = b''.join([(len(repr(bchr(x)))<=4 and x>=0x20) and bchr(x) or b'.' for x in range(256)])
 
 def hexdump3(src, length=8, startindex=0):
     """
