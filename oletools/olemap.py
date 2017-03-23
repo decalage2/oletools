@@ -48,6 +48,7 @@ http://www.decalage.info/python/oletools
 #                      - improved MiniFAT display with tablestream
 # 2017-03-21       PL: - added header display
 #                      - added options --header, --fat and --minifat
+# 2017-03-22       PL: - added extra data detection, completed header display
 
 
 __version__ = '0.51dev3'
@@ -115,15 +116,55 @@ def sid_display(sid):
 
 def show_header(ole):
     print("OLE HEADER:")
-    t = tablestream.TableStream([20, 20, 79-(4+20+20)], header_row=['Attribute', 'Value', 'Description'])
+    t = tablestream.TableStream([24, 16, 79-(4+24+16)], header_row=['Attribute', 'Value', 'Description'])
     t.write_row(['OLE Signature (hex)', binascii.b2a_hex(ole.header_signature).upper(), 'Should be D0CF11E0A1B11AE1'])
     t.write_row(['Header CLSID (hex)', binascii.b2a_hex(ole.header_clsid).upper(), 'Should be 0'])
     t.write_row(['Minor Version', '%04X' % ole.minor_version, 'Should be 003E'])
     t.write_row(['Major Version', '%04X' % ole.dll_version, 'Should be 3 or 4'])
     t.write_row(['Byte Order', '%04X' % ole.byte_order, 'Should be FFFE (little endian)'])
     t.write_row(['Sector Shift', '%04X' % ole.sector_shift, 'Should be 0009 or 000C'])
-    t.write_row(['Sector Size (bytes)', '%d' % ole.sector_size, 'Should be 512 or 4096 bytes'])
-    t.write_row(['Number of Directory Sectors', ole.num_dir_sectors, 'Should be 0 if major version is 3'])
+    t.write_row(['# of Dir Sectors', ole.num_dir_sectors, 'Should be 0 if major version is 3'])
+    t.write_row(['# of FAT Sectors', ole.num_fat_sectors, ''])
+    t.write_row(['First Dir Sector', '%08X' % ole.first_dir_sector, '(hex)'])
+    t.write_row(['Transaction Sig Number', ole.transaction_signature_number, 'Should be 0'])
+    t.write_row(['MiniStream cutoff', ole.mini_stream_cutoff_size, 'Should be 4096 bytes'])
+    t.write_row(['First MiniFAT Sector', '%08X' % ole.first_mini_fat_sector, '(hex)'])
+    t.write_row(['# of MiniFAT Sectors', ole.num_mini_fat_sectors, ''])
+    t.write_row(['First DIFAT Sector', '%08X' % ole.first_difat_sector, '(hex)'])
+    t.write_row(['# of DIFAT Sectors', ole.num_difat_sectors, ''])
+    t.close()
+    print('')
+    print("CALCULATED ATTRIBUTES:")
+    t = tablestream.TableStream([24, 16, 79-(4+24+16)], header_row=['Attribute', 'Value', 'Description'])
+    t.write_row(['Sector Size (bytes)', ole.sector_size, 'Should be 512 or 4096 bytes'])
+    t.write_row(['Actual File Size (bytes)', ole._filesize, 'Real file size on disk'])
+    num_sectors_per_fat_sector = ole.sector_size/4
+    num_sectors_in_fat = num_sectors_per_fat_sector * ole.num_fat_sectors
+    # Need to add one sector for the header:
+    max_filesize_fat = (num_sectors_in_fat + 1) * ole.sector_size
+    t.write_row(['Max File Size in FAT', max_filesize_fat, 'Max file size covered by FAT'])
+    if ole._filesize > max_filesize_fat:
+        extra_size_beyond_fat = ole._filesize - max_filesize_fat
+        color = 'red'
+    else:
+        extra_size_beyond_fat = 0
+        color = None
+    t.write_row(['Extra data beyond FAT', extra_size_beyond_fat, 'Only if file is larger than FAT coverage'],
+                colors=[color, color, color])
+    # Find the last used sector:
+    # By default, it's the last sector in the FAT
+    last_used_sector = len(ole.fat)-1
+    for i in range(len(ole.fat)-1, 0, -1):
+        last_used_sector = i
+        if ole.fat[i] != olefile.FREESECT:
+            break
+    # Extra data would start at the next sector
+    offset_extra_data = ole.sectorsize * (last_used_sector + 2)
+    t.write_row(['Extra data offset in FAT', '%08X' % offset_extra_data, 'Offset of the 1st free sector at end of FAT'])
+    extra_data_size = ole._filesize - offset_extra_data
+    color = 'red' if extra_data_size > 0 else None
+    t.write_row(['Extra data size', extra_data_size, 'Size of data starting at the 1st free sector at end of FAT'],
+                colors=[color, color, color])
     t.close()
     print('')
 
@@ -131,7 +172,7 @@ def show_header(ole):
 def show_fat(ole):
     print('FAT:')
     t = tablestream.TableStream([8, 12, 8, 8], header_row=['Sector #', 'Type', 'Offset', 'Next #'])
-    for i in range(ole.nb_sect):
+    for i in range(len(ole.fat)):
         fat_value = ole.fat[i]
         fat_type = FAT_TYPES.get(fat_value, '<Data>')
         color_type = FAT_COLORS.get(fat_value, FAT_COLORS['default'])
