@@ -49,6 +49,7 @@ http://www.decalage.info/python/oletools
 # 2017-03-21       PL: - added header display
 #                      - added options --header, --fat and --minifat
 # 2017-03-22       PL: - added extra data detection, completed header display
+# 2017-03-23       PL: - only display the header by default
 
 
 __version__ = '0.51dev3'
@@ -217,9 +218,9 @@ def main():
     parser.add_option("--header", action="store_true", dest="header",
                       help='Display the OLE header (default: yes)')
     parser.add_option("--fat", action="store_true", dest="fat",
-                      help='Display the FAT (default: yes)')
+                      help='Display the FAT (default: no)')
     parser.add_option("--minifat", action="store_true", dest="minifat",
-                      help='Display the MiniFAT (default: yes)')
+                      help='Display the MiniFAT (default: no)')
 
     # TODO: add logfile option
 
@@ -232,11 +233,13 @@ def main():
         parser.print_help()
         sys.exit()
 
-    # if no diplay option is provided, set defaults:
+    # if no display option is provided, set defaults:
+    default_options = False
     if not (options.header or options.fat or options.minifat):
         options.header = True
-        options.fat = True
-        options.minifat = True
+        # options.fat = True
+        # options.minifat = True
+        default_options = True
 
     # print banner with version
     print(BANNER)
@@ -265,6 +268,11 @@ def main():
             show_minifat(ole)
 
         ole.close()
+
+    # if no display option is provided, print a tip:
+    if default_options:
+        print('To display the FAT or MiniFAT structures, use options --fat or --minifat, and -h for help.')
+
 
 if __name__ == '__main__':
     main()
