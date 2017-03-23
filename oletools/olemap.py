@@ -50,6 +50,7 @@ http://www.decalage.info/python/oletools
 #                      - added options --header, --fat and --minifat
 # 2017-03-22       PL: - added extra data detection, completed header display
 # 2017-03-23       PL: - only display the header by default
+#                      - added option --exdata to display extra data in hex
 
 
 __version__ = '0.51dev3'
@@ -76,6 +77,7 @@ if not _parent_dir in sys.path:
 from oletools.thirdparty.olefile import olefile
 from oletools.thirdparty.tablestream import tablestream
 from oletools.thirdparty.xglob import xglob
+from oletools.ezhexviewer import hexdump3
 
 # === CONSTANTS ==============================================================
 
@@ -115,7 +117,7 @@ def sid_display(sid):
         return sid
 
 
-def show_header(ole):
+def show_header(ole, extra_data=False):
     print("OLE HEADER:")
     t = tablestream.TableStream([24, 16, 79-(4+24+16)], header_row=['Attribute', 'Value', 'Description'])
     t.write_row(['OLE Signature (hex)', binascii.b2a_hex(ole.header_signature).upper(), 'Should be D0CF11E0A1B11AE1'])
@@ -169,6 +171,19 @@ def show_header(ole):
     t.close()
     print('')
 
+    if extra_data:
+        # hex dump of extra data
+        print('HEX DUMP OF EXTRA DATA:\n')
+        if extra_data_size <= 0:
+            print('No extra data found at end of file.')
+        else:
+            ole.fp.seek(offset_extra_data)
+            # read until end of file:
+            exdata = ole.fp.read()
+            assert len(exdata) == extra_data_size
+            print(hexdump3(exdata, length=16, startindex=offset_extra_data))
+        print('')
+
 
 def show_fat(ole):
     print('FAT:')
@@ -221,6 +236,8 @@ def main():
                       help='Display the FAT (default: no)')
     parser.add_option("--minifat", action="store_true", dest="minifat",
                       help='Display the MiniFAT (default: no)')
+    parser.add_option('-x', "--exdata", action="store_true", dest="extra_data",
+                      help='Display a hex dump of extra data at end of file')
 
     # TODO: add logfile option
 
@@ -261,7 +278,7 @@ def main():
             ole = olefile.OleFileIO(filename)
 
         if options.header:
-            show_header(ole)
+            show_header(ole, extra_data=options.extra_data)
         if options.fat:
             show_fat(ole)
         if options.minifat:
