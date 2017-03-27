@@ -67,6 +67,7 @@ Projects using oletools:
 
 oletools are used by a number of projects and online malware analysis services,
 including [Viper](http://viper.li/), [REMnux](https://remnux.org/),
+[FAME](https://certsocietegenerale.github.io/fame/),
 [Hybrid-analysis.com](https://www.hybrid-analysis.com/),
 [Joe Sandbox](https://www.document-analyzer.net/),
 [Deepviz](https://sandbox.deepviz.com/),
