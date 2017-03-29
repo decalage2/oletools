@@ -290,6 +290,9 @@ class OleObject (object):
         :param data: bytes, OLE 1.0 Object structure containing an OLE object
         :return:
         """
+        # from ezhexviewer import hexdump3
+        # print("Parsing OLE object data:")
+        # print(hexdump3(data, length=16))
         # Header: see MS-OLEDS 2.2.4 ObjectHeader
         self.ole_version, data = read_uint32(data)
         self.format_id, data = read_uint32(data)

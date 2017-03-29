@@ -17,7 +17,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# rtfobj is copyright (c) 2012-2016, Philippe Lagadec (http://www.decalage.info)
+# rtfobj is copyright (c) 2012-2017, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -67,8 +67,10 @@ http://www.decalage.info/python/oletools
 # 2016-11-17 v0.51 PL: - updated call to oleobj.OleNativeStream
 # 2017-03-12       PL: - fixed imports for Python 2+3
 #                      - fixed hex decoding bug in RtfObjParser (issue #103)
+# 2017-03-29       PL: - fixed RtfParser to handle issue #152 (control word with
+#                        long parameter)
 
-__version__ = '0.51dev2'
+__version__ = '0.51dev4'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -186,8 +188,8 @@ ASCII_NAME = b'([a-zA-Z]{1,250})'
 # SIGNED_INTEGER = r'(-?\d{1,250})'
 SIGNED_INTEGER = b'(-?\\d+)'
 
-# Note for issue #78: need to match "\A-" not followed by digits
-CONTROL_WORD = b'(?:\\\\' + ASCII_NAME + b'(?:' + SIGNED_INTEGER + b'(?=[^0-9])|(?=[^a-zA-Z0-9])))'
+# Note for issue #78: need to match "\A-" not followed by digits (or the end of string)
+CONTROL_WORD = b'(?:\\\\' + ASCII_NAME + b'(?:' + SIGNED_INTEGER + b'(?=[^0-9])|(?=[^a-zA-Z0-9])|$))'
 
 re_control_word = re.compile(CONTROL_WORD)
 
@@ -323,10 +325,16 @@ class Destination(object):
 
 class RtfParser(object):
     """
-    Very simple generic RTF parser
+    Very simple but robust generic RTF parser, designed to handle
+    malformed malicious RTF as MS Word does
     """
 
     def __init__(self, data):
+        """
+        RtfParser constructor.
+        
+        :param data: bytes object containing the RTF data to be parsed 
+        """
         self.data = data
         self.index = 0
         self.size = len(data)
@@ -337,18 +345,38 @@ class RtfParser(object):
         self.current_destination = document_destination
 
     def parse(self):
+        """
+        Parse the RTF data
+        
+        :return: nothing
+        """
+        # Start at beginning of data
         self.index = 0
+        # Loop until the end
         while self.index < self.size:
             if self.data[self.index] == BRACE_OPEN:
+                # Found an opening brace "{": Start of a group
                 self._open_group()
                 self.index += 1
                 continue
             if self.data[self.index] == BRACE_CLOSE:
+                # Found a closing brace "}": End of a group
                 self._close_group()
                 self.index += 1
                 continue
             if self.data[self.index] == BACKSLASH:
-                m = re_control_word.match(self.data, self.index)
+                # Found a backslash "\": Start of a control word or control symbol
+                # Use a regex to extract the control word name if present:
+                # NOTE: the full length of the control word + its optional integer parameter
+                # is limited by MS Word at 253 characters, so we have to run the regex
+                # on a cropped string:
+                data_cropped = self.data[self.index:]
+                if len(data_cropped)>253:
+                    data_cropped = data_cropped[:254]
+                # append a space so that the regex can check the following character:
+                data_cropped += b' '
+                # m = re_control_word.match(self.data, self.index, self.index+253)
+                m = re_control_word.match(data_cropped)
                 if m:
                     cword = m.group(1)
                     param = None
@@ -361,11 +389,14 @@ class RtfParser(object):
                     if cword == b'bin':
                         self._bin(m, param)
                     continue
+                # Otherwise, it may be a control symbol:
                 m = re_control_symbol.match(self.data, self.index)
                 if m:
                     self.control_symbol(m)
                     self.index += len(m.group())
                     continue
+            # Otherwise, this is plain text:
+            # Use a regex to match all characters until the next brace or backslash:
             m = re_text.match(self.data, self.index)
             if m:
                 self._text(m)
