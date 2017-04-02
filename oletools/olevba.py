@@ -755,7 +755,7 @@ class VbaExpressionString(str):
 # NOTE: here Combine() is required to avoid spaces between elements
 # NOTE: here WordStart is necessary to avoid matching a number preceded by
 #       letters or underscore (e.g. "VBT1" or "ABC_34"), when using scanString
-decimal_literal = Combine(WordStart(vba_identifier_chars) + Word(nums)
+decimal_literal = Combine(WordStart(vba_identifier_chars) + Optional('-') + Word(nums)
                           + Suppress(Optional(Word('%&^', exact=1))))
 decimal_literal.setParseAction(lambda t: int(t[0]))
 
