@@ -40,12 +40,7 @@ import struct
 import traceback
 import os
 
-try:
-    # absolute import when oletools is installed
-    import oletools.thirdparty.olefile as olefile
-except:
-    # relative import otherwise
-    import thirdparty.olefile as olefile
+import thirdparty.olefile as olefile
 
 import zlib
 
@@ -1130,7 +1125,7 @@ class PptParser(object):
             log.debug('using open OleFileIO')
             self.ole = ole
         else:
-            log.debug('Opening file ' + ole)
+            log.debug('Opening file {0}'.format(ole))
             self.ole = olefile.OleFileIO(ole)
 
         self.fast_fail = fast_fail

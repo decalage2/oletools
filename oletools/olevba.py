@@ -2532,7 +2532,7 @@ class VBA_Parser(object):
             self.ole_file.close()  # just in case
             self.ole_file = None   # required to make other methods look at ole_subfiles
             self.type = TYPE_PPT
-        except Exception as exc:
+        except (ppt_parser.PptUnexpectedData, ValueError) as exc:
             if self.container == 'PptParser':
                 # this is a subfile of a ppt --> to be expected that is no ppt
                 log.debug('PPT subfile is not a PPT file')
