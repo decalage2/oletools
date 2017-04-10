@@ -238,6 +238,8 @@ import email  # for MHTML parsing
 import string # for printable
 import json   # for json output mode (argument --json)
 
+from pyparsing import ParserElement
+
 # import lxml or ElementTree for XML parsing:
 try:
     # lxml: best performance for XML processing
