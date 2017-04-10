@@ -289,6 +289,25 @@ else:
     # xrange is now called range:
     xrange = range
 
+
+# === PYTHON 3.0 - 3.4 SUPPORT ======================================================
+
+# From https://gist.github.com/ynkdir/867347/c5e188a4886bc2dd71876c7e069a7b00b6c16c61
+
+if sys.version_info >= (3, 0) and sys.version_info < (3, 4):
+    import codecs
+
+    _backslashreplace_errors = codecs.lookup_error("backslashreplace")
+
+    def backslashreplace_errors(exc):
+        if isinstance(exc, UnicodeDecodeError):
+            u = "".join("\\x{0:02x}".format(c) for c in exc.object[exc.start:exc.end])
+            return (u, exc.end)
+        return _backslashreplace_errors(exc)
+
+    codecs.register_error("backslashreplace", backslashreplace_errors)
+
+
 # === LOGGING =================================================================
 
 class NullHandler(logging.Handler):
@@ -2675,7 +2694,7 @@ class VBA_Parser(object):
                         log.debug('%r...[much more data]...%r' % (data[:100], data[-50:]))
                     else:
                         log.debug(repr(data))
-                    if 'Attribut' in data.decode('utf-8','backslashreplace'):
+                    if 'Attribut' in data.decode('utf-8', 'ignore'):
                         log.debug('Found VBA compressed code')
                         self.contains_macros = True
                 except IOError as exc:
