@@ -1783,7 +1783,7 @@ def detect_suspicious(vba_code, obfuscation=None):
     for description, keywords in SUSPICIOUS_KEYWORDS.items():
         for keyword in keywords:
             # search using regex to detect word boundaries:
-            match = re.search(r'(?i)\b' + keyword + r'\b', vba_code)
+            match = re.search(r'(?i)\b' + re.escape(keyword) + r'\b', vba_code)
             if match:
                 #if keyword.lower() in vba_code:
                 found_keyword = match.group()
