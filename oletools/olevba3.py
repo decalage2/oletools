@@ -294,7 +294,7 @@ else:
 
 # From https://gist.github.com/ynkdir/867347/c5e188a4886bc2dd71876c7e069a7b00b6c16c61
 
-if sys.version_info >= (3, 0) and sys.version_info < (3, 4):
+if sys.version_info >= (3, 0) and sys.version_info < (3, 5):
     import codecs
 
     _backslashreplace_errors = codecs.lookup_error("backslashreplace")
