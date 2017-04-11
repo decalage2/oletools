@@ -69,7 +69,7 @@ http://www.decalage.info/python/oletools
 #                      - fixed hex decoding bug in RtfObjParser (issue #103)
 # 2017-03-29       PL: - fixed RtfParser to handle issue #152 (control word with
 #                        long parameter)
-# 2017-04-11       PL: - added detection of the OLE2Link vulnerability
+# 2017-04-11       PL: - added detection of the OLE2Link vulnerability CVE-2017-0199
 
 __version__ = '0.51dev5'
 
@@ -716,7 +716,7 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
             # http://www.kb.cert.org/vuls/id/921560
             if rtfobj.class_name == 'OLE2Link':
                 ole_color = 'red'
-                ole_column += '\nPossibly an exploit for the OLE2Link vulnerability (VU#921560, CVE-2017-TODO)'
+                ole_column += '\nPossibly an exploit for the OLE2Link vulnerability (VU#921560, CVE-2017-0199)'
         else:
             pkg_column = ''
             ole_column = 'Not a well-formed OLE object'
