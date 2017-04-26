@@ -15,7 +15,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# olemeta is copyright (c) 2013-2016, Philippe Lagadec (http://www.decalage.info)
+# olemeta is copyright (c) 2013-2017, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -47,8 +47,9 @@ http://www.decalage.info/python/oletools
 # 2016-09-06 v0.50 PL: - added main entry point for setup.py
 # 2016-10-25       PL: - fixed print for Python 3
 # 2016-10-28       PL: - removed the UTF8 codec for console display
+# 2017-04-26 v0.51 PL: - fixed absolute imports (issue #141)
 
-__version__ = '0.50'
+__version__ = '0.51'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -59,9 +60,22 @@ __version__ = '0.50'
 
 #=== IMPORTS =================================================================
 
-import sys, codecs
-from .thirdparty import olefile
-from .thirdparty.tablestream import tablestream
+import sys, os, codecs
+
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if not _parent_dir in sys.path:
+    sys.path.insert(0, _parent_dir)
+
+from oletools.thirdparty import olefile
+from oletools.thirdparty.tablestream import tablestream
 
 
 #=== MAIN =================================================================
