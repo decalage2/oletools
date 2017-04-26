@@ -26,7 +26,7 @@ https://github.com/unixfreak0037/officeparser
 
 # === LICENSE ==================================================================
 
-# olevba is copyright (c) 2014-2016 Philippe Lagadec (http://www.decalage.info)
+# olevba is copyright (c) 2014-2017 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -189,8 +189,9 @@ from __future__ import print_function
 # 2016-10-25       PL: - fixed raise and print statements for Python 3
 # 2016-10-25       PL: - fixed regex bytes strings (PR/issue #100)
 # 2016-11-03 v0.51 PL: - added EnumDateFormats and EnumSystemLanguageGroupsW
+# 2017-04-26       PL: - fixed absolute imports
 
-__version__ = '0.51a'
+__version__ = '0.51dev6'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -224,7 +225,7 @@ __version__ = '0.51a'
 
 #--- IMPORTS ------------------------------------------------------------------
 
-import sys, logging
+import sys, logging, os
 import struct
 from _io import StringIO,BytesIO
 import math
@@ -237,8 +238,6 @@ import zlib
 import email  # for MHTML parsing
 import string # for printable
 import json   # for json output mode (argument --json)
-
-from pyparsing import ParserElement
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -257,14 +256,26 @@ except ImportError:
                                + "see http://codespeak.net/lxml " \
                                + "or http://effbot.org/zone/element-index.htm")
 
-import oletools.thirdparty.olefile as olefile
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if not _parent_dir in sys.path:
+    sys.path.insert(0, _parent_dir)
+
+from oletools.thirdparty import olefile
 from oletools.thirdparty.prettytable import prettytable
 from oletools.thirdparty.xglob import xglob, PathNotFoundException
 from oletools.thirdparty.pyparsing.pyparsing import \
         CaselessKeyword, CaselessLiteral, Combine, Forward, Literal, \
         Optional, QuotedString,Regex, Suppress, Word, WordStart, \
         alphanums, alphas, hexnums,nums, opAssoc, srange, \
-        infixNotation
+        infixNotation, ParserElement
 import oletools.ppt_parser as ppt_parser
 
 # monkeypatch email to fix issue #32:
