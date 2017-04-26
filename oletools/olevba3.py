@@ -238,6 +238,8 @@ import email  # for MHTML parsing
 import string # for printable
 import json   # for json output mode (argument --json)
 
+from pyparsing import ParserElement
+
 # import lxml or ElementTree for XML parsing:
 try:
     # lxml: best performance for XML processing
@@ -286,6 +288,25 @@ else:
     from zipfile import is_zipfile
     # xrange is now called range:
     xrange = range
+
+
+# === PYTHON 3.0 - 3.4 SUPPORT ======================================================
+
+# From https://gist.github.com/ynkdir/867347/c5e188a4886bc2dd71876c7e069a7b00b6c16c61
+
+if sys.version_info >= (3, 0) and sys.version_info < (3, 5):
+    import codecs
+
+    _backslashreplace_errors = codecs.lookup_error("backslashreplace")
+
+    def backslashreplace_errors(exc):
+        if isinstance(exc, UnicodeDecodeError):
+            u = "".join("\\x{0:02x}".format(c) for c in exc.object[exc.start:exc.end])
+            return (u, exc.end)
+        return _backslashreplace_errors(exc)
+
+    codecs.register_error("backslashreplace", backslashreplace_errors)
+
 
 # === LOGGING =================================================================
 
@@ -1535,7 +1556,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             modulename_id = struct.unpack("<H", dir_stream.read(2))[0]
             check_value('MODULENAME_Id', 0x0019, modulename_id)
             modulename_sizeof_modulename = struct.unpack("<L", dir_stream.read(4))[0]
-            modulename_modulename = dir_stream.read(modulename_sizeof_modulename)
+            modulename_modulename = dir_stream.read(modulename_sizeof_modulename).decode('utf-8', 'backslashreplace')
             # TODO: preset variables to avoid "referenced before assignment" errors
             modulename_unicode_modulename_unicode = ''
             # account for optional sections
@@ -1781,7 +1802,7 @@ def detect_suspicious(vba_code, obfuscation=None):
     for description, keywords in SUSPICIOUS_KEYWORDS.items():
         for keyword in keywords:
             # search using regex to detect word boundaries:
-            match = re.search(r'(?i)\b' + keyword + r'\b', vba_code)
+            match = re.search(r'(?i)\b' + re.escape(keyword) + r'\b', vba_code)
             if match:
                 #if keyword.lower() in vba_code:
                 found_keyword = match.group()
@@ -1824,7 +1845,7 @@ def detect_hex_strings(vba_code):
         value = match.group()
         if value not in found:
             decoded = binascii.unhexlify(value)
-            results.append((value, decoded.decode('utf-8','replace')))
+            results.append((value, decoded.decode('utf-8', 'backslashreplace')))
             found.add(value)
     return results
 
@@ -2007,6 +2028,8 @@ class VBA_Scanner(object):
 
         :param vba_code: str, VBA source code to be analyzed
         """
+        if isinstance(vba_code, bytes):
+            vba_code = vba_code.decode('utf-8', 'backslashreplace')
         # join long lines ending with " _":
         self.code = vba_collapse_long_lines(vba_code)
         self.code_hex = ''
@@ -2084,7 +2107,7 @@ class VBA_Scanner(object):
                 (self.code_vba, 'VBA expression'),
         ):
             if isinstance(code,bytes):
-                code=code.decode('utf-8','replace')
+                code=code.decode('utf-8','backslashreplace')
             self.autoexec_keywords += detect_autoexec(code, obfuscation)
             self.suspicious_keywords += detect_suspicious(code, obfuscation)
             self.iocs += detect_patterns(code, obfuscation)
@@ -2411,7 +2434,7 @@ class VBA_Parser(object):
         log.info('Opening MHTML file %s' % self.filename)
         try:
             if isinstance(data,bytes):
-                data = data.decode('utf8', 'replace')
+                data = data.decode('utf8', 'backslashreplace')
             # parse the MIME content
             # remove any leading whitespace or newline (workaround for issue in email package)
             stripped_data = data.lstrip('\r\n\t ')
@@ -2514,7 +2537,7 @@ class VBA_Parser(object):
         log.info('Opening text file %s' % self.filename)
         # directly store the source code:
         if isinstance(data,bytes):
-            data=data.decode('utf8','replace')
+            data=data.decode('utf8','backslashreplace')
         self.vba_code_all_modules = data
         self.contains_macros = True
         # set type only if parsing succeeds
@@ -2671,7 +2694,7 @@ class VBA_Parser(object):
                         log.debug('%r...[much more data]...%r' % (data[:100], data[-50:]))
                     else:
                         log.debug(repr(data))
-                    if 'Attribut' in data.decode('utf-8','ignore'):
+                    if 'Attribut' in data.decode('utf-8', 'ignore'):
                         log.debug('Found VBA compressed code')
                         self.contains_macros = True
                 except IOError as exc:
@@ -3026,7 +3049,7 @@ class VBA_Parser_CLI(VBA_Parser):
                     if hide_attributes:
                         # hide attribute lines:
                         if isinstance(vba_code,bytes):
-                            vba_code =vba_code.decode('utf-8','replace')
+                            vba_code =vba_code.decode('utf-8','backslashreplace')
                         vba_code_filtered = filter_vba(vba_code)
                     else:
                         vba_code_filtered = vba_code
@@ -3107,7 +3130,7 @@ class VBA_Parser_CLI(VBA_Parser):
                     curr_macro = {}
                     if hide_attributes:
                         # hide attribute lines:
-                        vba_code_filtered = filter_vba(vba_code.decode('utf-8','replace'))
+                        vba_code_filtered = filter_vba(vba_code.decode('utf-8','backslashreplace'))
                     else:
                         vba_code_filtered = vba_code
 
