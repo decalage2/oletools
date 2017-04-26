@@ -52,8 +52,9 @@ http://www.decalage.info/python/oletools
 # 2016-03-08 v0.04 PL: - collapse long lines before analysis
 # 2016-07-19 v0.50 SL: - converted to Python 3
 # 2016-08-26       PL: - changed imports for Python 3
+# 2017-04-26 v0.51 PL: - fixed absolute imports (issue #141)
 
-__version__ = '0.50py3'
+__version__ = '0.51dev6'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -61,15 +62,25 @@ __version__ = '0.50py3'
 
 #--- IMPORTS ------------------------------------------------------------------
 
-import sys, logging, optparse, re
+import sys, os, logging, optparse, re
 
-from .thirdparty.xglob import xglob
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if not _parent_dir in sys.path:
+    sys.path.insert(0, _parent_dir)
 
-# import the python 3 version of tablestream:
-from .thirdparty.tablestream import tablestream
+from oletools.thirdparty.xglob import xglob
+from oletools.thirdparty.tablestream import tablestream
 
 # import the python 3 version of olevba
-from . import olevba3 as olevba
+from oletools import olevba3 as olevba
 
 # === LOGGING =================================================================
 
