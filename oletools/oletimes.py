@@ -49,7 +49,7 @@ http://www.decalage.info/python/oletools
 # 2016-07-20 v0.50 SL: - added Python 3 support
 # 2016-09-05       PL: - added main entry point for setup.py
 # 2017-05-03 v0.51 PL: - fixed absolute imports (issue #141)
-# 2017-05-04       PL: - added optparse and xglob
+# 2017-05-04       PL: - added optparse and xglob (issue #141)
 
 __version__ = '0.51dev7'
 
@@ -112,7 +112,6 @@ def main():
     print('oletimes %s - http://decalage.info/python/oletools' % __version__)
     print ('THIS IS WORK IN PROGRESS - Check updates regularly!')
     print ('Please report any issue at https://github.com/decalage2/oletools/issues')
-    print ('')
 
     usage = 'usage: oletimes [options] <filename> [filename2 ...]'
     parser = optparse.OptionParser(usage=usage)
