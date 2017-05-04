@@ -127,6 +127,14 @@ def get_logger(name, level=logging.CRITICAL+1):
 # a global logger object used for debugging:
 log = get_logger('oleobj')
 
+def enable_logging():
+    """
+    Enable logging for this module (disabled by default).
+    This will set the module-specific logger level to NOTSET, which
+    means the main application controls the actual logging level.
+    """
+    log.setLevel(logging.NOTSET)
+
 
 # === CONSTANTS ==============================================================
 

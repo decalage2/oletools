@@ -70,8 +70,9 @@ http://www.decalage.info/python/oletools
 # 2017-03-29       PL: - fixed RtfParser to handle issue #152 (control word with
 #                        long parameter)
 # 2017-04-11       PL: - added detection of the OLE2Link vulnerability CVE-2017-0199
+# 2017-05-04       PL: - fixed issue #164 to handle linked OLE objects
 
-__version__ = '0.51dev5'
+__version__ = '0.51dev7'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -696,9 +697,19 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
         ole_color = None
         pkg_color = None
         if rtfobj.is_ole:
-            ole_column = 'format_id: %d\n' % rtfobj.format_id
+            ole_column = 'format_id: %d ' % rtfobj.format_id
+            if rtfobj.format_id == oleobj.OleObject.TYPE_EMBEDDED:
+                ole_column += '(Embedded)\n'
+            elif rtfobj.format_id == oleobj.OleObject.TYPE_LINKED:
+                ole_column += '(Linked)\n'
+            else:
+                ole_column += '(Unknown)\n'
             ole_column += 'class name: %r\n' % rtfobj.class_name
-            ole_column += 'data size: %d' % rtfobj.oledata_size
+            # if the object is linked and not embedded, data_size=None:
+            if rtfobj.oledata_size is None:
+                ole_column += 'data size: N/A'
+            else:
+                ole_column += 'data size: %d' % rtfobj.oledata_size
             if rtfobj.is_package:
                 pkg_column = 'Filename: %r\n' % rtfobj.filename
                 pkg_column += 'Source path: %r\n' % rtfobj.src_path
@@ -753,7 +764,8 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                     fname = '%s_object_%08X.noname' % (fname_prefix, rtfobj.start)
                 print('  saving to file %s' % fname)
                 open(fname, 'wb').write(rtfobj.olepkgdata)
-            elif rtfobj.is_ole:
+            # When format_id=TYPE_LINKED, oledata_size=None
+            elif rtfobj.is_ole and rtfobj.oledata_size is not None:
                 print('Saving file embedded in OLE object #%d:' % i)
                 print('  format_id  = %d' % rtfobj.format_id)
                 print('  class name = %r' % rtfobj.class_name)
@@ -839,7 +851,7 @@ def main():
                         format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
     log.setLevel(logging.NOTSET)
-    oleobj.log.setLevel(logging.NOTSET)
+    oleobj.enable_logging()
 
     for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
         zip_password=options.zip_password, zip_fname=options.zip_fname):
