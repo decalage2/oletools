@@ -192,8 +192,9 @@ from __future__ import print_function
 #                      - added keywords for Mac-specific macros (issue #130)
 # 2017-03-08       PL: - fixed absolute imports
 # 2017-03-16       PL: - fixed issues #148 and #149 for option --reveal
+# 2017-05-19       PL: - added enable_logging to fix issue #154
 
-__version__ = '0.51dev3'
+__version__ = '0.51dev8'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -345,6 +346,18 @@ def get_logger(name, level=logging.CRITICAL+1):
 
 # a global logger object used for debugging:
 log = get_logger('olevba')
+
+
+def enable_logging():
+    """
+    Enable logging for this module (disabled by default).
+    This will set the module-specific logger level to NOTSET, which
+    means the main application controls the actual logging level.
+    """
+    log.setLevel(logging.NOTSET)
+    # Also enable logging in the ppt_parser module:
+    ppt_parser.enable_logging()
+
 
 
 #=== EXCEPTIONS ==============================================================
@@ -2522,7 +2535,6 @@ class VBA_Parser(object):
         """
 
         log.info('Check whether OLE file is PPT')
-        ppt_parser.enable_logging()
         try:
             ppt = ppt_parser.PptParser(self.ole_file, fast_fail=True)
             for vba_data in ppt.iter_vba_data():
@@ -3317,7 +3329,7 @@ def main():
 
     logging.basicConfig(level=LOG_LEVELS[options.loglevel], format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
-    log.setLevel(logging.NOTSET)
+    enable_logging()
 
     # Old display with number of items detected:
     # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('Type', 'Macros', 'AutoEx', 'Susp.', 'IOCs', 'HexStr')
