@@ -193,8 +193,9 @@ from __future__ import print_function
 # 2017-03-08       PL: - fixed absolute imports
 # 2017-03-16       PL: - fixed issues #148 and #149 for option --reveal
 # 2017-05-19       PL: - added enable_logging to fix issue #154
+# 2017-05-31     c1fe: - PR #135 fixing issue #132 for some Mac files
 
-__version__ = '0.51dev8'
+__version__ = '0.51dev9'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -1456,7 +1457,10 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             reference_sizeof_name = struct.unpack("<L", dir_stream.read(4))[0]
             reference_name = dir_stream.read(reference_sizeof_name)
             reference_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-
+            # According to [MS-OVBA] 2.3.4.2.2.2 REFERENCENAME Record:
+            # "Reserved (2 bytes): MUST be 0x003E. MUST be ignored."
+            # So let's ignore it, otherwise it crashes on some files (issue #132)
+            # PR #135 by @c1fe:
             # contrary to the specification I think that the unicode name
             # is optional. if reference_reserved is not 0x003E I think it 
             # is actually the start of another REFERENCE record
