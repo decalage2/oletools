@@ -1,25 +1,26 @@
-#!/usr/bin/env python
+"""
+olefile (formerly OleFileIO_PL)
 
-# olefile (formerly OleFileIO_PL)
-#
-# Module to read/write Microsoft OLE2 files (also called Structured Storage or
-# Microsoft Compound Document File Format), such as Microsoft Office 97-2003
-# documents, Image Composer and FlashPix files, Outlook messages, ...
-# This version is compatible with Python 2.6+ and 3.x
-#
-# Project website: http://www.decalage.info/olefile
-#
-# olefile is copyright (c) 2005-2016 Philippe Lagadec (http://www.decalage.info)
-#
-# olefile is based on the OleFileIO module from the PIL library v1.1.6
-# See: http://www.pythonware.com/products/pil/index.htm
-#
-# The Python Imaging Library (PIL) is
-# Copyright (c) 1997-2005 by Secret Labs AB
-# Copyright (c) 1995-2005 by Fredrik Lundh
-#
-# See source code and LICENSE.txt for information on usage and redistribution.
+Module to read/write Microsoft OLE2 files (also called Structured Storage or
+Microsoft Compound Document File Format), such as Microsoft Office 97-2003
+documents, Image Composer and FlashPix files, Outlook messages, ...
+This version is compatible with Python 2.6+ and 3.x
 
+Project website: https://www.decalage.info/olefile
+
+olefile is copyright (c) 2005-2017 Philippe Lagadec
+(https://www.decalage.info)
+
+olefile is based on the OleFileIO module from the PIL library v1.1.7
+See: http://www.pythonware.com/products/pil/index.htm
+and http://svn.effbot.org/public/tags/pil-1.1.7/PIL/OleFileIO.py
+
+The Python Imaging Library (PIL) is
+Copyright (c) 1997-2009 by Secret Labs AB
+Copyright (c) 1995-2009 by Fredrik Lundh
+
+See source code and LICENSE.txt for information on usage and redistribution.
+"""
 
 # Since OleFileIO_PL v0.30, only Python 2.6+ and 3.x is supported
 # This import enables print() as a function rather than a keyword
@@ -28,14 +29,10 @@
 from __future__ import print_function   # This version of olefile requires Python 2.6+ or 3.x.
 
 
-__author__  = "Philippe Lagadec"
-__date__    = "2016-04-26"
-__version__ = '0.44'
-
 #--- LICENSE ------------------------------------------------------------------
 
-# olefile (formerly OleFileIO_PL) is copyright (c) 2005-2016 Philippe Lagadec
-# (http://www.decalage.info)
+# olefile (formerly OleFileIO_PL) is copyright (c) 2005-2017 Philippe Lagadec
+# (https://www.decalage.info)
 #
 # All rights reserved.
 #
@@ -66,8 +63,8 @@ __version__ = '0.44'
 # Imaging Library (PIL) published by Fredrik Lundh under the following license:
 
 # The Python Imaging Library (PIL) is
-#    Copyright (c) 1997-2005 by Secret Labs AB
-#    Copyright (c) 1995-2005 by Fredrik Lundh
+#    Copyright (c) 1997-2009 by Secret Labs AB
+#    Copyright (c) 1995-2009 by Fredrik Lundh
 #
 # By obtaining, using, and/or copying this software and/or its associated
 # documentation, you agree that you have read, understood, and will comply with
@@ -138,7 +135,7 @@ __version__ = '0.44'
 # 2009-12-11 v0.20 PL: - bugfix in OleFileIO.open when filename is not plain str
 # 2010-01-22 v0.21 PL: - added support for big-endian CPUs such as PowerPC Macs
 # 2012-02-16 v0.22 PL: - fixed bug in getproperties, patch by chuckleberryfinn
-#                        (https://bitbucket.org/decalage/olefileio_pl/issue/7)
+#                        (https://github.com/decalage2/olefile/issues/7)
 #                      - added close method to OleFileIO (fixed issue #2)
 # 2012-07-25 v0.23 PL: - added support for file-like objects (patch by mete0r_kr)
 # 2013-05-05 v0.24 PL: - getproperties: added conversion from filetime to python
@@ -196,6 +193,15 @@ __version__ = '0.44'
 # 2016-04-27           - added support for incomplete streams and incorrect
 #                        directory entries (to read malformed documents)
 # 2016-05-04           - fixed slight bug in OleStream
+# 2016-11-27       DR: - added method to get the clsid of a storage/stream
+#                        (Daniel Roethlisberger)
+# 2017-05-31 v0.45 BS: - PR #114 from oletools to handle excessive number of
+#                        properties:
+#                        https://github.com/decalage2/oletools/pull/114
+
+__date__    = "2017-05-31"
+__version__ = '0.45dev1'
+__author__  = "Philippe Lagadec"
 
 #-----------------------------------------------------------------------------
 # TODO (for version 1.0):
@@ -223,7 +229,7 @@ __version__ = '0.44'
 # - see also original notes and FIXME below
 # - remove all obsolete FIXMEs
 # - OleMetadata: fix version attrib according to
-#   http://msdn.microsoft.com/en-us/library/dd945671%28v=office.12%29.aspx
+#   https://msdn.microsoft.com/en-us/library/dd945671%28v=office.12%29.aspx
 
 # IDEAS:
 # - in OleFileIO._open and OleStream, use size=None instead of 0x7FFFFFFF for
@@ -238,8 +244,8 @@ __version__ = '0.44'
 # - create a simple OLE explorer with wxPython
 
 # FUTURE EVOLUTIONS to add write support:
-# see issue #6 on Bitbucket:
-# https://bitbucket.org/decalage/olefileio_pl/issue/6/improve-olefileio_pl-to-write-ole-files
+# see issue #6 on GitHub:
+# https://github.com/decalage2/olefile/issues/6
 
 #-----------------------------------------------------------------------------
 # NOTES from PIL 1.1.6:
@@ -268,6 +274,10 @@ __version__ = '0.44'
 
 #------------------------------------------------------------------------------
 
+__all__ = ['isOleFile', 'OleFileIO', 'OleMetadata', 'enable_logging',
+           'MAGIC', 'STGTY_EMPTY',
+           'STGTY_STREAM', 'STGTY_STORAGE', 'STGTY_ROOT', 'STGTY_PROPERTY',
+           'STGTY_LOCKBYTES', 'MINIMAL_OLEFILE_SIZE',]
 
 import io
 import sys
@@ -317,17 +327,10 @@ else:
 
 #[PL] These workarounds were inspired from the Path module
 # (see http://www.jorendorff.com/articles/python/path/)
-#TODO: test with old Python versions
-
-# Pre-2.3 workaround for basestring.
 try:
     basestring
 except NameError:
-    try:
-        # is Unicode supported (Python >2.0 or >1.6 ?)
-        basestring = (str, unicode)
-    except NameError:
-        basestring = str
+    basestring = str
 
 #[PL] Experimental setting: if True, OLE filenames will be kept in Unicode
 # if False (default PIL behaviour), all filenames are converted to Latin-1.
@@ -395,27 +398,27 @@ def enable_logging():
 
 #=== CONSTANTS ===============================================================
 
-# magic bytes that should be at the beginning of every OLE file:
+#: magic bytes that should be at the beginning of every OLE file:
 MAGIC = b'\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1'
 
 #[PL]: added constants for Sector IDs (from AAF specifications)
-MAXREGSECT = 0xFFFFFFFA # (-6) maximum SECT
-DIFSECT    = 0xFFFFFFFC # (-4) denotes a DIFAT sector in a FAT
-FATSECT    = 0xFFFFFFFD # (-3) denotes a FAT sector in a FAT
-ENDOFCHAIN = 0xFFFFFFFE # (-2) end of a virtual stream chain
-FREESECT   = 0xFFFFFFFF # (-1) unallocated sector
+MAXREGSECT = 0xFFFFFFFA #: (-6) maximum SECT
+DIFSECT    = 0xFFFFFFFC #: (-4) denotes a DIFAT sector in a FAT
+FATSECT    = 0xFFFFFFFD #: (-3) denotes a FAT sector in a FAT
+ENDOFCHAIN = 0xFFFFFFFE #: (-2) end of a virtual stream chain
+FREESECT   = 0xFFFFFFFF #: (-1) unallocated sector
 
 #[PL]: added constants for Directory Entry IDs (from AAF specifications)
-MAXREGSID  = 0xFFFFFFFA # (-6) maximum directory entry ID
-NOSTREAM   = 0xFFFFFFFF # (-1) unallocated directory entry
+MAXREGSID  = 0xFFFFFFFA #: (-6) maximum directory entry ID
+NOSTREAM   = 0xFFFFFFFF #: (-1) unallocated directory entry
 
 #[PL] object types in storage (from AAF specifications)
-STGTY_EMPTY     = 0 # empty directory entry (according to OpenOffice.org doc)
-STGTY_STORAGE   = 1 # element is a storage object
-STGTY_STREAM    = 2 # element is a stream object
-STGTY_LOCKBYTES = 3 # element is an ILockBytes object
-STGTY_PROPERTY  = 4 # element is an IPropertyStorage object
-STGTY_ROOT      = 5 # element is a root storage
+STGTY_EMPTY     = 0 #: empty directory entry
+STGTY_STORAGE   = 1 #: element is a storage object
+STGTY_STREAM    = 2 #: element is a stream object
+STGTY_LOCKBYTES = 3 #: element is an ILockBytes object
+STGTY_PROPERTY  = 4 #: element is an IPropertyStorage object
+STGTY_ROOT      = 5 #: element is a root storage
 
 # Unknown size for a stream (used by OleStream):
 UNKNOWN_SIZE = 0x7FFFFFFF
@@ -472,7 +475,13 @@ def isOleFile (filename):
     """
     Test if a file is an OLE container (according to the magic bytes in its header).
 
-    :param filename: string-like or file-like object, OLE file to parse
+    .. note::
+        This function only checks the first 8 bytes of the file, not the
+        rest of the OLE structure.
+
+    .. versionadded:: 0.16
+
+    :param filename: filename, contents or file-like object of the OLE file (string-like or file-like object)
 
         - if filename is a string smaller than 1536 bytes, it is the path
           of the file to open. (bytes or unicode string)
@@ -481,7 +490,9 @@ def isOleFile (filename):
         - if filename is a file-like object (with read and seek methods),
           it is parsed as-is.
 
+    :type filename: bytes or str or unicode or file
     :returns: True if OLE, False otherwise.
+    :rtype: bool
     """
     # check if filename is a string-like or file-like object:
     if hasattr(filename, 'read'):
@@ -494,7 +505,8 @@ def isOleFile (filename):
         header = filename[:len(MAGIC)]
     else:
         # string-like object: filename of file on disk
-        header = open(filename, 'rb').read(len(MAGIC))
+        with open(filename, 'rb') as fp:
+            header = fp.read(len(MAGIC))
     if header == MAGIC:
         return True
     else:
@@ -511,8 +523,6 @@ else:
         return c if c.__class__ is int else c[0]
 
 
-#TODO: replace i16 and i32 with more readable struct.unpack equivalent?
-
 def i16(c, o = 0):
     """
     Converts a 2-bytes (16 bits) string to an integer.
@@ -520,7 +530,7 @@ def i16(c, o = 0):
     :param c: string containing bytes to convert
     :param o: offset of bytes to convert in string
     """
-    return i8(c[o]) | (i8(c[o+1])<<8)
+    return struct.unpack("<H", c[o:o+2])[0]
 
 
 def i32(c, o = 0):
@@ -530,10 +540,7 @@ def i32(c, o = 0):
     :param c: string containing bytes to convert
     :param o: offset of bytes to convert in string
     """
-##    return int(ord(c[o])+(ord(c[o+1])<<8)+(ord(c[o+2])<<16)+(ord(c[o+3])<<24))
-##    # [PL]: added int() because "<<" gives long int since Python 2.4
-    # copied from Pillow's _binary:
-    return i8(c[o]) | (i8(c[o+1])<<8) | (i8(c[o+2])<<16) | (i8(c[o+3])<<24)
+    return struct.unpack("<I", c[o:o+4])[0]
 
 
 def _clsid(clsid):
@@ -558,7 +565,7 @@ def filetime2datetime(filetime):
         convert FILETIME (64 bits int) to Python datetime.datetime
         """
         # TODO: manage exception when microseconds is too large
-        # inspired from http://code.activestate.com/recipes/511425-filetime-to-datetime/
+        # inspired from https://code.activestate.com/recipes/511425-filetime-to-datetime/
         _FILETIME_null_date = datetime.datetime(1601, 1, 1, 0, 0, 0)
         #log.debug('timedelta days=%d' % (filetime//(10*1000000*3600*24)))
         return _FILETIME_null_date + datetime.timedelta(microseconds=filetime//10)
@@ -585,17 +592,19 @@ class OleMetadata:
     OLE file.
 
     References for SummaryInformation stream:
-    - http://msdn.microsoft.com/en-us/library/dd942545.aspx
-    - http://msdn.microsoft.com/en-us/library/dd925819%28v=office.12%29.aspx
-    - http://msdn.microsoft.com/en-us/library/windows/desktop/aa380376%28v=vs.85%29.aspx
-    - http://msdn.microsoft.com/en-us/library/aa372045.aspx
-    - http://sedna-soft.de/summary-information-stream/
-    - http://poi.apache.org/apidocs/org/apache/poi/hpsf/SummaryInformation.html
+
+    - https://msdn.microsoft.com/en-us/library/dd942545.aspx
+    - https://msdn.microsoft.com/en-us/library/dd925819%28v=office.12%29.aspx
+    - https://msdn.microsoft.com/en-us/library/windows/desktop/aa380376%28v=vs.85%29.aspx
+    - https://msdn.microsoft.com/en-us/library/aa372045.aspx
+    - http://sedna-soft.de/articles/summary-information-stream/
+    - https://poi.apache.org/apidocs/org/apache/poi/hpsf/SummaryInformation.html
 
     References for DocumentSummaryInformation stream:
-    - http://msdn.microsoft.com/en-us/library/dd945671%28v=office.12%29.aspx
-    - http://msdn.microsoft.com/en-us/library/windows/desktop/aa380374%28v=vs.85%29.aspx
-    - http://poi.apache.org/apidocs/org/apache/poi/hpsf/DocumentSummaryInformation.html
+
+    - https://msdn.microsoft.com/en-us/library/dd945671%28v=office.12%29.aspx
+    - https://msdn.microsoft.com/en-us/library/windows/desktop/aa380374%28v=vs.85%29.aspx
+    - https://poi.apache.org/apidocs/org/apache/poi/hpsf/DocumentSummaryInformation.html
 
     new in version 0.25
     """
@@ -676,7 +685,7 @@ class OleMetadata:
     def parse_properties(self, olefile):
         """
         Parse standard properties of an OLE file, from the streams
-        "\x05SummaryInformation" and "\x05DocumentSummaryInformation",
+        ``\\x05SummaryInformation`` and ``\\x05DocumentSummaryInformation``,
         if present.
         Properties are converted to strings, integers or python datetime objects.
         If a property is not present, its value is set to None.
@@ -851,14 +860,14 @@ class OleStream(io.BytesIO):
         elif unknown_size:
             # actual stream size was not known, now we know the size of read
             # data:
-            log.debug('Read data of length %d, the stream size was unkown' % len(data))
+            log.debug('Read data of length %d, the stream size was unknown' % len(data))
             self.size = len(data)
         else:
             # read data is less than expected:
             log.debug('Read data of length %d, less than expected stream size %d' % (len(data), size))
             # TODO: provide details in exception message
-            self.ole._raise_defect(DEFECT_INCORRECT, 'OLE stream size is less than declared')
             self.size = len(data)
+            self.ole._raise_defect(DEFECT_INCORRECT, 'OLE stream size is less than declared')
         # when all data is read in memory, BytesIO constructor is called
         io.BytesIO.__init__(self, data)
         # Then the OleStream object can be used as a read-only file object.
@@ -1023,7 +1032,7 @@ class OleDirectoryEntry:
         Walk through red-black tree of children of this directory entry to add
         all of them to the kids list. (recursive method)
 
-        :param child_sid : index of child directory entry to use, or None when called
+        :param child_sid: index of child directory entry to use, or None when called
             first time for the root. (only used during recursion)
         """
         log.debug('append_kids: child_sid=%d' % child_sid)
@@ -1188,8 +1197,8 @@ class OleFileIO:
         """
         # minimal level for defects to be raised as exceptions:
         self._raise_defects_level = raise_defects
-        # list of defects/issues not raised as exceptions:
-        # tuples of (exception type, message)
+        #: list of defects/issues not raised as exceptions:
+        #: tuples of (exception type, message)
         self.parsing_issues = []
         self.write_mode = write_mode
         self.path_encoding = path_encoding
@@ -2081,6 +2090,21 @@ class OleFileIO:
             return False
 
 
+    def getclsid(self, filename):
+        """
+        Return clsid of a stream/storage.
+
+        :param filename: path of stream/storage in storage tree. (see openstream for
+            syntax)
+        :returns: Empty string if clsid is null, a printable representation of the clsid otherwise
+
+        new in version 0.44
+        """
+        sid = self._find(filename)
+        entry = self.direntries[sid]
+        return entry.clsid
+
+
     def getmtime(self, filename):
         """
         Return modification time of a stream/storage.
@@ -2203,8 +2227,8 @@ class OleFileIO:
 
         # clamp num_props based on the data length
         num_props = min(num_props, len(s) / 8)
-        
-        for i in xrange(num_props):
+
+        for i in iterrange(num_props):
             property_id = 0 # just in case of an exception
             try:
                 property_id = i32(s, 8+i*8)
@@ -2225,12 +2249,12 @@ class OleFileIO:
                 elif property_type in (VT_I4, VT_INT, VT_ERROR):
                     # VT_I4: 32-bit signed integer
                     # VT_ERROR: HRESULT, similar to 32-bit signed integer,
-                    # see http://msdn.microsoft.com/en-us/library/cc230330.aspx
+                    # see https://msdn.microsoft.com/en-us/library/cc230330.aspx
                     value = i32(s, offset+4)
                 elif property_type in (VT_UI4, VT_UINT): # 4-byte unsigned integer
                     value = i32(s, offset+4) # FIXME
                 elif property_type in (VT_BSTR, VT_LPSTR):
-                    # CodePageString, see http://msdn.microsoft.com/en-us/library/dd942354.aspx
+                    # CodePageString, see https://msdn.microsoft.com/en-us/library/dd942354.aspx
                     # size is a 32 bits integer, including the null terminator, and
                     # possibly trailing or embedded null chars
                     #TODO: if codepage is unicode, the string should be converted as such
@@ -2240,12 +2264,12 @@ class OleFileIO:
                     value = value.replace(b'\x00', b'')
                 elif property_type == VT_BLOB:
                     # binary large object (BLOB)
-                    # see http://msdn.microsoft.com/en-us/library/dd942282.aspx
+                    # see https://msdn.microsoft.com/en-us/library/dd942282.aspx
                     count = i32(s, offset+4)
                     value = s[offset+8:offset+8+count]
                 elif property_type == VT_LPWSTR:
                     # UnicodeString
-                    # see http://msdn.microsoft.com/en-us/library/dd942313.aspx
+                    # see https://msdn.microsoft.com/en-us/library/dd942313.aspx
                     # "the string should NOT contain embedded or additional trailing
                     # null characters."
                     count = i32(s, offset+4)
@@ -2258,7 +2282,7 @@ class OleFileIO:
                         log.debug('Converting property #%d to python datetime, value=%d=%fs'
                                 %(property_id, value, float(value)/10000000))
                         # convert FILETIME to Python datetime.datetime
-                        # inspired from http://code.activestate.com/recipes/511425-filetime-to-datetime/
+                        # inspired from https://code.activestate.com/recipes/511425-filetime-to-datetime/
                         _FILETIME_null_date = datetime.datetime(1601, 1, 1, 0, 0, 0)
                         log.debug('timedelta days=%d' % (value//(10*1000000*3600*24)))
                         value = _FILETIME_null_date + datetime.timedelta(microseconds=value//10)
@@ -2272,12 +2296,12 @@ class OleFileIO:
                     value = _clsid(s[offset+4:offset+20])
                 elif property_type == VT_CF:
                     # PropertyIdentifier or ClipboardData??
-                    # see http://msdn.microsoft.com/en-us/library/dd941945.aspx
+                    # see https://msdn.microsoft.com/en-us/library/dd941945.aspx
                     count = i32(s, offset+4)
                     value = s[offset+8:offset+8+count]
                 elif property_type == VT_BOOL:
                     # VARIANT_BOOL, 16 bits bool, 0x0000=Fals, 0xFFFF=True
-                    # see http://msdn.microsoft.com/en-us/library/cc237864.aspx
+                    # see https://msdn.microsoft.com/en-us/library/cc237864.aspx
                     value = bool(i16(s, offset+4))
                 else:
                     value = None # everything else yields "None"
@@ -2285,13 +2309,13 @@ class OleFileIO:
 
                 # missing: VT_EMPTY, VT_NULL, VT_R4, VT_R8, VT_CY, VT_DATE,
                 # VT_DECIMAL, VT_I1, VT_I8, VT_UI8,
-                # see http://msdn.microsoft.com/en-us/library/dd942033.aspx
+                # see https://msdn.microsoft.com/en-us/library/dd942033.aspx
 
                 # FIXME: add support for VT_VECTOR
                 # VT_VECTOR is a 32 uint giving the number of items, followed by
                 # the items in sequence. The VT_VECTOR value is combined with the
                 # type of items, e.g. VT_VECTOR|VT_BSTR
-                # see http://msdn.microsoft.com/en-us/library/dd942011.aspx
+                # see https://msdn.microsoft.com/en-us/library/dd942011.aspx
 
                 #print("%08x" % property_id, repr(value), end=" ")
                 #print("(%s)" % VT[i32(s, offset) & 0xFFF])
@@ -2347,7 +2371,7 @@ if __name__ == "__main__":
 
     (options, args) = parser.parse_args()
 
-    print('olefile version %s %s - http://www.decalage.info/en/olefile\n' % (__version__, __date__))
+    print('olefile version %s %s - https://www.decalage.info/en/olefile\n' % (__version__, __date__))
 
     # Print help if no arguments are passed
     if len(args) == 0:
