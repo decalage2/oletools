@@ -71,8 +71,9 @@ http://www.decalage.info/python/oletools
 #                        long parameter)
 # 2017-04-11       PL: - added detection of the OLE2Link vulnerability CVE-2017-0199
 # 2017-05-04       PL: - fixed issue #164 to handle linked OLE objects
+# 2017-06-08       PL: - fixed issue/PR #143: bin object with negative length
 
-__version__ = '0.51dev7'
+__version__ = '0.51dev8'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -500,8 +501,11 @@ class RtfParser(object):
     def _bin(self, matchobject, param):
         binlen = int(param)
         if binlen < 0:
-            binlen = int(param.strip('-'))
-            
+            log.warn('Detected anti-analysis trick: \\bin object with negative length at index %X' % self.index)
+            # binlen = int(param.strip('-'))
+            # According to my tests, if the bin length is negative,
+            # it should be treated as a null length:
+            binlen=0
         log.debug('\\bin: reading %d bytes of binary data' % binlen)
         # TODO: handle optional space?
         # TODO: handle negative length, and length greater than data
