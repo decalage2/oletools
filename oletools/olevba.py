@@ -194,8 +194,9 @@ from __future__ import print_function
 # 2017-03-16       PL: - fixed issues #148 and #149 for option --reveal
 # 2017-05-19       PL: - added enable_logging to fix issue #154
 # 2017-05-31     c1fe: - PR #135 fixing issue #132 for some Mac files
+# 2017-06-08       PL: - fixed issue #122 Chr() with negative numbers
 
-__version__ = '0.51dev9'
+__version__ = '0.51dev10'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -769,7 +770,7 @@ class VbaExpressionString(str):
 # NOTE: here Combine() is required to avoid spaces between elements
 # NOTE: here WordStart is necessary to avoid matching a number preceded by
 #       letters or underscore (e.g. "VBT1" or "ABC_34"), when using scanString
-decimal_literal = Combine(WordStart(vba_identifier_chars) + Optional('-') + Word(nums)
+decimal_literal = Combine(Optional('-') + WordStart(vba_identifier_chars) + Word(nums)
                           + Suppress(Optional(Word('%&^', exact=1))))
 decimal_literal.setParseAction(lambda t: int(t[0]))
 
