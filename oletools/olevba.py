@@ -195,8 +195,9 @@ from __future__ import print_function
 # 2017-05-19       PL: - added enable_logging to fix issue #154
 # 2017-05-31     c1fe: - PR #135 fixing issue #132 for some Mac files
 # 2017-06-08       PL: - fixed issue #122 Chr() with negative numbers
+# 2017-06-15       PL: - deobfuscation line by line to handle large files
 
-__version__ = '0.51dev10'
+__version__ = '0.51dev11'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -1961,23 +1962,25 @@ def detect_vba_strings(vba_code):
     #            we must expand tabs to have the same string as pyparsing.
     #            Otherwise, start and end offsets are incorrect.
     vba_code = vba_code.expandtabs()
-    for tokens, start, end in vba_expr_str.scanString(vba_code):
-        encoded = vba_code[start:end]
-        decoded = tokens[0]
-        if isinstance(decoded, VbaExpressionString):
-            # This is a VBA expression, not a simple string
-            # print 'VBA EXPRESSION: encoded=%r => decoded=%r' % (encoded, decoded)
-            # remove parentheses and quotes from original string:
-            # if encoded.startswith('(') and encoded.endswith(')'):
-            #     encoded = encoded[1:-1]
-            # if encoded.startswith('"') and encoded.endswith('"'):
-            #     encoded = encoded[1:-1]
-            # avoid duplicates and simple strings:
-            if encoded not in found and decoded != encoded:
-                results.append((encoded, decoded))
-                found.add(encoded)
-        # else:
-            # print 'VBA STRING: encoded=%r => decoded=%r' % (encoded, decoded)
+    # Split the VBA code line by line to avoid MemoryError on large scripts:
+    for vba_line in vba_code.splitlines():
+        for tokens, start, end in vba_expr_str.scanString(vba_line):
+            encoded = vba_line[start:end]
+            decoded = tokens[0]
+            if isinstance(decoded, VbaExpressionString):
+                # This is a VBA expression, not a simple string
+                # print 'VBA EXPRESSION: encoded=%r => decoded=%r' % (encoded, decoded)
+                # remove parentheses and quotes from original string:
+                # if encoded.startswith('(') and encoded.endswith(')'):
+                #     encoded = encoded[1:-1]
+                # if encoded.startswith('"') and encoded.endswith('"'):
+                #     encoded = encoded[1:-1]
+                # avoid duplicates and simple strings:
+                if encoded not in found and decoded != encoded:
+                    results.append((encoded, decoded))
+                    found.add(encoded)
+            # else:
+                # print 'VBA STRING: encoded=%r => decoded=%r' % (encoded, decoded)
     return results
 
 
