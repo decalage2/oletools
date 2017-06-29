@@ -72,8 +72,9 @@ http://www.decalage.info/python/oletools
 # 2017-04-11       PL: - added detection of the OLE2Link vulnerability CVE-2017-0199
 # 2017-05-04       PL: - fixed issue #164 to handle linked OLE objects
 # 2017-06-08       PL: - fixed issue/PR #143: bin object with negative length
+# 2017-06-29       PL: - temporary fix for issue #178
 
-__version__ = '0.51dev8'
+__version__ = '0.51dev9'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -279,7 +280,10 @@ DESTINATION_CONTROL_WORDS = frozenset((
     b"mzeroAsc", b"mzeroDesc", b"mzeroWid", b"nesttableprops", b"nexctfile", b"nonesttables", b"objalias", b"objclass",
     b"objdata", b"object", b"objname", b"objsect", b"objtime", b"oldcprops", b"oldpprops", b"oldsprops", b"oldtprops",
     b"oleclsid", b"operator", b"panose", b"password", b"passwordhash", b"pgp", b"pgptbl", b"picprop", b"pict", b"pn", b"pnseclvl",
-    b"pntext", b"pntxta", b"pntxtb", b"printim", b"private", b"propname", b"protend", b"protstart", b"protusertbl", b"pxe",
+    b"pntext", b"pntxta", b"pntxtb", b"printim",
+    # It seems \private should not be treated as a destination (issue #178)
+    # b"private",
+    b"propname", b"protend", b"protstart", b"protusertbl", b"pxe",
     b"result", b"revtbl", b"revtim", b"rsidtbl", b"rtf", b"rxe", b"shp", b"shpgrp", b"shpinst", b"shppict", b"shprslt", b"shptxt",
     b"sn", b"sp", b"staticval", b"stylesheet", b"subject", b"sv", b"svb", b"tc", b"template", b"themedata", b"title", b"txe", b"ud",
     b"upr", b"userprops", b"wgrffmtfilter", b"windowcaption", b"writereservation", b"writereservhash", b"xe", b"xform",
@@ -476,6 +480,8 @@ class RtfParser(object):
 
     def _control_word(self, matchobject, cword, param):
         #log.debug('control word %r at index %Xh' % (matchobject.group(), self.index))
+        # TODO: according to RTF specs v1.9.1, "Destination changes are legal only immediately after an opening brace ({)"
+        # (not counting the special control symbol \*, of course)
         if cword in DESTINATION_CONTROL_WORDS:
             # log.debug('%r is a destination control word: starting a new destination' % cword)
             self._open_destination(matchobject, cword)
@@ -569,6 +575,7 @@ class RtfObjParser(RtfParser):
         self.objects = []
 
     def open_destination(self, destination):
+        # TODO: detect when the destination is within an objdata, report as obfuscation
         if destination.cword == b'objdata':
             log.debug('*** Start object data at index %Xh' % destination.start)
 
@@ -625,6 +632,7 @@ class RtfObjParser(RtfParser):
         # TODO: extract useful cwords such as objclass
         # TODO: keep track of cwords inside objdata, because it is unusual and indicates potential obfuscation
         # TODO: same with control symbols, and opening bracket
+        log.debug('- Control word "%s", param=%s, level=%d' % (cword, param, self.group_level))
         pass
 
 
