@@ -11,6 +11,7 @@ Supported formats:
 - PowerPoint 97-2003 (.ppt), PowerPoint 2007+ (.pptm, .ppsm)
 - Word 2003 XML (.xml)
 - Word/Excel Single File Web Page / MHTML (.mht)
+- Publisher (.pub)
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -21,7 +22,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE ==================================================================
 
-# MacroRaptor is copyright (c) 2016 Philippe Lagadec (http://www.decalage.info)
+# MacroRaptor is copyright (c) 2016-2017 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -53,8 +54,9 @@ http://www.decalage.info/python/oletools
 # 2016-07-19 v0.50 SL: - converted to Python 3
 # 2016-08-26       PL: - changed imports for Python 3
 # 2017-04-26 v0.51 PL: - fixed absolute imports (issue #141)
+# 2017-06-29       PL: - synced with mraptor.py 0.51
 
-__version__ = '0.51dev6'
+__version__ = '0.51'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -97,15 +99,24 @@ MSG_ISSUES = 'Please report this issue on %s' % URL_ISSUES
 
 # 'AutoExec', 'AutoOpen', 'Auto_Open', 'AutoClose', 'Auto_Close', 'AutoNew', 'AutoExit',
 # 'Document_Open', 'DocumentOpen',
-# 'Document_Close', 'DocumentBeforeClose',
+# 'Document_Close', 'DocumentBeforeClose', 'Document_BeforeClose',
 # 'DocumentChange','Document_New',
 # 'NewDocument'
 # 'Workbook_Open', 'Workbook_Close',
+# *_Painted such as InkPicture1_Painted
+# *_GotFocus|LostFocus|MouseHover for other ActiveX objects
+# reference: http://www.greyhathacker.net/?p=948
 
 # TODO: check if line also contains Sub or Function
 re_autoexec = re.compile(r'(?i)\b(?:Auto(?:Exec|_?Open|_?Close|Exit|New)' +
-                         r'|Document(?:_?Open|_Close|BeforeClose|Change|_New)' +
-                         r'|NewDocument|Workbook(?:_Open|_Activate|_Close))\b')
+                         r'|Document(?:_?Open|_Close|_?BeforeClose|Change|_New)' +
+                         r'|NewDocument|Workbook(?:_Open|_Activate|_Close)' +
+                         r'|\w+_(?:Painted|Painting|GotFocus|LostFocus|MouseHover' +
+                         r'|Layout|Click|Change|Resize|BeforeNavigate2|BeforeScriptExecute' +
+                         r'|DocumentComplete|DownloadBegin|DownloadComplete|FileDownload' +
+                         r'|NavigateComplete2|NavigateError|ProgressChange|PropertyChange' +
+                         r'|SetSecureLockIcon|StatusTextChange|TitleChange|MouseMove' +
+                         r'|MouseEnter|MouseLeave|))\b')
 
 # MS-VBAL 5.4.5.1 Open Statement:
 RE_OPEN_WRITE = r'(?:\bOpen\b[^\n]+\b(?:Write|Append|Binary|Output|Random)\b)'
@@ -249,6 +260,8 @@ def main():
 
     # Print help if no arguments are passed
     if len(args) == 0:
+        print('MacroRaptor %s - http://decalage.info/python/oletools' % __version__)
+        print('This is work in progress, please report issues at %s' % URL_ISSUES)
         print(__doc__)
         parser.print_help()
         print('\nAn exit code is returned based on the analysis result:')
