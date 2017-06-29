@@ -7,23 +7,41 @@
   <title></title>
   <style type="text/css">code{white-space: pre;}</style>
   <style type="text/css">
+div.sourceCode { overflow-x: auto; }
 table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
   margin: 0; padding: 0; vertical-align: baseline; border: none; }
 table.sourceCode { width: 100%; line-height: 100%; }
 td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
 td.sourceCode { padding-left: 5px; }
-code > span.kw { color: #007020; font-weight: bold; }
-code > span.dt { color: #902000; }
-code > span.dv { color: #40a070; }
-code > span.bn { color: #40a070; }
-code > span.fl { color: #40a070; }
-code > span.ch { color: #4070a0; }
-code > span.st { color: #4070a0; }
-code > span.co { color: #60a0b0; font-style: italic; }
-code > span.ot { color: #007020; }
-code > span.al { color: #ff0000; font-weight: bold; }
-code > span.fu { color: #06287e; }
-code > span.er { color: #ff0000; font-weight: bold; }
+code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code > span.dt { color: #902000; } /* DataType */
+code > span.dv { color: #40a070; } /* DecVal */
+code > span.bn { color: #40a070; } /* BaseN */
+code > span.fl { color: #40a070; } /* Float */
+code > span.ch { color: #4070a0; } /* Char */
+code > span.st { color: #4070a0; } /* String */
+code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code > span.ot { color: #007020; } /* Other */
+code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code > span.fu { color: #06287e; } /* Function */
+code > span.er { color: #ff0000; font-weight: bold; } /* Error */
+code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+code > span.cn { color: #880000; } /* Constant */
+code > span.sc { color: #4070a0; } /* SpecialChar */
+code > span.vs { color: #4070a0; } /* VerbatimString */
+code > span.ss { color: #bb6688; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { color: #19177c; } /* Variable */
+code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code > span.op { color: #666666; } /* Operator */
+code > span.bu { } /* BuiltIn */
+code > span.ex { } /* Extension */
+code > span.pp { color: #bc7a00; } /* Preprocessor */
+code > span.at { color: #7d9029; } /* Attribute */
+code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
   </style>
 </head>
 <body>
@@ -76,9 +94,9 @@ Filename: word_flash_vba.doc
 +-------------------------------+-----------------------+</code></pre>
 <h2 id="how-to-use-oleid-in-your-python-applications">How to use oleid in your Python applications</h2>
 <p>First, import oletools.oleid, and create an <strong>OleID</strong> object to scan a file:</p>
-<pre class="sourceCode python"><code class="sourceCode python"><span class="ch">import</span> oletools.oleid
+<div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python"><span class="im">import</span> oletools.oleid
 
-oid = oletools.oleid.OleID(filename)</code></pre>
+oid <span class="op">=</span> oletools.oleid.OleID(filename)</code></pre></div>
 <p>Note: filename can be a filename, a file-like object, or a bytes string containing the file to be analyzed.</p>
 <p>Second, call the <strong>check()</strong> method. It returns a list of <strong>Indicator</strong> objects.</p>
 <p>Each Indicator object has the following attributes:</p>
@@ -90,11 +108,11 @@ oid = oletools.oleid.OleID(filename)</code></pre>
 <li><strong>value</strong>: value of the indicator</li>
 </ul>
 <p>For example, the following code displays all the indicators:</p>
-<pre class="sourceCode python"><code class="sourceCode python">indicators = oid.check()
-<span class="kw">for</span> i in indicators:
-    <span class="dt">print</span> <span class="st">&#39;Indicator id=</span><span class="ot">%s</span><span class="st"> name=&quot;</span><span class="ot">%s</span><span class="st">&quot; type=</span><span class="ot">%s</span><span class="st"> value=</span><span class="ot">%s</span><span class="st">&#39;</span> % (i.<span class="dt">id</span>, i.name, i.<span class="dt">type</span>, <span class="dt">repr</span>(i.value))
-    <span class="dt">print</span> <span class="st">&#39;description:&#39;</span>, i.description
-    <span class="dt">print</span> <span class="st">&#39;&#39;</span></code></pre>
+<div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">indicators <span class="op">=</span> oid.check()
+<span class="cf">for</span> i <span class="kw">in</span> indicators:
+    <span class="bu">print</span> <span class="st">&#39;Indicator id=</span><span class="sc">%s</span><span class="st"> name=&quot;</span><span class="sc">%s</span><span class="st">&quot; type=</span><span class="sc">%s</span><span class="st"> value=</span><span class="sc">%s</span><span class="st">&#39;</span> <span class="op">%</span> (i.<span class="bu">id</span>, i.name, i.<span class="bu">type</span>, <span class="bu">repr</span>(i.value))
+    <span class="bu">print</span> <span class="st">&#39;description:&#39;</span>, i.description
+    <span class="bu">print</span> <span class="st">&#39;&#39;</span></code></pre></div>
 <p>See the source code of oleid.py for more details.</p>
 <hr />
 <h2 id="python-oletools-documentation">python-oletools documentation</h2>
