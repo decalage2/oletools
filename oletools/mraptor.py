@@ -57,7 +57,7 @@ http://www.decalage.info/python/oletools
 # 2016-12-21 v0.51 PL: - added more ActiveX macro triggers
 # 2017-03-08       PL: - fixed absolute imports
 
-__version__ = '0.51dev2'
+__version__ = '0.51'
 
 #------------------------------------------------------------------------------
 # TODO:

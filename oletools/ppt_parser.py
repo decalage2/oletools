@@ -33,7 +33,7 @@ References:
 #                      - fixed format strings for Python 2.6 (issue #75)
 # 2017-04-23 v0.51 PL: - fixed absolute imports and issue #101
 
-__version__ = '0.51dev6'
+__version__ = '0.51'
 
 
 # --- IMPORTS ------------------------------------------------------------------

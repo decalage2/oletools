@@ -191,7 +191,7 @@ from __future__ import print_function
 # 2016-11-03 v0.51 PL: - added EnumDateFormats and EnumSystemLanguageGroupsW
 # 2017-04-26       PL: - fixed absolute imports
 
-__version__ = '0.51dev6'
+__version__ = '0.51'
 
 #------------------------------------------------------------------------------
 # TODO:

@@ -53,7 +53,7 @@ http://www.decalage.info/python/oletools
 #                      - added option --exdata to display extra data in hex
 
 
-__version__ = '0.51dev3'
+__version__ = '0.51'
 
 #------------------------------------------------------------------------------
 # TODO:

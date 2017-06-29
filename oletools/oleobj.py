@@ -49,7 +49,7 @@ http://www.decalage.info/python/oletools
 # 2016-11-18       PL: - added main for setup.py entry point
 # 2017-05-03       PL: - fixed absolute imports (issue #141)
 
-__version__ = '0.51dev7'
+__version__ = '0.51'
 
 #------------------------------------------------------------------------------
 # TODO:

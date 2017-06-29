@@ -51,7 +51,7 @@ http://www.decalage.info/python/oletools
 # 2017-05-03 v0.51 PL: - fixed absolute imports (issue #141)
 # 2017-05-04       PL: - added optparse and xglob (issue #141)
 
-__version__ = '0.51dev7'
+__version__ = '0.51'
 
 #------------------------------------------------------------------------------
 # TODO:

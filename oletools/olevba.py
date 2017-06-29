@@ -197,7 +197,7 @@ from __future__ import print_function
 # 2017-06-08       PL: - fixed issue #122 Chr() with negative numbers
 # 2017-06-15       PL: - deobfuscation line by line to handle large files
 
-__version__ = '0.51dev11'
+__version__ = '0.51'
 
 #------------------------------------------------------------------------------
 # TODO:

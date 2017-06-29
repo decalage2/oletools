@@ -74,7 +74,7 @@ http://www.decalage.info/python/oletools
 # 2017-06-08       PL: - fixed issue/PR #143: bin object with negative length
 # 2017-06-29       PL: - temporary fix for issue #178
 
-__version__ = '0.51dev9'
+__version__ = '0.51'
 
 # ------------------------------------------------------------------------------
 # TODO:

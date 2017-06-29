@@ -49,7 +49,7 @@ from __future__ import print_function
 # 2017-03-08 v0.51 PL: - fixed absolute imports, added optparse
 #                      - added support for zip files and wildcards
 
-__version__ = '0.51dev2'
+__version__ = '0.51'
 
 #------------------------------------------------------------------------------
 # TODO:
