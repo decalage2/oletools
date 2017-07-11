@@ -198,9 +198,10 @@ from __future__ import print_function   # This version of olefile requires Pytho
 # 2017-05-31 v0.45 BS: - PR #114 from oletools to handle excessive number of
 #                        properties:
 #                        https://github.com/decalage2/oletools/pull/114
+# 2017-07-11       PL: - ignore incorrect ByteOrder (issue #70)
 
-__date__    = "2017-05-31"
-__version__ = '0.45dev1'
+__date__    = "2017-07-11"
+__version__ = '0.45dev2'
 __author__  = "Philippe Lagadec"
 
 #-----------------------------------------------------------------------------
@@ -277,7 +278,7 @@ __author__  = "Philippe Lagadec"
 __all__ = ['isOleFile', 'OleFileIO', 'OleMetadata', 'enable_logging',
            'MAGIC', 'STGTY_EMPTY',
            'STGTY_STREAM', 'STGTY_STORAGE', 'STGTY_ROOT', 'STGTY_PROPERTY',
-           'STGTY_LOCKBYTES', 'MINIMAL_OLEFILE_SIZE',]
+           'STGTY_LOCKBYTES', 'MINIMAL_OLEFILE_SIZE', 'NOSTREAM']
 
 import io
 import sys
@@ -1395,7 +1396,7 @@ class OleFileIO:
         log.debug( "Byte Order    = %X (expected: FFFE)" % self.byte_order )
         if self.byte_order != 0xFFFE:
             # For now only common little-endian documents are handled correctly
-            self._raise_defect(DEFECT_FATAL, "incorrect ByteOrder in OLE header")
+            self._raise_defect(DEFECT_INCORRECT, "incorrect ByteOrder in OLE header")
             # TODO: add big-endian support for documents created on Mac ?
             # But according to [MS-CFB] ? v20140502, ByteOrder MUST be 0xFFFE.
         self.sector_size = 2**self.sector_shift
