@@ -196,8 +196,9 @@ from __future__ import print_function
 # 2017-05-31     c1fe: - PR #135 fixing issue #132 for some Mac files
 # 2017-06-08       PL: - fixed issue #122 Chr() with negative numbers
 # 2017-06-15       PL: - deobfuscation line by line to handle large files
+# 2017-07-11 v0.51.1 PL: - raise exception instead of sys.exit (issue #180)
 
-__version__ = '0.51'
+__version__ = '0.51.1dev1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -1574,7 +1575,9 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             continue
 
         log.error('invalid or unknown check Id {0:04X}'.format(check))
-        sys.exit(0)
+        # raise an exception instead of stopping abruptly (issue #180)
+        raise UnexpectedDataError(dir_path, 'reference type', (0x0F, 0x16, 0x33, 0x2F, 0x0D, 0x0E), check)
+        #sys.exit(0)
 
     projectmodules_id = check  #struct.unpack("<H", dir_stream.read(2))[0]
     check_value('PROJECTMODULES_Id', 0x000F, projectmodules_id)
