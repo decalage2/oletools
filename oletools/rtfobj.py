@@ -73,8 +73,9 @@ http://www.decalage.info/python/oletools
 # 2017-05-04       PL: - fixed issue #164 to handle linked OLE objects
 # 2017-06-08       PL: - fixed issue/PR #143: bin object with negative length
 # 2017-06-29       PL: - temporary fix for issue #178
+# 2017-07-14 v0.51.1 PL: - disabled logging of each control word (issue #184)
 
-__version__ = '0.51'
+__version__ = '0.51.1dev2'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -389,7 +390,7 @@ class RtfParser(object):
                     param = None
                     if len(m.groups()) > 1:
                         param = m.group(2)
-                    # log.debug('control word %r at index %Xh - cword=%r param=%r' % (m.group(), self.index, cword, param))
+                    # log.debug('control word at index %Xh - cword=%r param=%r  %r' % (self.index, cword, param, m.group()))
                     self._control_word(m, cword, param)
                     self.index += len(m.group())
                     # if it's \bin, call _bin after updating index
@@ -632,7 +633,7 @@ class RtfObjParser(RtfParser):
         # TODO: extract useful cwords such as objclass
         # TODO: keep track of cwords inside objdata, because it is unusual and indicates potential obfuscation
         # TODO: same with control symbols, and opening bracket
-        log.debug('- Control word "%s", param=%s, level=%d' % (cword, param, self.group_level))
+        # log.debug('- Control word "%s", param=%s, level=%d' % (cword, param, self.group_level))
         pass
 
 
