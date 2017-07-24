@@ -75,6 +75,7 @@ http://www.decalage.info/python/oletools
 # 2017-06-29       PL: - temporary fix for issue #178
 # 2017-07-14 v0.51.1 PL: - disabled logging of each control word (issue #184)
 # 2017-07-24       PL: - fixed call to RtfParser._end_of_file (issue #185)
+#                      - ignore optional space after \bin (issue #185)
 
 __version__ = '0.51.1dev3'
 
@@ -509,15 +510,19 @@ class RtfParser(object):
 
     def _bin(self, matchobject, param):
         binlen = int(param)
+        # handle negative length
         if binlen < 0:
             log.warn('Detected anti-analysis trick: \\bin object with negative length at index %X' % self.index)
             # binlen = int(param.strip('-'))
             # According to my tests, if the bin length is negative,
             # it should be treated as a null length:
             binlen=0
+        # ignore optional space after \bin
+        if self.data[self.index] == ' ':
+            log.debug('\\bin: ignoring whitespace before data')
+            self.index += 1
         log.debug('\\bin: reading %d bytes of binary data' % binlen)
-        # TODO: handle optional space?
-        # TODO: handle negative length, and length greater than data
+        # TODO: handle length greater than data
         bindata = self.data[self.index:self.index + binlen]
         self.index += binlen
         self.bin(bindata)
