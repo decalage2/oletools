@@ -74,8 +74,9 @@ http://www.decalage.info/python/oletools
 # 2017-06-08       PL: - fixed issue/PR #143: bin object with negative length
 # 2017-06-29       PL: - temporary fix for issue #178
 # 2017-07-14 v0.51.1 PL: - disabled logging of each control word (issue #184)
+# 2017-07-24       PL: - fixed call to RtfParser._end_of_file (issue #185)
 
-__version__ = '0.51.1dev2'
+__version__ = '0.51.1dev3'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -411,7 +412,8 @@ class RtfParser(object):
                 self.index += len(m.group())
                 continue
             raise RuntimeError('Should not have reached this point - index=%Xh' % self.index)
-        self.end_of_file()
+        # call _end_of_file to make sure all groups are closed properly
+        self._end_of_file()
 
 
     def _open_group(self):
@@ -527,7 +529,7 @@ class RtfParser(object):
         # log.debug('%Xh Reached End of File')
         # close any group/destination that is still open:
         while self.group_level > 0:
-            # log.debug('Group Level = %d, closing group' % self.group_level)
+            log.debug('Group Level = %d, closing group' % self.group_level)
             self._close_group()
         self.end_of_file()
 
