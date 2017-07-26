@@ -1,6 +1,6 @@
 python-oletools
 ===============
-[![PyPI](https://img.shields.io/pypi/v/oletools.svg)]()
+[![PyPI](https://img.shields.io/pypi/v/oletools.svg)](https://pypi.python.org/pypi/oletools)
 
 [oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze
 [Microsoft OLE2 files](http://en.wikipedia.org/wiki/Compound_File_Binary_Format) 
