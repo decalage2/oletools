@@ -54,6 +54,7 @@ from __future__ import print_function
 # 2016-10-25 v0.50 PL: - fixed print and bytes strings for Python 3
 # 2016-12-12 v0.51 PL: - fixed relative imports for Python 3 (issue #115)
 # 2017-04-26       PL: - fixed absolute imports (issue #141)
+# 2017-09-01       SA: - detect OpenXML encryption
 
 __version__ = '0.51'
 
@@ -211,6 +212,9 @@ class OleID:
         if 0x13 in self.suminfo:
             if self.suminfo[0x13] & 1:
                 self.encrypted.value = True
+        # check if this is an OpenXML encrypted file
+        elif self.ole.exists('EncryptionInfo'):
+            self.encrypted.value = True
 
     def check_word (self):
         word = Indicator('word', False, name='Word Document',
