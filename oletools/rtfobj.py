@@ -76,8 +76,9 @@ http://www.decalage.info/python/oletools
 # 2017-07-14 v0.51.1 PL: - disabled logging of each control word (issue #184)
 # 2017-07-24       PL: - fixed call to RtfParser._end_of_file (issue #185)
 #                      - ignore optional space after \bin (issue #185)
+# 2017-09-06       PL: - fixed issue #196: \pxe is not a destination
 
-__version__ = '0.51.1dev3'
+__version__ = '0.51.1dev4'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -285,8 +286,9 @@ DESTINATION_CONTROL_WORDS = frozenset((
     b"oleclsid", b"operator", b"panose", b"password", b"passwordhash", b"pgp", b"pgptbl", b"picprop", b"pict", b"pn", b"pnseclvl",
     b"pntext", b"pntxta", b"pntxtb", b"printim",
     # It seems \private should not be treated as a destination (issue #178)
-    # b"private",
-    b"propname", b"protend", b"protstart", b"protusertbl", b"pxe",
+    # Same for \pxe (issue #196)
+    # b"private", b"pxe",
+    b"propname", b"protend", b"protstart", b"protusertbl",
     b"result", b"revtbl", b"revtim", b"rsidtbl", b"rtf", b"rxe", b"shp", b"shpgrp", b"shpinst", b"shppict", b"shprslt", b"shptxt",
     b"sn", b"sp", b"staticval", b"stylesheet", b"subject", b"sv", b"svb", b"tc", b"template", b"themedata", b"title", b"txe", b"ud",
     b"upr", b"userprops", b"wgrffmtfilter", b"windowcaption", b"writereservation", b"writereservhash", b"xe", b"xform",
