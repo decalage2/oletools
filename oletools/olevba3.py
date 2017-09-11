@@ -197,6 +197,7 @@ from __future__ import print_function
 # 2017-06-08       PL: - fixed issue #122 Chr() with negative numbers
 # 2017-06-15       PL: - deobfuscation line by line to handle large files
 # 2017-07-11 v0.52 PL: - raise exception instead of sys.exit (issue #180)
+# 2017-09-11       SA: - detect OpenXML encryption
 # 2018-03-19       PL: - removed pyparsing from the thirdparty subfolder
 
 __version__ = '0.52.3'
@@ -460,15 +461,16 @@ class UnexpectedDataError(OlevbaBaseException):
 #--- CONSTANTS ----------------------------------------------------------------
 
 # return codes
-RETURN_OK             = 0
-RETURN_WARNINGS       = 1  # (reserved, not used yet)
-RETURN_WRONG_ARGS     = 2  # (fixed, built into optparse)
-RETURN_FILE_NOT_FOUND = 3
-RETURN_XGLOB_ERR      = 4
-RETURN_OPEN_ERROR     = 5
-RETURN_PARSE_ERROR    = 6
-RETURN_SEVERAL_ERRS   = 7
-RETURN_UNEXPECTED     = 8
+RETURN_OK              = 0
+RETURN_WARNINGS        = 1  # (reserved, not used yet)
+RETURN_WRONG_ARGS      = 2  # (fixed, built into optparse)
+RETURN_FILE_NOT_FOUND  = 3
+RETURN_XGLOB_ERR       = 4
+RETURN_OPEN_ERROR      = 5
+RETURN_PARSE_ERROR     = 6
+RETURN_SEVERAL_ERRS    = 7
+RETURN_UNEXPECTED      = 8
+RETURN_ENCRYPTED_OOXML = 9
 
 # MAC codepages (from http://stackoverflow.com/questions/1592925/decoding-mac-os-text-in-python)
 MAC_CODEPAGES = {
@@ -2338,6 +2340,12 @@ class VBA_Parser(object):
 
             # if this worked, try whether it is a ppt file (special ole file)
             self.open_ppt()
+
+            # check if this is an encrypted OpenXML file and quit if it is
+            if self.ole_file.exists('EncryptionInfo'):
+                log.info('File is an encrypted OpenXML file %r' % (self.filename))
+                sys.exit(RETURN_ENCRYPTED_OOXML)
+
         if self.type is None and is_zipfile(_file):
             # Zip file, which may be an OpenXML document
             self.open_openxml(_file)
