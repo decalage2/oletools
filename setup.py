@@ -312,6 +312,7 @@ def main():
         download_url=download_url,
 #        data_files=data_files,
         entry_points=entry_points,
+        test_suite="tests",
         # scripts=scripts,
     )
 
