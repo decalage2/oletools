@@ -22,6 +22,7 @@ to install this package.
 # 2016-07-29       PL: - use setuptools if available
 # 2016-09-05       PL: - added more entry points
 # 2017-01-18 v0.51 PL: - added package zipfile27 (issue #121)
+# 2017-10-18 v0.52 PL: - added msodde
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -41,7 +42,7 @@ import os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.51.1dev3'
+version      = '0.52dev1'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       = "Philippe Lagadec"
@@ -281,6 +282,7 @@ entry_points = {
         'pyxswf=oletools.pyxswf:main',
         'rtfobj=oletools.rtfobj:main',
         'oleobj=oletools.oleobj:main',
+        'msodde=oletools.msodde:main',
     ],
 }
 
