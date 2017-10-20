@@ -1,7 +1,7 @@
 python-oletools
 ===============
 [![PyPI](https://img.shields.io/pypi/v/oletools.svg)](https://pypi.python.org/pypi/oletools)
-![Build](https://travis-ci.org/samiraguiar/oletools.svg?branch=add-unit-tests)
+[![Build Status](https://travis-ci.org/decalage2/oletools.svg?branch=master)](https://travis-ci.org/decalage2/oletools)
 
 [oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze
 [Microsoft OLE2 files](http://en.wikipedia.org/wiki/Compound_File_Binary_Format) 
@@ -24,7 +24,7 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2017-06-29 v0.51**: 
+- **2017-06-29 v0.51**:
     - added the [oletools cheatsheet](https://github.com/decalage2/oletools/blob/master/cheatsheet/oletools_cheatsheet.pdf)
     - improved [rtfobj](https://github.com/decalage2/oletools/wiki/rtfobj) to handle malformed RTF files, detect vulnerability CVE-2017-0199
     - olevba: improved deobfuscation and Mac files support
