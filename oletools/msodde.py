@@ -45,8 +45,9 @@ from __future__ import print_function
 #------------------------------------------------------------------------------
 # CHANGELOG:
 # 2017-10-18 v0.52 PL: - first version
+# 2017-10-20       PL: - fixed issue #202 (handling empty xml tags)
 
-__version__ = '0.52dev1'
+__version__ = '0.52dev2'
 
 #------------------------------------------------------------------------------
 # TODO: detect beginning/end of fields, to separate each field
@@ -107,8 +108,9 @@ def process_file(filepath):
     # find all the tags 'w:instrText':
     # (each is a chunk of a DDE link)
     for elem in root.iter(TAG_W_INSTRTEXT):
-        # concatenate the text of the field:
-        text += elem.text
+        # concatenate the text of the field, if present:
+        if elem.text is not None:
+            text += elem.text
     return text
 
 
