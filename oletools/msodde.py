@@ -81,6 +81,7 @@ NS_WORD = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
 # XML tag for 'w:instrText'
 TAG_W_INSTRTEXT = '{%s}instrText' % NS_WORD
 TAG_W_FLDSIMPLE = '{%s}fldSimple' % NS_WORD
+TAG_W_INSTRATTR= '{%s}instr' % NS_WORD
 
 # === FUNCTIONS ==============================================================
 
@@ -115,7 +116,7 @@ def process_file(filepath):
     for elem in root.iter(TAG_W_FLDSIMPLE):
         # concatenate the attribute of the field, if present:
         if elem.attrib is not None:
-            text += elem.attrib['{http://schemas.openxmlformats.org/wordprocessingml/2006/main}instr']
+            text += elem.attrib[TAG_W_INSTRATTR]
     
 
     return text
