@@ -85,6 +85,8 @@ NO_QUOTES = False
 TAG_W_INSTRTEXT = '{%s}instrText' % NS_WORD
 TAG_W_FLDSIMPLE = '{%s}fldSimple' % NS_WORD
 TAG_W_FLDCHAR = '{%s}fldChar' % NS_WORD
+TAG_W_P = "{%s}p" % NS_WORD
+TAG_W_R = "{%s}r" % NS_WORD
 ATTR_W_INSTR = '{%s}instr' % NS_WORD
 ATTR_W_FLDCHARTYPE = '{%s}fldCharType' % NS_WORD
 
@@ -118,11 +120,11 @@ def process_file(filepath):
     # fldChar can be in either a w:r element or floating alone in the w:p
     # escape DDE if quoted etc
     # (each is a chunk of a DDE link)
-    for subs in root.iter("{%s}p"%NS_WORD):
+    for subs in root.iter(TAG_W_P):
         level = 0
         for e in subs:
             #check if w:r and if it is parse children elements to pull out the first FLDCHAR or INSTRTEXT
-            if e.tag == "{%s}r"%NS_WORD:
+            if e.tag == TAG_W_R:
                 for child in e:
                     if child.tag == TAG_W_FLDCHAR or child.tag == TAG_W_INSTRTEXT:
                         elem = child
