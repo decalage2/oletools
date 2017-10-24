@@ -112,13 +112,14 @@ def process_file(filepath):
     root = ET.fromstring(data)
     fields = []
     ddetext = u''
-    level = 0
+    
     # find all the tags 'w:p':
     # parse each for begin and end tags, to group DDE strings
     # fldChar can be in either a w:r element or floating alone in the w:p
     # escape DDE if quoted etc
     # (each is a chunk of a DDE link)
     for subs in root.iter("{%s}p"%NS_WORD):
+        level = 0
         for e in subs:
             #check if w:r and if it is parse children elements to pull out the first FLDCHAR or INSTRTEXT
             if e.tag == "{%s}r"%NS_WORD:
@@ -131,21 +132,22 @@ def process_file(filepath):
             #this should be an error condition
             if elem is None:
                 continue
-
+    
             #check if FLDCHARTYPE and whether "begin" or "end" tag
             if elem.attrib.get(ATTR_W_FLDCHARTYPE) is not None:
                 if elem.attrib[ATTR_W_FLDCHARTYPE] == "begin":
                     level += 1    
                 if elem.attrib[ATTR_W_FLDCHARTYPE] == "end":
                     level -= 1
-                    if level == 0:
+                    if level == 0 :
                         fields.append(ddetext)
                         ddetext = u''
-                        
+        
             # concatenate the text of the field, if present:
             if elem.tag == TAG_W_INSTRTEXT and elem.text is not None:
                 #expand field code if QUOTED
                 ddetext += unquote(elem.text)
+
 
     for elem in root.iter(TAG_W_FLDSIMPLE):
         # concatenate the attribute of the field, if present:
