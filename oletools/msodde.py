@@ -46,12 +46,15 @@ from __future__ import print_function
 # CHANGELOG:
 # 2017-10-18 v0.52 PL: - first version
 # 2017-10-20       PL: - fixed issue #202 (handling empty xml tags)
+# 2017-10-23       PL: - add check for fldSimple codes
+# 2017-10-24       PL: - group tags and track begin/end tags to keep DDE strings together
 
 __version__ = '0.52dev2'
 
 #------------------------------------------------------------------------------
 # TODO: detect beginning/end of fields, to separate each field
 # TODO: test if DDE links can also appear in headers, footers and other places
+# TODO: field codes can be in headers/footers/comments - parse these
 # TODO: add xlsx support
 
 #------------------------------------------------------------------------------
@@ -77,18 +80,20 @@ import sys
 
 
 NS_WORD = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
-
+NO_QUOTES = False
 # XML tag for 'w:instrText'
 TAG_W_INSTRTEXT = '{%s}instrText' % NS_WORD
 TAG_W_FLDSIMPLE = '{%s}fldSimple' % NS_WORD
-TAG_W_INSTRATTR= '{%s}instr' % NS_WORD
+TAG_W_FLDCHAR = '{%s}fldChar' % NS_WORD
+ATTR_W_INSTR = '{%s}instr' % NS_WORD
+ATTR_W_FLDCHARTYPE = '{%s}fldCharType' % NS_WORD
 
 # === FUNCTIONS ==============================================================
 
 def process_args():
     parser = argparse.ArgumentParser(description='A python tool to detect and extract DDE links in MS Office files')
     parser.add_argument("filepath", help="path of the file to be analyzed")
-
+    parser.add_argument("--nounquote", help="don't unquote values",action='store_true')
     args = parser.parse_args()
 
     if not os.path.exists(args.filepath):
@@ -105,22 +110,61 @@ def process_file(filepath):
     z.close()
     # parse the XML data:
     root = ET.fromstring(data)
-    text = u''
-    # find all the tags 'w:instrText':
+    fields = []
+    ddetext = u''
+    level = 0
+    # find all the tags 'w:p':
+    # parse each for begin and end tags, to group DDE strings
+    # fldChar can be in either a w:r element or floating alone in the w:p
+    # escape DDE if quoted etc
     # (each is a chunk of a DDE link)
-    for elem in root.iter(TAG_W_INSTRTEXT):
-        # concatenate the text of the field, if present:
-        if elem.text is not None:
-            text += elem.text
+    for subs in root.iter("{%s}p"%NS_WORD):
+        for e in subs:
+            #check if w:r and if it is parse children elements to pull out the first FLDCHAR or INSTRTEXT
+            if e.tag == "{%s}r"%NS_WORD:
+                for child in e:
+                    if child.tag == TAG_W_FLDCHAR or child.tag == TAG_W_INSTRTEXT:
+                        elem = child
+                        break
+            else:
+                elem = e
+            #this should be an error condition
+            if elem is None:
+                continue
+
+            #check if FLDCHARTYPE and whether "begin" or "end" tag
+            if elem.attrib.get(ATTR_W_FLDCHARTYPE) is not None:
+                if elem.attrib[ATTR_W_FLDCHARTYPE] == "begin":
+                    level += 1    
+                if elem.attrib[ATTR_W_FLDCHARTYPE] == "end":
+                    level -= 1
+                    if level == 0:
+                        fields.append(ddetext)
+                        ddetext = u''
+                        
+            # concatenate the text of the field, if present:
+            if elem.tag == TAG_W_INSTRTEXT and elem.text is not None:
+                #expand field code if QUOTED
+                ddetext += unquote(elem.text)
 
     for elem in root.iter(TAG_W_FLDSIMPLE):
         # concatenate the attribute of the field, if present:
         if elem.attrib is not None:
-            text += elem.attrib[TAG_W_INSTRATTR]
+            fields.append(elem.attrib[ATTR_W_INSTR])
     
 
-    return text
+    return fields
 
+def unquote(field):
+    
+    if "QUOTE" not in field or NO_QUOTES:
+        return field
+    #split into components
+    parts = field.strip().split(" ")
+    ddestr = ""
+    for p in parts[1:]:
+        ddestr += chr(int(p))
+    return ddestr
 
 #=== MAIN =================================================================
 
@@ -133,9 +177,13 @@ def main():
 
     args = process_args()
     print('Opening file: %s' % args.filepath)
-    text = process_file(args.filepath)
+    if args.nounquote :
+        global NO_QUOTES
+        NO_QUOTES = True
+    fields = process_file(args.filepath)
     print ('DDE Links:')
-    print(text)
+    for f in fields:
+        print(f)
 
 
 if __name__ == '__main__':
