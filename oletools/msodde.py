@@ -89,8 +89,8 @@ TAG_W_P = "{%s}p" % NS_WORD
 TAG_W_R = "{%s}r" % NS_WORD
 ATTR_W_INSTR = '{%s}instr' % NS_WORD
 ATTR_W_FLDCHARTYPE = '{%s}fldCharType' % NS_WORD
-
 LOCATIONS = ['word/document.xml','word/endnotes.xml','word/footnotes.xml','word/header1.xml','word/footer1.xml','word/header2.xml','word/footer2.xml','word/comments.xml']
+
 # === FUNCTIONS ==============================================================
 
 def process_args():
@@ -119,6 +119,7 @@ def process_file(data):
     # fldChar can be in either a w:r element, floating alone in the w:p or spread accross w:p tags
     # escape DDE if quoted etc
     # (each is a chunk of a DDE link)
+
     for subs in root.iter(TAG_W_P):
         elem = None
         for e in subs:
@@ -150,13 +151,11 @@ def process_file(data):
                 #expand field code if QUOTED
                 ddetext += unquote(elem.text)
 
-
     for elem in root.iter(TAG_W_FLDSIMPLE):
         # concatenate the attribute of the field, if present:
         if elem.attrib is not None:
             fields.append(elem.attrib[ATTR_W_INSTR])
-    
-
+ 
     return fields
 
 def unquote(field): 
@@ -172,6 +171,7 @@ def unquote(field):
             ch = p
         ddestr += ch 
     return ddestr
+
 
 #=== MAIN =================================================================
 
