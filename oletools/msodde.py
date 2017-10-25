@@ -90,6 +90,7 @@ TAG_W_R = "{%s}r" % NS_WORD
 ATTR_W_INSTR = '{%s}instr' % NS_WORD
 ATTR_W_FLDCHARTYPE = '{%s}fldCharType' % NS_WORD
 
+LOCATIONS = ['word/document.xml','word/endnotes.xml','word/footnotes.xml','word/header1.xml','word/footer1.xml','word/header2.xml','word/footer2.xml','word/comments.xml']
 # === FUNCTIONS ==============================================================
 
 def process_args():
@@ -106,10 +107,8 @@ def process_args():
 
 
 
-def process_file(filepath):
-    z = zipfile.ZipFile(filepath)
-    data = z.read('word/document.xml')
-    z.close()
+def process_file(data):
+   
     # parse the XML data:
     root = ET.fromstring(data)
     fields = []
@@ -167,7 +166,11 @@ def unquote(field):
     parts = field.strip().split(" ")
     ddestr = ""
     for p in parts[1:]:
-        ddestr += chr(int(p))
+        try: 
+             ch = chr(int(p))
+        except ValueError:
+            ch = p
+        ddestr += ch 
     return ddestr
 
 #=== MAIN =================================================================
@@ -184,10 +187,17 @@ def main():
     if args.nounquote :
         global NO_QUOTES
         NO_QUOTES = True
-    fields = process_file(args.filepath)
-    print ('DDE Links:')
-    for f in fields:
-        print(f)
+    z = zipfile.ZipFile(args.filepath)
+    for filepath in z.namelist():
+        if filepath in LOCATIONS:
+            data = z.read(filepath)
+            fields = process_file(data)
+            if len(fields) > 0:
+                print ('DDE Links in %s:'%filepath)
+                for f in fields:
+                    print(f)
+    z.close()
+    
 
 
 if __name__ == '__main__':
