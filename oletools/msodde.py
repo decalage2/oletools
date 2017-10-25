@@ -46,6 +46,7 @@ from __future__ import print_function
 # CHANGELOG:
 # 2017-10-18 v0.52 PL: - first version
 # 2017-10-20       PL: - fixed issue #202 (handling empty xml tags)
+# 2017-10-25       CH: - add json output
 
 __version__ = '0.52dev2'
 
@@ -71,6 +72,7 @@ import argparse
 import zipfile
 import os
 import sys
+import json
 
 
 # === CONSTANTS ==============================================================
@@ -83,11 +85,26 @@ TAG_W_INSTRTEXT = '{%s}instrText' % NS_WORD
 TAG_W_FLDSIMPLE = '{%s}fldSimple' % NS_WORD
 TAG_W_INSTRATTR= '{%s}instr' % NS_WORD
 
+# banner to be printed at program start
+BANNER = """
+msodde %s - http://decalage.info/python/oletools
+THIS IS WORK IN PROGRESS - Check updates regularly!
+Please report any issue at https://github.com/decalage2/oletools/issues
+""" % __version__
+
+BANNER_JSON = dict(type='meta', version=__version__, name='msodde',
+                   link='http://decalage.info/python/oletools',
+                   message='THIS IS WORK IN PROGRESS - Check updates regularly! '
+                            'Please report any issue at '
+                            'https://github.com/decalage2/oletools/issues')
+
 # === FUNCTIONS ==============================================================
 
 def process_args():
     parser = argparse.ArgumentParser(description='A python tool to detect and extract DDE links in MS Office files')
     parser.add_argument("filepath", help="path of the file to be analyzed")
+    parser.add_argument("--json", '-j', action='store_true',
+                        help="Output in json format")
 
     args = parser.parse_args()
 
@@ -125,17 +142,39 @@ def process_file(filepath):
 #=== MAIN =================================================================
 
 def main():
-    # print banner with version
-    print ('msodde %s - http://decalage.info/python/oletools' % __version__)
-    print ('THIS IS WORK IN PROGRESS - Check updates regularly!')
-    print ('Please report any issue at https://github.com/decalage2/oletools/issues')
-    print ('')
-
     args = process_args()
-    print('Opening file: %s' % args.filepath)
-    text = process_file(args.filepath)
-    print ('DDE Links:')
-    print(text)
+
+    if args.json:
+        jout = []
+        jout.append(BANNER_JSON)
+    else:
+        # print banner with version
+        print(BANNER)
+
+    if not args.json:
+        print('Opening file: %s' % args.filepath)
+
+    text = ''
+    return_code = 1
+    try:
+        text = process_file(args.filepath)
+        return_code = 0
+    except Exception as exc:
+        if args.json:
+            jout.append(dict(type='error', error=type(exc).__name__,
+                             message=str(exc)))  # strange: str(exc) is enclosed in ""
+        else:
+            raise
+
+    if args.json:
+        for line in text.splitlines():
+            jout.append(dict(type='dde-link', link=line.strip()))
+        json.dump(jout, sys.stdout, check_circular=False, indent=4)
+        print()   # add a newline after closing "]"
+        sys.exit(return_code)  # required if we catch an exception in json-mode
+    else:
+        print ('DDE Links:')
+        print(text)
 
 
 if __name__ == '__main__':
