@@ -93,8 +93,7 @@ TAG_W_FLDSIMPLE = '{%s}fldSimple' % NS_WORD
 TAG_W_INSTRATTR= '{%s}instr' % NS_WORD
 
 # banner to be printed at program start
-BANNER = """
-msodde %s - http://decalage.info/python/oletools
+BANNER = """msodde %s - http://decalage.info/python/oletools
 THIS IS WORK IN PROGRESS - Check updates regularly!
 Please report any issue at https://github.com/decalage2/oletools/issues
 """ % __version__
@@ -105,21 +104,34 @@ BANNER_JSON = dict(type='meta', version=__version__, name='msodde',
                             'Please report any issue at '
                             'https://github.com/decalage2/oletools/issues')
 
-# === FUNCTIONS ==============================================================
+# === ARGUMENT PARSING =======================================================
+
+class ArgParserWithBanner(argparse.ArgumentParser):
+    """ Print banner before showing any error """
+    def error(self, message):
+        print(BANNER)
+        super(ArgParserWithBanner, self).error(message)
+
+
+def existing_file(filename):
+    """ called by argument parser to see whether given file exists """
+    if not os.path.exists(filename):
+        raise argparse.ArgumentTypeError('File {0} does not exist.'
+                                         .format(filename))
+    return filename
+
 
 def process_args():
-    parser = argparse.ArgumentParser(description='A python tool to detect and extract DDE links in MS Office files')
-    parser.add_argument("filepath", help="path of the file to be analyzed")
+    parser = ArgParserWithBanner(description='A python tool to detect and extract DDE links in MS Office files')
+    parser.add_argument("filepath", help="path of the file to be analyzed",
+                        type=existing_file, metavar='FILE')
     parser.add_argument("--json", '-j', action='store_true',
                         help="Output in json format")
 
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    if not os.path.exists(args.filepath):
-        print('File {} does not exist.'.format(args.filepath))
-        sys.exit(1)
 
-    return args
+# === FUNCTIONS ==============================================================
 
 # from [MS-DOC], section 2.8.25 (PlcFld):
 # A field consists of two parts: field instructions and, optionally, a result. All fields MUST begin with
