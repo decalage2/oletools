@@ -121,14 +121,14 @@ def existing_file(filename):
     return filename
 
 
-def process_args():
+def process_args(cmd_line_args=None):
     parser = ArgParserWithBanner(description='A python tool to detect and extract DDE links in MS Office files')
     parser.add_argument("filepath", help="path of the file to be analyzed",
                         type=existing_file, metavar='FILE')
     parser.add_argument("--json", '-j', action='store_true',
                         help="Output in json format")
 
-    return parser.parse_args()
+    return parser.parse_args(cmd_line_args)
 
 
 # === FUNCTIONS ==============================================================
@@ -312,8 +312,14 @@ def process_file(filepath):
 
 #=== MAIN =================================================================
 
-def main():
-    args = process_args()
+def main(cmd_line_args=None):
+    """ Main function, called if this file is called as a script
+
+    Optional argument: command line arguments to be forwarded to ArgumentParser
+    in process_args. Per default (cmd_line_args=None), sys.argv is used. Option
+    mainly added for unit-testing
+    """
+    args = process_args(cmd_line_args)
 
     if args.json:
         jout = []
@@ -342,11 +348,13 @@ def main():
             jout.append(dict(type='dde-link', link=line.strip()))
         json.dump(jout, sys.stdout, check_circular=False, indent=4)
         print()   # add a newline after closing "]"
-        sys.exit(return_code)  # required if we catch an exception in json-mode
+        return return_code  # required if we catch an exception in json-mode
     else:
         print ('DDE Links:')
         print(text)
 
+    return return_code
+
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
