@@ -75,6 +75,12 @@ import os
 import sys
 import json
 
+from oletools.thirdparty import olefile
+
+# === PYTHON 2+3 SUPPORT ======================================================
+
+if sys.version_info[0] >= 3:
+    unichr = chr
 
 # === CONSTANTS ==============================================================
 
