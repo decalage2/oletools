@@ -46,14 +46,16 @@ from __future__ import print_function
 # CHANGELOG:
 # 2017-10-18 v0.52 PL: - first version
 # 2017-10-20       PL: - fixed issue #202 (handling empty xml tags)
+# 2017-10-23       ES: - add check for fldSimple codes
+# 2017-10-24       ES: - group tags and track begin/end tags to keep DDE strings together
 # 2017-10-25       CH: - add json output
 # 2017-10-25       CH: - parse doc
+#                  PL: - added logging
 
-__version__ = '0.52dev3'
+__version__ = '0.52dev4'
 
 #------------------------------------------------------------------------------
-# TODO: detect beginning/end of fields, to separate each field
-# TODO: test if DDE links can also appear in headers, footers and other places
+# TODO: field codes can be in headers/footers/comments - parse these
 # TODO: add xlsx support
 
 #------------------------------------------------------------------------------
@@ -74,6 +76,7 @@ import zipfile
 import os
 import sys
 import json
+import logging
 
 from oletools.thirdparty import olefile
 
@@ -86,11 +89,16 @@ if sys.version_info[0] >= 3:
 
 
 NS_WORD = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
-
+NO_QUOTES = False
 # XML tag for 'w:instrText'
 TAG_W_INSTRTEXT = '{%s}instrText' % NS_WORD
 TAG_W_FLDSIMPLE = '{%s}fldSimple' % NS_WORD
-TAG_W_INSTRATTR= '{%s}instr' % NS_WORD
+TAG_W_FLDCHAR = '{%s}fldChar' % NS_WORD
+TAG_W_P = "{%s}p" % NS_WORD
+TAG_W_R = "{%s}r" % NS_WORD
+ATTR_W_INSTR = '{%s}instr' % NS_WORD
+ATTR_W_FLDCHARTYPE = '{%s}fldCharType' % NS_WORD
+LOCATIONS = ['word/document.xml','word/endnotes.xml','word/footnotes.xml','word/header1.xml','word/footer1.xml','word/header2.xml','word/footer2.xml','word/comments.xml']
 
 # banner to be printed at program start
 BANNER = """msodde %s - http://decalage.info/python/oletools
@@ -103,6 +111,57 @@ BANNER_JSON = dict(type='meta', version=__version__, name='msodde',
                    message='THIS IS WORK IN PROGRESS - Check updates regularly! '
                             'Please report any issue at '
                             'https://github.com/decalage2/oletools/issues')
+
+# === LOGGING =================================================================
+
+DEFAULT_LOG_LEVEL = "warning"  # Default log level
+LOG_LEVELS = {
+    'debug': logging.DEBUG,
+    'info': logging.INFO,
+    'warning': logging.WARNING,
+    'error': logging.ERROR,
+    'critical': logging.CRITICAL
+}
+
+class NullHandler(logging.Handler):
+    """
+    Log Handler without output, to avoid printing messages if logging is not
+    configured by the main application.
+    Python 2.7 has logging.NullHandler, but this is necessary for 2.6:
+    see https://docs.python.org/2.6/library/logging.html#configuring-logging-for-a-library
+    """
+    def emit(self, record):
+        pass
+
+def get_logger(name, level=logging.CRITICAL+1):
+    """
+    Create a suitable logger object for this module.
+    The goal is not to change settings of the root logger, to avoid getting
+    other modules' logs on the screen.
+    If a logger exists with same name, reuse it. (Else it would have duplicate
+    handlers and messages would be doubled.)
+    The level is set to CRITICAL+1 by default, to avoid any logging.
+    """
+    # First, test if there is already a logger with the same name, else it
+    # will generate duplicate messages (due to duplicate handlers):
+    if name in logging.Logger.manager.loggerDict:
+        #NOTE: another less intrusive but more "hackish" solution would be to
+        # use getLogger then test if its effective level is not default.
+        logger = logging.getLogger(name)
+        # make sure level is OK:
+        logger.setLevel(level)
+        return logger
+    # get a new logger:
+    logger = logging.getLogger(name)
+    # only add a NullHandler for this logger, it is up to the application
+    # to configure its own logging:
+    logger.addHandler(NullHandler())
+    logger.setLevel(level)
+    return logger
+
+# a global logger object used for debugging:
+log = get_logger('msodde')
+
 
 # === ARGUMENT PARSING =======================================================
 
@@ -127,6 +186,9 @@ def process_args(cmd_line_args=None):
                         type=existing_file, metavar='FILE')
     parser.add_argument("--json", '-j', action='store_true',
                         help="Output in json format")
+    parser.add_argument("--nounquote", help="don't unquote values",action='store_true')
+    parser.add_argument('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
+                            help="logging level debug/info/warning/error/critical (default=warning)")
 
     return parser.parse_args(cmd_line_args)
 
@@ -268,46 +330,107 @@ def process_ole_storage(ole):
 
 
 def process_ole(filepath):
-    """ find dde links in ole file
+    """ 
+    find dde links in ole file
 
     like process_xml, returns a concatenated unicode string of dde links or
     empty if none were found. dde-links will still being with the dde[auto] key
     word (possibly after some whitespace)
     """
+    log.debug('process_ole')
     #print('Looks like ole')
     ole = olefile.OleFileIO(filepath, path_encoding=None)
     text_parts = process_ole_storage(ole)
     return u'\n'.join(text_parts)
 
 
-def process_xml(filepath):
+def process_openxml(filepath):
+    log.debug('process_openxml')
+    all_fields = []
     z = zipfile.ZipFile(filepath)
-    data = z.read('word/document.xml')
+    for filepath in z.namelist():
+        if filepath in LOCATIONS:
+            data = z.read(filepath)
+            fields = process_xml(data)
+            if len(fields) > 0:
+                #print ('DDE Links in %s:'%filepath)
+                #for f in fields:
+                #    print(f)
+                all_fields.extend(fields)
     z.close()
+    return u'\n'.join(all_fields)
+    
+def process_xml(data):
     # parse the XML data:
     root = ET.fromstring(data)
-    text = u''
-    # find all the tags 'w:instrText':
+    fields = []
+    ddetext = u''
+    level = 0
+    # find all the tags 'w:p':
+    # parse each for begin and end tags, to group DDE strings
+    # fldChar can be in either a w:r element, floating alone in the w:p or spread accross w:p tags
+    # escape DDE if quoted etc
     # (each is a chunk of a DDE link)
-    for elem in root.iter(TAG_W_INSTRTEXT):
-        # concatenate the text of the field, if present:
-        if elem.text is not None:
-            text += elem.text
+
+    for subs in root.iter(TAG_W_P):
+        elem = None
+        for e in subs:
+            #check if w:r and if it is parse children elements to pull out the first FLDCHAR or INSTRTEXT
+            if e.tag == TAG_W_R:
+                for child in e:
+                    if child.tag == TAG_W_FLDCHAR or child.tag == TAG_W_INSTRTEXT:
+                        elem = child
+                        break
+            else:
+                elem = e
+            #this should be an error condition
+            if elem is None:
+                continue
+    
+            #check if FLDCHARTYPE and whether "begin" or "end" tag
+            if elem.attrib.get(ATTR_W_FLDCHARTYPE) is not None:
+                if elem.attrib[ATTR_W_FLDCHARTYPE] == "begin":
+                    level += 1    
+                if elem.attrib[ATTR_W_FLDCHARTYPE] == "end":
+                    level -= 1
+                    if level == 0 or level == -1 : # edge-case where level becomes -1
+                        fields.append(ddetext)
+                        ddetext = u''
+                        level = 0 # reset edge-case
+        
+            # concatenate the text of the field, if present:
+            if elem.tag == TAG_W_INSTRTEXT and elem.text is not None:
+                #expand field code if QUOTED
+                ddetext += unquote(elem.text)
 
     for elem in root.iter(TAG_W_FLDSIMPLE):
         # concatenate the attribute of the field, if present:
         if elem.attrib is not None:
-            text += elem.attrib[TAG_W_INSTRATTR]
+            fields.append(elem.attrib[ATTR_W_INSTR])
+ 
+    return fields
 
-    return text
+def unquote(field): 
+    if "QUOTE" not in field or NO_QUOTES:
+        return field
+    #split into components
+    parts = field.strip().split(" ")
+    ddestr = ""
+    for p in parts[1:]:
+        try: 
+             ch = chr(int(p))
+        except ValueError:
+            ch = p
+        ddestr += ch 
+    return ddestr
 
 
 def process_file(filepath):
-    """ decides to either call process_xml or process_ole """
+    """ decides to either call process_openxml or process_ole """
     if olefile.isOleFile(filepath):
         return process_ole(filepath)
     else:
-        return process_xml(filepath)
+        return process_openxml(filepath)
 
 
 #=== MAIN =================================================================
@@ -321,6 +444,19 @@ def main(cmd_line_args=None):
     """
     args = process_args(cmd_line_args)
 
+    # Setup logging to the console:
+    # here we use stdout instead of stderr by default, so that the output
+    # can be redirected properly.
+    logging.basicConfig(level=LOG_LEVELS[args.loglevel], stream=sys.stdout,
+                        format='%(levelname)-8s %(message)s')
+    # enable logging in the modules:
+    log.setLevel(logging.NOTSET)
+
+
+    if args.nounquote :
+        global NO_QUOTES
+        NO_QUOTES = True
+        
     if args.json:
         jout = []
         jout.append(BANNER_JSON)
