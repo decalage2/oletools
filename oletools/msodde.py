@@ -50,6 +50,7 @@ from __future__ import print_function
 # 2017-10-24       ES: - group tags and track begin/end tags to keep DDE strings together
 # 2017-10-25       CH: - add json output
 # 2017-10-25       CH: - parse doc
+#                  PL: - added logging
 
 __version__ = '0.52dev4'
 
@@ -75,6 +76,7 @@ import zipfile
 import os
 import sys
 import json
+import logging
 
 from oletools.thirdparty import olefile
 
@@ -110,6 +112,57 @@ BANNER_JSON = dict(type='meta', version=__version__, name='msodde',
                             'Please report any issue at '
                             'https://github.com/decalage2/oletools/issues')
 
+# === LOGGING =================================================================
+
+DEFAULT_LOG_LEVEL = "warning"  # Default log level
+LOG_LEVELS = {
+    'debug': logging.DEBUG,
+    'info': logging.INFO,
+    'warning': logging.WARNING,
+    'error': logging.ERROR,
+    'critical': logging.CRITICAL
+}
+
+class NullHandler(logging.Handler):
+    """
+    Log Handler without output, to avoid printing messages if logging is not
+    configured by the main application.
+    Python 2.7 has logging.NullHandler, but this is necessary for 2.6:
+    see https://docs.python.org/2.6/library/logging.html#configuring-logging-for-a-library
+    """
+    def emit(self, record):
+        pass
+
+def get_logger(name, level=logging.CRITICAL+1):
+    """
+    Create a suitable logger object for this module.
+    The goal is not to change settings of the root logger, to avoid getting
+    other modules' logs on the screen.
+    If a logger exists with same name, reuse it. (Else it would have duplicate
+    handlers and messages would be doubled.)
+    The level is set to CRITICAL+1 by default, to avoid any logging.
+    """
+    # First, test if there is already a logger with the same name, else it
+    # will generate duplicate messages (due to duplicate handlers):
+    if name in logging.Logger.manager.loggerDict:
+        #NOTE: another less intrusive but more "hackish" solution would be to
+        # use getLogger then test if its effective level is not default.
+        logger = logging.getLogger(name)
+        # make sure level is OK:
+        logger.setLevel(level)
+        return logger
+    # get a new logger:
+    logger = logging.getLogger(name)
+    # only add a NullHandler for this logger, it is up to the application
+    # to configure its own logging:
+    logger.addHandler(NullHandler())
+    logger.setLevel(level)
+    return logger
+
+# a global logger object used for debugging:
+log = get_logger('msodde')
+
+
 # === ARGUMENT PARSING =======================================================
 
 class ArgParserWithBanner(argparse.ArgumentParser):
@@ -134,6 +187,8 @@ def process_args(cmd_line_args=None):
     parser.add_argument("--json", '-j', action='store_true',
                         help="Output in json format")
     parser.add_argument("--nounquote", help="don't unquote values",action='store_true')
+    parser.add_argument('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
+                            help="logging level debug/info/warning/error/critical (default=warning)")
 
     return parser.parse_args(cmd_line_args)
 
@@ -282,6 +337,7 @@ def process_ole(filepath):
     empty if none were found. dde-links will still being with the dde[auto] key
     word (possibly after some whitespace)
     """
+    log.debug('process_ole')
     #print('Looks like ole')
     ole = olefile.OleFileIO(filepath, path_encoding=None)
     text_parts = process_ole_storage(ole)
@@ -289,8 +345,9 @@ def process_ole(filepath):
 
 
 def process_openxml(filepath):
+    log.debug('process_openxml')
     all_fields = []
-    z = zipfile.ZipFile(args.filepath)
+    z = zipfile.ZipFile(filepath)
     for filepath in z.namelist():
         if filepath in LOCATIONS:
             data = z.read(filepath)
@@ -386,6 +443,15 @@ def main(cmd_line_args=None):
     mainly added for unit-testing
     """
     args = process_args(cmd_line_args)
+
+    # Setup logging to the console:
+    # here we use stdout instead of stderr by default, so that the output
+    # can be redirected properly.
+    logging.basicConfig(level=LOG_LEVELS[args.loglevel], stream=sys.stdout,
+                        format='%(levelname)-8s %(message)s')
+    # enable logging in the modules:
+    log.setLevel(logging.NOTSET)
+
 
     if args.nounquote :
         global NO_QUOTES
