@@ -9,9 +9,9 @@ import unittest
 import sys
 import json
 import os
-from os.path import join, dirname, normpath
+from os.path import join
 from oletools import msodde
-from tests.test_utils import OutputCapture
+from tests.test_utils import OutputCapture, DATA_BASE_DIR
 
 if sys.version_info[0] <= 2:
     from oletools import olevba
@@ -19,16 +19,12 @@ else:
     from oletools import olevba3 as olevba
 
 
-# Directory with test data, independent of current working directory
-DATA_DIR = normpath(join(dirname(__file__), '..', 'test-data'))
-
-
 class TestValidJson(unittest.TestCase):
     """ Ensure that script output is valid json (if return code is 0) """
 
     def iter_test_files(self):
-        """ Iterate over all test files in DATA_DIR """
-        for dirpath, _, filenames in os.walk(DATA_DIR):
+        """ Iterate over all test files in DATA_BASE_DIR """
+        for dirpath, _, filenames in os.walk(DATA_BASE_DIR):
             for filename in filenames:
                 yield join(dirpath, filename)
 

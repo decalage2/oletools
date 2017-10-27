@@ -10,14 +10,10 @@ from __future__ import print_function
 
 import unittest
 from oletools import msodde
-from tests.test_utils import OutputCapture
+from tests.test_utils import OutputCapture, DATA_BASE_DIR as BASE_DIR
 import shlex
-from os.path import join, dirname, normpath
+from os.path import join
 from traceback import print_exc
-
-
-# base directory for test input
-BASE_DIR = normpath(join(dirname(__file__), '..', 'test-data'))
 
 
 class TestReturnCode(unittest.TestCase):
