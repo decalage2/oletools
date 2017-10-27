@@ -56,6 +56,7 @@ class TestValidJson(unittest.TestCase):
         except ValueError:
             self.fail('Invalid json:\n' + capturer.buffer.getvalue())
         self.assertNotEqual(len(json_data), 0, msg='Output was empty')
+        return json_data
 
     def run_all_files(self, program, args_without_filename, print_output=False):
         """ run test for a single program over all test files """
@@ -71,20 +72,20 @@ class TestValidJson(unittest.TestCase):
         """ Test msodde.py """
         self.run_all_files(msodde.main, ['-j', ])
 
-    @unittest.skip('olevba needs patching to accept custom cmd line args')
     def test_olevba(self):
         """ Test olevba.py with default args """
         self.run_all_files(olevba.main, ['-j', ])
 
-    @unittest.skip('olevba needs patching to accept custom cmd line args')
     def test_olevba_analysis(self):
-        """ Test olevba.py with default args """
+        """ Test olevba.py with -a """
         self.run_all_files(olevba.main, ['-j', '-a', ])
 
-    @unittest.skip('olevba needs patching to accept custom cmd line args')
     def test_olevba_recurse(self):
-        """ Test olevba.py with default args """
-        self.run_and_parse(olevba.main, ['-j', '-r', DATA_DIR], True)
+        """ Test olevba.py with -r """
+        json_data = self.run_and_parse(olevba.main,
+                                       ['-j', '-r', join(DATA_BASE_DIR, '*')])
+        self.assertNotEqual(json_data[-1]['n_processed'], 0,
+                            msg='self-test fail: No test files found!')
 
 
 # just in case somebody calls this file as a script
