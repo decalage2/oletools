@@ -163,6 +163,56 @@ def get_logger(name, level=logging.CRITICAL+1):
 log = get_logger('msodde')
 
 
+# === UNICODE IN PY2 =========================================================
+
+def ensure_stdout_handles_unicode():
+    """ Ensure stdout can handle unicode by wrapping it if necessary
+
+    Required e.g. if output of this script is piped or redirected in a linux
+    shell, since then sys.stdout.encoding is ascii and cannot handle
+    print(unicode). In that case we need to find some compatible encoding and
+    wrap sys.stdout into a encoder following (many thanks!)
+    https://stackoverflow.com/a/1819009 or https://stackoverflow.com/a/20447935
+
+    Can be undone by setting sys.stdout = sys.__stdout__
+    """
+    import codecs
+    import locale
+
+    # do not re-wrap
+    if isinstance(sys.stdout, codecs.StreamWriter):
+        return
+
+    # try to find encoding for sys.stdout
+    encoding = None
+    try:
+        encoding = sys.stdout.encoding  # variable encoding might not exist
+    except Exception:
+        pass
+
+    if encoding not in (None, '', 'ascii'):
+        return   # no need to wrap
+
+    # try to find an encoding that can handle unicode
+    try:
+        encoding = locale.getpreferredencoding()
+    except Exception:
+        pass
+
+    # fallback if still no encoding available
+    if encoding in (None, '', 'ascii'):
+        encoding = 'utf8'
+
+    # logging is probably not initialized yet, but just in case
+    log.debug('wrapping sys.stdout with encoder using {0}'.format(encoding))
+
+    wrapper = codecs.getwriter(encoding)
+    sys.stdout = wrapper(sys.stdout)
+
+
+ensure_stdout_handles_unicode()   # e.g. for print(text) in main()
+
+
 # === ARGUMENT PARSING =======================================================
 
 class ArgParserWithBanner(argparse.ArgumentParser):
