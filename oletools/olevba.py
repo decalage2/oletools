@@ -3269,10 +3269,9 @@ class VBA_Parser_CLI(VBA_Parser):
 
 #=== MAIN =====================================================================
 
-def main():
-    """
-    Main function, called when olevba is run from the command line
-    """
+def parse_args(cmd_line_args=None):
+    """ parse command line arguments (given ones or per default sys.argv) """
+
     DEFAULT_LOG_LEVEL = "warning" # Default log level
     LOG_LEVELS = {
         'debug':    logging.DEBUG,
@@ -3324,7 +3323,7 @@ def main():
     parser.add_option('--relaxed', dest="relaxed", action="store_true", default=False,
                             help="Do not raise errors if opening of substream fails")
 
-    (options, args) = parser.parse_args()
+    (options, args) = parser.parse_args(cmd_line_args)
 
     # Print help if no arguments are passed
     if len(args) == 0:
@@ -3332,6 +3331,22 @@ def main():
         print(__doc__)
         parser.print_help()
         sys.exit(RETURN_WRONG_ARGS)
+
+    options.loglevel = LOG_LEVELS[options.loglevel]
+
+    return options, args
+
+
+def main(cmd_line_args=None):
+    """
+    Main function, called when olevba is run from the command line
+
+    Optional argument: command line arguments to be forwarded to ArgumentParser
+    in process_args. Per default (cmd_line_args=None), sys.argv is used. Option
+    mainly added for unit-testing
+    """
+
+    options, args = parse_args(cmd_line_args)
 
     # provide info about tool and its version
     if options.output_mode == 'json':
@@ -3342,7 +3357,7 @@ def main():
     else:
         print('olevba %s - http://decalage.info/python/oletools' % __version__)
 
-    logging.basicConfig(level=LOG_LEVELS[options.loglevel], format='%(levelname)-8s %(message)s')
+    logging.basicConfig(level=options.loglevel, format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
     enable_logging()
 
