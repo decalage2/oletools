@@ -42,7 +42,7 @@ class TestValidJson(unittest.TestCase):
             if print_output:
                 print('Command failed ({0}) -- not parsing output'
                       .format(return_code))
-            return    # no need to test
+            return []    # no need to test
 
         self.assertNotEqual(return_code, None,
                             msg='self-test fail: return_code not set')
@@ -84,6 +84,8 @@ class TestValidJson(unittest.TestCase):
         """ Test olevba.py with -r """
         json_data = self.run_and_parse(olevba.main,
                                        ['-j', '-r', join(DATA_BASE_DIR, '*')])
+        self.assertNotEqual(len(json_data), 0,
+                            msg='olevba[3] returned non-zero or no output')
         self.assertNotEqual(json_data[-1]['n_processed'], 0,
                             msg='self-test fail: No test files found!')
 
