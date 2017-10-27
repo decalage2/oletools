@@ -10,16 +10,10 @@ from __future__ import print_function
 
 import unittest
 from oletools import msodde
+from tests.test_utils import OutputCapture
 import shlex
 from os.path import join, dirname, normpath
-import sys
-
-# python 2/3 version conflict:
-if sys.version_info.major <= 2:
-    from StringIO import StringIO
-    #from io import BytesIO as StringIO - try if print() gives UnicodeError
-else:
-    from io import StringIO
+from traceback import print_exc
 
 
 # base directory for test input
@@ -74,6 +68,7 @@ class TestReturnCode(unittest.TestCase):
             return_code = msodde.main(args)
         except Exception:
             have_exception = True
+            print_exc()
         except SystemExit as se:     # sys.exit() was called
             return_code = se.code
             if se.code is None:
@@ -83,30 +78,6 @@ class TestReturnCode(unittest.TestCase):
                          msg='Args={0}, expect={1}, exc={2}, return={3}'
                              .format(args, expect_error, have_exception,
                                      return_code))
-
-
-class OutputCapture:
-    """ context manager that captures stdout """
-
-    def __init__(self):
-        self.output = StringIO()   # in py2, this actually is BytesIO
-
-    def __enter__(self):
-        sys.stdout = self.output
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        sys.stdout = sys.__stdout__    # re-set to original
-
-        if exc_type:   # there has been an error
-            print('Got error during output capture!')
-            print('Print captured output and re-raise:')
-            for line in self.output.getvalue().splitlines():
-                print(line.rstrip())  # print output before re-raising
-
-    def __iter__(self):
-        for line in self.output.getvalue().splitlines():
-            yield line.rstrip()   # remove newline at end of line
 
 
 class TestDdeInDoc(unittest.TestCase):
