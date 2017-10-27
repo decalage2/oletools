@@ -109,8 +109,8 @@ Please report any issue at https://github.com/decalage2/oletools/issues
 BANNER_JSON = dict(type='meta', version=__version__, name='msodde',
                    link='http://decalage.info/python/oletools',
                    message='THIS IS WORK IN PROGRESS - Check updates regularly! '
-                            'Please report any issue at '
-                            'https://github.com/decalage2/oletools/issues')
+                           'Please report any issue at '
+                           'https://github.com/decalage2/oletools/issues')
 
 # === LOGGING =================================================================
 
@@ -231,6 +231,7 @@ def existing_file(filename):
 
 
 def process_args(cmd_line_args=None):
+    """ parse command line arguments (given ones or per default sys.argv) """
     parser = ArgParserWithBanner(description='A python tool to detect and extract DDE links in MS Office files')
     parser.add_argument("filepath", help="path of the file to be analyzed",
                         type=existing_file, metavar='FILE')
@@ -339,7 +340,7 @@ def process_ole_stream(stream):
 
 
 def process_ole_storage(ole):
-    """ process a "directory" inside an ole stream """
+    """ process a "directory" inside an ole file; recursive """
     results = []
     for st in ole.listdir(streams=True, storages=True):
         st_type = ole.get_type(st)
@@ -350,7 +351,7 @@ def process_ole_storage(ole):
                 stream = ole.openstream(st)
                 log.debug('Checking stream {0}'.format(st))
                 links = process_ole_stream(stream)
-            except:
+            except Exception:
                 raise
             finally:
                 if stream:
@@ -370,7 +371,7 @@ def process_ole_storage(ole):
 
 
 def process_ole(filepath):
-    """ 
+    """
     find dde links in ole file
 
     like process_xml, returns a concatenated unicode string of dde links or
@@ -524,7 +525,8 @@ def main(cmd_line_args=None):
 
     if args.json:
         for line in text.splitlines():
-            jout.append(dict(type='dde-link', link=line.strip()))
+            if line.strip():
+                jout.append(dict(type='dde-link', link=line.strip()))
         json.dump(jout, sys.stdout, check_circular=False, indent=4)
         print()   # add a newline after closing "]"
         return return_code  # required if we catch an exception in json-mode
