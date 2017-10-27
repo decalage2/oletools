@@ -3313,7 +3313,7 @@ def main(cmd_line_args=None):
         # print first json entry with meta info and opening '['
         print_json(script_name='olevba', version=__version__,
                    url='http://decalage.info/python/oletools',
-                   type='MetaInformation', _first_json=True)
+                   type='MetaInformation', _json_is_first=True)
     else:
         print('olevba %s - http://decalage.info/python/oletools' % __version__)
 
