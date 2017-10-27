@@ -285,8 +285,7 @@ def process_ole_stream(stream):
     log.debug('Checked {0} characters, found {1} fields'
               .format(idx, len(result_parts)))
 
-    # copy behaviour of process_xml: Just concatenate unicode strings
-    return u''.join(result_parts)
+    return result_parts
 
 
 def process_ole_storage(ole):
@@ -296,7 +295,7 @@ def process_ole_storage(ole):
         st_type = ole.get_type(st)
         if st_type == olefile.STGTY_STREAM:      # a stream
             stream = None
-            links = ''
+            links = []
             try:
                 stream = ole.openstream(st)
                 log.debug('Checking stream {0}'.format(st))
@@ -307,7 +306,7 @@ def process_ole_storage(ole):
                 if stream:
                     stream.close()
             if links:
-                results.append(links)
+                results.extend(links)
         elif st_type == olefile.STGTY_STORAGE:   # a storage
             log.debug('Checking storage {0}'.format(st))
             links = process_ole_storage(st)
@@ -331,6 +330,8 @@ def process_ole(filepath):
     log.debug('process_ole')
     ole = olefile.OleFileIO(filepath, path_encoding=None)
     text_parts = process_ole_storage(ole)
+
+    # mimic behaviour of process_openxml: combine links to single text string
     return u'\n'.join(text_parts)
 
 
