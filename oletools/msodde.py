@@ -78,6 +78,13 @@ import sys
 import json
 import logging
 
+# little hack to allow absolute imports even if oletools is not installed
+# Copied from olevba.py
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+if not _parent_dir in sys.path:
+    sys.path.insert(0, _parent_dir)
+
 from oletools.thirdparty import olefile
 
 # === PYTHON 2+3 SUPPORT ======================================================
