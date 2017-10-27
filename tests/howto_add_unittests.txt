@@ -1,8 +1,12 @@
 Howto: Add unittests
 --------------------
 
-For helping python's unittest to discover your tests, do the
-following:
+Note: The following are just guidelines to help inexperienced users create unit
+tests. The python unittest library (see
+https://docs.python.org/2/library/unittest.html) offers much more flexibility
+than described here.
+
+For helping python's unittest to discover your tests, do the following:
 
 * create a subdirectory within oletools/tests/
   - The directory name must be a valid python package name,
