@@ -1,6 +1,6 @@
 import unittest, sys, os
 
-from .. import testdata_reader
+from tests.test_utils import testdata_reader
 from oletools import rtfobj
 
 class TestRtfObjIssue185(unittest.TestCase):
