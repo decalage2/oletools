@@ -2024,19 +2024,19 @@ def json2ascii(json_obj, encoding='utf8', errors='replace'):
     return json_obj
 
 
-_have_printed_json_start = False
-
-def print_json(json_dict=None, _json_is_last=False, **json_parts):
+def print_json(json_dict=None, _json_is_first=False, _json_is_last=False,
+               **json_parts):
     """ line-wise print of json.dumps(json2ascii(..)) with options and indent+1
 
     can use in two ways:
     (1) print_json(some_dict)
     (2) print_json(key1=value1, key2=value2, ...)
 
+    :param bool _json_is_first: set to True only for very first entry to complete
+                                the top-level json-list
     :param bool _json_is_last: set to True only for very last entry to complete
                                the top-level json-list
     """
-    global _have_printed_json_start
 
     if json_dict and json_parts:
         raise ValueError('Invalid json argument: want either single dict or '
@@ -2048,9 +2048,8 @@ def print_json(json_dict=None, _json_is_last=False, **json_parts):
     if json_parts:
         json_dict = json_parts
 
-    if not _have_printed_json_start:
+    if _json_is_first:
         print('[')
-        _have_printed_json_start = True
 
     lines = json.dumps(json2ascii(json_dict), check_circular=False,
                            indent=4, ensure_ascii=False).splitlines()
@@ -3269,10 +3268,9 @@ class VBA_Parser_CLI(VBA_Parser):
 
 #=== MAIN =====================================================================
 
-def main():
-    """
-    Main function, called when olevba is run from the command line
-    """
+def parse_args(cmd_line_args=None):
+    """ parse command line arguments (given ones or per default sys.argv) """
+
     DEFAULT_LOG_LEVEL = "warning" # Default log level
     LOG_LEVELS = {
         'debug':    logging.DEBUG,
@@ -3324,7 +3322,7 @@ def main():
     parser.add_option('--relaxed', dest="relaxed", action="store_true", default=False,
                             help="Do not raise errors if opening of substream fails")
 
-    (options, args) = parser.parse_args()
+    (options, args) = parser.parse_args(cmd_line_args)
 
     # Print help if no arguments are passed
     if len(args) == 0:
@@ -3333,16 +3331,32 @@ def main():
         parser.print_help()
         sys.exit(RETURN_WRONG_ARGS)
 
+    options.loglevel = LOG_LEVELS[options.loglevel]
+
+    return options, args
+
+
+def main(cmd_line_args=None):
+    """
+    Main function, called when olevba is run from the command line
+
+    Optional argument: command line arguments to be forwarded to ArgumentParser
+    in process_args. Per default (cmd_line_args=None), sys.argv is used. Option
+    mainly added for unit-testing
+    """
+
+    options, args = parse_args(cmd_line_args)
+
     # provide info about tool and its version
     if options.output_mode == 'json':
-        # prints opening [
+        # print first json entry with meta info and opening '['
         print_json(script_name='olevba', version=__version__,
                    url='http://decalage.info/python/oletools',
-                   type='MetaInformation')
+                   type='MetaInformation', _json_is_first=True)
     else:
         print('olevba %s - http://decalage.info/python/oletools' % __version__)
 
-    logging.basicConfig(level=LOG_LEVELS[options.loglevel], format='%(levelname)-8s %(message)s')
+    logging.basicConfig(level=options.loglevel, format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
     enable_logging()
 
