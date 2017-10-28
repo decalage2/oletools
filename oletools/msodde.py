@@ -78,6 +78,13 @@ import sys
 import json
 import logging
 
+# little hack to allow absolute imports even if oletools is not installed
+# Copied from olevba.py
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+if not _parent_dir in sys.path:
+    sys.path.insert(0, _parent_dir)
+
 from oletools.thirdparty import olefile
 
 # === PYTHON 2+3 SUPPORT ======================================================
@@ -109,8 +116,8 @@ Please report any issue at https://github.com/decalage2/oletools/issues
 BANNER_JSON = dict(type='meta', version=__version__, name='msodde',
                    link='http://decalage.info/python/oletools',
                    message='THIS IS WORK IN PROGRESS - Check updates regularly! '
-                            'Please report any issue at '
-                            'https://github.com/decalage2/oletools/issues')
+                           'Please report any issue at '
+                           'https://github.com/decalage2/oletools/issues')
 
 # === LOGGING =================================================================
 
@@ -163,6 +170,56 @@ def get_logger(name, level=logging.CRITICAL+1):
 log = get_logger('msodde')
 
 
+# === UNICODE IN PY2 =========================================================
+
+def ensure_stdout_handles_unicode():
+    """ Ensure stdout can handle unicode by wrapping it if necessary
+
+    Required e.g. if output of this script is piped or redirected in a linux
+    shell, since then sys.stdout.encoding is ascii and cannot handle
+    print(unicode). In that case we need to find some compatible encoding and
+    wrap sys.stdout into a encoder following (many thanks!)
+    https://stackoverflow.com/a/1819009 or https://stackoverflow.com/a/20447935
+
+    Can be undone by setting sys.stdout = sys.__stdout__
+    """
+    import codecs
+    import locale
+
+    # do not re-wrap
+    if isinstance(sys.stdout, codecs.StreamWriter):
+        return
+
+    # try to find encoding for sys.stdout
+    encoding = None
+    try:
+        encoding = sys.stdout.encoding  # variable encoding might not exist
+    except Exception:
+        pass
+
+    if encoding not in (None, '', 'ascii'):
+        return   # no need to wrap
+
+    # try to find an encoding that can handle unicode
+    try:
+        encoding = locale.getpreferredencoding()
+    except Exception:
+        pass
+
+    # fallback if still no encoding available
+    if encoding in (None, '', 'ascii'):
+        encoding = 'utf8'
+
+    # logging is probably not initialized yet, but just in case
+    log.debug('wrapping sys.stdout with encoder using {0}'.format(encoding))
+
+    wrapper = codecs.getwriter(encoding)
+    sys.stdout = wrapper(sys.stdout)
+
+
+ensure_stdout_handles_unicode()   # e.g. for print(text) in main()
+
+
 # === ARGUMENT PARSING =======================================================
 
 class ArgParserWithBanner(argparse.ArgumentParser):
@@ -181,14 +238,15 @@ def existing_file(filename):
 
 
 def process_args(cmd_line_args=None):
+    """ parse command line arguments (given ones or per default sys.argv) """
     parser = ArgParserWithBanner(description='A python tool to detect and extract DDE links in MS Office files')
     parser.add_argument("filepath", help="path of the file to be analyzed",
                         type=existing_file, metavar='FILE')
     parser.add_argument("--json", '-j', action='store_true',
-                        help="Output in json format")
+                        help="Output in json format. Do not use with -ldebug")
     parser.add_argument("--nounquote", help="don't unquote values",action='store_true')
     parser.add_argument('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
-                            help="logging level debug/info/warning/error/critical (default=warning)")
+                        help="logging level debug/info/warning/error/critical (default=%(default)s)")
 
     return parser.parse_args(cmd_line_args)
 
@@ -212,10 +270,10 @@ def process_ole_field(data):
     """ check if field instructions start with DDE
 
     expects unicode input, returns unicode output (empty if not dde) """
-    #print('processing field \'{0}\''.format(data))
+    #log.debug('processing field \'{0}\''.format(data))
 
     if data.lstrip().lower().startswith(u'dde'):
-        #print('--> is DDE!')
+        #log.debug('--> is DDE!')
         return data
     else:
         return u''
@@ -248,10 +306,6 @@ def process_ole_stream(stream):
             char = ord(char)
 
         if char == OLE_FIELD_START:
-            #print('DEBUG: have start at {}'.format(idx))
-            #if have_start:
-            #    print("DEBUG: dismissing previous contents of length {}"
-            #          .format(len(field_contents)))
             have_start = True
             have_sep = False
             max_size_exceeded = False
@@ -262,11 +316,8 @@ def process_ole_stream(stream):
 
         # now we are after start char but not at end yet
         if char == OLE_FIELD_SEP:
-            #print('DEBUG: have sep at {}'.format(idx))
             have_sep = True
         elif char == OLE_FIELD_END:
-            #print('DEBUG: have end at {}'.format(idx))
-
             # have complete field now, process it
             result_parts.append(process_ole_field(field_contents))
 
@@ -279,58 +330,55 @@ def process_ole_stream(stream):
             if max_size_exceeded:
                 pass
             elif len(field_contents) > OLE_FIELD_MAX_SIZE:
-                #print('DEBUG: exceeded max size')
+                log.debug('field exceeds max size of {0}. Ignore rest'
+                          .format(OLE_FIELD_MAX_SIZE))
                 max_size_exceeded = True
 
             # appending a raw byte to a unicode string here. Not clean but
             # all we do later is check for the ascii-sequence 'DDE' later...
             elif char < 128:
                 field_contents += unichr(char)
-                #print('DEBUG: at idx {:4d}: add byte {} ({})'
-                #      .format(idx, unichr(char), char))
             else:
                 field_contents += u'?'
-                #print('DEBUG: at idx {:4d}: add byte ? ({})'
-                #      .format(idx, char))
-    #print('\nstream len = {}'.format(idx))
+    log.debug('Checked {0} characters, found {1} fields'
+              .format(idx, len(result_parts)))
 
-    # copy behaviour of process_xml: Just concatenate unicode strings
-    return u''.join(result_parts)
+    return result_parts
 
 
 def process_ole_storage(ole):
-    """ process a "directory" inside an ole stream """
+    """ process a "directory" inside an ole file; recursive """
     results = []
     for st in ole.listdir(streams=True, storages=True):
         st_type = ole.get_type(st)
         if st_type == olefile.STGTY_STREAM:      # a stream
             stream = None
-            links = ''
+            links = []
             try:
                 stream = ole.openstream(st)
-                #print('Checking stream {0}'.format(st))
+                log.debug('Checking stream {0}'.format(st))
                 links = process_ole_stream(stream)
-            except:
+            except Exception:
                 raise
             finally:
                 if stream:
                     stream.close()
             if links:
-                results.append(links)
+                results.extend(links)
         elif st_type == olefile.STGTY_STORAGE:   # a storage
-            #print('Checking storage {0}'.format(st))
+            log.debug('Checking storage {0}'.format(st))
             links = process_ole_storage(st)
             if links:
                 results.extend(links)
         else:
-            #print('Warning: unexpected type {0} for entry {1}. Ignore it'
-            #      .format(st_type, st))
+            log.info('unexpected type {0} for entry {1}. Ignore it'
+                     .format(st_type, st))
             continue
     return results
 
 
 def process_ole(filepath):
-    """ 
+    """
     find dde links in ole file
 
     like process_xml, returns a concatenated unicode string of dde links or
@@ -338,9 +386,10 @@ def process_ole(filepath):
     word (possibly after some whitespace)
     """
     log.debug('process_ole')
-    #print('Looks like ole')
     ole = olefile.OleFileIO(filepath, path_encoding=None)
     text_parts = process_ole_storage(ole)
+
+    # mimic behaviour of process_openxml: combine links to single text string
     return u'\n'.join(text_parts)
 
 
@@ -452,6 +501,8 @@ def main(cmd_line_args=None):
     # enable logging in the modules:
     log.setLevel(logging.NOTSET)
 
+    if args.json and args.loglevel.lower() == 'debug':
+        log.warning('Debug log output will not be json-compatible!')
 
     if args.nounquote :
         global NO_QUOTES
@@ -481,7 +532,8 @@ def main(cmd_line_args=None):
 
     if args.json:
         for line in text.splitlines():
-            jout.append(dict(type='dde-link', link=line.strip()))
+            if line.strip():
+                jout.append(dict(type='dde-link', link=line.strip()))
         json.dump(jout, sys.stdout, check_circular=False, indent=4)
         print()   # add a newline after closing "]"
         return return_code  # required if we catch an exception in json-mode
