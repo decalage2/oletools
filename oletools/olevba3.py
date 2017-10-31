@@ -3137,9 +3137,12 @@ class VBA_Parser_CLI(VBA_Parser):
             if self.detect_vba_macros():
                 for (subfilename, stream_path, vba_filename, vba_code) in self.extract_all_macros():
                     curr_macro = {}
+                    if isinstance(vba_code, bytes):
+                        vba_code = vba_code.decode('utf-8', 'backslashreplace')
+
                     if hide_attributes:
                         # hide attribute lines:
-                        vba_code_filtered = filter_vba(vba_code.decode('utf-8','backslashreplace'))
+                        vba_code_filtered = filter_vba(vba_code)
                     else:
                         vba_code_filtered = vba_code
 
