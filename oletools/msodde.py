@@ -275,6 +275,8 @@ def process_ole_field(data):
     if data.lstrip().lower().startswith(u'dde'):
         #log.debug('--> is DDE!')
         return data
+    elif data.lstrip().lower().startswith(u'\00d\x00d\x00e\x00'):
+        return data
     else:
         return u''
 
