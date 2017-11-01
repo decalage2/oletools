@@ -21,7 +21,7 @@ class TestReturnCode(unittest.TestCase):
     def test_valid_doc(self):
         """ check that a valid doc file leads to 0 exit status """
         for filename in ('dde-test-from-office2003', 'dde-test-from-office2016',
-                         'harmless-clean'):
+                         'harmless-clean', 'dde-test-from-office2013-utf_16le-korean'):
             self.do_test_validity(join(BASE_DIR, 'msodde-doc',
                                        filename + '.doc'))
 
@@ -107,6 +107,14 @@ class TestDdeInDoc(unittest.TestCase):
             msodde.main([join(BASE_DIR, 'msodde-doc', 'harmless-clean.doc')])
         self.assertEqual(len(self.get_dde_from_output(capturer)), 0,
                          msg='Found dde links in output for doc file')
+
+    def test_with_dde_utf16le(self):
+        """ check that dde links appear on stdout """
+        with OutputCapture() as capturer:
+            msodde.main([join(BASE_DIR, 'msodde-doc',
+                              'dde-test-from-office2013-utf_16le-korean.doc')])
+        self.assertNotEqual(len(self.get_dde_from_output(capturer)), 0,
+                            msg='Found no dde links in output for doc file')
 
 
 if __name__ == '__main__':
