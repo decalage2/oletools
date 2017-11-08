@@ -122,7 +122,7 @@ def consume_GuidAndFont(stream):
         stream.read(9)
         bFaceLen = stream.unpack('<B', 1)
         stream.read(bFaceLen)
-    elif UUIDs == (2948729120, 55886, 4558, 13349514450607572916L):
+    elif UUIDS == (2948729120, 55886, 4558, 13349514450607572916L):
         # UUID == {AFC20920-DA4E-11CE-B94300AA006887B4}
         consume_TextProps(stream)
     else:
@@ -286,6 +286,9 @@ def extract_OleFormVariables(ole_file, stream_dir):
     data = ExtendedStream.open(ole_file, '/'.join(stream_dir + ['o']))
     for var in variables:
         if var['ClsidCacheIndex'] != 23:
-            raise OleFormParsingError('Unsupported stored type: {0}'.format(str(var['ClsidCacheIndex'])))
-        var['value'] = consume_MorphDataControl(data)
+            #raise OleFormParsingError('Unsupported stored type: {0}'.format(str(var['ClsidCacheIndex'])))
+            print('ERROR: Unsupported stored type in user form: {0}'.format(str(var['ClsidCacheIndex'])))
+            var['value'] = None
+        else:
+            var['value'] = consume_MorphDataControl(data)
     return variables
