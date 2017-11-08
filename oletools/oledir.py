@@ -2,7 +2,7 @@
 """
 oledir.py
 
-oledir parses OLE files to display technical information about its directory
+oledir parses OLE files to display technical information about their directory
 entries, including deleted/orphan streams/storages and unused entries.
 
 Author: Philippe Lagadec - http://www.decalage.info
@@ -14,7 +14,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE ==================================================================
 
-# oledir is copyright (c) 2015-2016 Philippe Lagadec (http://www.decalage.info)
+# oledir is copyright (c) 2015-2017 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -37,6 +37,7 @@ http://www.decalage.info/python/oletools
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
 
 #------------------------------------------------------------------------------
 # CHANGELOG:
@@ -45,8 +46,10 @@ http://www.decalage.info/python/oletools
 # 2016-01-13 v0.03 PL: - replaced prettytable by tablestream, added colors
 # 2016-07-20 v0.50 SL: - added Python 3 support
 # 2016-08-09       PL: - fixed issue #77 (imports from thirdparty dir)
+# 2017-03-08 v0.51 PL: - fixed absolute imports, added optparse
+#                      - added support for zip files and wildcards
 
-__version__ = '0.50'
+__version__ = '0.51'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -55,12 +58,22 @@ __version__ = '0.50'
 
 # === IMPORTS ================================================================
 
-import sys, os
+import sys, os, optparse
 
-# add the thirdparty subfolder to sys.path (absolute+normalized path):
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
 _thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
 # print('_thismodule_dir = %r' % _thismodule_dir)
-# assumption: the thirdparty dir is a subfolder:
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _parent_dir)
+if not _parent_dir in sys.path:
+    sys.path.insert(0, _parent_dir)
+
+# we also need the thirdparty dir for colorclass
+# TODO: remove colorclass from thirdparty, make it a dependency
 _thirdparty_dir = os.path.normpath(os.path.join(_thismodule_dir, 'thirdparty'))
 # print('_thirdparty_dir = %r' % _thirdparty_dir)
 if not _thirdparty_dir in sys.path:
@@ -72,11 +85,14 @@ import colorclass
 if os.name == 'nt':
     colorclass.Windows.enable(auto_colors=True)
 
-import olefile
-from tablestream import tablestream
+from oletools.thirdparty import olefile
+from oletools.thirdparty.tablestream import tablestream
+from oletools.thirdparty.xglob import xglob
 
 
 # === CONSTANTS ==============================================================
+
+BANNER = 'oledir %s - http://decalage.info/python/oletools' % __version__
 
 STORAGE_NAMES = {
     olefile.STGTY_EMPTY:     'Empty',
@@ -115,72 +131,104 @@ def sid_display(sid):
 # === MAIN ===================================================================
 
 def main():
+    usage = 'usage: oledir [options] <filename> [filename2 ...]'
+    parser = optparse.OptionParser(usage=usage)
+    parser.add_option("-r", action="store_true", dest="recursive",
+                      help='find files recursively in subdirectories.')
+    parser.add_option("-z", "--zip", dest='zip_password', type='str', default=None,
+                      help='if the file is a zip archive, open all files from it, using the provided password (requires Python 2.6+)')
+    parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
+                      help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
+    # parser.add_option('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
+    #                         help="logging level debug/info/warning/error/critical (default=%default)")
+
+    # TODO: add logfile option
+
+    (options, args) = parser.parse_args()
+
+    # Print help if no arguments are passed
+    if len(args) == 0:
+        print(BANNER)
+        print(__doc__)
+        parser.print_help()
+        sys.exit()
+
     # print banner with version
-    print('oledir %s - http://decalage.info/python/oletools' % __version__)
+    print(BANNER)
 
     if os.name == 'nt':
         colorclass.Windows.enable(auto_colors=True, reset_atexit=True)
 
-    fname = sys.argv[1]
-    print('OLE directory entries in file %s:' % fname)
-    ole = olefile.OleFileIO(fname)
-    # ole.dumpdirectory()
+    for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
+                                                      zip_password=options.zip_password, zip_fname=options.zip_fname):
+        # ignore directory names stored in zip files:
+        if container and filename.endswith('/'):
+            continue
+        full_name = '%s in %s' % (filename, container) if container else filename
+        print('OLE directory entries in file %s:' % full_name)
+        if data is not None:
+            # data extracted from zip file
+            ole = olefile.OleFileIO(data)
+        else:
+            # normal filename
+            ole = olefile.OleFileIO(filename)
+        # ole.dumpdirectory()
 
-    # t = prettytable.PrettyTable(('id', 'Status', 'Type', 'Name', 'Left', 'Right', 'Child', '1st Sect', 'Size'))
-    # t.align = 'l'
-    # t.max_width['id'] = 4
-    # t.max_width['Status'] = 6
-    # t.max_width['Type'] = 10
-    # t.max_width['Name'] = 10
-    # t.max_width['Left'] = 5
-    # t.max_width['Right'] = 5
-    # t.max_width['Child'] = 5
-    # t.max_width['1st Sect'] = 8
-    # t.max_width['Size'] = 6
+        # t = prettytable.PrettyTable(('id', 'Status', 'Type', 'Name', 'Left', 'Right', 'Child', '1st Sect', 'Size'))
+        # t.align = 'l'
+        # t.max_width['id'] = 4
+        # t.max_width['Status'] = 6
+        # t.max_width['Type'] = 10
+        # t.max_width['Name'] = 10
+        # t.max_width['Left'] = 5
+        # t.max_width['Right'] = 5
+        # t.max_width['Child'] = 5
+        # t.max_width['1st Sect'] = 8
+        # t.max_width['Size'] = 6
 
-    table = tablestream.TableStream(column_width=[4, 6, 7, 22, 5, 5, 5, 8, 6],
-        header_row=('id', 'Status', 'Type', 'Name', 'Left', 'Right', 'Child', '1st Sect', 'Size'),
-        style=tablestream.TableStyleSlim)
+        table = tablestream.TableStream(column_width=[4, 6, 7, 22, 5, 5, 5, 8, 6],
+            header_row=('id', 'Status', 'Type', 'Name', 'Left', 'Right', 'Child', '1st Sect', 'Size'),
+            style=tablestream.TableStyleSlim)
 
-    # TODO: read ALL the actual directory entries from the directory stream, because olefile does not!
-    # TODO: OR fix olefile!
-    # TODO: olefile should store or give access to the raw direntry data on demand
-    # TODO: oledir option to hexdump the raw direntries
-    # TODO: olefile should be less picky about incorrect directory structures
+        # TODO: read ALL the actual directory entries from the directory stream, because olefile does not!
+        # TODO: OR fix olefile!
+        # TODO: olefile should store or give access to the raw direntry data on demand
+        # TODO: oledir option to hexdump the raw direntries
+        # TODO: olefile should be less picky about incorrect directory structures
 
-    for id in range(len(ole.direntries)):
-        d = ole.direntries[id]
-        if d is None:
-            # this direntry is not part of the tree: either unused or an orphan
-            d = ole._load_direntry(id) #ole.direntries[id]
-            # print('%03d: %s *** ORPHAN ***' % (id, d.name))
-            if d.entry_type == olefile.STGTY_EMPTY:
-                status = 'unused'
+        for id in range(len(ole.direntries)):
+            d = ole.direntries[id]
+            if d is None:
+                # this direntry is not part of the tree: either unused or an orphan
+                d = ole._load_direntry(id) #ole.direntries[id]
+                # print('%03d: %s *** ORPHAN ***' % (id, d.name))
+                if d.entry_type == olefile.STGTY_EMPTY:
+                    status = 'unused'
+                else:
+                    status = 'ORPHAN'
             else:
-                status = 'ORPHAN'
-        else:
-            # print('%03d: %s' % (id, d.name))
-            status = '<Used>'
-        if d.name.startswith('\x00'):
-            # this may happen with unused entries, the name may be filled with zeroes
-            name = ''
-        else:
-            # handle non-printable chars using repr(), remove quotes:
-            name = repr(d.name)[1:-1]
-        left  = sid_display(d.sid_left)
-        right = sid_display(d.sid_right)
-        child = sid_display(d.sid_child)
-        entry_type = STORAGE_NAMES.get(d.entry_type, 'Unknown')
-        etype_color = STORAGE_COLORS.get(d.entry_type, 'red')
-        status_color = STATUS_COLORS.get(status, 'red')
+                # print('%03d: %s' % (id, d.name))
+                status = '<Used>'
+            if d.name.startswith('\x00'):
+                # this may happen with unused entries, the name may be filled with zeroes
+                name = ''
+            else:
+                # handle non-printable chars using repr(), remove quotes:
+                name = repr(d.name)[1:-1]
+            left  = sid_display(d.sid_left)
+            right = sid_display(d.sid_right)
+            child = sid_display(d.sid_child)
+            entry_type = STORAGE_NAMES.get(d.entry_type, 'Unknown')
+            etype_color = STORAGE_COLORS.get(d.entry_type, 'red')
+            status_color = STATUS_COLORS.get(status, 'red')
 
-        # print('      type=%7s sid_left=%s sid_right=%s sid_child=%s'
-        #       %(entry_type, left, right, child))
-        # t.add_row((id, status, entry_type, name, left, right, child, hex(d.isectStart), d.size))
-        table.write_row((id, status, entry_type, name, left, right, child, '%X' % d.isectStart, d.size),
-            colors=(None, status_color, etype_color, None, None, None, None, None, None))
-    ole.close()
-    # print t
+            # print('      type=%7s sid_left=%s sid_right=%s sid_child=%s'
+            #       %(entry_type, left, right, child))
+            # t.add_row((id, status, entry_type, name, left, right, child, hex(d.isectStart), d.size))
+            table.write_row((id, status, entry_type, name, left, right, child, '%X' % d.isectStart, d.size),
+                colors=(None, status_color, etype_color, None, None, None, None, None, None))
+        ole.close()
+        # print t
 
 
 if __name__ == '__main__':

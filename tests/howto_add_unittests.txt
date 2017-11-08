@@ -1,0 +1,41 @@
+Howto: Add unittests
+--------------------
+
+Note: The following are just guidelines to help inexperienced users create unit
+tests. The python unittest library (see
+https://docs.python.org/2/library/unittest.html) offers much more flexibility
+than described here.
+
+For helping python's unittest to discover your tests, do the following:
+
+* create a subdirectory within oletools/tests/
+  - The directory name must be a valid python package name,
+    so must not include '-', for example
+  - e.g. oletools/tests/my_feature
+
+* Create a __init__.py inside that directory
+  - can be empty but must be there
+
+* Copy the unittest_template.py into your test directory
+
+* Rename your copy of the template to fit its purpose
+  - file name must start with 'test' and end with '.py'
+  - e.g. oletools/tests/my_feature/test_bla.py
+
+* Create python code inside that directory
+  - classes names must start with Test and must be subclasses
+    of Unittest.TestCase
+  - test functions inside your test cases must start with test_
+  - see unittest_template.py for examples
+
+* If your unit test requires test files, put them into a subdir
+  of oletools/tests/test-data with some name that clarifies what
+  tests it belongs to
+  - e.g. oletools/tests/test-data/my_feature/example.doc
+  - Do not add files with actual evil malware macros! Only harmless
+    test data!
+
+* Test that unittests work by running from the oletools base dir:
+  python -m unittest discover -v
+
+* Re-test with python2 and python3 (if possible)

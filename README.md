@@ -1,5 +1,7 @@
 python-oletools
 ===============
+[![PyPI](https://img.shields.io/pypi/v/oletools.svg)](https://pypi.python.org/pypi/oletools)
+[![Build Status](https://travis-ci.org/decalage2/oletools.svg?branch=master)](https://travis-ci.org/decalage2/oletools)
 
 [oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze
 [Microsoft OLE2 files](http://en.wikipedia.org/wiki/Compound_File_Binary_Format) 
@@ -22,7 +24,17 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2016-11-01 v0.50**: all oletools now support python 2 and 3.
+- **2017-06-29 v0.51**:
+    - added the [oletools cheatsheet](https://github.com/decalage2/oletools/blob/master/cheatsheet/oletools_cheatsheet.pdf)
+    - improved [rtfobj](https://github.com/decalage2/oletools/wiki/rtfobj) to handle malformed RTF files, detect vulnerability CVE-2017-0199
+    - olevba: improved deobfuscation and Mac files support
+    - [mraptor](https://github.com/decalage2/oletools/wiki/mraptor): added more ActiveX macro triggers
+    - added [DocVarDump.vba](https://github.com/decalage2/oletools/blob/master/oletools/DocVarDump.vba) to dump document variables using Word
+    - olemap: can now detect and extract [extra data at end of file](http://decalage.info/en/ole_extradata), improved display
+    - oledir, olemeta, oletimes: added support for zip files and wildcards
+    - many [bugfixes](https://github.com/decalage2/oletools/milestone/3?closed=1) in all the tools
+    - improved Python 2+3 support
+- 2016-11-01 v0.50: all oletools now support python 2 and 3.
     - olevba: several bugfixes and improvements.
     - mraptor: improved detection, added mraptor_milter for Sendmail/Postfix integration.
     - rtfobj: brand new RTF parser, obfuscation-aware, improved display, detect
@@ -33,13 +45,6 @@ improved handling of malformed/incomplete documents, improved error handling and
 now returns an exit code based on analysis results, new --relaxed option.
 [rtfobj](https://github.com/decalage2/oletools/wiki/rtfobj): improved parsing to handle obfuscated RTF documents,
 added -d option to set output dir. Moved repository and documentation to GitHub.
-- 2016-04-19 v0.46: [olevba](https://github.com/decalage2/oletools/wiki/olevba)
-does not deobfuscate VBA expressions by default (much faster), new option --deobf
-to enable it. Fixed color display bug on Windows for several tools.
-- 2016-04-12 v0.45: improved [rtfobj](https://github.com/decalage2/oletools/wiki/rtfobj)
-to handle several [anti-analysis tricks](http://www.decalage.info/rtf_tricks),
-improved [olevba](https://github.com/decalage2/oletools/wiki/olevba)
-to export results in JSON format.
 
 See the [full changelog](https://github.com/decalage2/oletools/wiki/Changelog) for more information.
 
@@ -67,6 +72,7 @@ Projects using oletools:
 
 oletools are used by a number of projects and online malware analysis services,
 including [Viper](http://viper.li/), [REMnux](https://remnux.org/),
+[FAME](https://certsocietegenerale.github.io/fame/),
 [Hybrid-analysis.com](https://www.hybrid-analysis.com/),
 [Joe Sandbox](https://www.document-analyzer.net/),
 [Deepviz](https://sandbox.deepviz.com/),
@@ -129,7 +135,7 @@ License
 This license applies to the python-oletools package, apart from the thirdparty folder which contains third-party files 
 published with their own license.
 
-The python-oletools package is copyright (c) 2012-2016 Philippe Lagadec (http://www.decalage.info)
+The python-oletools package is copyright (c) 2012-2017 Philippe Lagadec (http://www.decalage.info)
 
 All rights reserved.
 
