@@ -26,7 +26,7 @@ https://github.com/unixfreak0037/officeparser
 
 # === LICENSE ==================================================================
 
-# olevba is copyright (c) 2014-2016 Philippe Lagadec (http://www.decalage.info)
+# olevba is copyright (c) 2014-2017 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -188,8 +188,18 @@ from __future__ import print_function
 # 2016-09-12       PL: - enabled packrat to improve pyparsing performance
 # 2016-10-25       PL: - fixed raise and print statements for Python 3
 # 2016-11-03 v0.51 PL: - added EnumDateFormats and EnumSystemLanguageGroupsW
+# 2017-02-07       PL: - temporary fix for issue #132
+#                      - added keywords for Mac-specific macros (issue #130)
+# 2017-03-08       PL: - fixed absolute imports
+# 2017-03-16       PL: - fixed issues #148 and #149 for option --reveal
+# 2017-05-19       PL: - added enable_logging to fix issue #154
+# 2017-05-31     c1fe: - PR #135 fixing issue #132 for some Mac files
+# 2017-06-08       PL: - fixed issue #122 Chr() with negative numbers
+# 2017-06-15       PL: - deobfuscation line by line to handle large files
+# 2017-07-11 v0.52 PL: - raise exception instead of sys.exit (issue #180)
+# 2017-11-08       VB: - PR #124 adding user form parsing (Vincent Brillault)
 
-__version__ = '0.51a'
+__version__ = '0.52dev3'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -223,7 +233,9 @@ __version__ = '0.51a'
 
 #--- IMPORTS ------------------------------------------------------------------
 
-import sys, logging
+import sys
+import os
+import logging
 import struct
 import cStringIO
 import math
@@ -256,15 +268,28 @@ except ImportError:
 
 from oleform import extract_OleFormVariables
 
-import thirdparty.olefile as olefile
-from thirdparty.prettytable import prettytable
-from thirdparty.xglob import xglob, PathNotFoundException
-from thirdparty.pyparsing.pyparsing import \
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if not _parent_dir in sys.path:
+    sys.path.insert(0, _parent_dir)
+
+from oletools.thirdparty import olefile
+from oletools.thirdparty.prettytable import prettytable
+from oletools.thirdparty.xglob import xglob, PathNotFoundException
+from oletools.thirdparty.pyparsing.pyparsing import \
         CaselessKeyword, CaselessLiteral, Combine, Forward, Literal, \
         Optional, QuotedString,Regex, Suppress, Word, WordStart, \
         alphanums, alphas, hexnums,nums, opAssoc, srange, \
         infixNotation, ParserElement
-import ppt_parser
+from oletools import ppt_parser
+
 
 # monkeypatch email to fix issue #32:
 # allow header lines without ":"
@@ -330,6 +355,18 @@ def get_logger(name, level=logging.CRITICAL+1):
 log = get_logger('olevba')
 
 
+def enable_logging():
+    """
+    Enable logging for this module (disabled by default).
+    This will set the module-specific logger level to NOTSET, which
+    means the main application controls the actual logging level.
+    """
+    log.setLevel(logging.NOTSET)
+    # Also enable logging in the ppt_parser module:
+    ppt_parser.enable_logging()
+
+
+
 #=== EXCEPTIONS ==============================================================
 
 class OlevbaBaseException(Exception):
@@ -387,10 +424,17 @@ class UnexpectedDataError(OlevbaBaseException):
     """ raised when parsing is strict (=not relaxed) and data is unexpected """
 
     def __init__(self, stream_path, variable, expected, value):
+        if isinstance(expected, int):
+            es = '{0:04X}'.format(expected)
+        elif isinstance(expected, tuple):
+            es = ','.join('{0:04X}'.format(e) for e in expected)
+            es =  '({0})'.format(es)
+        else:
+            raise ValueError('Unknown type encountered: {0}'.format(type(expected)))
         super(UnexpectedDataError, self).__init__(
             'Unexpected value in {0} for variable {1}: '
-            'expected {2:04X} but found {3:04X}!'
-            .format(stream_path, variable, expected, value))
+            'expected {2} but found {3:04X}!'
+            .format(stream_path, variable, es, value))
         self.stream_path = stream_path
         self.variable = variable
         self.expected = expected
@@ -520,6 +564,11 @@ SUSPICIOUS_KEYWORDS = {
     'May run an executable file or a system command':
         ('Shell', 'vbNormal', 'vbNormalFocus', 'vbHide', 'vbMinimizedFocus', 'vbMaximizedFocus', 'vbNormalNoFocus',
          'vbMinimizedNoFocus', 'WScript.Shell', 'Run', 'ShellExecute'),
+    # MacScript: see https://msdn.microsoft.com/en-us/library/office/gg264812.aspx
+    'May run an executable file or a system command on a Mac':
+        ('MacScript',),
+    'May run an executable file or a system command on a Mac (if combined with libc.dylib)':
+        ('system', 'popen', r'exec[lv][ep]?'),
     #Shell: http://msdn.microsoft.com/en-us/library/office/gg278437%28v=office.15%29.aspx
     #WScript.Shell+Run sample: http://pastebin.com/Z4TMyuq6
     'May run PowerShell commands':
@@ -550,8 +599,11 @@ SUSPICIOUS_KEYWORDS = {
     'May enumerate application windows (if combined with Shell.Application object)':
         ('Windows', 'FindWindow'),
     'May run code from a DLL':
-    #TODO: regex to find declare+lib on same line
+    #TODO: regex to find declare+lib on same line - see mraptor
         ('Lib',),
+    'May run code from a library on a Mac':
+    #TODO: regex to find declare+lib on same line - see mraptor
+        ('libc.dylib', 'dylib'),
     'May inject code into another process':
         ('CreateThread', 'VirtualAlloc', # (issue #9) suggested by Davy Douhine - used by MSF payload
         'VirtualAllocEx', 'RtlMoveMemory',
@@ -723,7 +775,7 @@ class VbaExpressionString(str):
 # NOTE: here Combine() is required to avoid spaces between elements
 # NOTE: here WordStart is necessary to avoid matching a number preceded by
 #       letters or underscore (e.g. "VBT1" or "ABC_34"), when using scanString
-decimal_literal = Combine(WordStart(vba_identifier_chars) + Word(nums)
+decimal_literal = Combine(Optional('-') + WordStart(vba_identifier_chars) + Word(nums)
                           + Suppress(Optional(Word('%&^', exact=1))))
 decimal_literal.setParseAction(lambda t: int(t[0]))
 
@@ -1411,15 +1463,27 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             reference_sizeof_name = struct.unpack("<L", dir_stream.read(4))[0]
             reference_name = dir_stream.read(reference_sizeof_name)
             reference_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-            if reference_reserved not in (0x003E, 0x000D):
-                raise UnexpectedDataError(dir_path, 'REFERENCE_Reserved',
-                                          (0x003E, 0x000D), reference_reserved)
-            reference_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-            reference_name_unicode = dir_stream.read(reference_sizeof_name_unicode)
-            unused = reference_id
-            unused = reference_name
-            unused = reference_name_unicode
-            continue
+            # According to [MS-OVBA] 2.3.4.2.2.2 REFERENCENAME Record:
+            # "Reserved (2 bytes): MUST be 0x003E. MUST be ignored."
+            # So let's ignore it, otherwise it crashes on some files (issue #132)
+            # PR #135 by @c1fe:
+            # contrary to the specification I think that the unicode name
+            # is optional. if reference_reserved is not 0x003E I think it
+            # is actually the start of another REFERENCE record
+            # at least when projectsyskind_syskind == 0x02 (Macintosh)
+            if reference_reserved == 0x003E:
+                #if reference_reserved not in (0x003E, 0x000D):
+                #    raise UnexpectedDataError(dir_path, 'REFERENCE_Reserved',
+                #                              0x0003E, reference_reserved)
+                reference_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
+                reference_name_unicode = dir_stream.read(reference_sizeof_name_unicode)
+                unused = reference_id
+                unused = reference_name
+                unused = reference_name_unicode
+                continue
+            else:
+                check = reference_reserved
+                log.debug("reference type = {0:04X}".format(check))
 
         if check == 0x0033:
             # REFERENCEORIGINAL (followed by REFERENCECONTROL)
@@ -1451,15 +1515,16 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
                 referencecontrol_namerecordextended_name = dir_stream.read(
                     referencecontrol_namerecordextended_sizeof_name)
                 referencecontrol_namerecordextended_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-                check_value('REFERENCECONTROL_NameRecordExtended_Reserved', 0x003E,
-                            referencecontrol_namerecordextended_reserved)
-                referencecontrol_namerecordextended_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-                referencecontrol_namerecordextended_name_unicode = dir_stream.read(
-                    referencecontrol_namerecordextended_sizeof_name_unicode)
-                referencecontrol_reserved3 = struct.unpack("<H", dir_stream.read(2))[0]
-                unused = referencecontrol_namerecordextended_id
-                unused = referencecontrol_namerecordextended_name
-                unused = referencecontrol_namerecordextended_name_unicode
+                if referencecontrol_namerecordextended_reserved == 0x003E:
+                    referencecontrol_namerecordextended_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
+                    referencecontrol_namerecordextended_name_unicode = dir_stream.read(
+                        referencecontrol_namerecordextended_sizeof_name_unicode)
+                    referencecontrol_reserved3 = struct.unpack("<H", dir_stream.read(2))[0]
+                    unused = referencecontrol_namerecordextended_id
+                    unused = referencecontrol_namerecordextended_name
+                    unused = referencecontrol_namerecordextended_name_unicode
+                else:
+                    referencecontrol_reserved3 = referencecontrol_namerecordextended_reserved
             else:
                 referencecontrol_reserved3 = check2
 
@@ -1513,7 +1578,9 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             continue
 
         log.error('invalid or unknown check Id {0:04X}'.format(check))
-        sys.exit(0)
+        # raise an exception instead of stopping abruptly (issue #180)
+        raise UnexpectedDataError(dir_path, 'reference type', (0x0F, 0x16, 0x33, 0x2F, 0x0D, 0x0E), check)
+        #sys.exit(0)
 
     projectmodules_id = check  #struct.unpack("<H", dir_stream.read(2))[0]
     check_value('PROJECTMODULES_Id', 0x000F, projectmodules_id)
@@ -1865,7 +1932,8 @@ def detect_dridex_strings(vba_code):
     :param vba_code: str, VBA source code
     :return: list of str tuples (encoded string, decoded string)
     """
-    from thirdparty.DridexUrlDecoder.DridexUrlDecoder import DridexUrlDecode
+    # TODO: move this at the beginning of script
+    from oletools.thirdparty.DridexUrlDecoder.DridexUrlDecoder import DridexUrlDecode
 
     results = []
     found = set()
@@ -1900,23 +1968,25 @@ def detect_vba_strings(vba_code):
     #            we must expand tabs to have the same string as pyparsing.
     #            Otherwise, start and end offsets are incorrect.
     vba_code = vba_code.expandtabs()
-    for tokens, start, end in vba_expr_str.scanString(vba_code):
-        encoded = vba_code[start:end]
-        decoded = tokens[0]
-        if isinstance(decoded, VbaExpressionString):
-            # This is a VBA expression, not a simple string
-            # print 'VBA EXPRESSION: encoded=%r => decoded=%r' % (encoded, decoded)
-            # remove parentheses and quotes from original string:
-            # if encoded.startswith('(') and encoded.endswith(')'):
-            #     encoded = encoded[1:-1]
-            # if encoded.startswith('"') and encoded.endswith('"'):
-            #     encoded = encoded[1:-1]
-            # avoid duplicates and simple strings:
-            if encoded not in found and decoded != encoded:
-                results.append((encoded, decoded))
-                found.add(encoded)
-        # else:
-            # print 'VBA STRING: encoded=%r => decoded=%r' % (encoded, decoded)
+    # Split the VBA code line by line to avoid MemoryError on large scripts:
+    for vba_line in vba_code.splitlines():
+        for tokens, start, end in vba_expr_str.scanString(vba_line):
+            encoded = vba_line[start:end]
+            decoded = tokens[0]
+            if isinstance(decoded, VbaExpressionString):
+                # This is a VBA expression, not a simple string
+                # print 'VBA EXPRESSION: encoded=%r => decoded=%r' % (encoded, decoded)
+                # remove parentheses and quotes from original string:
+                # if encoded.startswith('(') and encoded.endswith(')'):
+                #     encoded = encoded[1:-1]
+                # if encoded.startswith('"') and encoded.endswith('"'):
+                #     encoded = encoded[1:-1]
+                # avoid duplicates and simple strings:
+                if encoded not in found and decoded != encoded:
+                    results.append((encoded, decoded))
+                    found.add(encoded)
+            # else:
+                # print 'VBA STRING: encoded=%r => decoded=%r' % (encoded, decoded)
     return results
 
 
@@ -1957,19 +2027,19 @@ def json2ascii(json_obj, encoding='utf8', errors='replace'):
     return json_obj
 
 
-_have_printed_json_start = False
-
-def print_json(json_dict=None, _json_is_last=False, **json_parts):
+def print_json(json_dict=None, _json_is_first=False, _json_is_last=False,
+               **json_parts):
     """ line-wise print of json.dumps(json2ascii(..)) with options and indent+1
 
     can use in two ways:
     (1) print_json(some_dict)
     (2) print_json(key1=value1, key2=value2, ...)
 
+    :param bool _json_is_first: set to True only for very first entry to complete
+                                the top-level json-list
     :param bool _json_is_last: set to True only for very last entry to complete
                                the top-level json-list
     """
-    global _have_printed_json_start
 
     if json_dict and json_parts:
         raise ValueError('Invalid json argument: want either single dict or '
@@ -1981,9 +2051,8 @@ def print_json(json_dict=None, _json_is_last=False, **json_parts):
     if json_parts:
         json_dict = json_parts
 
-    if not _have_printed_json_start:
+    if _json_is_first:
         print('[')
-        _have_printed_json_start = True
 
     lines = json.dumps(json2ascii(json_dict), check_circular=False,
                            indent=4, ensure_ascii=False).splitlines()
@@ -2483,7 +2552,6 @@ class VBA_Parser(object):
         """
 
         log.info('Check whether OLE file is PPT')
-        ppt_parser.enable_logging()
         try:
             ppt = ppt_parser.PptParser(self.ole_file, fast_fail=True)
             for vba_data in ppt.iter_vba_data():
@@ -2493,7 +2561,7 @@ class VBA_Parser(object):
             self.ole_file.close()  # just in case
             self.ole_file = None   # required to make other methods look at ole_subfiles
             self.type = TYPE_PPT
-        except Exception as exc:
+        except (ppt_parser.PptUnexpectedData, ValueError) as exc:
             if self.container == 'PptParser':
                 # this is a subfile of a ppt --> to be expected that is no ppt
                 log.debug('PPT subfile is not a PPT file')
@@ -2704,12 +2772,16 @@ class VBA_Parser(object):
             vba_stream_ids = set()
             for vba_root, project_path, dir_path in self.vba_projects:
                 # extract all VBA macros from that VBA root storage:
-                for stream_path, vba_filename, vba_code in \
-                        _extract_vba(self.ole_file, vba_root, project_path,
-                                     dir_path, self.relaxed):
-                    # store direntry ids in a set:
-                    vba_stream_ids.add(self.ole_file._find(stream_path))
-                    yield (self.filename, stream_path, vba_filename, vba_code)
+                # The function _extract_vba may fail on some files (issue #132)
+                try:
+                    for stream_path, vba_filename, vba_code in \
+                            _extract_vba(self.ole_file, vba_root, project_path,
+                                         dir_path, self.relaxed):
+                        # store direntry ids in a set:
+                        vba_stream_ids.add(self.ole_file._find(stream_path))
+                        yield (self.filename, stream_path, vba_filename, vba_code)
+                except Exception as e:
+                    log.exception('Error in _extract_vba')
             # Also look for VBA code in any stream including orphans
             # (happens in some malformed files)
             ole = self.ole_file
@@ -2796,14 +2868,23 @@ class VBA_Parser(object):
         # based on the length of the encoded string, in reverse order:
         analysis = sorted(analysis, key=lambda type_decoded_encoded: len(type_decoded_encoded[2]), reverse=True)
         # normally now self.vba_code_all_modules contains source code from all modules
-        deobf_code = self.vba_code_all_modules
+        # Need to collapse long lines:
+        deobf_code = vba_collapse_long_lines(self.vba_code_all_modules)
+        deobf_code = filter_vba(deobf_code)
         for kw_type, decoded, encoded in analysis:
             if kw_type == 'VBA string':
                 #print '%3d occurences: %r => %r' % (deobf_code.count(encoded), encoded, decoded)
                 # need to add double quotes around the decoded strings
                 # after escaping double-quotes as double-double-quotes for VBA:
                 decoded = decoded.replace('"', '""')
-                deobf_code = deobf_code.replace(encoded, '"%s"' % decoded)
+                decoded = '"%s"' % decoded
+                # if the encoded string is enclosed in parentheses,
+                # keep them in the decoded version:
+                if encoded.startswith('(') and encoded.endswith(')'):
+                    decoded = '(%s)' % decoded
+                deobf_code = deobf_code.replace(encoded, decoded)
+        # # TODO: there is a bug somewhere which creates double returns '\r\r'
+        # deobf_code = deobf_code.replace('\r\r', '\r')
         return deobf_code
         #TODO: repasser l'analyse plusieurs fois si des chaines hex ou base64 sont revelees
 
@@ -3213,10 +3294,9 @@ class VBA_Parser_CLI(VBA_Parser):
 
 #=== MAIN =====================================================================
 
-def main():
-    """
-    Main function, called when olevba is run from the command line
-    """
+def parse_args(cmd_line_args=None):
+    """ parse command line arguments (given ones or per default sys.argv) """
+
     DEFAULT_LOG_LEVEL = "warning" # Default log level
     LOG_LEVELS = {
         'debug':    logging.DEBUG,
@@ -3226,7 +3306,7 @@ def main():
         'critical': logging.CRITICAL
         }
 
-    usage = 'usage: %prog [options] <filename> [filename2 ...]'
+    usage = 'usage: olevba [options] <filename> [filename2 ...]'
     parser = optparse.OptionParser(usage=usage)
     # parser.add_option('-o', '--outfile', dest='outfile',
     #     help='output file')
@@ -3268,26 +3348,43 @@ def main():
     parser.add_option('--relaxed', dest="relaxed", action="store_true", default=False,
                             help="Do not raise errors if opening of substream fails")
 
-    (options, args) = parser.parse_args()
+    (options, args) = parser.parse_args(cmd_line_args)
 
     # Print help if no arguments are passed
     if len(args) == 0:
+        print('olevba %s - http://decalage.info/python/oletools' % __version__)
         print(__doc__)
         parser.print_help()
         sys.exit(RETURN_WRONG_ARGS)
 
+    options.loglevel = LOG_LEVELS[options.loglevel]
+
+    return options, args
+
+
+def main(cmd_line_args=None):
+    """
+    Main function, called when olevba is run from the command line
+
+    Optional argument: command line arguments to be forwarded to ArgumentParser
+    in process_args. Per default (cmd_line_args=None), sys.argv is used. Option
+    mainly added for unit-testing
+    """
+
+    options, args = parse_args(cmd_line_args)
+
     # provide info about tool and its version
     if options.output_mode == 'json':
-        # prints opening [
+        # print first json entry with meta info and opening '['
         print_json(script_name='olevba', version=__version__,
                    url='http://decalage.info/python/oletools',
-                   type='MetaInformation')
+                   type='MetaInformation', _json_is_first=True)
     else:
         print('olevba %s - http://decalage.info/python/oletools' % __version__)
 
-    logging.basicConfig(level=LOG_LEVELS[options.loglevel], format='%(levelname)-8s %(message)s')
+    logging.basicConfig(level=options.loglevel, format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
-    log.setLevel(logging.NOTSET)
+    enable_logging()
 
     # Old display with number of items detected:
     # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('Type', 'Macros', 'AutoEx', 'Susp.', 'IOCs', 'HexStr')

@@ -281,6 +281,9 @@ class TableStream(object):
         """
         shortcut for self.outfile.write()
         """
+        # TODO temporary bugfix for Unicode replacement character FFFD, that triggers an
+        # exception when printing to the console on Windows 10 (CP850)
+        s = s.replace(u"\uFFFD", '')
         self.outfile.write(s)
 
     def write_row(self, row, last=False, colors=None):

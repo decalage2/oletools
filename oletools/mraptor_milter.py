@@ -24,7 +24,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE ==================================================================
 
-# mraptor_milter is copyright (c) 2016 Philippe Lagadec (http://www.decalage.info)
+# mraptor_milter is copyright (c) 2016-2017 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -53,8 +53,9 @@ http://www.decalage.info/python/oletools
 #                      - archive each e-mail to a file before filtering
 # 2016-08-30 v0.03 PL: - added daemonize to run as a Unix daemon
 # 2016-09-06 v0.50 PL: - fixed issue #20, is_zipfile on Python 2.6
+# 2017-04-26 v0.51 PL: - fixed absolute imports (issue #141)
 
-__version__ = '0.50'
+__version__ = '0.51'
 
 # --- TODO -------------------------------------------------------------------
 
@@ -80,6 +81,18 @@ import datetime
 import StringIO
 
 from socket import AF_INET6
+
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if not _parent_dir in sys.path:
+    sys.path.insert(0, _parent_dir)
 
 from oletools import olevba, mraptor
 
@@ -137,6 +150,7 @@ log.setLevel(logging.CRITICAL+1)
 # === CLASSES ================================================================
 
 # Inspired from https://github.com/jmehnle/pymilter/blob/master/milter-template.py
+# TODO: check https://github.com/sdgathman/pymilter which looks more recent
 
 class MacroRaptorMilter(Milter.Base):
     '''

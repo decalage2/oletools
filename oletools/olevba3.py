@@ -26,7 +26,7 @@ https://github.com/unixfreak0037/officeparser
 
 # === LICENSE ==================================================================
 
-# olevba is copyright (c) 2014-2016 Philippe Lagadec (http://www.decalage.info)
+# olevba is copyright (c) 2014-2017 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -189,8 +189,9 @@ from __future__ import print_function
 # 2016-10-25       PL: - fixed raise and print statements for Python 3
 # 2016-10-25       PL: - fixed regex bytes strings (PR/issue #100)
 # 2016-11-03 v0.51 PL: - added EnumDateFormats and EnumSystemLanguageGroupsW
+# 2017-04-26       PL: - fixed absolute imports
 
-__version__ = '0.51a'
+__version__ = '0.51'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -224,7 +225,7 @@ __version__ = '0.51a'
 
 #--- IMPORTS ------------------------------------------------------------------
 
-import sys, logging
+import sys, logging, os
 import struct
 from _io import StringIO,BytesIO
 import math
@@ -255,14 +256,26 @@ except ImportError:
                                + "see http://codespeak.net/lxml " \
                                + "or http://effbot.org/zone/element-index.htm")
 
-import oletools.thirdparty.olefile as olefile
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if not _parent_dir in sys.path:
+    sys.path.insert(0, _parent_dir)
+
+from oletools.thirdparty import olefile
 from oletools.thirdparty.prettytable import prettytable
 from oletools.thirdparty.xglob import xglob, PathNotFoundException
 from oletools.thirdparty.pyparsing.pyparsing import \
         CaselessKeyword, CaselessLiteral, Combine, Forward, Literal, \
         Optional, QuotedString,Regex, Suppress, Word, WordStart, \
         alphanums, alphas, hexnums,nums, opAssoc, srange, \
-        infixNotation
+        infixNotation, ParserElement
 import oletools.ppt_parser as ppt_parser
 
 # monkeypatch email to fix issue #32:
@@ -286,6 +299,25 @@ else:
     from zipfile import is_zipfile
     # xrange is now called range:
     xrange = range
+
+
+# === PYTHON 3.0 - 3.4 SUPPORT ======================================================
+
+# From https://gist.github.com/ynkdir/867347/c5e188a4886bc2dd71876c7e069a7b00b6c16c61
+
+if sys.version_info >= (3, 0) and sys.version_info < (3, 5):
+    import codecs
+
+    _backslashreplace_errors = codecs.lookup_error("backslashreplace")
+
+    def backslashreplace_errors(exc):
+        if isinstance(exc, UnicodeDecodeError):
+            u = "".join("\\x{0:02x}".format(c) for c in exc.object[exc.start:exc.end])
+            return (u, exc.end)
+        return _backslashreplace_errors(exc)
+
+    codecs.register_error("backslashreplace", backslashreplace_errors)
+
 
 # === LOGGING =================================================================
 
@@ -1535,7 +1567,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             modulename_id = struct.unpack("<H", dir_stream.read(2))[0]
             check_value('MODULENAME_Id', 0x0019, modulename_id)
             modulename_sizeof_modulename = struct.unpack("<L", dir_stream.read(4))[0]
-            modulename_modulename = dir_stream.read(modulename_sizeof_modulename)
+            modulename_modulename = dir_stream.read(modulename_sizeof_modulename).decode('utf-8', 'backslashreplace')
             # TODO: preset variables to avoid "referenced before assignment" errors
             modulename_unicode_modulename_unicode = ''
             # account for optional sections
@@ -1781,7 +1813,7 @@ def detect_suspicious(vba_code, obfuscation=None):
     for description, keywords in SUSPICIOUS_KEYWORDS.items():
         for keyword in keywords:
             # search using regex to detect word boundaries:
-            match = re.search(r'(?i)\b' + keyword + r'\b', vba_code)
+            match = re.search(r'(?i)\b' + re.escape(keyword) + r'\b', vba_code)
             if match:
                 #if keyword.lower() in vba_code:
                 found_keyword = match.group()
@@ -1824,7 +1856,7 @@ def detect_hex_strings(vba_code):
         value = match.group()
         if value not in found:
             decoded = binascii.unhexlify(value)
-            results.append((value, decoded.decode('utf-8','replace')))
+            results.append((value, decoded.decode('utf-8', 'backslashreplace')))
             found.add(value)
     return results
 
@@ -1956,20 +1988,19 @@ def json2ascii(json_obj, encoding='utf8', errors='replace'):
     return json_obj
 
 
-_have_printed_json_start = False
-
-def print_json(json_dict=None, _json_is_last=False, **json_parts):
+def print_json(json_dict=None, _json_is_first=False, _json_is_last=False,
+               **json_parts):
     """ line-wise print of json.dumps(json2ascii(..)) with options and indent+1
 
     can use in two ways:
     (1) print_json(some_dict)
     (2) print_json(key1=value1, key2=value2, ...)
 
+    :param bool _json_is_first: set to True only for very first entry to complete
+                                the top-level json-list
     :param bool _json_is_last: set to True only for very last entry to complete
                                the top-level json-list
     """
-    global _have_printed_json_start
-
     if json_dict and json_parts:
         raise ValueError('Invalid json argument: want either single dict or '
                          'key=value parts but got both)')
@@ -1980,9 +2011,8 @@ def print_json(json_dict=None, _json_is_last=False, **json_parts):
     if json_parts:
         json_dict = json_parts
 
-    if not _have_printed_json_start:
+    if _json_is_first:
         print('[')
-        _have_printed_json_start = True
 
     lines = json.dumps(json2ascii(json_dict), check_circular=False,
                            indent=4, ensure_ascii=False).splitlines()
@@ -2007,6 +2037,8 @@ class VBA_Scanner(object):
 
         :param vba_code: str, VBA source code to be analyzed
         """
+        if isinstance(vba_code, bytes):
+            vba_code = vba_code.decode('utf-8', 'backslashreplace')
         # join long lines ending with " _":
         self.code = vba_collapse_long_lines(vba_code)
         self.code_hex = ''
@@ -2084,7 +2116,7 @@ class VBA_Scanner(object):
                 (self.code_vba, 'VBA expression'),
         ):
             if isinstance(code,bytes):
-                code=code.decode('utf-8','replace')
+                code=code.decode('utf-8','backslashreplace')
             self.autoexec_keywords += detect_autoexec(code, obfuscation)
             self.suspicious_keywords += detect_suspicious(code, obfuscation)
             self.iocs += detect_patterns(code, obfuscation)
@@ -2411,7 +2443,7 @@ class VBA_Parser(object):
         log.info('Opening MHTML file %s' % self.filename)
         try:
             if isinstance(data,bytes):
-                data = data.decode('utf8', 'replace')
+                data = data.decode('utf8', 'backslashreplace')
             # parse the MIME content
             # remove any leading whitespace or newline (workaround for issue in email package)
             stripped_data = data.lstrip('\r\n\t ')
@@ -2514,7 +2546,7 @@ class VBA_Parser(object):
         log.info('Opening text file %s' % self.filename)
         # directly store the source code:
         if isinstance(data,bytes):
-            data=data.decode('utf8','replace')
+            data=data.decode('utf8','backslashreplace')
         self.vba_code_all_modules = data
         self.contains_macros = True
         # set type only if parsing succeeds
@@ -2671,7 +2703,7 @@ class VBA_Parser(object):
                         log.debug('%r...[much more data]...%r' % (data[:100], data[-50:]))
                     else:
                         log.debug(repr(data))
-                    if 'Attribut' in data.decode('utf-8','ignore'):
+                    if 'Attribut' in data.decode('utf-8', 'ignore'):
                         log.debug('Found VBA compressed code')
                         self.contains_macros = True
                 except IOError as exc:
@@ -3026,7 +3058,7 @@ class VBA_Parser_CLI(VBA_Parser):
                     if hide_attributes:
                         # hide attribute lines:
                         if isinstance(vba_code,bytes):
-                            vba_code =vba_code.decode('utf-8','replace')
+                            vba_code =vba_code.decode('utf-8','backslashreplace')
                         vba_code_filtered = filter_vba(vba_code)
                     else:
                         vba_code_filtered = vba_code
@@ -3105,9 +3137,12 @@ class VBA_Parser_CLI(VBA_Parser):
             if self.detect_vba_macros():
                 for (subfilename, stream_path, vba_filename, vba_code) in self.extract_all_macros():
                     curr_macro = {}
+                    if isinstance(vba_code, bytes):
+                        vba_code = vba_code.decode('utf-8', 'backslashreplace')
+
                     if hide_attributes:
                         # hide attribute lines:
-                        vba_code_filtered = filter_vba(vba_code.decode('utf-8','replace'))
+                        vba_code_filtered = filter_vba(vba_code)
                     else:
                         vba_code_filtered = vba_code
 
@@ -3198,10 +3233,9 @@ class VBA_Parser_CLI(VBA_Parser):
 
 #=== MAIN =====================================================================
 
-def main():
-    """
-    Main function, called when olevba is run from the command line
-    """
+def parse_args(cmd_line_args=None):
+    """ parse command line arguments (given ones or per default sys.argv) """
+
     DEFAULT_LOG_LEVEL = "warning" # Default log level
     LOG_LEVELS = {
         'debug':    logging.DEBUG,
@@ -3253,7 +3287,7 @@ def main():
     parser.add_option('--relaxed', dest="relaxed", action="store_true", default=False,
                             help="Do not raise errors if opening of substream fails")
 
-    (options, args) = parser.parse_args()
+    (options, args) = parser.parse_args(cmd_line_args)
 
     # Print help if no arguments are passed
     if len(args) == 0:
@@ -3261,16 +3295,32 @@ def main():
         parser.print_help()
         sys.exit(RETURN_WRONG_ARGS)
 
+    options.loglevel = LOG_LEVELS[options.loglevel]
+
+    return options, args
+
+
+def main(cmd_line_args=None):
+    """
+    Main function, called when olevba is run from the command line
+
+    Optional argument: command line arguments to be forwarded to ArgumentParser
+    in process_args. Per default (cmd_line_args=None), sys.argv is used. Option
+    mainly added for unit-testing
+    """
+
+    options, args = parse_args(cmd_line_args)
+
     # provide info about tool and its version
     if options.output_mode == 'json':
-        # prints opening [
+        # print first json entry with meta info and opening '['
         print_json(script_name='olevba', version=__version__,
                    url='http://decalage.info/python/oletools',
-                   type='MetaInformation')
+                   type='MetaInformation', _json_is_first=True)
     else:
         print('olevba %s - http://decalage.info/python/oletools' % __version__)
 
-    logging.basicConfig(level=LOG_LEVELS[options.loglevel], format='%(levelname)-8s %(message)s')
+    logging.basicConfig(level=options.loglevel, format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
     log.setLevel(logging.NOTSET)
 
