@@ -196,9 +196,10 @@ from __future__ import print_function
 # 2017-05-31     c1fe: - PR #135 fixing issue #132 for some Mac files
 # 2017-06-08       PL: - fixed issue #122 Chr() with negative numbers
 # 2017-06-15       PL: - deobfuscation line by line to handle large files
-# 2017-07-11 v0.51.1 PL: - raise exception instead of sys.exit (issue #180)
+# 2017-07-11 v0.52 PL: - raise exception instead of sys.exit (issue #180)
+# 2017-11-08       VB: - PR #124 adding user form parsing (Vincent Brillault)
 
-__version__ = '0.51.1dev1'
+__version__ = '0.52dev3'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -264,6 +265,8 @@ except ImportError:
             raise ImportError("lxml or ElementTree are not installed, " \
                                + "see http://codespeak.net/lxml " \
                                + "or http://effbot.org/zone/element-index.htm")
+
+from oleform import extract_OleFormVariables
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
@@ -1465,7 +1468,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             # So let's ignore it, otherwise it crashes on some files (issue #132)
             # PR #135 by @c1fe:
             # contrary to the specification I think that the unicode name
-            # is optional. if reference_reserved is not 0x003E I think it 
+            # is optional. if reference_reserved is not 0x003E I think it
             # is actually the start of another REFERENCE record
             # at least when projectsyskind_syskind == 0x02 (Macintosh)
             if reference_reserved == 0x003E:
@@ -2986,6 +2989,24 @@ class VBA_Parser(object):
                     log.debug('Printable string found in form: %r' % m.group())
                     yield (self.filename, '/'.join(o_stream), m.group())
 
+    def extract_form_strings_extended(self):
+        if self.ole_file is None:
+            # This may be either an OpenXML/PPT or a text file:
+            if self.type == TYPE_TEXT:
+                # This is a text file, return no results:
+                return
+            else:
+                # OpenXML/PPT: recursively yield results from each OLE subfile:
+                for ole_subfile in self.ole_subfiles:
+                    for results in ole_subfile.extract_form_strings_extended():
+                        yield results
+        else:
+            # This is an OLE file:
+            self.find_vba_forms()
+            ole = self.ole_file
+            for form_storage in self.vba_forms:
+                for variable in extract_OleFormVariables(ole, form_storage):
+                    yield (self.filename, '/'.join(form_storage), variable)
 
     def close(self):
         """
@@ -3115,6 +3136,11 @@ class VBA_Parser_CLI(VBA_Parser):
                     print('VBA FORM STRING IN %r - OLE stream: %r' % (subfilename, stream_path))
                     print('- ' * 39)
                     print(form_string)
+                for (subfilename, stream_path, form_variables) in self.extract_form_strings_extended():
+                    print('-' * 79)
+                    print('VBA FORM Variable "%s" IN %r - OLE stream: %r' % (form_variables['name'], subfilename, stream_path))
+                    print('- ' * 39)
+                    print(str(form_variables['value']))
                 if not vba_code_only:
                     # analyse the code from all modules at once:
                     self.print_analysis(show_decoded_strings, deobfuscate)
