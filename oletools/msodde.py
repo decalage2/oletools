@@ -77,6 +77,7 @@ import os
 import sys
 import json
 import logging
+import re
 
 # little hack to allow absolute imports even if oletools is not installed
 # Copied from olevba.py
@@ -106,6 +107,79 @@ TAG_W_R = "{%s}r" % NS_WORD
 ATTR_W_INSTR = '{%s}instr' % NS_WORD
 ATTR_W_FLDCHARTYPE = '{%s}fldCharType' % NS_WORD
 LOCATIONS = ['word/document.xml','word/endnotes.xml','word/footnotes.xml','word/header1.xml','word/footer1.xml','word/header2.xml','word/footer2.xml','word/comments.xml']
+
+# list of acceptable, harmless field instructions for blacklist field mode
+# c.f. http://officeopenxml.com/WPfieldInstructions.php or the official
+# standard ISO-29500-1:2016 / ECMA-376 paragraphs 17.16.4, 17.16.5, 17.16.23
+# https://www.iso.org/standard/71691.html (neither mentions DDE[AUTO]).
+# Format: (command, n_required_args, n_optional_args,
+#          switches_with_args, switches_without_args, format_switches)
+FIELD_BLACKLIST = (
+    # date and time:
+    ('CREATEDATE', 0, 0, '', 'hs',  'datetime'),
+    ('DATE',       0, 0, '', 'hls', 'datetime'),
+    ('EDITTIME',   0, 0, '', '',    'numeric'),
+    ('PRINTDATE',  0, 0, '', 'hs',  'datetime'),
+    ('SAVEDATE',   0, 0, '', 'hs',  'datetime'),
+    ('TIME',       0, 0, '', '',    'datetime'),
+    # exclude document automation (we hate the "auto" in "automation")
+    # (COMPARE, DOCVARIABLE, GOTOBUTTON, IF, MACROBUTTON, PRINT)
+    # document information
+    ('AUTHOR',      0, 1, '', '',   'string'),
+    ('COMMENTS',    0, 1, '', '',   'string'),
+    ('DOCPROPERTY', 1, 0, '', '',   'string/numeric/datetime'),
+    ('FILENAME',    0, 0, '', 'p',  'string'),
+    ('FILESIZE',    0, 0, '', 'km', 'numeric'),
+    ('KEYWORDS',    0, 1, '', '',   'string'),
+    ('LASTSAVEDBY', 0, 0, '', '',   'string'),
+    ('NUMCHARS',    0, 0, '', '',   'numeric'),
+    ('NUMPAGES',    0, 0, '', '',   'numeric'),
+    ('NUMWORDS',    0, 0, '', '',   'numeric'),
+    ('SUBJECT',     0, 1, '', '',   'string'),
+    ('TEMPLATE',    0, 0, '', 'p',  'string'),
+    ('TITLE',       0, 1, '', '',   'string'),
+    # equations and formulas
+    # exlude '=' formulae because they have different syntax
+    ('ADVANCE', 0, 0, 'dlruxy', '', ''),
+    ('SYMBOL',  1, 0, 'fs', 'ahju', ''),
+    # form fields
+    ('FORMCHECKBOX', 0, 0, '', '', ''),
+    ('FORMDROPDOWN', 0, 0, '', '', ''),
+    ('FORMTEXT', 0, 0, '', '', ''),
+    # index and tables
+    ('INDEX', 0, 0, 'bcdefghklpsz', 'ry', ''),
+    # exlude RD since that imports data from other files
+    ('TA',  0, 0, 'clrs', 'bi', ''),
+    ('TC',  1, 0, 'fl', 'n', ''),
+    ('TOA', 0, 0, 'bcdegls', 'fhp', ''),
+    ('TOC', 0, 0, 'abcdflnopst', 'huwxz', ''),
+    ('XE',  1, 0, 'frty', 'bi', ''),
+    # links and references
+    # exclude AUTOTEXT and AUTOTEXTLIST since we do not like stuff with 'AUTO'
+    ('BIBLIOGRAPHY', 0, 0, 'lfm', '', ''),
+    ('CITATION', 1, 0, 'lfspvm', 'nty', ''),
+    # exclude HYPERLINK since we are allergic to URLs
+    # exclude INCLUDEPICTURE and INCLUDETEXT (other file or maybe even URL?)
+    # exclude LINK and REF (could reference other files)
+    ('NOTEREF', 1, 0, '', 'fhp', ''),
+    ('PAGEREF', 1, 0, '', 'hp', ''),
+    ('QUOTE', 1, 0, '', '', 'datetime'),
+    ('STYLEREF', 1, 0, '', 'lnprtw', ''),
+    # exclude all Mail Merge commands since they import data from other files
+    # (ADDRESSBLOCK, ASK, COMPARE, DATABASE, FILLIN, GREETINGLINE, IF,
+    #  MERGEFIELD, MERGEREC, MERGESEQ, NEXT, NEXTIF, SET, SKIPIF)
+    # Numbering
+    ('LISTNUM',      0, 1, 'ls', '', ''),
+    ('PAGE',         0, 0, '', '', 'numeric'),
+    ('REVNUM',       0, 0, '', '', ''),
+    ('SECTION',      0, 0, '', '', 'numeric'),
+    ('SECTIONPAGES', 0, 0, '', '', 'numeric'),
+    ('SEQ',          1, 1, 'rs', 'chn', 'numeric'),
+    # user information
+    ('USERADDRESS', 0, 1, '', '', 'string'),
+    ('USERINITIALS', 0, 1, '', '', 'string'),
+    ('USERNAME', 0, 1, '', '', 'string'),
+)
 
 # banner to be printed at program start
 BANNER = """msodde %s - http://decalage.info/python/oletools
@@ -474,6 +548,93 @@ def unquote(field):
             ch = p
         ddestr += ch 
     return ddestr
+
+# "static variables" for field_is_blacklisted:
+FIELD_WORD_REGEX = re.compile(r'"[^"]*"|\S+')
+FIELD_BLACKLIST_CMDS = tuple(field[0].lower() for field in FIELD_BLACKLIST)
+FIELD_SWITCH_REGEX = re.compile(r'^\\[\w#*@]$')
+
+def field_is_blacklisted(contents):
+    """ Check if given field contents matches any in FIELD_BLACKLIST
+
+    A complete parser of field contents would be really complicated, so this
+    function has to make a trade-off. There may be valid constructs that this
+    simple parser cannot comprehend. Most arguments are not tested for validity
+    since that would make this test much more complicated. However, if this
+    parser accepts some field contents, then office is very likely to not
+    complain about it, either.
+    """
+
+    # split contents into "words", (e.g. 'bla' or '\s' or '"a b c"' or '""')
+    words = FIELD_WORD_REGEX.findall(contents)
+    if not words:
+        return False
+
+    # check if first word is one of the commands on our blacklist
+    try:
+        index = FIELD_BLACKLIST_CMDS.index(words[0].lower())
+    except ValueError:    # first word is no blacklisted command
+        return False
+    log.debug('trying to match "{0}" to blacklist command {0}'
+              .format(contents, FIELD_BLACKLIST[index]))
+    _, nargs_required, nargs_optional, sw_with_arg, sw_solo, sw_format \
+        = FIELD_BLACKLIST[index]
+
+    # check number of args
+    nargs = 0
+    for word in words[1:]:
+        if word[0] == '\\':  # note: words can never be empty, but can be '""'
+            break
+        nargs += 1
+    if nargs < nargs_required:
+        log.debug('too few args: found {0}, but need at least {1} in "{2}"'
+                  .format(nargs, nargs_required, contents))
+        return False
+    elif nargs > nargs_required + nargs_optional:
+        log.debug('too many args: found {0}, but need at most {1}+{2} in "{3}"'
+                  .format(nargs, nargs_required, nargs_optional, contents))
+        return False
+
+    # check switches
+    expect_arg = False
+    arg_choices = []
+    for word in words[1+nargs:]:
+        if expect_arg:            # this is an argument for the last switch
+            if arg_choices and (word not in arg_choices):
+                log.debug('Found invalid switch argument "{0}" in "{1}"'
+                          .format(word, contents))
+                return False
+            expect_arg = False
+            arg_choices = []   # in general, do not enforce choices
+            continue           # "no further questions, your honor"
+        elif not FIELD_SWITCH_REGEX.match(word):
+            log.debug('expected switch, found "{0}" in "{1}"'
+                      .format(word, contents))
+            return False
+        # we want a switch and we got a valid one
+        switch = word[1]
+
+        if switch in sw_solo:
+            pass
+        elif switch in sw_with_arg:
+            expect_arg = True     # next word is interpreted as arg, not switch
+        elif switch == '#' and 'numeric' in sw_format:
+            expect_arg = True     # next word is numeric format
+        elif switch == '@' and 'datetime' in sw_format:
+            expect_arg = True     # next word is date/time format
+        elif switch == '*':
+            expect_arg = True     # next word is format argument
+            arg_choices += ['CHARFORMAT', 'MERGEFORMAT']  # always allowed
+            if 'string' in sw_format:
+                arg_choices += ['Caps', 'FirstCap', 'Lower', 'Upper']
+            if 'numeric' in sw_format:
+                arg_choices = []  # too many choices to list them here
+        else:
+            log.debug('unexpected switch {0} in "{1}"'.format(switch, contents))
+            return False
+
+    # if nothing went wrong sofar, the contents seems to match the blacklist
+    return True
 
 
 def process_file(filepath):
