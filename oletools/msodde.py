@@ -51,8 +51,9 @@ from __future__ import print_function
 # 2017-10-25       CH: - add json output
 # 2017-10-25       CH: - parse doc
 #                  PL: - added logging
+# 2017-11-10       CH: - added field blacklist and corresponding cmd line args
 
-__version__ = '0.52dev4'
+__version__ = '0.52dev5'
 
 #------------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these
@@ -180,6 +181,14 @@ FIELD_BLACKLIST = (
     ('USERINITIALS', 0, 1, '', '', 'string'),
     ('USERNAME', 0, 1, '', '', 'string'),
 )
+
+FIELD_DDE_REGEX = re.compile(r'^\s*dde(auto)?\s+', re.I)
+
+FIELD_FILTER_DDE = 'only dde'
+FIELD_FILTER_BLACKLIST = 'exclude blacklisted'
+FIELD_FILTER_ALL = 'keep all'
+FIELD_FILTER_DEFAULT = FIELD_FILTER_BLACKLIST
+
 
 # banner to be printed at program start
 BANNER = """msodde %s - http://decalage.info/python/oletools
@@ -316,11 +325,26 @@ def process_args(cmd_line_args=None):
     parser = ArgParserWithBanner(description='A python tool to detect and extract DDE links in MS Office files')
     parser.add_argument("filepath", help="path of the file to be analyzed",
                         type=existing_file, metavar='FILE')
-    parser.add_argument("--json", '-j', action='store_true',
+    parser.add_argument('-j', "--json", action='store_true',
                         help="Output in json format. Do not use with -ldebug")
     parser.add_argument("--nounquote", help="don't unquote values",action='store_true')
     parser.add_argument('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
                         help="logging level debug/info/warning/error/critical (default=%(default)s)")
+    filter_group = parser.add_argument_group(
+         title='Filter which OpenXML field commands are returned',
+         description='Only applies to OpenXML (e.g. docx), not to OLE (e.g. '
+                     '.doc). These options are mutually exclusive, last option '
+                     'found on command line overwrites earlier ones.')
+    filter_group.add_argument('-d', '--dde-only', action='store_const',
+                              dest='field_filter_mode', const=FIELD_FILTER_DDE,
+                              help='Return only DDE and DDEAUTO fields')
+    filter_group.add_argument('-f', '--filter', action='store_const',
+                              dest='field_filter_mode', const=FIELD_FILTER_BLACKLIST,
+                              help='Return all fields except harmless ones like PAGE')
+    filter_group.add_argument('-a', '--all-fields', action='store_const',
+                              dest='field_filter_mode', const=FIELD_FILTER_ALL,
+                              help='Return all fields, irrespective of their contents')
+    parser.set_defaults(field_filter_mode=FIELD_FILTER_DEFAULT)
 
     return parser.parse_args(cmd_line_args)
 
@@ -469,7 +493,7 @@ def process_ole(filepath):
     return u'\n'.join(text_parts)
 
 
-def process_openxml(filepath):
+def process_openxml(filepath, field_filter_mode=None):
     log.debug('process_openxml')
     all_fields = []
     z = zipfile.ZipFile(filepath)
@@ -483,7 +507,23 @@ def process_openxml(filepath):
                 #    print(f)
                 all_fields.extend(fields)
     z.close()
-    return u'\n'.join(all_fields)
+
+    # apply field command filter
+    log.debug('filtering with mode "{0}"'.format(field_filter_mode))
+    if field_filter_mode in (FIELD_FILTER_ALL, None):
+        clean_fields = all_fields
+    elif field_filter_mode == FIELD_FILTER_DDE:
+        clean_fields = [field for field in all_fields
+                        if FIELD_DDE_REGEX.match(field)]
+    elif field_filter_mode == FIELD_FILTER_BLACKLIST:
+        # check if fields are acceptable and should not be returned
+        clean_fields = [field for field in all_fields
+                        if not field_is_blacklisted(field.strip())]
+    else:
+        raise ValueError('Unexpected field_filter_mode: "{0}"'
+                         .format(field_filter_mode))
+
+    return u'\n'.join(clean_fields)
     
 def process_xml(data):
     # parse the XML data:
@@ -532,7 +572,7 @@ def process_xml(data):
         # concatenate the attribute of the field, if present:
         if elem.attrib is not None:
             fields.append(elem.attrib[ATTR_W_INSTR])
- 
+
     return fields
 
 def unquote(field): 
@@ -637,12 +677,12 @@ def field_is_blacklisted(contents):
     return True
 
 
-def process_file(filepath):
+def process_file(filepath, field_filter_mode=None):
     """ decides to either call process_openxml or process_ole """
     if olefile.isOleFile(filepath):
         return process_ole(filepath)
     else:
-        return process_openxml(filepath)
+        return process_openxml(filepath, field_filter_mode)
 
 
 #=== MAIN =================================================================
@@ -684,7 +724,7 @@ def main(cmd_line_args=None):
     text = ''
     return_code = 1
     try:
-        text = process_file(args.filepath)
+        text = process_file(args.filepath, args.field_filter_mode)
         return_code = 0
     except Exception as exc:
         if args.json:
