@@ -94,7 +94,7 @@ class ExtendedStream(object):
         return self.unpacks(format, size)[0]
 
     def raise_error(self, reason, back=0):
-        raise OleFormParsingError('{0}:{1}: {2}'.format(self.path, self._pos - back))
+        raise OleFormParsingError('{0}:{1}: {2}'.format(self._path, self._pos - back, reason))
 
     def check_values(self, name, format, size, expected):
         value = self.unpacks(format, size)
@@ -283,6 +283,7 @@ def consume_MorphDataControl(stream):
 def extract_OleFormVariables(ole_file, stream_dir):
     control = ExtendedStream.open(ole_file, '/'.join(stream_dir + ['f']))
     variables = list(consume_FormControl(control))
+    print('/'.join(stream_dir + ['o']))
     data = ExtendedStream.open(ole_file, '/'.join(stream_dir + ['o']))
     for var in variables:
         if var['ClsidCacheIndex'] != 23:
