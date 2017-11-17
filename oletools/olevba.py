@@ -198,8 +198,9 @@ from __future__ import print_function
 # 2017-06-15       PL: - deobfuscation line by line to handle large files
 # 2017-07-11 v0.52 PL: - raise exception instead of sys.exit (issue #180)
 # 2017-11-08       VB: - PR #124 adding user form parsing (Vincent Brillault)
+# 2017-11-17       PL: - fixed a few issues with form parsing
 
-__version__ = '0.52dev3'
+__version__ = '0.52dev4'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -266,7 +267,6 @@ except ImportError:
                                + "see http://codespeak.net/lxml " \
                                + "or http://effbot.org/zone/element-index.htm")
 
-from oleform import extract_OleFormVariables
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
@@ -289,6 +289,7 @@ from oletools.thirdparty.pyparsing.pyparsing import \
         alphanums, alphas, hexnums,nums, opAssoc, srange, \
         infixNotation, ParserElement
 from oletools import ppt_parser
+from oletools import oleform
 
 
 # monkeypatch email to fix issue #32:
@@ -3005,7 +3006,7 @@ class VBA_Parser(object):
             self.find_vba_forms()
             ole = self.ole_file
             for form_storage in self.vba_forms:
-                for variable in extract_OleFormVariables(ole, form_storage):
+                for variable in oleform.extract_OleFormVariables(ole, form_storage):
                     yield (self.filename, '/'.join(form_storage), variable)
 
     def close(self):
@@ -3137,10 +3138,12 @@ class VBA_Parser_CLI(VBA_Parser):
                     print('- ' * 39)
                     print(form_string)
                 for (subfilename, stream_path, form_variables) in self.extract_form_strings_extended():
-                    print('-' * 79)
-                    print('VBA FORM Variable "%s" IN %r - OLE stream: %r' % (form_variables['name'], subfilename, stream_path))
-                    print('- ' * 39)
-                    print(str(form_variables['value']))
+                    if form_variables is not None:
+                        print('-' * 79)
+                        print('VBA FORM Variable "%s" IN %r - OLE stream: %r' % (form_variables['name'], subfilename, stream_path))
+                        print('- ' * 39)
+                        print(str(form_variables['value']))
+                    # TODO: display error message otherwise (form parsing error)
                 if not vba_code_only:
                     # analyse the code from all modules at once:
                     self.print_analysis(show_decoded_strings, deobfuscate)
