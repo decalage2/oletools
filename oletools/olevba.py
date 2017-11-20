@@ -199,8 +199,9 @@ from __future__ import print_function
 # 2017-07-11 v0.52 PL: - raise exception instead of sys.exit (issue #180)
 # 2017-11-08       VB: - PR #124 adding user form parsing (Vincent Brillault)
 # 2017-11-17       PL: - fixed a few issues with form parsing
+# 2017-11-20       PL: - fixed issue #219, do not close the file too early
 
-__version__ = '0.52dev4'
+__version__ = '0.52dev5'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -3137,13 +3138,18 @@ class VBA_Parser_CLI(VBA_Parser):
                     print('VBA FORM STRING IN %r - OLE stream: %r' % (subfilename, stream_path))
                     print('- ' * 39)
                     print(form_string)
-                for (subfilename, stream_path, form_variables) in self.extract_form_strings_extended():
-                    if form_variables is not None:
-                        print('-' * 79)
-                        print('VBA FORM Variable "%s" IN %r - OLE stream: %r' % (form_variables['name'], subfilename, stream_path))
-                        print('- ' * 39)
-                        print(str(form_variables['value']))
-                    # TODO: display error message otherwise (form parsing error)
+                try:
+                    for (subfilename, stream_path, form_variables) in self.extract_form_strings_extended():
+                        if form_variables is not None:
+                            print('-' * 79)
+                            print('VBA FORM Variable "%s" IN %r - OLE stream: %r' % (form_variables['name'], subfilename, stream_path))
+                            print('- ' * 39)
+                            print(str(form_variables['value']))
+                except Exception as exc:
+                    # display the exception with full stack trace for debugging
+                    log.info('Error parsing form: %s' % exc)
+                    log.debug('Traceback:', exc_info=True)
+
                 if not vba_code_only:
                     # analyse the code from all modules at once:
                     self.print_analysis(show_decoded_strings, deobfuscate)
@@ -3441,6 +3447,11 @@ def main(cmd_line_args=None):
                 continue
 
             try:
+                # close the previous file if analyzing several:
+                # (this must be done here to avoid closing the file if there is only 1,
+                # to fix issue #219)
+                if vba_parser is not None:
+                    vba_parser.close()
                 # Open the file
                 vba_parser = VBA_Parser_CLI(filename, data=data, container=container,
                                             relaxed=options.relaxed)
@@ -3506,9 +3517,7 @@ def main(cmd_line_args=None):
                                   % (filename, exc.orig_exc))
                 return_code = RETURN_PARSE_ERROR if return_code == 0 \
                                                 else RETURN_SEVERAL_ERRS
-            finally:
-                if vba_parser is not None:
-                    vba_parser.close()
+            # Here we do not close the vba_parser, because process_file may need it below.
 
         if options.output_mode == 'triage':
             print('\n(Flags: OpX=OpenXML, XML=Word2003XML, MHT=MHTML, TXT=Text, M=Macros, ' \

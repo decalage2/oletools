@@ -58,7 +58,11 @@ class ExtendedStream(object):
 
     @classmethod
     def open(cls, ole_file, path):
+        # import oletools.thirdparty.olefile as olefile
+        # olefile.enable_logging()
         stream = ole_file.openstream(path)
+        # print('Opening OLE stream %r - size: %d' % (path, stream.size))
+        # print('declared size: %d' % ole_file.get_size(path))
         return cls(stream, path)
 
     def read(self, size):
@@ -283,11 +287,12 @@ def consume_MorphDataControl(stream):
 def extract_OleFormVariables(ole_file, stream_dir):
     control = ExtendedStream.open(ole_file, '/'.join(stream_dir + ['f']))
     variables = list(consume_FormControl(control))
-    print('/'.join(stream_dir + ['o']))
+    # print('/'.join(stream_dir + ['o']))
     data = ExtendedStream.open(ole_file, '/'.join(stream_dir + ['o']))
     for var in variables:
         if var['ClsidCacheIndex'] != 23:
             #raise OleFormParsingError('Unsupported stored type: {0}'.format(str(var['ClsidCacheIndex'])))
+            # TODO: use logging instead of print
             print('ERROR: Unsupported stored type in user form: {0}'.format(str(var['ClsidCacheIndex'])))
             var['value'] = None
         else:
