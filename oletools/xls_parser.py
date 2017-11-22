@@ -50,6 +50,7 @@ __version__ = '0.1'
 #--- IMPORTS ------------------------------------------------------------------
 
 import sys
+import os.path
 
 # little hack to allow absolute imports even if oletools is not installed.
 # Copied from olevba.py
@@ -61,36 +62,55 @@ if not _parent_dir in sys.path:
 from oletools.thirdparty import olefile
 
 
+entry_type2str = {
+    olefile.STGTY_EMPTY: 'empty',
+    olefile.STGTY_STORAGE: 'storage',
+    olefile.STGTY_STREAM: 'stream',
+    olefile.STGTY_LOCKBYTES: 'lock-bytes',
+    olefile.STGTY_PROPERTY: 'property',
+    olefile.STGTY_ROOT: 'root'
+}
+
 class XlsFile(olefile.OleFileIO):
     """ specialization of an OLE compound file """
 
-    def get_streams_recursive(self, storage=None):
-        """ find all streams in all storages, depth-first """
-        if storage is None:
-            storage = self
+    def get_streams(self):
+        """ find all streams, including orphans """
         print('Finding streams in ole file')
-        for st in storage.listdir(streams=True, storages=True):
-            st_type = self.get_type(st)
-            if st_type == olefile.STGTY_STREAM:      # a stream --> yield
-                print('Checking stream {0}'.format(st))
-                yield st
-            elif st_type == olefile.STGTY_STORAGE:   # a storage --> recurse
-                print('Recurse into storage {0}'.format(st))
-                for entry in self.get_streams_recursive(st):
-                    yield entry
-            else:
-                raise ValueError('unexpected type {0} for entry {1}'
-                                 .format(st_type, st))
+
+        for sid, direntry in enumerate(self.direntries):
+            is_orphan = direntry is None
+            if is_orphan:
+                # this direntry is not part of the tree: either unused or an orphan
+                direntry = self._load_direntry(sid)
+            is_stream = direntry.entry_type == olefile.STGTY_STREAM
+            print('direntry {:2d} {}: {}'
+                  .format(sid, '[orphan]' if is_orphan else direntry.name,
+                          'is stream of size {}'.format(direntry.size)
+                          if is_stream else
+                          'no stream ({})'
+                          .format(entry_type2str[direntry.entry_type])))
+            if is_stream:
+                yield XlsStream(self._open(direntry.isectStart, direntry.size))
 
 
 class XlsStream:
     """ specialization of an OLE (sub-)stream """
-    pass
+
+    def __init__(self, stream):
+        self.stream = stream
 
 
 def test(filename):
     """ parse given file and print rough structure """
-    pass
+    try:
+        xls = XlsFile(filename)
+    except Exception as exc:
+        print('{}: {}'.format(filename, exc))
+        return
+
+    for stream in xls.get_streams():
+        pass
 
 if __name__ == '__main__':
     """ parse all given file names and print rough structure """
