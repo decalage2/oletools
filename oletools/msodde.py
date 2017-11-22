@@ -489,12 +489,12 @@ def process_ole(filepath):
     ole = olefile.OleFileIO(filepath, path_encoding=None)
     text_parts = process_ole_storage(ole)
 
-    # mimic behaviour of process_openxml: combine links to single text string
+    # mimic behaviour of process_docx: combine links to single text string
     return u'\n'.join(text_parts)
 
 
-def process_openxml(filepath, field_filter_mode=None):
-    log.debug('process_openxml')
+def process_docx(filepath, field_filter_mode=None):
+    log.debug('process_docx')
     all_fields = []
     z = zipfile.ZipFile(filepath)
     for filepath in z.namelist():
@@ -678,11 +678,11 @@ def field_is_blacklisted(contents):
 
 
 def process_file(filepath, field_filter_mode=None):
-    """ decides to either call process_openxml or process_ole """
+    """ decides to either call process_docx or process_ole """
     if olefile.isOleFile(filepath):
         return process_ole(filepath)
     else:
-        return process_openxml(filepath, field_filter_mode)
+        return process_docx(filepath, field_filter_mode)
 
 
 #=== MAIN =================================================================
