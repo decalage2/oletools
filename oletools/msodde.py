@@ -88,6 +88,7 @@ if not _parent_dir in sys.path:
     sys.path.insert(0, _parent_dir)
 
 from oletools.thirdparty import olefile
+import oletools.ooxml as ooxml
 
 # === PYTHON 2+3 SUPPORT ======================================================
 
@@ -677,11 +678,33 @@ def field_is_blacklisted(contents):
     return True
 
 
+def process_xlsx(filepath, filed_filter_mode=None):
+    """ process an OOXML excel file (e.g. .xlsx or .xlsb or .xlsm) """
+    dde_links = []
+    for subfile, elem, _ in ooxml.iter_xml(filepath):
+        tag = elem.tag.lower()
+        if tag == 'ddelink' or tag.endswith('}ddelink'):
+            # we have found a dde link. Try to get more info about it
+            link_info = ['DDE-Link']
+            if 'ddeService' in elem.attrib:
+                link_info.append(elem.attrib['ddeService'])
+            if 'ddeTopic' in elem.attrib:
+                link_info.append(elem.attrib['ddeTopic'])
+            dde_links.append(' '.join(link_info))
+    return u'\n'.join(dde_links)
+
+
 def process_file(filepath, field_filter_mode=None):
-    """ decides to either call process_docx or process_ole """
+    """ decides to either call process_docx or process_ole or process_xlsx """
     if olefile.isOleFile(filepath):
         return process_ole(filepath)
-    else:
+    try:
+        doctype = ooxml.get_type(filepath)
+        if doctype == ooxml.DOCTYPE_EXCEL:
+            return process_xlsx(filepath, field_filter_mode)
+        else:
+            return process_docx(filepath, field_filter_mode)
+    except Exception:
         return process_docx(filepath, field_filter_mode)
 
 
