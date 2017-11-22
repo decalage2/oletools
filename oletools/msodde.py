@@ -372,7 +372,7 @@ def process_ole_field(data):
     """ check if field instructions start with DDE
 
     expects unicode input, returns unicode output (empty if not dde) """
-    #log.debug('processing field \'{0}\''.format(data))
+    log.debug('processing field \'{0}\''.format(data))
 
     if data.lstrip().lower().startswith(u'dde'):
         #log.debug('--> is DDE!')
@@ -410,6 +410,8 @@ def process_ole_stream(stream):
             char = ord(char)
 
         if char == OLE_FIELD_START:
+            if have_start and max_size_exceeded:
+                log.debug('big field was not a field after all')
             have_start = True
             have_sep = False
             max_size_exceeded = False
@@ -420,6 +422,8 @@ def process_ole_stream(stream):
 
         # now we are after start char but not at end yet
         if char == OLE_FIELD_SEP:
+            if have_sep:
+                log.debug('unexpected field: has multiple separators!')
             have_sep = True
         elif char == OLE_FIELD_END:
             # have complete field now, process it
@@ -430,6 +434,7 @@ def process_ole_stream(stream):
             have_sep = False
             field_contents = None
         elif not have_sep:
+            # we are only interested in the part from start to separator
             # check that array does not get too long by accident
             if max_size_exceeded:
                 pass
@@ -440,10 +445,20 @@ def process_ole_stream(stream):
 
             # appending a raw byte to a unicode string here. Not clean but
             # all we do later is check for the ascii-sequence 'DDE' later...
+            elif char == 0:        # may be a high-byte of a 2-byte codec
+                field_contents += unichr(char)
+            elif char in (10, 13):
+                field_contents += u'\n'
+            elif char < 32:
+                field_contents += u'?'
             elif char < 128:
                 field_contents += unichr(char)
             else:
                 field_contents += u'?'
+
+    if max_size_exceeded:
+        log.debug('big field was not a field after all')
+
     log.debug('Checked {0} characters, found {1} fields'
               .format(idx, len(result_parts)))
 
