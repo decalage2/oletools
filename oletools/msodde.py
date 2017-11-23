@@ -92,6 +92,7 @@ if not _parent_dir in sys.path:
 
 from oletools.thirdparty import olefile
 import oletools.ooxml as ooxml
+from oletools import xls_parser
 
 # === PYTHON 2+3 SUPPORT ======================================================
 
@@ -501,7 +502,7 @@ def process_ole(filepath):
     find dde links in ole file
 
     like process_xml, returns a concatenated unicode string of dde links or
-    empty if none were found. dde-links will still being with the dde[auto] key
+    empty if none were found. dde-links will still begin with the dde[auto] key
     word (possibly after some whitespace)
     """
     log.debug('process_ole')
@@ -510,6 +511,23 @@ def process_ole(filepath):
 
     # mimic behaviour of process_docx: combine links to single text string
     return u'\n'.join(text_parts)
+
+
+def process_xls(filepath):
+    """ find dde links in excel ole file """
+
+    result = []
+    for stream in xls_parser.XlsFile(filepath).get_streams():
+        if not isinstance(stream, xls_parser.WorkbookStream):
+            continue
+        for record in stream.iter_records():
+            if not isinstance(record, xls_parser.XlsRecordSupBook):
+                continue
+            if record.support_link_type in (
+                    xls_parser.XlsRecordSupBook.LINK_TYPE_OLE_DDE,
+                    xls_parser.XlsRecordSupBook.LINK_TYPE_EXTERNAL):
+                result.append(record.virt_path)
+    return u'\n'.join(result)
 
 
 def process_docx(filepath, field_filter_mode=None):
@@ -715,7 +733,10 @@ def process_xlsx(filepath, filed_filter_mode=None):
 def process_file(filepath, field_filter_mode=None):
     """ decides to either call process_docx or process_ole or process_xlsx """
     if olefile.isOleFile(filepath):
-        return process_ole(filepath)
+        if xls_parser.is_xls(filepath):
+            return process_xls(filepath)
+        else:
+            return process_ole(filepath)
     try:
         doctype = ooxml.get_type(filepath)
         log.debug('Detected file type: {0}'.format(doctype))
