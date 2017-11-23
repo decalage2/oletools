@@ -76,7 +76,7 @@ class TestReturnCode(unittest.TestCase):
                                      return_code))
 
 
-class TestDdeInDoc(unittest.TestCase):
+class TestDdeLinks(unittest.TestCase):
 
     def get_dde_from_output(self, capturer):
         """ helper to read dde links from captured output """
@@ -115,6 +115,15 @@ class TestDdeInDoc(unittest.TestCase):
                               'dde-test-from-office2013-utf_16le-korean.doc')])
         self.assertNotEqual(len(self.get_dde_from_output(capturer)), 0,
                             msg='Found no dde links in output for doc file')
+
+    def test_excel(self):
+        """ check that dde links are found in excel 2007+ files """
+        expect = ['DDE-Link cmd /c calc.exe', ]
+        for extn in 'xlsx', 'xlsm':  # not yet: 'xlsb'
+            with OutputCapture() as capturer:
+                msodde.main([join(BASE_DIR, 'msodde', 'dde-test.' + extn), ])
+            self.assertEqual(expect, self.get_dde_from_output(capturer))
+
 
 
 if __name__ == '__main__':
