@@ -68,7 +68,7 @@ def debug_str(elem):
         parts.append(u'text="{0}"'.format(elem.text))
     if elem.tail:
         parts.append(u'tail="{0}"'.format(elem.tail))
-    for key, value in elem.attrib.iteritems():
+    for key, value in elem.attrib.items():
         parts.append(u'{0}="{1}"'.format(key, value))
         if key == 'ContentType':
             if value.startswith(CONTENT_TYPES_EXCEL):
