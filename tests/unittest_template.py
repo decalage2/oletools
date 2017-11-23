@@ -8,9 +8,8 @@ Should work with python2 and python3!
 import unittest
 
 # if you need data from oletools/test-data/DIR/, uncomment these lines:
-#from os.path import join, dirname, normpath
-#Directory with test data, independent of current working directory
-#DATA_DIR = normpath(join(dirname(__file__), '..', 'test-data', 'DIR'))
+## Directory with test data, independent of current working directory
+#from tests.test_utils import DATA_BASE_DIR
 
 
 class TestMyFeature(unittest.TestCase):
