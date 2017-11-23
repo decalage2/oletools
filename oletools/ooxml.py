@@ -145,7 +145,7 @@ def iter_xml(filename, *args):
             logging.debug(u'subfile {0}'.format(subfile))
             depth = 0
             try:
-                with zip.open(subfile, 'rU') as handle:
+                with zip.open(subfile, 'r') as handle:
                     for event, elem in ET.iterparse(handle, ('start', 'end')):
                         if elem is None:
                             continue
