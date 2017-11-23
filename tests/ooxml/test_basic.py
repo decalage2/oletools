@@ -35,7 +35,9 @@ class TestOOXML(unittest.TestCase):
                     doctype = ooxml.get_type(full_name)
                 except Exception:
                     self.fail('Failed to get doctype of {0}'.format(filename))
-                self.assertIn(doctype, acceptable)
+                self.assertTrue(doctype in acceptable,
+                                msg='Doctype "{0}" for {1} not acceptable'
+                                    .format(doctype, full_name))
                 #print('ok: ' + filename + doctype)
 
 
