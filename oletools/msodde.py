@@ -700,6 +700,7 @@ def process_file(filepath, field_filter_mode=None):
         return process_ole(filepath)
     try:
         doctype = ooxml.get_type(filepath)
+        log.debug('Detected file type: {0}'.format(doctype))
         if doctype == ooxml.DOCTYPE_EXCEL:
             return process_xlsx(filepath, field_filter_mode)
         else:
