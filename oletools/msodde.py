@@ -428,7 +428,9 @@ def process_ole_stream(stream):
             have_sep = True
         elif char == OLE_FIELD_END:
             # have complete field now, process it
-            result_parts.append(process_ole_field(field_contents))
+            new_result = process_ole_field(field_contents)
+            if new_result:
+                result_parts.append(new_result)
 
             # re-set variables for next field
             have_start = False
@@ -466,37 +468,6 @@ def process_ole_stream(stream):
     return result_parts
 
 
-def process_ole_storage(ole):
-    """ process a "directory" inside an ole file; recursive """
-    results = []
-    for st in ole.listdir(streams=True, storages=True):
-        st_type = ole.get_type(st)
-        if st_type == olefile.STGTY_STREAM:      # a stream
-            stream = None
-            links = []
-            try:
-                stream = ole.openstream(st)
-                log.debug('Checking stream {0}'.format(st))
-                links = process_ole_stream(stream)
-            except Exception:
-                raise
-            finally:
-                if stream:
-                    stream.close()
-            if links:
-                results.extend(links)
-        elif st_type == olefile.STGTY_STORAGE:   # a storage
-            log.debug('Checking storage {0}'.format(st))
-            links = process_ole_storage(st)
-            if links:
-                results.extend(links)
-        else:
-            log.info('unexpected type {0} for entry {1}. Ignore it'
-                     .format(st_type, st))
-            continue
-    return results
-
-
 def process_ole(filepath):
     """
     find dde links in ole file
@@ -507,10 +478,27 @@ def process_ole(filepath):
     """
     log.debug('process_ole')
     ole = olefile.OleFileIO(filepath, path_encoding=None)
-    text_parts = process_ole_storage(ole)
+
+    links = []
+    for sid, direntry in enumerate(ole.direntries):
+        is_orphan = direntry is None
+        if is_orphan:
+            # this direntry is not part of the tree --> unused or orphan
+            direntry = ole._load_direntry(sid)
+        is_stream = direntry.entry_type == olefile.STGTY_STREAM
+        log.debug('direntry {:2d} {}: {}'
+                  .format(sid, '[orphan]' if is_orphan else direntry.name,
+                          'is stream of size {}'.format(direntry.size)
+                          if is_stream else
+                          'no stream ({})'
+                          .format(direntry.entry_type)))
+        if is_stream:
+            new_parts = process_ole_stream(
+                ole._open(direntry.isectStart, direntry.size))
+            links.extend(new_parts)
 
     # mimic behaviour of process_docx: combine links to single text string
-    return u'\n'.join(text_parts)
+    return u'\n'.join(links)
 
 
 def process_xls(filepath):
