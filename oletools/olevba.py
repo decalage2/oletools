@@ -200,8 +200,10 @@ from __future__ import print_function
 # 2017-11-08       VB: - PR #124 adding user form parsing (Vincent Brillault)
 # 2017-11-17       PL: - fixed a few issues with form parsing
 # 2017-11-20       PL: - fixed issue #219, do not close the file too early
+# 2017-11-24       PL: - added keywords to detect self-modifying macros and
+#                        attempts to disable macro security (issue #221)
 
-__version__ = '0.52dev5'
+__version__ = '0.52dev7'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -667,6 +669,13 @@ SUSPICIOUS_KEYWORDS = {
     'May detect WinJail Sandbox':
     # ref: http://www.cplusplus.com/forum/windows/96874/
         ('Afx:400000:0',),
+    'May attempt to disable VBA macro security and Protected View':
+    # ref: http://blog.trendmicro.com/trendlabs-security-intelligence/qkg-filecoder-self-replicating-document-encrypting-ransomware/
+    # ref: https://thehackernews.com/2017/11/ms-office-macro-malware.html
+        ('AccessVBOM', 'VBAWarnings', 'ProtectedView', 'DisableAttachementsInPV', 'DisableInternetFilesInPV',
+         'DisableUnsafeLocationsInPV', 'blockcontentexecutionfrominternet'),
+    'May attempt to modify the VBA code (self-modification)':
+        ('VBProject', 'VBComponents', 'CodeModule', 'AddFromString'),
 }
 
 # Regular Expression for a URL:
