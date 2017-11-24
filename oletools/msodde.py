@@ -369,7 +369,7 @@ def process_args(cmd_line_args=None):
 # separator are collectively referred to as field characters.
 
 
-def process_ole_field(data):
+def process_doc_field(data):
     """ check if field instructions start with DDE
 
     expects unicode input, returns unicode output (empty if not dde) """
@@ -390,11 +390,11 @@ OLE_FIELD_END = 0x15
 OLE_FIELD_MAX_SIZE = 1000   # max field size to analyze, rest is ignored
 
 
-def process_ole_stream(stream):
-    """ find dde links in single ole stream
+def process_doc_stream(stream):
+    """ find dde links in single word ole stream
 
-    since ole file stream are subclasses of io.BytesIO, they are buffered, so
-    reading char-wise is not that bad performanc-wise """
+    since word ole file stream are subclasses of io.BytesIO, they are buffered,
+    so reading char-wise is not that bad performanc-wise """
 
     have_start = False
     have_sep = False
@@ -428,7 +428,7 @@ def process_ole_stream(stream):
             have_sep = True
         elif char == OLE_FIELD_END:
             # have complete field now, process it
-            new_result = process_ole_field(field_contents)
+            new_result = process_doc_field(field_contents)
             if new_result:
                 result_parts.append(new_result)
 
@@ -468,15 +468,15 @@ def process_ole_stream(stream):
     return result_parts
 
 
-def process_ole(filepath):
+def process_doc(filepath):
     """
-    find dde links in ole file
+    find dde links in word ole (.doc/.dot) file
 
     like process_xml, returns a concatenated unicode string of dde links or
     empty if none were found. dde-links will still begin with the dde[auto] key
     word (possibly after some whitespace)
     """
-    log.debug('process_ole')
+    log.debug('process_doc')
     ole = olefile.OleFileIO(filepath, path_encoding=None)
 
     links = []
@@ -493,12 +493,13 @@ def process_ole(filepath):
                           'no stream ({})'
                           .format(direntry.entry_type)))
         if is_stream:
-            new_parts = process_ole_stream(
+            new_parts = process_doc_stream(
                 ole._open(direntry.isectStart, direntry.size))
             links.extend(new_parts)
 
     # mimic behaviour of process_docx: combine links to single text string
     return u'\n'.join(links)
+
 
 
 def process_xls(filepath):
@@ -719,12 +720,12 @@ def process_xlsx(filepath, filed_filter_mode=None):
 
 
 def process_file(filepath, field_filter_mode=None):
-    """ decides to either call process_docx or process_ole or process_xlsx """
+    """ decides which of process_doc/x or process_xls/x to call """
     if olefile.isOleFile(filepath):
         if xls_parser.is_xls(filepath):
             return process_xls(filepath)
         else:
-            return process_ole(filepath)
+            return process_doc(filepath)
     try:
         doctype = ooxml.get_type(filepath)
         log.debug('Detected file type: {0}'.format(doctype))
