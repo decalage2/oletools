@@ -28,8 +28,6 @@ Read storages, (sub-)streams, records from xls file
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import print_function
-
 #------------------------------------------------------------------------------
 # CHANGELOG:
 # 2017-11-02 v0.01 CH: - first version
@@ -55,6 +53,7 @@ import sys
 import os.path
 from struct import unpack
 from io import SEEK_CUR
+import logging
 
 # little hack to allow absolute imports even if oletools is not installed.
 # Copied from olevba.py
@@ -108,7 +107,7 @@ class XlsFile(olefile.OleFileIO):
 
     def get_streams(self):
         """ find all streams, including orphans """
-        print('Finding streams in ole file')
+        logging.debug('Finding streams in ole file')
 
         for sid, direntry in enumerate(self.direntries):
             is_orphan = direntry is None
@@ -116,12 +115,10 @@ class XlsFile(olefile.OleFileIO):
                 # this direntry is not part of the tree --> unused or orphan
                 direntry = self._load_direntry(sid)
             is_stream = direntry.entry_type == olefile.STGTY_STREAM
-            print('direntry {:2d} {}: {}'
-                  .format(sid, '[orphan]' if is_orphan else direntry.name,
-                          'is stream of size {}'.format(direntry.size)
-                          if is_stream else
-                          'no stream ({})'
-                          .format(ENTRY_TYPE2STR[direntry.entry_type])))
+            logging.debug('direntry {:2d} {}: {}'.format(
+                sid, '[orphan]' if is_orphan else direntry.name,
+               'is stream of size {}'.format(direntry.size) if is_stream else
+               'no stream ({})'.format(ENTRY_TYPE2STR[direntry.entry_type])))
             if is_stream:
                 if direntry.name == 'Workbook':
                     clz = WorkbookStream
@@ -154,7 +151,7 @@ class WorkbookStream(XlsStream):
     def iter_records(self, fill_data=False):
         """ iterate over records in streams"""
         if self.stream.tell() != 0:
-            print('have to jump to start')
+            logging.debug('have to jump to start')
             self.stream.seek(0)
 
         while True:
@@ -386,21 +383,23 @@ def read_unicode(data, start_idx, n_chars):
 
 def test(*filenames):
     """ parse all given file names and print rough structure """
+    logging.basicConfig(level=logging.DEBUG)
     if not filenames:
-        print('need file name[s]')
+        logging.info('need file name[s]')
         return 2
     for filename in filenames:
+        logging.info('checking file {0}'.format(filename))
         if not olefile.isOleFile(filename):
             continue
         xls = XlsFile(filename)
 
         for stream in xls.get_streams():
-            print(stream)
+            logging.info(stream)
             if isinstance(stream, WorkbookStream):
                 for record in stream.iter_records():
-                    print('  {0}'.format(record))
+                    logging.info('  {0}'.format(record))
     return 0
 
 
 if __name__ == '__main__':
-    sys.exit(test(sys.argv[1:]))
+    sys.exit(test(*sys.argv[1:]))
