@@ -390,6 +390,7 @@ def test(*filenames):
     for filename in filenames:
         logging.info('checking file {0}'.format(filename))
         if not olefile.isOleFile(filename):
+            logging.info('not an ole file - skip')
             continue
         xls = XlsFile(filename)
 
