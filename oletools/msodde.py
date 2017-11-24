@@ -722,6 +722,7 @@ def process_xlsx(filepath, filed_filter_mode=None):
 def process_file(filepath, field_filter_mode=None):
     """ decides which of process_doc/x or process_xls/x to call """
     if olefile.isOleFile(filepath):
+        log.debug('checking streams to see whether this is xls')
         if xls_parser.is_xls(filepath):
             return process_xls(filepath)
         else:
