@@ -124,6 +124,27 @@ def is_ooxml(filename):
         return False
 
 
+class ZipFileResetable(io.BufferedIOBase):
+    """ A file-like object like zip.open returns them, only can seek() to 0
+
+    ZipFile.open() gives file handles that can be read but not seek()ed since
+    the file is being decompressed in the background. This class implements a
+    reset() function which corresponds to a seek to 0 (which just closes the
+    stream and re-opens it behind the scenes
+    """
+
+    def __init__(self, container, filename, mode=None):
+        self.container = container
+        self.name = filename
+        self.handle = container.open(filename, mode)
+
+    def read(self, size=None):
+        pass
+
+    def seek(self, pos, offset):
+        pass
+
+
 class XmlParser(object):
     """ parser for OOXML files """
 
