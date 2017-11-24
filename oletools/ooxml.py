@@ -13,7 +13,7 @@ See also: Notes on Microsoft's implementation of ECMA-376: [MS-0E376]
 import sys
 import logging
 from zipfile import ZipFile, BadZipfile
-from traceback import print_exc
+from os.path import splitext
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -90,7 +90,7 @@ def get_type(filename):
     is_doc = False
     is_xls = False
     is_ppt = False
-    for _, elem, _ in iter_xml(filename, FILE_CONTENT_TYPES):
+    for _, elem, _ in XmlParser(filename).iter_xml(FILE_CONTENT_TYPES):
         logging.debug(u'  ' + debug_str(elem))
         try:
             is_xls |= elem.attrib['ContentType'].startswith(
@@ -124,41 +124,120 @@ def is_ooxml(filename):
         return False
 
 
-def iter_xml(filename, *args):
-    """ Iterate xml contents of document
+class XmlParser(object):
+    """ parser for OOXML files """
 
-    If given subfile name[s] as optional arg[s], will only parse that subfile[s]
+    def __init__(self, filename):
+        self.filename = filename
+        self.did_iter_all = False
+        self.subfiles_no_xml = set()
 
-    yields 3-tuples (subfilename, element, depth) where depth indicates how deep
-    in the hierarchy the element is located. Containers of element will come
-    *after* the elements they contain (since they are only finished then).
+    def iter_xml(self, *args):
+        """ Iterate xml contents of document
 
-    Will silently ignore errors in xml-parsing of a file, since subfiles can be
-    OLE or embedded image files.
-    """
-    with ZipFile(filename) as zip:
-        if args:
-            subfiles = args
-        else:
-            subfiles = zip.namelist()
-        for subfile in subfiles:
-            logging.debug(u'subfile {0}'.format(subfile))
-            depth = 0
-            try:
+        If given subfile name[s] as optional arg[s], will only parse that
+        subfile[s]
+
+        yields 3-tuples (subfilename, element, depth) where depth indicates how
+        deep in the hierarchy the element is located. Containers of element
+        will come *after* the elements they contain (since they are only
+        finished then).
+
+        Subfiles that are not xml (e.g. OLE or image files) are remembered
+        internally and can be retrieved using iter_non_xml().
+        """
+        with ZipFile(self.filename) as zip:
+            if args:
+                subfiles = args
+            else:
+                subfiles = zip.namelist()
+
+            failed = []
+            events = ('start', 'end')
+            for subfile in subfiles:
+                logging.debug(u'subfile {0}'.format(subfile))
+                depth = 0
+                try:
+                    with zip.open(subfile, 'r') as handle:
+                        for event, elem in ET.iterparse(handle, events):
+                            if elem is None:
+                                continue
+                            if event == 'start':
+                                depth += 1
+                                continue
+                            assert(event == 'end')
+                            depth -= 1
+                            assert(depth >= 0)
+                            yield subfile, elem, depth
+                except ET.ParseError as err:
+                    logging.warning('  xml-parsing for {0} failed. '
+                                    .format(subfile) +
+                                    'Run iter_non_xml to investigate.')
+                    self.subfiles_no_xml.add(subfile)
+                assert(depth == 0)
+        if not args:
+            self.did_iter_all = True
+
+    def get_content_types(self):
+        """ retrieve subfile infos from [Content_Types].xml subfile
+
+        returns (files, defaults) where
+        - files is a dict that maps file-name --> content-type
+        - defaults is a dict that maps extension --> content-type
+
+        No guarantees on accuracy of these content types!
+        """
+        defaults = []
+        files = []
+        for _, elem, _ in self.iter_xml(FILE_CONTENT_TYPES):
+            if elem.tag.endswith('Default'):
+                extension = elem.attrib['Extension']
+                if extension.startswith('.'):
+                    extension = extension[1:]
+                defaults.append((extension, elem.attrib['ContentType']))
+                logging.debug('found content type for extension {0[0]}: {0[1]}'
+                              .format(defaults[-1]))
+            elif elem.tag.endswith('Override'):
+                subfile = elem.attrib['PartName']
+                if subfile.startswith('/'):
+                    subfile = subfile[1:]
+                files.append((subfile, elem.attrib['ContentType']))
+                logging.debug('found content type for subfile {0[0]}: {0[1]}'
+                              .format(files[-1]))
+        return dict(files), dict(defaults)
+
+    def iter_non_xml(self):
+        """ retrieve subfiles that were found by iter_xml to be non-xml
+
+        also looks for content type info in the [Content_Types].xml subfile.
+
+        yields 3-tuples (filename, content_type, file_handle) where
+        content_type is based on filename or default for extension or is None,
+        and file_handle is an open read-only handle for the file
+        """
+        if not self.did_iter_all:
+            logging.warning('Did not iterate through complete file. Should run '
+                            'iter_xml() without args, first.')
+        if not self.subfiles_no_xml:
+            raise StopIteration()
+
+        content_types, content_defaults = self.get_content_types()
+
+        with ZipFile(self.filename) as zip:
+            for subfile in self.subfiles_no_xml:
+                if subfile.startswith('/'):
+                    subfile = subfile[1:]
+                content_type = None
+                if subfile in content_types:
+                    content_type = content_types[subfile]
+                else:
+                    extension = splitext(subfile)[1]
+                    if extension.startswith('.'):
+                        extension = extension[1:]   # remove the '.'
+                    if extension in content_defaults:
+                        content_type = content_defaults[extension]
                 with zip.open(subfile, 'r') as handle:
-                    for event, elem in ET.iterparse(handle, ('start', 'end')):
-                        if elem is None:
-                            continue
-                        if event == 'start':
-                            depth += 1
-                            continue
-                        assert(event == 'end')
-                        depth -= 1
-                        assert(depth >= 0)
-                        yield subfile, elem, depth
-            except ET.ParseError as err:
-                logging.warning('  xml-parsing for {0} failed'.format(subfile))
-            assert(depth == 0)
+                    yield subfile, content_type, handle
 
 
 def test():
@@ -166,13 +245,18 @@ def test():
 
     see module doc for more info
     """
+    logging.basicConfig(level=logging.DEBUG)
     if len(sys.argv) != 2:
         print(u'To test this code, give me a single file as arg')
         return 2
     #type = get_type(sys.argv[1])
     #print('content type is {0}'.format(type))
-    for _, elem, depth in iter_xml(sys.argv[1]):
-        print(u'{0}{1}'.format('  ' * depth, debug_str(elem)))
+    parser = XmlParser(sys.argv[1])
+    for subfile, elem, depth in parser.iter_xml():
+        print(u'{0}{1}{2}'.format(subfile, '  ' * depth, debug_str(elem)))
+    for subfile, content_type in parser.iter_non_xml():
+        print(u'Non-XML subfile: {0} of type {1}'
+              .format(subfile, content_type or u'unknown'))
     return 0
 
 
