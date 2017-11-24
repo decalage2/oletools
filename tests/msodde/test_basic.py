@@ -95,26 +95,27 @@ class TestDdeLinks(unittest.TestCase):
 
     def test_with_dde(self):
         """ check that dde links appear on stdout """
+        filename = 'dde-test-from-office2003.doc'
         with OutputCapture() as capturer:
-            msodde.main([join(BASE_DIR, 'msodde',
-                              'dde-test-from-office2003.doc')])
+            msodde.main([join(BASE_DIR, 'msodde', filename)])
         self.assertNotEqual(len(self.get_dde_from_output(capturer)), 0,
-                            msg='Found no dde links in output for doc file')
+                            msg='Found no dde links in output of ' + filename)
 
     def test_no_dde(self):
         """ check that no dde links appear on stdout """
+        filename = 'harmless-clean.doc'
         with OutputCapture() as capturer:
-            msodde.main([join(BASE_DIR, 'msodde', 'harmless-clean.doc')])
+            msodde.main([join(BASE_DIR, 'msodde', filename)])
         self.assertEqual(len(self.get_dde_from_output(capturer)), 0,
-                         msg='Found dde links in output for doc file')
+                         msg='Found dde links in output of ' + filename)
 
     def test_with_dde_utf16le(self):
         """ check that dde links appear on stdout """
+        filename = 'dde-test-from-office2013-utf_16le-korean.doc'
         with OutputCapture() as capturer:
-            msodde.main([join(BASE_DIR, 'msodde',
-                              'dde-test-from-office2013-utf_16le-korean.doc')])
+            msodde.main([join(BASE_DIR, 'msodde', filename)])
         self.assertNotEqual(len(self.get_dde_from_output(capturer)), 0,
-                            msg='Found no dde links in output for doc file')
+                            msg='Found no dde links in output of ' + filename)
 
     def test_excel(self):
         """ check that dde links are found in excel 2007+ files """
