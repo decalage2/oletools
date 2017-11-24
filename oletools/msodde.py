@@ -71,13 +71,6 @@ __version__ = '0.52dev7'
 
 #--- IMPORTS ------------------------------------------------------------------
 
-# import lxml or ElementTree for XML parsing:
-try:
-    # lxml: best performance for XML processing
-    import lxml.etree as ET
-except ImportError:
-    import xml.etree.cElementTree as ET
-
 import argparse
 import zipfile
 import os
@@ -85,6 +78,14 @@ import sys
 import json
 import logging
 import re
+from struct import unpack
+
+# import lxml or ElementTree for XML parsing:
+try:
+    # lxml: best performance for XML processing
+    import lxml.etree as ET
+except ImportError:
+    import xml.etree.cElementTree as ET
 
 # little hack to allow absolute imports even if oletools is not installed
 # Copied from olevba.py
@@ -709,7 +710,8 @@ def field_is_blacklisted(contents):
 def process_xlsx(filepath, filed_filter_mode=None):
     """ process an OOXML excel file (e.g. .xlsx or .xlsb or .xlsm) """
     dde_links = []
-    for subfile, elem, _ in ooxml.iter_xml(filepath):
+    parser = ooxml.XmlParser(filepath)
+    for subfile, elem, _ in parser.iter_xml():
         tag = elem.tag.lower()
         if tag == 'ddelink' or tag.endswith('}ddelink'):
             # we have found a dde link. Try to get more info about it
@@ -719,7 +721,61 @@ def process_xlsx(filepath, filed_filter_mode=None):
             if 'ddeTopic' in elem.attrib:
                 link_info.append(elem.attrib['ddeTopic'])
             dde_links.append(' '.join(link_info))
+
+    for subfile, content_type, handle in parser.iter_non_xml():
+        log.warning('File contains non-xml part {0} that could not be parsed'
+                    .format(subfile))
+
+        if content_type.startswith('application/vnd.ms-excel.'):
+            dde_links.extend(process_xlsb(subfile, content_type, handle))
+            raise NotImplementedError('Continue reverse-engineering')
+        else:
+            magic = handle.read(len(olefile.MAGIC))
+            if magic == olefile.MAGIC:
+                log.debug('found ole file {0} in excel ooxml'.format(subfile))
+                raise NotImplementedError('continue. need to reset stream')
+
     return u'\n'.join(dde_links)
+
+
+def process_xlsb(subfile, content_type, stream):
+    """ Process data contained in a binary part of an OOXML excel file
+
+    lots of these in xlsb files
+
+    Work in progress, always returns []
+
+    Format of these streams seems to roughly have record-like structure like
+    xls files (see xls_parser.py), but have to guess a lot since I could not
+    find proper description in [MS-XLSB] nor [ECMA-376] nor [MS-OE376]. The
+    code here is reverse-engineered from comparing dde-test.xlsb and
+    dde-test.xlsx
+
+    The author of
+    https://www.codeproject.com/Articles/15216/Office-bin-file-format seems to
+    have tried to reverse-engineer several .bin streams based on the assumption
+    they contain BIFF data.
+
+    Anyway, need more test samples to get any reliable results from this.
+    """
+    log.debug('Trying to parse subfile {0}'.format(subfile))
+    while True:
+        data = stream.read(3)
+        if not data:
+            break   # end of stream
+        type = ord(data[0])
+        unknown = ord(data[1])
+        size = ord(data[2])
+        data = stream.read(size)
+
+        log.debug('Record of type {0} unknown part {1} and size {2}: {3}'
+                  .format(type, unknown, size, data[:64]))
+        if len(data) != size:
+            log.warning('Stream in {0} does not seem to fit record structure. '
+                        .format(subfile) +
+                        '(read {0} bytes but expected {1})'
+                        .format(len(data), size))
+    return []
 
 
 def process_file(filepath, field_filter_mode=None):
@@ -738,6 +794,7 @@ def process_file(filepath, field_filter_mode=None):
         else:
             return process_docx(filepath, field_filter_mode)
     except Exception:
+        log.debug('Exception trying to xml-parse file', exc_info=True)
         return process_docx(filepath, field_filter_mode)
 
 
