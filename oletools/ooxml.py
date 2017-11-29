@@ -334,6 +334,8 @@ class XmlParser(object):
         yields 3-tuples (filename, content_type, file_handle) where
         content_type is based on filename or default for extension or is None,
         and file_handle is a ZipSubFile
+
+        To handle binary parts of an xlsb file, use xls_parser.parse_xlsb_part
         """
         if not self.did_iter_all:
             logging.warning('Did not iterate through complete file. '
@@ -369,8 +371,6 @@ def test():
     if len(sys.argv) != 2:
         print(u'To test this code, give me a single file as arg')
         return 2
-    #type = get_type(sys.argv[1])
-    #print('content type is {0}'.format(type))
     parser = XmlParser(sys.argv[1])
     for subfile, elem, depth in parser.iter_xml():
         print(u'{0}{1}{2}'.format(subfile, '  ' * depth, debug_str(elem)))
