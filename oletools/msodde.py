@@ -7,7 +7,7 @@ msodde is a script to parse MS Office documents
 
 Supported formats:
 - Word 97-2003 (.doc, .dot), Word 2007+ (.docx, .dotx, .docm, .dotm)
-- Excel 2007+ (.xlsx, .xlsm)  (not .xlsb)
+- Excel 2007+ (.xlsx, .xlsm, .xlsb)
 - Excel 97-2003 (.xls)
 
 Author: Philippe Lagadec - http://www.decalage.info
@@ -56,14 +56,14 @@ from __future__ import print_function
 # 2017-11-10       CH: - added field blacklist and corresponding cmd line args
 # 2017-11-23       CH: - added support for xlsx files
 # 2017-11-24       CH: - added support for xls files
+# 2017-11-29       CH: - added support for xlsb files
 
-__version__ = '0.52dev7'
+__version__ = '0.52dev8'
 
 #------------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these
 # TODO: generalize behaviour for xlsx: find all external links (maybe rename
 #       command line flag for "blacklist" to "find all suspicious" or so)
-# TODO: xlsb
 
 #------------------------------------------------------------------------------
 # REFERENCES:
