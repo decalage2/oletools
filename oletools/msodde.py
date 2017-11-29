@@ -95,7 +95,7 @@ if not _parent_dir in sys.path:
     sys.path.insert(0, _parent_dir)
 
 from oletools.thirdparty import olefile
-import oletools.ooxml as ooxml
+from oletools import ooxml
 from oletools import xls_parser
 
 # === PYTHON 2+3 SUPPORT ======================================================
@@ -519,7 +519,7 @@ def process_xls(filepath):
             if record.support_link_type in (
                     xls_parser.XlsRecordSupBook.LINK_TYPE_OLE_DDE,
                     xls_parser.XlsRecordSupBook.LINK_TYPE_EXTERNAL):
-                result.append(record.virt_path)
+                result.append(record.virt_path.replace(u'\u0003', u' '))
     return u'\n'.join(result)
 
 
@@ -720,7 +720,7 @@ def process_xlsx(filepath, filed_filter_mode=None):
                 link_info.append(elem.attrib['ddeService'])
             if 'ddeTopic' in elem.attrib:
                 link_info.append(elem.attrib['ddeTopic'])
-            dde_links.append(' '.join(link_info))
+            dde_links.append(u' '.join(link_info))
 
     # binary parts, e.g. contained in .xlsb
     for subfile, content_type, handle in parser.iter_non_xml():
