@@ -722,60 +722,27 @@ def process_xlsx(filepath, filed_filter_mode=None):
                 link_info.append(elem.attrib['ddeTopic'])
             dde_links.append(' '.join(link_info))
 
+    # binary parts, e.g. contained in .xlsb
     for subfile, content_type, handle in parser.iter_non_xml():
-        log.warning('File contains non-xml part {0} that could not be parsed'
-                    .format(subfile))
+        if content_type == 'application/vnd.openxmlformats-officedocument.' + \
+                           'spreadsheetml.printerSettings':
+            continue   # printer settings
+        if not content_type.startswith('application/vnd.ms-excel.') and \
+           not content_type.startswith('application/vnd.ms-office.'):  # pylint: disable=bad-indentation
+           logging.warning('Unexpected content type: ' + content_type)
+               # try parsing anyway
 
-        if content_type.startswith('application/vnd.ms-excel.'):
-            dde_links.extend(process_xlsb(subfile, content_type, handle))
-            raise NotImplementedError('Continue reverse-engineering')
-        else:
-            magic = handle.read(len(olefile.MAGIC))
-            if magic == olefile.MAGIC:
-                log.debug('found ole file {0} in excel ooxml'.format(subfile))
-                raise NotImplementedError('continue. need to reset stream')
+        logging.info('Parsing non-xml subfile {0} with content type {1}'
+                     .format(subfile, content_type))
+        for record in xls_parser.parse_xlsb_part(handle, content_type, subfile):
+            logging.debug('{0}: {1}'.format(subfile, record))
+            if isinstance(record, xls_parser.XlsbBeginSupBook) and \
+                    record.link_type == \
+                    xls_parser.XlsbBeginSupBook.LINK_TYPE_DDE:
+                dde_links.append('DDE-Link ' + record.string1 + ' ' +
+                                 record.string2)
 
     return u'\n'.join(dde_links)
-
-
-def process_xlsb(subfile, content_type, stream):
-    """ Process data contained in a binary part of an OOXML excel file
-
-    lots of these in xlsb files
-
-    Work in progress, always returns []
-
-    Format of these streams seems to roughly have record-like structure like
-    xls files (see xls_parser.py), but have to guess a lot since I could not
-    find proper description in [MS-XLSB] nor [ECMA-376] nor [MS-OE376]. The
-    code here is reverse-engineered from comparing dde-test.xlsb and
-    dde-test.xlsx
-
-    The author of
-    https://www.codeproject.com/Articles/15216/Office-bin-file-format seems to
-    have tried to reverse-engineer several .bin streams based on the assumption
-    they contain BIFF data.
-
-    Anyway, need more test samples to get any reliable results from this.
-    """
-    log.debug('Trying to parse subfile {0}'.format(subfile))
-    while True:
-        data = stream.read(3)
-        if not data:
-            break   # end of stream
-        type = ord(data[0])
-        unknown = ord(data[1])
-        size = ord(data[2])
-        data = stream.read(size)
-
-        log.debug('Record of type {0} unknown part {1} and size {2}: {3}'
-                  .format(type, unknown, size, data[:64]))
-        if len(data) != size:
-            log.warning('Stream in {0} does not seem to fit record structure. '
-                        .format(subfile) +
-                        '(read {0} bytes but expected {1})'
-                        .format(len(data), size))
-    return []
 
 
 def process_file(filepath, field_filter_mode=None):
