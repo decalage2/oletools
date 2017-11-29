@@ -120,7 +120,7 @@ class TestDdeLinks(unittest.TestCase):
     def test_excel(self):
         """ check that dde links are found in excel 2007+ files """
         expect = ['DDE-Link cmd /c calc.exe', ]
-        for extn in 'xlsx', 'xlsm':  # not yet: 'xlsb'
+        for extn in 'xlsx', 'xlsm', 'xlsb':
             with OutputCapture() as capturer:
                 msodde.main([join(BASE_DIR, 'msodde', 'dde-test.' + extn), ])
             self.assertEqual(expect, self.get_dde_from_output(capturer))
