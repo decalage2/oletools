@@ -62,7 +62,7 @@ _parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))             
 if _parent_dir not in sys.path:
     sys.path.insert(0, _parent_dir)
 
-from oletools.thirdparty import olefile                                # pylint: disable=wrong-import-position
+from oletools.thirdparty import olefile
 
 
 ###############################################################################
@@ -141,8 +141,8 @@ class XlsFile(olefile.OleFileIO):
             is_stream = direntry.entry_type == olefile.STGTY_STREAM
             logging.debug('direntry {:2d} {}: {}'.format(
                 sid, '[orphan]' if is_orphan else direntry.name,
-               'is stream of size {}'.format(direntry.size) if is_stream else
-               'no stream ({})'.format(ENTRY_TYPE2STR[direntry.entry_type])))
+                'is stream of size {}'.format(direntry.size) if is_stream else
+                'no stream ({})'.format(ENTRY_TYPE2STR[direntry.entry_type])))
             if is_stream:
                 if direntry.name == 'Workbook':
                     clz = WorkbookStream
@@ -443,9 +443,9 @@ class XlsRecordSupBook(XlsRecord):
         elif self.ctab == 0x1 and self.cch == 0x3A01:
             self.support_link_type = self.LINK_TYPE_ADDIN
             # next records must be ExternName with all add-in functions
-        elif self.virt_path == '\u0020':   # space ; ctab can be anything
+        elif self.virt_path == u'\u0020':   # space ; ctab can be anything
             self.support_link_type = self.LINK_TYPE_UNUSED
-        elif self.virt_path == '\u0000':
+        elif self.virt_path == u'\u0000':
             self.support_link_type = self.LINK_TYPE_SAMESHEET
         elif self.ctab == 0x0 and self.virt_path:
             self.support_link_type = self.LINK_TYPE_OLE_DDE
