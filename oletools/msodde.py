@@ -57,8 +57,9 @@ from __future__ import print_function
 # 2017-11-23       CH: - added support for xlsx files
 # 2017-11-24       CH: - added support for xls files
 # 2017-11-29       CH: - added support for xlsb files
+# 2017-11-29       PL: - added support for RTF files (issue #223)
 
-__version__ = '0.52dev8'
+__version__ = '0.52dev9'
 
 #------------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these
@@ -100,6 +101,7 @@ if not _parent_dir in sys.path:
 from oletools.thirdparty import olefile
 from oletools import ooxml
 from oletools import xls_parser
+from oletools import rtfobj
 
 # === PYTHON 2+3 SUPPORT ======================================================
 
@@ -748,6 +750,62 @@ def process_xlsx(filepath, filed_filter_mode=None):
     return u'\n'.join(dde_links)
 
 
+class RtfFieldParser(rtfobj.RtfParser):
+    """
+    Specialized RTF parser to extract fields such as DDEAUTO
+    """
+
+    def __init__(self, data):
+        super(RtfFieldParser, self).__init__(data)
+        # list of RtfObjects found
+        self.fields = []
+
+    def open_destination(self, destination):
+        if destination.cword == b'fldinst':
+            log.debug('*** Start field data at index %Xh' % destination.start)
+
+    def close_destination(self, destination):
+        if destination.cword == b'fldinst':
+            log.debug('*** Close field data at index %Xh' % self.index)
+            log.debug('Field text: %r' % destination.data)
+            # remove extra spaces and newline chars:
+            field_clean = destination.data.translate(None, b'\r\n').strip()
+            log.debug('Cleaned Field text: %r' % field_clean)
+            self.fields.append(field_clean)
+
+    def control_symbol(self, matchobject):
+        # required to handle control symbols such as '\\'
+        # inject the symbol as-is in the text:
+        # TODO: handle special symbols properly
+        self.current_destination.data += matchobject.group()[1]
+
+
+
+def process_rtf(filepath, field_filter_mode=None):
+    log.debug('process_rtf')
+    all_fields = []
+    data = open(filepath, 'rb').read()
+    rtfparser = RtfFieldParser(data)
+    rtfparser.parse()
+    all_fields = rtfparser.fields
+    # apply field command filter
+    log.debug('filtering with mode "{0}"'.format(field_filter_mode))
+    if field_filter_mode in (FIELD_FILTER_ALL, None):
+        clean_fields = all_fields
+    elif field_filter_mode == FIELD_FILTER_DDE:
+        clean_fields = [field for field in all_fields
+                        if FIELD_DDE_REGEX.match(field)]
+    elif field_filter_mode == FIELD_FILTER_BLACKLIST:
+        # check if fields are acceptable and should not be returned
+        clean_fields = [field for field in all_fields
+                        if not field_is_blacklisted(field.strip())]
+    else:
+        raise ValueError('Unexpected field_filter_mode: "{0}"'
+                         .format(field_filter_mode))
+
+    return u'\n'.join(clean_fields)
+
+
 def process_file(filepath, field_filter_mode=None):
     """ decides which of process_doc/x or process_xls/x to call """
     if olefile.isOleFile(filepath):
@@ -756,6 +814,9 @@ def process_file(filepath, field_filter_mode=None):
             return process_xls(filepath)
         else:
             return process_doc(filepath)
+    elif open(filepath, 'rb').read(4) == b'{\\rt':
+        # This is a RTF file
+        return process_rtf(filepath, field_filter_mode)
     try:
         doctype = ooxml.get_type(filepath)
         log.debug('Detected file type: {0}'.format(doctype))
