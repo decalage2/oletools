@@ -14,6 +14,7 @@ import sys
 import logging
 from zipfile import ZipFile, BadZipfile
 from os.path import splitext
+import io
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -124,25 +125,124 @@ def is_ooxml(filename):
         return False
 
 
-class ZipFileResetable(io.BufferedIOBase):
-    """ A file-like object like zip.open returns them, only can seek() to 0
+class ZipSubFile(object):
+    """ A file-like object like ZipFile.open returns them, with size and seek()
 
     ZipFile.open() gives file handles that can be read but not seek()ed since
     the file is being decompressed in the background. This class implements a
     reset() function which corresponds to a seek to 0 (which just closes the
-    stream and re-opens it behind the scenes
+    stream and re-opens it behind the scenes.)
+    --> can be used e.g. for olefile.isOleFile()
+
+    Can be used as a context manager::
+
+        with zipfile.ZipFile('file.zip') as zipper:
+            with ZipSubFile(zipper, 'subfile') as handle:
+                print('subfile in file.zip has size {0}, starts with {1}'
+                      .format(handle.size, handle.read(20)))
+                handle.reset()
+
+    Attributes always present:
+    container: the containing zip file
+    name: name of file within zip file
+    mode: open-mode, 'r' per default
+    size: size of the stream (constructor arg or taken from ZipFile.getinfo)
+
+    Attributes only not-None after open() and before close():
+    handle: direkt handle to subfile stream, created by ZipFile.open()
+    pos: current position within stream
     """
 
-    def __init__(self, container, filename, mode=None):
+    def __init__(self, container, filename, mode='r', size=None):
+        """ remember all necessary vars but do not open yet """
         self.container = container
         self.name = filename
-        self.handle = container.open(filename, mode)
+        if size is None:
+            self.size = container.getinfo(filename).file_size
+            logging.debug('zip stream has size {0}'.format(self.size))
+        else:
+            self.size = size
+        if 'w' in mode.lower():
+            raise ValueError('Can only read, mode "{0}" not allowed'
+                             .format(mode))
+        self.mode = mode
+        self.handle = None
+        self.pos = None
 
-    def read(self, size=None):
-        pass
+    def open(self):
+        """ open subfile for reading; open mode given to constructor before """
+        if self.handle is not None:
+            raise IOError('re-opening file not supported!')
+        self.handle = self.container.open(self.name, self.mode)
+        self.pos = 0
+        return self
+
+    def write(self, *args, **kwargs):                          # pylint: disable=unused-argument,no-self-use
+        """ write is not allowed """
+        raise IOError('writing not implemented')
+
+    def read(self, size=-1):
+        """
+        read given number of bytes (or all data) from stream
+
+        returns bytes (i.e. str in python2, bytes in python3)
+        """
+        if size is None:
+            self.pos = self.size
+        else:
+            self.pos += size
+        return self.handle.read(size)
 
     def seek(self, pos, offset):
-        pass
+        """ re-position point so read() will continue elsewhere
+
+        only re-positioning to start of file is allowed
+        """
+        if pos == 0 and offset == io.SEEK_SET:
+            self.reset()
+        elif pos == -self.pos and offset == io.SEEK_CUR:
+            self.reset()
+        else:
+            raise NotImplementedError('could reset() and read()')
+
+    def tell(self):
+        """ inform about position of next read """
+        return self.pos
+
+    def reset(self):
+        """ close and re-open """
+        self.close()
+        self.open()
+
+    def close(self):
+        """ close file """
+        if self.handle is not None:
+            self.handle.close()
+        self.pos = None
+        self.handle = None
+
+    def __enter__(self):
+        """ start of context manager; opens the file """
+        self.open()
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        """ end of context manager; closes the file """
+        self.close()
+
+    def __str__(self):
+        """ creates a nice textual representation for this object """
+        if self.handle is None:
+            status = 'closed'
+        elif self.pos == 0:
+            status = 'open, at start'
+        elif self.pos >= self.size:
+            status = 'open, at end'
+        else:
+            status = 'open, at pos {0}'.format(self.pos)
+
+        return '[ZipSubFile {0} (size {1}, mode {2}, {3})]' \
+               .format(self.name, self.size, self.mode, status)
 
 
 class XmlParser(object):
@@ -233,7 +333,7 @@ class XmlParser(object):
 
         yields 3-tuples (filename, content_type, file_handle) where
         content_type is based on filename or default for extension or is None,
-        and file_handle is an open read-only handle for the file
+        and file_handle is a ZipSubFile
         """
         if not self.did_iter_all:
             logging.warning('Did not iterate through complete file. '
