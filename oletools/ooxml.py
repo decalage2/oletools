@@ -167,19 +167,18 @@ class XmlParser(object):
         Subfiles that are not xml (e.g. OLE or image files) are remembered
         internally and can be retrieved using iter_non_xml().
         """
-        with ZipFile(self.filename) as zip:
+        with ZipFile(self.filename) as zipper:
             if args:
                 subfiles = args
             else:
-                subfiles = zip.namelist()
+                subfiles = zipper.namelist()
 
-            failed = []
             events = ('start', 'end')
             for subfile in subfiles:
                 logging.debug(u'subfile {0}'.format(subfile))
                 depth = 0
                 try:
-                    with zip.open(subfile, 'r') as handle:
+                    with zipper.open(subfile, 'r') as handle:
                         for event, elem in ET.iterparse(handle, events):
                             if elem is None:
                                 continue
@@ -191,8 +190,8 @@ class XmlParser(object):
                             assert(depth >= 0)
                             yield subfile, elem, depth
                 except ET.ParseError as err:
-                    logging.warning('  xml-parsing for {0} failed. '
-                                    .format(subfile) +
+                    logging.warning('  xml-parsing for {0} failed ({1}). '
+                                    .format(subfile, err) +
                                     'Run iter_non_xml to investigate.')
                     self.subfiles_no_xml.add(subfile)
                 assert(depth == 0)
@@ -237,14 +236,14 @@ class XmlParser(object):
         and file_handle is an open read-only handle for the file
         """
         if not self.did_iter_all:
-            logging.warning('Did not iterate through complete file. Should run '
-                            'iter_xml() without args, first.')
+            logging.warning('Did not iterate through complete file. '
+                            'Should run iter_xml() without args, first.')
         if not self.subfiles_no_xml:
             raise StopIteration()
 
         content_types, content_defaults = self.get_content_types()
 
-        with ZipFile(self.filename) as zip:
+        with ZipFile(self.filename) as zipper:
             for subfile in self.subfiles_no_xml:
                 if subfile.startswith('/'):
                     subfile = subfile[1:]
@@ -257,7 +256,7 @@ class XmlParser(object):
                         extension = extension[1:]   # remove the '.'
                     if extension in content_defaults:
                         content_type = content_defaults[extension]
-                with zip.open(subfile, 'r') as handle:
+                with ZipSubFile(zipper, subfile) as handle:
                     yield subfile, content_type, handle
 
 
