@@ -3,12 +3,12 @@
 msodde.py
 
 msodde is a script to parse MS Office documents
-(e.g. Word, Excel), to detect and extract DDE links.
+(e.g. Word, Excel, RTF), to detect and extract DDE links.
 
 Supported formats:
 - Word 97-2003 (.doc, .dot), Word 2007+ (.docx, .dotx, .docm, .dotm)
-- Excel 2007+ (.xlsx, .xlsm, .xlsb)
-- Excel 97-2003 (.xls)
+- Excel 97-2003 (.xls), Excel 2007+ (.xlsx, .xlsm, .xlsb)
+- RTF
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
