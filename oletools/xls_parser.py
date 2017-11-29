@@ -97,6 +97,30 @@ def is_xls(filename):
         return False
 
 
+def read_unicode(data, start_idx, n_chars):
+    """ read a unicode string from a XLUnicodeStringNoCch structure """
+    # first bit 0x0 --> only low-bytes are saved, all high bytes are 0
+    # first bit 0x1 --> 2 bytes per character
+    low_bytes_only = (ord(data[start_idx]) == 0)
+    if low_bytes_only:
+        end_idx = start_idx + 1 + n_chars
+        return data[start_idx+1:end_idx].decode('ascii'), end_idx
+    else:
+        return read_unicode_2byte(data, start_idx+1, n_chars)
+
+
+def read_unicode_2byte(data, start_idx, n_chars):
+    """ read a unicode string with characters encoded by 2 bytes """
+    end_idx = start_idx + n_chars * 2
+    if n_chars < 256:  # faster version, long format string for unpack
+        unichars = (unichr(val) for val in
+                    unpack('<' + 'H'*n_chars, data[start_idx:end_idx]))
+    else:              # slower version but less memory-extensive
+        unichars = (unichr(unpack('<H', data[data_idx:data_idx+2])[0])
+                    for data_idx in xrange(start_idx, end_idx, 2))
+    return u''.join(unichars), end_idx
+
+
 ###############################################################################
 # File, Storage, Stream
 ###############################################################################
@@ -133,6 +157,8 @@ class XlsStream(object):
 
     Currently not much use, but may be interesting for further sub-classing
     when extending this code.
+
+    stream argument can be oleile.OleStream or ooxml.ZipSubFile
     """
 
     def __init__(self, stream, name):
@@ -149,11 +175,10 @@ class WorkbookStream(XlsStream):
     """ the workbook stream which contains records """
 
     def iter_records(self, fill_data=False):
-        """ iterate over records in streams"""
-        if self.stream.tell() != 0:
-            logging.debug('have to jump to start')
-            self.stream.seek(0)
+        """ iterate over records in streams
 
+        Stream must be positioned at start of records (e.g. start of stream).
+        """
         while True:
             # unpacking as in olevba._extract_vba
             pos = self.stream.tell()
@@ -181,6 +206,52 @@ class WorkbookStream(XlsStream):
 
     def __str__(self):
         return '[Workbook Stream (size {0})'.format(self.size)
+
+
+class XlsbStream(XlsStream):
+    """ binary stream of an xlsb file, usually have a record structure """
+
+    HIGH_BIT_MASK = 0b10000000
+    LOW7_BIT_MASK = 0b01111111
+
+    def iter_records(self):
+        """ iterate over records in stream
+
+        Record type and size are encoded differently than in xls streams.
+        (c.f. [MS-XLSB, Paragraph 2.1.4: Record)
+        """
+        while True:
+            pos = self.stream.tell()
+            if pos >= self.size:
+                break
+            val = ord(self.stream.read(1))
+            if val & self.HIGH_BIT_MASK:    # high bit of the low byte is 1
+                val2 = ord(self.stream.read(1))         # need another byte
+                # combine 7 low bits of each byte
+                type = (val & self.LOW7_BIT_MASK) + \
+                       ((val2 & self.LOW7_BIT_MASK) << 7)
+            else:
+                type = val
+
+            size = 0
+            shift = 0
+            for _ in range(4):      # size needs up to 4 byte
+                val = ord(self.stream.read(1))
+                size += (val & self.LOW7_BIT_MASK) << shift
+                shift += 7
+                if (val & self.HIGH_BIT_MASK) == 0:   # high-bit is 0 --> done
+                    break
+
+            if pos + size > self.size:
+                raise ValueError('Stream does not seem to have record '
+                                 'structure or is incomplete (record size {0})'
+                                 .format(size))
+            data = self.stream.read(size)
+
+            clz = XlsbRecord
+            if type == XlsbBeginSupBook.TYPE:
+                clz = XlsbBeginSupBook
+            yield clz(type, size, pos, data)
 
 
 ###############################################################################
@@ -231,11 +302,33 @@ FREQUENT_RECORDS = dict([
     (2194, 'StyleExt')                         # pylint: disable=bad-whitespace
 ])
 
+#: records found in xlsb binary parts
+FREQUENT_RECORDS_XLSB = dict([
+    (360, 'BrtBeginSupBook'),
+    (588, 'BrtEndSupBook'),
+    (667, 'BrtSupAddin'),
+    (355, 'BrtSupBookSrc'),
+    (586, 'BrtSupNameBits'),
+    (584, 'BrtSupNameBool'),
+    (587, 'BrtSupNameEnd'),
+    (581, 'BrtSupNameErr'),
+    (585, 'BrtSupNameFmla'),
+    (583, 'BrtSupNameNil'),
+    (580, 'BrtSupNameNum'),
+    (582, 'BrtSupNameSt'),
+    (577, 'BrtSupNameStart'),
+    (579, 'BrtSupNameValueEnd'),
+    (578, 'BrtSupNameValueStart'),
+    (358, 'BrtSupSame'),
+    (357, 'BrtSupSelf'),
+    (359, 'BrtSupTabs'),
+])
+
 
 class XlsRecord(object):
     """ basic building block of data in workbook stream """
 
-    #: max size of a record
+    #: max size of a record in xls stream (does not apply to xlsb)
     MAX_SIZE = 8224
 
     # to be overwritten in subclasses that have fixed type/size
@@ -245,8 +338,9 @@ class XlsRecord(object):
     def __init__(self, type, size, pos, data=None):
         """ create a record """
         self.type = type
-        if size > self.MAX_SIZE:
-            raise ValueError('size {0} exceeds max size'.format(size))
+        if self.MAX_SIZE is not None and size > self.MAX_SIZE:
+            logging.warning('record size {0} exceeds max size'
+                            .format(size))
         elif self.SIZE is not None and size != self.SIZE:
             raise ValueError('size {0} is not as expected for this type'
                              .format(size))
@@ -362,18 +456,89 @@ class XlsRecordSupBook(XlsRecord):
         return 'SupBook Record ({0})'.format(self.support_link_type)
 
 
-def read_unicode(data, start_idx, n_chars):
-    """ read a unicode string from a XLUnicodeStringNoCch structure """
-    # first bit 0x0 --> only low-bytes are saved, all high bytes are 0
-    # first bit 0x1 --> 2 bytes per character
-    low_bytes_only = (ord(data[start_idx]) == 0)
-    if low_bytes_only:
-        end_idx = start_idx + 1 + n_chars
-        return data[start_idx+1:end_idx].decode('ascii'), end_idx
-    end_idx = start_idx + 1 + n_chars * 2
-    return u''.join(unichr(val) for val in
-                    unpack('<' + 'H'*n_chars, data[start_idx+1:end_idx])), \
-           end_idx
+class XlsbRecord(XlsRecord):
+    """ like an xls record, but from binary part of xlsb file
+
+    has no MAX_SIZE and types have different meanings
+    """
+
+    MAX_SIZE = None
+
+    def _type_str(self):
+        """ simplification for subclasses to create their own __str__ """
+        try:
+            return FREQUENT_RECORDS_XLSB[self.type]
+        except KeyError:
+            return 'XlsbRecord type {0}'.format(self.type)
+
+
+class XlsbBeginSupBook(XlsbRecord):
+    """ Record beginning an external link in xlsb file
+
+    contains information about the link itself (e.g. for DDE the link is
+    string1 + ' ' + string2)
+    """
+
+    TYPE = 360
+    LINK_TYPE_WORKBOOK = 'workbook'
+    LINK_TYPE_DDE = 'DDE'
+    LINK_TYPE_OLE = 'OLE'
+    LINK_TYPE_UNEXPECTED = 'unexpected'
+    LINK_TYPE_UNKNOWN = 'unknown'
+
+    def __init__(self, *args, **kwargs):
+        super(XlsbBeginSupBook, self).__init__(*args, **kwargs)
+        self.link_type = self.LINK_TYPE_UNKNOWN
+        self.string1 = ''
+        self.string2 = ''
+        if self.data is None:
+            return
+        self.sbt = unpack('<H', self.data[0:2])[0]
+        if self.sbt == 0:
+            self.link_type = self.LINK_TYPE_WORKBOOK
+        elif self.sbt == 1:
+            self.link_type = self.LINK_TYPE_DDE
+        elif self.sbt == 2:
+            self.link_type = self.LINK_TYPE_OLE
+        else:
+            logging.warning('Unexpected link type {0} encountered'
+                            .format(self.data[0]))
+            self.link_type = self.LINK_TYPE_UNEXPECTED
+
+        start_idx = 2
+        n_chars = unpack('<I', self.data[start_idx:start_idx+4])[0]
+        if n_chars == 0xFFFFFFFF:
+            logging.warning('Max string length 0xFFFFFFF is not allowed')
+        elif self.size < n_chars*2 + start_idx+4:
+            logging.warning('Impossible string length {0} for data length {1}'
+                            .format(n_chars, self.size))
+        else:
+            self.string1, start_idx = read_unicode_2byte(self.data,
+                                                         start_idx+4, n_chars)
+
+        n_chars = unpack('<I', self.data[start_idx:start_idx+4])[0]
+        if n_chars == 0xFFFFFFFF:
+            logging.warning('Max string length 0xFFFFFFF is not allowed')
+        elif self.size < n_chars*2 + start_idx+4:
+            logging.warning('Impossible string length {0} for data length {1}'
+                            .format(n_chars, self.size) + ' for string2')
+        else:
+            self.string2, _ = read_unicode_2byte(self.data, start_idx+4,
+                                                 n_chars)
+
+    def _type_str(self):
+        return 'XlsbBeginSupBook Record ({0}, "{1}", "{2}")' \
+               .format(self.link_type, self.string1, self.string2)
+
+
+###############################################################################
+# XLSB Binary Parts
+###############################################################################
+
+def parse_xlsb_part(stream, _, filename):
+    """ Excel xlsb files also have a record structure. iter records """
+    for record in XlsbStream(stream, filename).iter_records():
+        yield record
 
 
 ###############################################################################
