@@ -64,6 +64,9 @@ __version__ = '0.52dev8'
 # TODO: field codes can be in headers/footers/comments - parse these
 # TODO: generalize behaviour for xlsx: find all external links (maybe rename
 #       command line flag for "blacklist" to "find all suspicious" or so)
+# TODO: Test with more interesting (real-world?) samples: xls, xlsx, xlsb, docx
+# TODO: Think about finding all external "connections" of documents, not just
+#       DDE-Links
 
 #------------------------------------------------------------------------------
 # REFERENCES:
