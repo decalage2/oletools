@@ -198,12 +198,24 @@ class ZipSubFile(object):
 
         only re-positioning to start of file is allowed
         """
+        CHUNK_SIZE = 4096
         if pos == 0 and offset == io.SEEK_SET:
             self.reset()
-        elif pos == -self.pos and offset == io.SEEK_CUR:
-            self.reset()
+        elif offset == io.SEEK_CUR:
+            if pos == -self.pos:
+                self.reset()
+            elif pos == 0:
+                return
+            elif pos > 0:
+                skipped = 0
+                n_chunks, leftover = divmod(pos, CHUNK_SIZE)
+                for _ in range(n_chunks):
+                    self.read(CHUNK_SIZE)    # just read and discard
+                self.read(leftover)
+            else:
+                raise NotImplementedError('could reset() and read()?')
         else:
-            raise NotImplementedError('could reset() and read()')
+            raise NotImplementedError('could reset() and read()?')
 
     def tell(self):
         """ inform about position of next read """
