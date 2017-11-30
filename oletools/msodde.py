@@ -536,7 +536,7 @@ def process_xls(filepath):
     """ find dde links in excel ole file """
 
     result = []
-    for stream in xls_parser.XlsFile(filepath).get_streams():
+    for stream in xls_parser.XlsFile(filepath).iter_streams():
         if not isinstance(stream, xls_parser.WorkbookStream):
             continue
         for record in stream.iter_records():
