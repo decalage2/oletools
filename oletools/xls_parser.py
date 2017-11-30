@@ -30,9 +30,11 @@ Read storages, (sub-)streams, records from xls file
 
 #------------------------------------------------------------------------------
 # CHANGELOG:
-# 2017-11-02 v0.01 CH: - first version
+# 2017-11-02 v0.1 CH: - first version
+# 2017-11-02 v0.2 CH: - move some code to record_base.py
+#                        (to avoid copy-and-paste in ppt_parser.py)
 
-__version__ = '0.1'
+__version__ = '0.2'
 
 # -----------------------------------------------------------------------------
 #  TODO:
@@ -52,17 +54,8 @@ __version__ = '0.1'
 import sys
 import os.path
 from struct import unpack
-from io import SEEK_CUR
 import logging
-
-# little hack to allow absolute imports even if oletools is not installed.
-# Copied from olevba.py
-_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))  # pylint: disable=invalid-name
-_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))             # pylint: disable=invalid-name
-if _parent_dir not in sys.path:
-    sys.path.insert(0, _parent_dir)
-
-from oletools.thirdparty import olefile
+from record_base import OleRecordFile, OleRecordStream, OleRecordBase, test
 
 
 # === PYTHON 2+3 SUPPORT ======================================================
@@ -75,16 +68,6 @@ if sys.version_info[0] >= 3:
 ###############################################################################
 
 
-ENTRY_TYPE2STR = {
-    olefile.STGTY_EMPTY: 'empty',
-    olefile.STGTY_STORAGE: 'storage',
-    olefile.STGTY_STREAM: 'stream',
-    olefile.STGTY_LOCKBYTES: 'lock-bytes',
-    olefile.STGTY_PROPERTY: 'property',
-    olefile.STGTY_ROOT: 'root'
-}
-
-
 def is_xls(filename):
     """
     determine whether a given file is an excel ole file
@@ -95,7 +78,7 @@ def is_xls(filename):
     substream
     """
     try:
-        for stream in XlsFile(filename).get_streams():
+        for stream in XlsFile(filename).iter_streams():
             if isinstance(stream, WorkbookStream):
                 return True
     except Exception:
@@ -122,7 +105,7 @@ def read_unicode_2byte(data, start_idx, n_chars):
                     unpack('<' + 'H'*n_chars, data[start_idx:end_idx]))
     else:              # slower version but less memory-extensive
         unichars = (unichr(unpack('<H', data[data_idx:data_idx+2])[0])
-                    for data_idx in xrange(start_idx, end_idx, 2))
+                    for data_idx in range(start_idx, end_idx, 2))
     return u''.join(unichars), end_idx
 
 
@@ -130,133 +113,94 @@ def read_unicode_2byte(data, start_idx, n_chars):
 # File, Storage, Stream
 ###############################################################################
 
+class XlsFile(OleRecordFile):
+    """ An xls file has most streams made up of records """
 
-class XlsFile(olefile.OleFileIO):
-    """ specialization of an OLE compound file """
-
-    def get_streams(self):
-        """ find all streams, including orphans """
-        logging.debug('Finding streams in ole file')
-
-        for sid, direntry in enumerate(self.direntries):
-            is_orphan = direntry is None
-            if is_orphan:
-                # this direntry is not part of the tree --> unused or orphan
-                direntry = self._load_direntry(sid)
-            is_stream = direntry.entry_type == olefile.STGTY_STREAM
-            logging.debug('direntry {:2d} {}: {}'.format(
-                sid, '[orphan]' if is_orphan else direntry.name,
-                'is stream of size {}'.format(direntry.size) if is_stream else
-                'no stream ({})'.format(ENTRY_TYPE2STR[direntry.entry_type])))
-            if is_stream:
-                if direntry.name == 'Workbook':
-                    clz = WorkbookStream
-                else:
-                    clz = XlsStream
-                yield clz(self._open(direntry.isectStart, direntry.size),
-                          None if is_orphan else direntry.name)
+    @classmethod
+    def stream_class_for_name(self, stream_name):
+        """ helper for iter_streams """
+        return XlsStream
 
 
-class XlsStream(object):
-    """ specialization of an OLE stream
+class XlsStream(OleRecordStream):
+    """ most streams in xls file consist of records """
 
-    Currently not much use, but may be interesting for further sub-classing
-    when extending this code.
+    def read_record_head(self):
+        """ read first few bytes of record to determine size and type
 
-    stream argument can be oleile.OleStream or ooxml.ZipSubFile
-    """
+        returns (type, size, other) where other is None
+        """
+        rec_type, rec_size = unpack('<HH', self.stream.read(4))
+        return rec_type, rec_size, None
 
-    def __init__(self, stream, name):
-        self.stream = stream
-        self.size = stream.size
-        self.name = name
+    @classmethod
+    def record_class_for_type(cls, type):
+        """ determine a class for given record type
 
-    def __str__(self):
-        return '[XlsStream {0} (size {1})' \
-               .format(self.name or '[orphan]', self.size)
+        returns (clz, force_read)
+        """
+        return XlsRecord, False
 
 
 class WorkbookStream(XlsStream):
-    """ the workbook stream which contains records """
+    """ Stream in excel file that holds most info """
 
-    def iter_records(self, fill_data=False):
-        """ iterate over records in streams
+    @classmethod
+    def record_class_for_type(cls, type):
+        """ determine a class for given record type
 
-        Stream must be positioned at start of records (e.g. start of stream).
+        returns (clz, force_read)
         """
-        while True:
-            # unpacking as in olevba._extract_vba
-            pos = self.stream.tell()
-            if pos >= self.size:
-                break
-            type = unpack('<H', self.stream.read(2))[0]
-            size = unpack('<H', self.stream.read(2))[0]
-            force_read = False
-            if type == XlsRecordBof.TYPE:
-                clz = XlsRecordBof
-                force_read = True
-            elif type == XlsRecordEof.TYPE:
-                clz = XlsRecordEof
-            elif type == XlsRecordSupBook.TYPE:
-                clz = XlsRecordSupBook
-                force_read = True
-            else:
-                clz = XlsRecord
-            data = None
-            if fill_data or force_read:
-                data = self.stream.read(size)
-            else:
-                self.stream.seek(size, SEEK_CUR)
-            yield clz(type, size, pos, data)
-
-    def __str__(self):
-        return '[Workbook Stream (size {0})'.format(self.size)
+        if type == XlsRecordBof.TYPE:
+            return XlsRecordBof, True
+        elif type == XlsRecordEof.TYPE:
+            return XlsRecordEof, False
+        elif type == XlsRecordSupBook.TYPE:
+            return XlsRecordSupBook, True
+        else:
+            return XlsRecord, False
 
 
-class XlsbStream(XlsStream):
+class XlsbStream(OleRecordStream):
     """ binary stream of an xlsb file, usually have a record structure """
 
     HIGH_BIT_MASK = 0b10000000
     LOW7_BIT_MASK = 0b01111111
 
-    def iter_records(self):
-        """ iterate over records in stream
+    def read_record_head(self):
+        """ read first few bytes of record to determine size and type
 
-        Record type and size are encoded differently than in xls streams.
-        (c.f. [MS-XLSB, Paragraph 2.1.4: Record)
+        returns (type, size, other) where other is None
         """
-        while True:
-            pos = self.stream.tell()
-            if pos >= self.size:
-                break
-            val = ord(self.stream.read(1))
-            if val & self.HIGH_BIT_MASK:    # high bit of the low byte is 1
-                val2 = ord(self.stream.read(1))         # need another byte
-                # combine 7 low bits of each byte
-                type = (val & self.LOW7_BIT_MASK) + \
+        val = ord(self.stream.read(1))
+        if val & self.HIGH_BIT_MASK:    # high bit of the low byte is 1
+            val2 = ord(self.stream.read(1))         # need another byte
+            # combine 7 low bits of each byte
+            rec_type = (val & self.LOW7_BIT_MASK) + \
                        ((val2 & self.LOW7_BIT_MASK) << 7)
-            else:
-                type = val
+        else:
+            rec_type = val
 
-            size = 0
-            shift = 0
-            for _ in range(4):      # size needs up to 4 byte
-                val = ord(self.stream.read(1))
-                size += (val & self.LOW7_BIT_MASK) << shift
-                shift += 7
-                if (val & self.HIGH_BIT_MASK) == 0:   # high-bit is 0 --> done
-                    break
+        rec_size = 0
+        shift = 0
+        for _ in range(4):      # rec_size needs up to 4 byte
+            val = ord(self.stream.read(1))
+            rec_size += (val & self.LOW7_BIT_MASK) << shift
+            shift += 7
+            if (val & self.HIGH_BIT_MASK) == 0:   # high-bit is 0 --> done
+                break
+        return rec_type, rec_size, None
 
-            if pos + size > self.size:
-                raise ValueError('Stream does not seem to have record '
-                                 'structure or is incomplete (record size {0})'
-                                 .format(size))
-            data = self.stream.read(size)
+    @classmethod
+    def record_class_for_type(cls, type):
+        """ determine a class for given record type
 
-            clz = XlsbRecord
-            if type == XlsbBeginSupBook.TYPE:
-                clz = XlsbBeginSupBook
-            yield clz(type, size, pos, data)
+        returns (clz, force_read)
+        """
+        if type == XlsbBeginSupBook.TYPE:
+            return XlsbBeginSupBook, True
+        else:
+            return XlsbRecord, False
 
 
 ###############################################################################
@@ -309,7 +253,6 @@ FREQUENT_RECORDS = dict([
 
 #: records found in xlsb binary parts
 FREQUENT_RECORDS_XLSB = dict([
-    (360, 'BrtBeginSupBook'),
     (588, 'BrtEndSupBook'),
     (667, 'BrtSupAddin'),
     (355, 'BrtSupBookSrc'),
@@ -330,35 +273,11 @@ FREQUENT_RECORDS_XLSB = dict([
 ])
 
 
-class XlsRecord(object):
+class XlsRecord(OleRecordBase):
     """ basic building block of data in workbook stream """
 
     #: max size of a record in xls stream (does not apply to xlsb)
     MAX_SIZE = 8224
-
-    # to be overwritten in subclasses that have fixed type/size
-    TYPE = None
-    SIZE = None
-
-    def __init__(self, type, size, pos, data=None):
-        """ create a record """
-        self.type = type
-        if self.MAX_SIZE is not None and size > self.MAX_SIZE:
-            logging.warning('record size {0} exceeds max size'
-                            .format(size))
-        elif self.SIZE is not None and size != self.SIZE:
-            raise ValueError('size {0} is not as expected for this type'
-                             .format(size))
-        self.size = size
-        self.pos = pos
-        self.data = data
-        if data is not None and len(data) != size:
-            raise ValueError('data size {0} is not expected size {1}'
-                             .format(len(data), size))
-
-    def read_data(self, stream):
-        """ read data from stream if up to now only pos was known """
-        raise NotImplementedError()
 
     def _type_str(self):
         """ simplification for subclasses to create their own __str__ """
@@ -366,10 +285,6 @@ class XlsRecord(object):
             return FREQUENT_RECORDS[self.type]
         except KeyError:
             return 'XlsRecord type {0}'.format(self.type)
-
-    def __str__(self):
-        return '[' + self._type_str() + \
-               ' (size {0} from {1})]'.format(self.size, self.pos)
 
 
 class XlsRecordBof(XlsRecord):
@@ -380,8 +295,7 @@ class XlsRecordBof(XlsRecord):
     DOCTYPES = dict([(0x5, 'workbook'), (0x10, 'dialog/worksheet'),
                      (0x20, 'chart'), (0x40, 'macro')])
 
-    def __init__(self, *args, **kwargs):
-        super(XlsRecordBof, self).__init__(*args, **kwargs)
+    def parse(self, _):
         if self.data is None:
             self.doctype = None
             return
@@ -420,9 +334,7 @@ class XlsRecordSupBook(XlsRecord):
     LINK_TYPE_OLE_DDE = 'ole/dde data source'
     LINK_TYPE_EXTERNAL = 'external workbook'
 
-    def __init__(self, *args, **kwargs):
-        super(XlsRecordSupBook, self).__init__(*args, **kwargs)
-
+    def parse(self, _):
         # set defaults
         self.ctab = None
         self.cch = None
@@ -461,7 +373,7 @@ class XlsRecordSupBook(XlsRecord):
         return 'SupBook Record ({0})'.format(self.support_link_type)
 
 
-class XlsbRecord(XlsRecord):
+class XlsbRecord(OleRecordBase):
     """ like an xls record, but from binary part of xlsb file
 
     has no MAX_SIZE and types have different meanings
@@ -491,8 +403,7 @@ class XlsbBeginSupBook(XlsbRecord):
     LINK_TYPE_UNEXPECTED = 'unexpected'
     LINK_TYPE_UNKNOWN = 'unknown'
 
-    def __init__(self, *args, **kwargs):
-        super(XlsbBeginSupBook, self).__init__(*args, **kwargs)
+    def parse(self, _):
         self.link_type = self.LINK_TYPE_UNKNOWN
         self.string1 = ''
         self.string2 = ''
@@ -540,6 +451,7 @@ class XlsbBeginSupBook(XlsbRecord):
 # XLSB Binary Parts
 ###############################################################################
 
+
 def parse_xlsb_part(stream, _, filename):
     """ Excel xlsb files also have a record structure. iter records """
     for record in XlsbStream(stream, filename).iter_records():
@@ -551,26 +463,5 @@ def parse_xlsb_part(stream, _, filename):
 ###############################################################################
 
 
-def test(*filenames):
-    """ parse all given file names and print rough structure """
-    logging.basicConfig(level=logging.DEBUG)
-    if not filenames:
-        logging.info('need file name[s]')
-        return 2
-    for filename in filenames:
-        logging.info('checking file {0}'.format(filename))
-        if not olefile.isOleFile(filename):
-            logging.info('not an ole file - skip')
-            continue
-        xls = XlsFile(filename)
-
-        for stream in xls.get_streams():
-            logging.info(stream)
-            if isinstance(stream, WorkbookStream):
-                for record in stream.iter_records():
-                    logging.info('  {0}'.format(record))
-    return 0
-
-
 if __name__ == '__main__':
-    sys.exit(test(*sys.argv[1:]))
+    sys.exit(test(sys.argv[1:], XlsFile, WorkbookStream))
