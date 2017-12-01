@@ -134,7 +134,7 @@ class XlsStream(OleRecordStream):
         return rec_type, rec_size, None
 
     @classmethod
-    def record_class_for_type(cls, type):
+    def record_class_for_type(cls, rec_type):
         """ determine a class for given record type
 
         returns (clz, force_read)
@@ -146,16 +146,16 @@ class WorkbookStream(XlsStream):
     """ Stream in excel file that holds most info """
 
     @classmethod
-    def record_class_for_type(cls, type):
+    def record_class_for_type(cls, rec_type):
         """ determine a class for given record type
 
         returns (clz, force_read)
         """
-        if type == XlsRecordBof.TYPE:
+        if rec_type == XlsRecordBof.TYPE:
             return XlsRecordBof, True
-        elif type == XlsRecordEof.TYPE:
+        elif rec_type == XlsRecordEof.TYPE:
             return XlsRecordEof, False
-        elif type == XlsRecordSupBook.TYPE:
+        elif rec_type == XlsRecordSupBook.TYPE:
             return XlsRecordSupBook, True
         else:
             return XlsRecord, False
@@ -192,12 +192,12 @@ class XlsbStream(OleRecordStream):
         return rec_type, rec_size, None
 
     @classmethod
-    def record_class_for_type(cls, type):
+    def record_class_for_type(cls, rec_type):
         """ determine a class for given record type
 
         returns (clz, force_read)
         """
-        if type == XlsbBeginSupBook.TYPE:
+        if rec_type == XlsbBeginSupBook.TYPE:
             return XlsbBeginSupBook, True
         else:
             return XlsbRecord, False
