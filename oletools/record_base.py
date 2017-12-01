@@ -203,7 +203,12 @@ class OleRecordStream(object):
             else:
                 self.stream.seek(rec_size, SEEK_CUR)
                 data = None
-            yield rec_clz(rec_type, rec_size, other, pos, data)
+            rec_object = rec_clz(rec_type, rec_size, other, pos, data)
+
+            # "We are microsoft, we do not have to adhere to our specifications"
+            rec_object.read_some_more(self.stream)
+            yield rec_object
+
 
     def __str__(self):
         return '[{0} {1} (type {2}, size {3})' \
@@ -264,6 +269,21 @@ class OleRecordBase(object):
         Base implementation, does nothing. To be overwritten in subclasses.
         """
         pass
+
+    def read_some_more(self, stream):
+        """ Read some more data from stream after end of this record
+
+        Found that for CurrentUserAtom in "Current User" stream of ppt files,
+        the last attribute (user name in unicode) is found *behind* the record
+        data. Thank you, Microsoft!
+
+        Do this only if you are certain you will not mess up the following
+        records!
+
+        This base implementation does nothing. For optional overwriting in
+        subclasses (like PptRecordUserAtom where no record should follow.)
+        """
+        return
 
     def _type_str(self):
         """ helper for __str__, base implementation """
