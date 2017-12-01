@@ -214,6 +214,20 @@ class PptRecordCurrentUser(PptRecord):
     def is_document_encrypted(self):
         return self.header_token == 0xF3D1C4DF
 
+    def read_some_more(self, stream):
+        """ check if unicode user name comes in stream after record
+
+        Can safely do this since no data should come after this record.
+        """
+        more_data = stream.read(3*self.len_user_name)   # limit data to read
+        if self.unicode_user_name is None and \
+                len(more_data) == 2*self.len_user_name:
+            self.unicode_user_name = more_data.decode('utf-16')
+            logging.debug('found unicode user name BEHIND current user atom')
+        else:
+            logging.warning('Unexplained data of size {0} in "Current User" '
+                            'stream'.format(len(data)))
+
 
 # types of relevant records (there are much more than listed here)
 RECORD_TYPES = dict([
