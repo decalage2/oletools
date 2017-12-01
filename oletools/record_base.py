@@ -89,6 +89,9 @@ ENTRY_TYPE2STR = {
 ###############################################################################
 
 
+SUMMARY_INFORMATION_STREAM_NAMES = ('\x05SummaryInformation',
+                                    '\x05DocumentSummaryInformation')
+
 class OleRecordFile(olefile.OleFileIO):
     """ an OLE compound file whose streams have (mostly) record structure
 
@@ -101,7 +104,10 @@ class OleRecordFile(olefile.OleFileIO):
 
     @classmethod
     def stream_class_for_name(cls, stream_name):
-        """ helper for iter_streams, must be overwritten in subclasses """
+        """ helper for iter_streams, must be overwritten in subclasses
+
+        will not be called for SUMMARY_INFORMATION_STREAM_NAMES
+        """
         return OleRecordStream    # this is an abstract class!
 
     def iter_streams(self):
@@ -119,7 +125,11 @@ class OleRecordFile(olefile.OleFileIO):
                 'is stream of size {}'.format(direntry.size) if is_stream else
                 'no stream ({})'.format(ENTRY_TYPE2STR[direntry.entry_type])))
             if is_stream:
-                clz = self.stream_class_for_name(direntry.name)
+                if not is_orphan and \
+                        direntry.name in SUMMARY_INFORMATION_STREAM_NAMES:
+                    clz = OleSummaryInformationStream
+                else:
+                    clz = self.stream_class_for_name(direntry.name)
                 yield clz(self._open(direntry.isectStart, direntry.size),
                           None if is_orphan else direntry.name)
 
@@ -192,6 +202,18 @@ class OleRecordStream(object):
         return '[{2} {0} (size {1})' \
                .format(self.name or '[orphan]', self.size,
                        self.__class__.__name__)
+
+
+class OleSummaryInformationStream(OleRecordStream):
+    """ stream for \05SummaryInformation and \05DocumentSummaryInformation
+
+    Do nothing so far. OleFileIO reads quite some info from this. For more info
+    see [MS-OSHARED] 2.3.3 and [MS-OLEPS] 2.21 and references therein.
+    """
+    def iter_records(self, fill_data=False):
+        """ yields nothing, stops at once """
+        return
+        yield
 
 
 class OleRecordBase(object):
