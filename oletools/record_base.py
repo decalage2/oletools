@@ -73,6 +73,7 @@ from oletools.thirdparty import olefile
 # Helpers
 ###############################################################################
 
+STGTY_SUBSTREAM = 10
 
 ENTRY_TYPE2STR = {
     olefile.STGTY_EMPTY: 'empty',
@@ -80,7 +81,8 @@ ENTRY_TYPE2STR = {
     olefile.STGTY_STREAM: 'stream',
     olefile.STGTY_LOCKBYTES: 'lock-bytes',
     olefile.STGTY_PROPERTY: 'property',
-    olefile.STGTY_ROOT: 'root'
+    olefile.STGTY_ROOT: 'root',
+    STGTY_SUBSTREAM: 'substream'
 }
 
 
@@ -131,7 +133,9 @@ class OleRecordFile(olefile.OleFileIO):
                 else:
                     clz = self.stream_class_for_name(direntry.name)
                 yield clz(self._open(direntry.isectStart, direntry.size),
-                          None if is_orphan else direntry.name)
+                          direntry.size,
+                          None if is_orphan else direntry.name,
+                          direntry.entry_type)
 
 
 class OleRecordStream(object):
@@ -142,10 +146,13 @@ class OleRecordStream(object):
     abstract base class
     """
 
-    def __init__(self, stream, name):
+    def __init__(self, stream, size, name, stream_type):
         self.stream = stream
+        self.size = size
         self.name = name
-        self.size = stream.size
+        if stream_type not in ENTRY_TYPE2STR:
+            raise ValueError('Unknown stream type: {0}'.format(stream_type))
+        self.stream_type = stream_type
 
     def read_record_head(self):
         """ read first few bytes of record to determine size and type
@@ -191,7 +198,7 @@ class OleRecordStream(object):
             if fill_data or force_read:
                 data = self.stream.read(rec_size)
                 if len(data) != rec_size:
-                    raise IOError('Not enough data in stream ({0} < {1})'
+                    raise IOError('Unexpected end of stream ({0} < {1})'
                                   .format(len(data), rec_size))
             else:
                 self.stream.seek(rec_size, SEEK_CUR)
@@ -199,9 +206,11 @@ class OleRecordStream(object):
             yield rec_clz(rec_type, rec_size, other, pos, data)
 
     def __str__(self):
-        return '[{2} {0} (size {1})' \
-               .format(self.name or '[orphan]', self.size,
-                       self.__class__.__name__)
+        return '[{0} {1} (type {2}, size {3})' \
+               .format(self.__class__.__name__,
+                       self.name or '[orphan]',
+                       ENTRY_TYPE2STR[self.stream_type],
+                       self.size)
 
 
 class OleSummaryInformationStream(OleRecordStream):
@@ -272,13 +281,15 @@ class OleRecordBase(object):
 
 
 def test(filenames, ole_file_class=OleRecordFile,
-         must_parse=None):
+         must_parse=None, do_per_record=None):
     """ parse all given file names and print rough structure
 
     if an error occurs while parsing a stream of type in must_parse, the error
     will be raised. Otherwise a message is printed
     """
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
+    if do_per_record is None:
+        do_per_record = lambda record: None
     if not filenames:
         logging.info('need file name[s]')
         return 2
@@ -290,10 +301,11 @@ def test(filenames, ole_file_class=OleRecordFile,
         ole = ole_file_class(filename)
 
         for stream in ole.iter_streams():
-            logging.info(stream)
+            logging.info('  parse ' + str(stream))
             try:
                 for record in stream.iter_records():
-                    logging.info('  {0}'.format(record))
+                    logging.info('    found ' + str(record))
+                    do_per_record(record)
             except Exception:
                 if not must_parse:
                     raise
