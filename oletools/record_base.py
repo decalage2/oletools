@@ -258,15 +258,25 @@ class OleRecordBase(object):
         self.size = size
         self.pos = pos
         self.data = data
-        self.parse(more_data)
+        self.finish_constructing(more_data)
 
-    def parse(self, more_data):
+    def finish_constructing(self, more_data):
         """ finish constructing this record
 
         Can save more_data from OleRecordStream.read_record_head and/or parse
         data (if it was read).
 
         Base implementation, does nothing. To be overwritten in subclasses.
+
+        Implementations should take into account that self.data may be None.
+        Should create the same attributes, whether data is present or not. Eg::
+
+            def finish_constructing(self, more_data):
+                self.more = more_data
+                self.attr1 = None
+                self.attr2 = None
+                if self.data:
+                    self.attr1, self.attr2 = struct.unpack('<HH', self.data)
         """
         pass
 
@@ -324,7 +334,7 @@ def test(filenames, ole_file_class=OleRecordFile,
             logging.info('  parse ' + str(stream))
             try:
                 for record in stream.iter_records():
-                    logging.info('    found ' + str(record))
+                    logging.info('    ' + str(record))
                     do_per_record(record)
             except Exception:
                 if not must_parse:
