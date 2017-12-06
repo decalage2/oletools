@@ -29,8 +29,6 @@ Alternative to ppt_parser.py that works on records
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import print_function
-
 #------------------------------------------------------------------------------
 # CHANGELOG:
 # 2017-11-30 v0.01 CH: - first version based on xls_parser
@@ -44,10 +42,11 @@ from __future__ import print_function
 
 
 import sys
-from struct import unpack
+from struct import unpack      # unsigned: 1 Byte = B, 2 Byte = H, 4 Byte = L
 import logging
 import record_base
 import io
+import zlib
 
 
 class PptFile(record_base.OleRecordFile):
@@ -77,6 +76,10 @@ class PptStream(record_base.OleRecordStream):
         """
         if rec_type == PptRecordCurrentUser.TYPE:
             return PptRecordCurrentUser, True
+        elif rec_type == PptRecordExOleObjAtom.TYPE:
+            return PptRecordExOleObjAtom, True
+        elif rec_type == PptRecordExOleVbaActiveXAtom.TYPE:
+            return PptRecordExOleVbaActiveXAtom, True
 
         try:
             record_name = RECORD_TYPES[rec_type]
@@ -85,6 +88,8 @@ class PptStream(record_base.OleRecordStream):
             elif record_name.endswith('Atom'):
                 is_container = False
             elif record_name.endswith('Blob'):
+                is_container = False
+            elif record_name == 'CString':
                 is_container = False
             else:
                 logging.warning('Unexpected name for record type "{0}". typo?'
@@ -106,7 +111,8 @@ class PptRecord(record_base.OleRecordBase):
     INSTANCE = None
     VERSION = None
 
-    def parse(self, more_data):
+    def finish_constructing(self, more_data):
+        """ check and save instance and version """
         instance, version = more_data
         if self.INSTANCE is not None and self.INSTANCE != instance:
             raise ValueError('invalid instance {0} for {1}'
@@ -147,9 +153,13 @@ class PptRecord(record_base.OleRecordBase):
 class PptContainerRecord(PptRecord):
     """ A record that contains other records """
 
-    def parse(self, more_data):
+    def finish_constructing(self, more_data):
+        """ parse records from self.data """
         # set self.version and self.instance
-        super(PptContainerRecord, self).parse(more_data)
+        super(PptContainerRecord, self).finish_constructing(more_data)
+        self.records = None
+        if not self.data:
+            return
 
         logging.debug('parsing contents of container record {0}'.format(self))
 
@@ -162,6 +172,16 @@ class PptContainerRecord(PptRecord):
         logging.debug('done parsing contents of container record {0}'
                       .format(self))
 
+    def __str__(self):
+        text = super(PptContainerRecord, self).__str__()
+        if self.records is None:
+            return '{0}, unparsed{1}'.format(text[:-2], text[-2:])
+        elif self.records:
+            return '{0}, contains {1} recs{2}' \
+                   .format(text[:-2], len(self.records), text[-2:])
+        else:
+            return text
+
 
 class PptRecordCurrentUser(PptRecord):
     """ The CurrentUserAtom record """
@@ -169,14 +189,28 @@ class PptRecordCurrentUser(PptRecord):
     VERSION = 0
     INSTANCE = 0
 
-    def parse(self, more_data):
-        super(PptRecordCurrentUser, self).parse(more_data)
+    def finish_constructing(self, more_data):
+        """ read various attributes from data """
+        super(PptRecordCurrentUser, self).finish_constructing(more_data)
         if self.size < 24:
             raise ValueError('CurrentUser record is too small ({0})'
                              .format(self.size))
+        self.size2 = None
+        self.header_token = None
+        self.offset_to_current_edit = None
+        self.len_user_name = None
+        self.doc_file_version = None
+        self.major_version = None
+        self.minor_version = None
+        self.ansi_user_name = None
+        self.unicode_user_name = None
+
+        if not self.data:
+            return
+
         self.size2, self.header_token, self.offset_to_current_edit, \
             self.len_user_name, self.doc_file_version, self.major_version, \
-            self.minor_version, _ = unpack('<IIIHHBBH', self.data[0:20])
+            self.minor_version, _ = unpack('<LLLHHBBH', self.data[0:20])
         if self.size2 != 0x14:
             raise ValueError('Wrong size2 ({0}) in CurrentUser record'
                              .format(self.size2))
@@ -198,7 +232,7 @@ class PptRecordCurrentUser(PptRecord):
                              '({0} != {1})'.format(len(self.ansi_user_name),
                                                    self.len_user_name))
         offset = 20 + self.len_user_name
-        self.release_version = unpack('<I', self.data[offset:offset+4])[0]
+        self.release_version = unpack('<L', self.data[offset:offset+4])[0]
         if self.release_version not in (8, 9):
             raise ValueError('CurrentUser record has wrong release version {0}'
                              .format(self.release_version))
@@ -212,6 +246,8 @@ class PptRecordCurrentUser(PptRecord):
                              .format(self.size - offset))
 
     def is_document_encrypted(self):
+        if self.header_token is None:
+            raise ValueError('unknown')
         return self.header_token == 0xF3D1C4DF
 
     def read_some_more(self, stream):
@@ -227,6 +263,142 @@ class PptRecordCurrentUser(PptRecord):
         else:
             logging.warning('Unexplained data of size {0} in "Current User" '
                             'stream'.format(len(data)))
+
+
+class PptRecordExOleObjAtom(PptRecord):
+    """ Record that contains info about type of embedded object """
+
+    TYPE = 0x0fc3
+
+    OBJ_TYPES = dict([(0, 'embedded'), (1, 'link'), (2, 'ActiveX')])
+    SUB_TYPES = dict([
+        (0x00, 'default'),
+        (0x01, 'clipart'),
+        (0x02, 'word doc'),
+        (0x03, 'excel sheet'),
+        (0x04, 'MS graph'),
+        (0x05, 'MS org chart'),
+        (0x06, 'equation'),
+        (0x07, 'word art'),
+        (0x08, 'sound'),
+        (0x0c, 'MS project'),
+        (0x0d, 'note-it'),
+        (0x0e, 'excel chart'),
+        (0x0f, 'media'),
+        (0x10, 'WordPad doc'),
+        (0x11, 'visio drawing'),
+        (0x12, 'OpenDoc text'),
+        (0x13, 'OpenDoc calc'),
+        (0x14, 'OpenDoc present'),
+    ])
+
+    def finish_constructing(self, more_data):
+        """ parse some more data from this """
+        self.draw_aspect = None
+        self.obj_type = None
+        self.ex_obj_id = None
+        self.sub_type = None
+        self.persist_id_ref = None
+        if self.size != 0x18:
+            raise ValueError('ExOleObjAtom has wrong size {0} != 0x18'
+                             .format(self.size))
+        if self.data:
+            self.draw_aspect, self.obj_type, self.ex_obj_id, self.sub_type, \
+                self.persist_id_ref, _ = unpack('<LLLLLL', self.data)
+            if self.obj_type not in self.OBJ_TYPES:
+                logging.warning('Unknown "type" value in ExOleObjAtom: {0}'
+                                .format(self.obj_type))
+            if self.sub_type not in self.SUB_TYPES:
+                logging.warning('Unknown sub type value in ExOleObjAtom: {0}'
+                                .format(self.sub_type))
+
+    def _type_str(self):
+        return 'ExOleObjAtom type {0}/{1}'.format(
+            self.OBJ_TYPES.get(self.obj_type, str(self.obj_type)),
+            self.SUB_TYPES.get(self.sub_type, str(self.sub_type)))
+
+
+class PptRecordExOleVbaActiveXAtom(PptRecord):
+    """ record that contains and ole object / vba storage / active x control
+
+    Contains the actual data of the ole object / VBA storage / ActiveX control
+    in compressed or uncompressed form.
+
+    Corresponding types in [MS-PPT]:
+    ExOleObjStg, ExOleObjStgUncompressedAtom, ExOleObjStgCompressedAtom,
+    VbaProjectStg, VbaProjectStgUncompressedAtom, VbaProjectStgCompressedAtom,
+    ExControlStg, ExControlStgUncompressedAtom, ExControlStgCompressedAtom.
+
+    self.data is "An array of bytes that specifies a structured storage
+    (described in [MSDN-COM]) for the OLE object / ActiveX control / VBA
+    project ([MS-OVBA] section 2.2.1)."
+    If compressed, "The original bytes of the storage are compressed by the
+    algorithm specified in [RFC1950] and are decompressed by the algorithm
+    specified in [RFC1951]."   (--> meaning zlib)
+    "Office Forms ActiveX controls are specified in [MS-OFORMS]."
+
+    whether this is an OLE object or ActiveX control or a VBA Storage, need to
+    find the corresponding PptRecordExOleObjAtom
+    """
+
+
+    TYPE = 0x1011
+
+    def is_compressed(self):
+        return self.instance == 1
+
+    def get_uncompressed_size(self):
+        """ Get size of data in uncompressed form
+
+        For uncompressed data, this just returns self.size. For compressed data,
+        this reads and returns the doecmpressedSize field value from self.data.
+        Raises a value error if compressed and data is not available.
+        """
+        if not self.is_compressed():
+            return self.size
+        elif self.data is None:
+            raise ValueError('Data not read from record')
+        else:
+            return unpack('<L', self.data[:4])[0]
+
+    def iter_uncompressed(self, chunk_size=4096):
+        """ iterate over data, decompress data if necessary
+
+        chunk_size is used for input to decompression, so chunks yielded from
+        this may well be larger than that. Last chunk is most probably smaller.
+        """
+        if self.data is None:
+            raise ValueError('data not read from record')
+        must_decomp = self.is_compressed()
+        start_idx = 0
+        out_size = 0
+        if must_decomp:
+            decompressor = zlib.decompressobj()
+            start_idx = 4
+        while start_idx < self.size:
+            end_idx = min(self.size, start_idx+chunk_size)
+            if must_decomp:
+                result = decompressor.decompress(decompressor.unconsumed_tail +
+                                                 self.data[start_idx:end_idx])
+            else:
+                result = self.data[start_idx:end_idx]
+            yield result
+            logging.debug('decompressing from {0} to {1} resulted in {2} new'
+                          .format(start_idx, end_idx, len(result)))
+            out_size += len(result)
+            start_idx = end_idx
+        if must_decomp:
+            result = decompressor.flush()
+            out_size += len(result)
+            yield result
+        if out_size != self.get_uncompressed_size():
+            logging.warning('Decompressed data has wrong size {0} != {1}'
+                            .format(out_size, self.get_uncompressed_size()))
+
+    def __str__(self):
+        text = super(PptRecordExOleVbaActiveXAtom, self).__str__()
+        compr_text = 'compressed' if self.is_compressed() else 'uncompressed'
+        return '{0}, {1}{2}'.format(text[:-2], compr_text, text[-2:])
 
 
 # types of relevant records (there are much more than listed here)
@@ -248,7 +420,7 @@ RECORD_TYPES = dict([
     (0x03f8, 'MainMasterContainer'),
     # external object ty
     (0x0409, 'ExObjListContainer'),
-    (0x1011, 'ExOleVbaActiveXAtom'),  # ExOleObj|VbaProject|ExControl]Stg[Unc|C]ompressedAtom
+    (0x1011, 'ExOleVbaActiveXAtom'),    # --> use PptRecordExOleVbaActiveXAtom
     (0x1006, 'ExAviMovieContainer'),
     (0x100e, 'ExCDAudioContainer'),
     (0x0fee, 'ExControlContainer'),
@@ -260,11 +432,15 @@ RECORD_TYPES = dict([
     (0x100f, 'ExWAVAudioEmbeddedContainer'),
     (0x1010, 'ExWAVAudioLinkContainer'),
     (0x1004, 'ExMediaAtom'),
+    (0x040a, 'ExObjListAtom'),
+    (0x0fcd, 'ExOleEmbedAtom'),
+    (0x0fc3, 'ExOleObjAtom'),           # --> use PptRecordExOleObjAtom instead
     # other types
     (0x0fc1, 'MetafileBlob'),
     (0x0fb8, 'FontEmbedDataBlob'),
     (0x07e7, 'SoundDataBlob'),
     (0x138b, 'BinaryTagDataBlob'),
+    (0x0fba, 'CString'),
 ])
 
 # record types where version is not 0x0 or 0xf
@@ -302,16 +478,41 @@ INSTANCE_EXCEPTIONS = dict([
 ###############################################################################
 
 
+def print_records(record, print_fn, indent, do_print_record):
+    """ print additional info for record
+
+    prints additional info for some types and subrecords recursively
+    """
+    if do_print_record:
+        print_fn('{0}{1}'.format('  ' * indent, record))
+    if isinstance(record, PptContainerRecord):
+        for subrec in record.records:
+            print_records(subrec, print_fn, indent+1, True)
+    elif isinstance(record, PptRecordCurrentUser):
+        logging.info('{4}--> crypt: {0}, offset {1}, user {2}/{3}'
+                     .format(record.is_document_encrypted(),
+                             record.offset_to_current_edit,
+                             repr(record.ansi_user_name),
+                             repr(record.unicode_user_name),
+                             '  ' * indent))
+    elif isinstance(record, PptRecordExOleObjAtom):
+        logging.info('{2}--> obj id {0}, persist id ref {1}'
+                     .format(record.ex_obj_id, record.persist_id_ref,
+                             '  ' * indent))
+    elif isinstance(record, PptRecordExOleVbaActiveXAtom):
+        #with open('testdump', 'wb') as writer:
+        #    for chunk in record.iter_uncompressed():
+        #        logging.info('{0}--> "{1}"'.format('  ' * indent, chunk))
+        #        writer.write(chunk)
+        chunk1 = next(record.iter_uncompressed())
+        logging.info('{0}--> decompressed size {1}, data {2}...'
+                     .format('  ' * indent, record.get_uncompressed_size(),
+                             ', '.join('{0:02x}'.format(ord(c))
+                                       for c in chunk1[:32])))
+
+
 if __name__ == '__main__':
-    def print_subrecords(record):
-        if isinstance(record, PptContainerRecord):
-            for subrec in record.records:
-                logging.info('      {0}'.format(subrec))
-        elif isinstance(record, PptRecordCurrentUser):
-            logging.info('    crypt: {0}, offset {1}, user {2}/{3}'
-                         .format(record.is_document_encrypted(),
-                                 record.offset_to_current_edit,
-                                 repr(record.ansi_user_name),
-                                 repr(record.unicode_user_name)))
+    def do_per_record(record):
+        print_records(record, logging.info, 2, False)
     sys.exit(record_base.test(sys.argv[1:], PptFile,
-                              do_per_record=print_subrecords))
+                              do_per_record=do_per_record))
