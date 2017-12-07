@@ -58,6 +58,7 @@ from __future__ import print_function
 # 2017-11-24       CH: - added support for xls files
 # 2017-11-29       CH: - added support for xlsb files
 # 2017-11-29       PL: - added support for RTF files (issue #223)
+# 2017-12-07       CH: - ensure rtf file is closed
 
 __version__ = '0.52dev9'
 
@@ -68,6 +69,7 @@ __version__ = '0.52dev9'
 # TODO: Test with more interesting (real-world?) samples: xls, xlsx, xlsb, docx
 # TODO: Think about finding all external "connections" of documents, not just
 #       DDE-Links
+# TODO: avoid reading complete rtf file data into memory
 
 #------------------------------------------------------------------------------
 # REFERENCES:
@@ -780,11 +782,13 @@ class RtfFieldParser(rtfobj.RtfParser):
         self.current_destination.data += matchobject.group()[1]
 
 
+RTF_START = b'\x7b\x5c\x72\x74'   # == b'{\rt' but does not mess up auto-indent
 
-def process_rtf(filepath, field_filter_mode=None):
+def process_rtf(file_handle, field_filter_mode=None):
     log.debug('process_rtf')
     all_fields = []
-    data = open(filepath, 'rb').read()
+    data = RTF_START + file_handle.read()   # read complete file into memory!
+    file_handle.close()
     rtfparser = RtfFieldParser(data)
     rtfparser.parse()
     all_fields = rtfparser.fields
@@ -814,9 +818,11 @@ def process_file(filepath, field_filter_mode=None):
             return process_xls(filepath)
         else:
             return process_doc(filepath)
-    elif open(filepath, 'rb').read(4) == b'{\\rt':
-        # This is a RTF file
-        return process_rtf(filepath, field_filter_mode)
+    else:
+        with open(filepath, 'rb') as file_handle:
+           if file_handle.read(4) == RTF_START:
+                # This is a RTF file
+                return process_rtf(file_handle, field_filter_mode)
     try:
         doctype = ooxml.get_type(filepath)
         log.debug('Detected file type: {0}'.format(doctype))
