@@ -290,9 +290,13 @@ class XmlParser(object):
                             assert(depth >= 0)
                             yield subfile, elem, depth
                 except ET.ParseError as err:
-                    logging.warning('  xml-parsing for {0} failed ({1}). '
-                                    .format(subfile, err) +
-                                    'Run iter_non_xml to investigate.')
+                    if subfile.endswith('.xml'):
+                        logger = logging.warning
+                    else:
+                        logger = logging.debug
+                    logger('  xml-parsing for {0} failed ({1}). '
+                           .format(subfile, err) +
+                           'Run iter_non_xml to investigate.')
                     self.subfiles_no_xml.add(subfile)
                 assert(depth == 0)
         if not args:
