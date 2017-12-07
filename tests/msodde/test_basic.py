@@ -127,11 +127,18 @@ class TestDdeLinks(unittest.TestCase):
                              msg='unexpected output for dde-test.{0}: {1}'
                                  .format(extn, capturer.get_data()))
 
-    def test_clean_rtf(self):
-        """ check that clean RTF file causes no trouble """
+    def test_clean_rtf_blacklist(self):
+        """ find a lot of hyperlinks in rtf spec """
         filename = 'RTF-Spec-1.7.rtf'
         with OutputCapture() as capturer:
             msodde.main([join(BASE_DIR, 'msodde', filename)])
+        self.assertEqual(len(self.get_dde_from_output(capturer)), 1413)
+
+    def test_clean_rtf_ddeonly(self):
+        """ find no dde links in rtf spec """
+        filename = 'RTF-Spec-1.7.rtf'
+        with OutputCapture() as capturer:
+            msodde.main(['-d', join(BASE_DIR, 'msodde', filename)])
         self.assertEqual(len(self.get_dde_from_output(capturer)), 0,
                          msg='Found dde links in output of ' + filename)
 
