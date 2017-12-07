@@ -348,9 +348,9 @@ def process_args(cmd_line_args=None):
                         help="logging level debug/info/warning/error/critical (default=%(default)s)")
     filter_group = parser.add_argument_group(
          title='Filter which OpenXML field commands are returned',
-         description='Only applies to OpenXML (e.g. docx), not to OLE (e.g. '
-                     '.doc). These options are mutually exclusive, last option '
-                     'found on command line overwrites earlier ones.')
+         description='Only applies to OpenXML (e.g. docx) and rtf, not to OLE '
+                     '(e.g. .doc). These options are mutually exclusive, last '
+                     'option found on command line overwrites earlier ones.')
     filter_group.add_argument('-d', '--dde-only', action='store_const',
                               dest='field_filter_mode', const=FIELD_FILTER_DDE,
                               help='Return only DDE and DDEAUTO fields')
@@ -778,7 +778,7 @@ class RtfFieldParser(rtfobj.RtfParser):
         # required to handle control symbols such as '\\'
         # inject the symbol as-is in the text:
         # TODO: handle special symbols properly
-        self.current_destination.data += matchobject.group()[1]
+        self.current_destination.data += matchobject.group()[1:2]
 
 
 RTF_START = b'\x7b\x5c\x72\x74'   # == b'{\rt' but does not mess up auto-indent
@@ -790,9 +790,10 @@ def process_rtf(file_handle, field_filter_mode=None):
     file_handle.close()
     rtfparser = RtfFieldParser(data)
     rtfparser.parse()
-    all_fields = rtfparser.fields
+    all_fields = [field.decode('ascii') for field in rtfparser.fields]
     # apply field command filter
-    log.debug('filtering with mode "{0}"'.format(field_filter_mode))
+    log.debug('found {1} fields, filtering with mode "{0}"'
+              .format(field_filter_mode, len(all_fields)))
     if field_filter_mode in (FIELD_FILTER_ALL, None):
         clean_fields = all_fields
     elif field_filter_mode == FIELD_FILTER_DDE:
