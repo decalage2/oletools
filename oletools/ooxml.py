@@ -337,7 +337,8 @@ class XmlParser(object):
 
         yields 3-tuples (filename, content_type, file_handle) where
         content_type is based on filename or default for extension or is None,
-        and file_handle is a ZipSubFile
+        and file_handle is a ZipSubFile. Caller does not have to care about
+        closing handle, will be closed even in error condition.
 
         To handle binary parts of an xlsb file, use xls_parser.parse_xlsb_part
         """
