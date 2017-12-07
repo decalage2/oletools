@@ -533,17 +533,16 @@ def process_xls(filepath):
 def process_docx(filepath, field_filter_mode=None):
     log.debug('process_docx')
     all_fields = []
-    z = zipfile.ZipFile(filepath)
-    for filepath in z.namelist():
-        if filepath in LOCATIONS:
-            data = z.read(filepath)
-            fields = process_xml(data)
-            if len(fields) > 0:
-                #print ('DDE Links in %s:'%filepath)
-                #for f in fields:
-                #    print(f)
-                all_fields.extend(fields)
-    z.close()
+    with zipfile.ZipFile(filepath) as z:
+        for filepath in z.namelist():
+            if filepath in LOCATIONS:
+                data = z.read(filepath)
+                fields = process_xml(data)
+                if len(fields) > 0:
+                    #print ('DDE Links in %s:'%filepath)
+                    #for f in fields:
+                    #    print(f)
+                    all_fields.extend(fields)
 
     # apply field command filter
     log.debug('filtering with mode "{0}"'.format(field_filter_mode))
