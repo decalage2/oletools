@@ -818,20 +818,23 @@ def process_file(filepath, field_filter_mode=None):
             return process_xls(filepath)
         else:
             return process_doc(filepath)
-    else:
-        with open(filepath, 'rb') as file_handle:
-           if file_handle.read(4) == RTF_START:
-                # This is a RTF file
-                return process_rtf(file_handle, field_filter_mode)
+
+    with open(filepath, 'rb') as file_handle:
+       if file_handle.read(4) == RTF_START:
+            # This is a RTF file
+            return process_rtf(file_handle, field_filter_mode)
+
     try:
         doctype = ooxml.get_type(filepath)
-        log.debug('Detected file type: {0}'.format(doctype))
-        if doctype == ooxml.DOCTYPE_EXCEL:
-            return process_xlsx(filepath, field_filter_mode)
-        else:
-            return process_docx(filepath, field_filter_mode)
     except Exception:
         log.debug('Exception trying to xml-parse file', exc_info=True)
+        doctype = None
+
+    if doctype:
+        log.debug('Detected file type: {0}'.format(doctype))
+    if doctype == ooxml.DOCTYPE_EXCEL:
+        return process_xlsx(filepath, field_filter_mode)
+    else:
         return process_docx(filepath, field_filter_mode)
 
 
@@ -881,7 +884,7 @@ def main(cmd_line_args=None):
             jout.append(dict(type='error', error=type(exc).__name__,
                              message=str(exc)))  # strange: str(exc) is enclosed in ""
         else:
-            raise
+            raise  # re-raise last known exception, keeping trace intact
 
     if args.json:
         for line in text.splitlines():
