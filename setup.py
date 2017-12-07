@@ -279,6 +279,7 @@ entry_points = {
         'olemeta=oletools.olemeta:main',
         'oletimes=oletools.oletimes:main',
         'olevba=oletools.olevba:main',
+        'olevba3=oletools.olevba3:main',
         'pyxswf=oletools.pyxswf:main',
         'rtfobj=oletools.rtfobj:main',
         'oleobj=oletools.oleobj:main',
