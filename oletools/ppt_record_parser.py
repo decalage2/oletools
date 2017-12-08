@@ -29,12 +29,13 @@ Alternative to ppt_parser.py that works on records
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # CHANGELOG:
-# 2017-11-30 v0.01 CH: - first version based on xls_parser
+# 2017-11-30 v0.01 CH: - first version, can be used in oledump
 
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # TODO:
+# - provide stuff from ppt_parser as well and replace it
 
 # -----------------------------------------------------------------------------
 #  REFERENCES:
@@ -166,7 +167,7 @@ class PptFile(record_base.OleRecordFile):
     """ Record-based view on a PowerPoint ppt file """
 
     @classmethod
-    def stream_class_for_name(self, stream_name):
+    def stream_class_for_name(cls, stream_name):
         return PptStream
 
 
@@ -231,7 +232,7 @@ class PptRecord(record_base.OleRecordBase):
         if self.INSTANCE is not None and self.INSTANCE != instance:
             raise ValueError('invalid instance {0} for {1}'
                              .format(instance, self))
-        elif self.INSTANCE is not None and instance not in (0,1):
+        elif self.INSTANCE is not None and instance not in (0, 1):
             try:
                 min_val, max_val = INSTANCE_EXCEPTIONS[self.type]
                 is_ok = (min_val <= instance <= max_val)
@@ -252,7 +253,7 @@ class PptRecord(record_base.OleRecordBase):
             if not is_ok:
                 logging.warning('unexpected version {0} for {1}'
                                 .format(version, self))
-        self.version =  version
+        self.version = version
 
     def _type_str(self):
         """ helper for __str__, base implementation """
@@ -360,6 +361,7 @@ class PptRecordCurrentUser(PptRecord):
                              .format(self.size - offset))
 
     def is_document_encrypted(self):
+        """determine from header_token whether document stream is encrypted"""
         if self.header_token is None:
             raise ValueError('unknown')
         return self.header_token == 0xF3D1C4DF
@@ -376,7 +378,7 @@ class PptRecordCurrentUser(PptRecord):
             logging.debug('found unicode user name BEHIND current user atom')
         else:
             logging.warning('Unexplained data of size {0} in "Current User" '
-                            'stream'.format(len(data)))
+                            'stream'.format(len(more_data)))
 
 
 class PptRecordExOleObjAtom(PptRecord):
@@ -564,12 +566,13 @@ class PptRecordExOleVbaActiveXAtom(PptRecord):
 
     whether this is an OLE object or ActiveX control or a VBA Storage, need to
     find the corresponding PptRecordExOleObjAtom
+    TODO: do that!
     """
-
 
     TYPE = 0x1011
 
     def is_compressed(self):
+        """ determine whether data is compressed or uncompressed """
         return self.instance == 1
 
     def get_uncompressed_size(self):
@@ -685,4 +688,5 @@ if __name__ == '__main__':
     def do_per_record(record):
         print_records(record, logging.info, 2, False)
     sys.exit(record_base.test(sys.argv[1:], PptFile,
-                              do_per_record=do_per_record))
+                              do_per_record=do_per_record,
+                              verbose=False))
