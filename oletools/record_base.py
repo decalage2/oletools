@@ -73,6 +73,12 @@ from oletools.thirdparty import olefile
 # Helpers
 ###############################################################################
 
+STGTY_EMPTY     = olefile.STGTY_EMPTY      # 0
+STGTY_STORAGE   = olefile.STGTY_STORAGE    # 1
+STGTY_STREAM    = olefile.STGTY_STREAM     # 2
+STGTY_LOCKBYTES = olefile.STGTY_LOCKBYTES  # 3
+STGTY_PROPERTY  = olefile.STGTY_PROPERTY   # 4
+STGTY_ROOT      = olefile.STGTY_ROOT       # 5
 STGTY_SUBSTREAM = 10
 
 ENTRY_TYPE2STR = {
