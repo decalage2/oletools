@@ -74,6 +74,7 @@ except ImportError:
 # Helpers
 ###############################################################################
 
+OleFileIO = olefile.OleFileIO
 STGTY_EMPTY     = olefile.STGTY_EMPTY      # 0
 STGTY_STORAGE   = olefile.STGTY_STORAGE    # 1
 STGTY_STREAM    = olefile.STGTY_STREAM     # 2
@@ -91,6 +92,10 @@ ENTRY_TYPE2STR = {
     olefile.STGTY_ROOT: 'root',
     STGTY_SUBSTREAM: 'substream'
 }
+
+def enable_olefile_logging():
+    """ enable logging olefile e.g., to get debug info from OleFileIO """
+    olefile.enable_logging()
 
 
 ###############################################################################
@@ -321,13 +326,13 @@ class OleRecordBase(object):
 
 
 def test(filenames, ole_file_class=OleRecordFile,
-         must_parse=None, do_per_record=None):
+         must_parse=None, do_per_record=None, verbose=False):
     """ parse all given file names and print rough structure
 
     if an error occurs while parsing a stream of type in must_parse, the error
     will be raised. Otherwise a message is printed
     """
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO)
     if do_per_record is None:
         def do_per_record(record):
             pass   # do nothing
