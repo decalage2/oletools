@@ -118,7 +118,7 @@ class XlsFile(OleRecordFile):
     """ An xls file has most streams made up of records """
 
     @classmethod
-    def stream_class_for_name(self, stream_name):
+    def stream_class_for_name(cls, stream_name):
         """ helper for iter_streams """
         return XlsStream
 
