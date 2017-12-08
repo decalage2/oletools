@@ -432,6 +432,117 @@ class PptRecordExOleObjAtom(PptRecord):
             self.SUB_TYPES.get(self.sub_type, str(self.sub_type)))
 
 
+class IterStream(io.RawIOBase):
+    """ make a read-only, seekable bytes-stream from an iterable
+
+    copied from stackoverflow answer by Mechanical snail from Nov 18th 2013
+    https://stackoverflow.com/a/20260030/4405656 and extended
+    """
+
+    def __init__(self, iterable_creator, size=None):
+        """ create a Stream using a function that creates the iterable """
+        super(IterStream, self).__init__()
+        self.iterable_creator = iterable_creator
+        self.size = size
+        logging.debug('IterStream.size is {0}'.format(self.size))
+        self.reset()
+
+    def reset(self):
+        """ re-set array to state right after creation """
+        self.iterable = None
+        self.leftover = None
+        self.at_end = False
+        self.curr_pos = 0
+
+    def writable(self):
+        return False
+
+    def readable(self):
+        return True
+
+    def seekable(self):
+        return True
+
+    def readinto(self, target):
+        """ read as much data from iterable as necessary to fill target """
+        logging.debug('IterStream.readinto size {0}'.format(len(target)))
+        if self.at_end:
+            logging.debug('IterStream: we are at (fake) end')
+            return 0
+        if self.iterable is None:
+            self.iterable = self.iterable_creator()
+            logging.debug('IterStream: created iterable {0}'
+                          .format(self.iterable))
+            self.curr_pos = 0
+        try:
+            target_len = len(target)  # we should return at most this much
+            chunk = self.leftover or next(self.iterable)
+            logging.debug('IterStream: chunk is size {0}'.format(len(chunk)))
+            output, self.leftover = chunk[:target_len], chunk[target_len:]
+            logging.debug('IterStream: output is size {0}, leftover is {1}'
+                          .format(len(output), len(self.leftover)))
+            target[:len(output)] = output
+            self.curr_pos += len(output)
+            logging.debug('IterStream: pos updated to {0}'
+                          .format(self.curr_pos))
+            return len(output)
+        except StopIteration:
+            logging.debug('IterStream: source iterable exhausted')
+            self.at_end = True
+            return 0    # indicate EOF
+
+    def seek(self, offset, whence=io.SEEK_SET):
+        """ can seek to start, possibly end """
+        if offset != 0 and whence == io.SEEK_SET:
+            logging.debug('IterStream: trying to seek to offset {0}.'
+                          .format(offset))
+            if offset > self.curr_pos:
+                self.readinto(bytearray(offset - self.curr_pos))
+            elif offset == self.curr_pos:
+                pass
+            else:   # need to re-create iterable
+                self.reset()
+                self.readinto(bytearray(offset))
+            if self.curr_pos != offset:
+                logging.debug('IterStream: curr_pos {0} != offset {1}!'
+                              .format(self.curr_pos, offset))
+                raise RuntimeError('programming error in IterStream.tell!')
+            return self.curr_pos
+        elif whence == io.SEEK_END:  # seek to end
+            logging.debug('IterStream: seek to end')
+            if self.size is None:
+                logging.debug('IterStream: trying to seek to end but size '
+                              'unknown --> raise IOError')
+                raise IOError('size unknown, cannot seek to end')
+            self.at_end = True   # fake jumping to the end
+            self.iterable = None   # cannot safely be used any more
+            self.leftover = None
+            return self.size
+        elif whence == io.SEEK_SET:   # seek to start
+            logging.debug('IterStream: seek to start')
+            self.reset()
+            return 0
+        elif whence == io.SEEK_CUR:   # e.g. called by tell()
+            logging.debug('IterStream: seek to curr pos')
+            if self.at_end:
+                return self.size
+            return self.curr_pos
+        elif whence not in (io.SEEK_SET, io.SEEK_CUR, io.SEEK_END):
+            logging.debug('Illegal 2nd argument to seek(): {0}'.format(whence))
+            raise IOError('Illegal 2nd argument to seek(): {0}'.format(whence))
+        else:
+            logging.debug('not implemented: {0}, {1}'.format(offset, whence))
+            raise NotImplementedError('seek only partially implemented. '
+                                      'Cannot yet seek to {0} from {1}'
+                                      .format(offset, whence))
+
+    def close(self):
+        self.iterable = None
+        self.leftover = None
+        self.at_end = False
+        self.curr_pos = 0
+
+
 class PptRecordExOleVbaActiveXAtom(PptRecord):
     """ record that contains and ole object / vba storage / active x control
 
@@ -509,6 +620,18 @@ class PptRecordExOleVbaActiveXAtom(PptRecord):
             logging.warning('Decompressed data has wrong size {0} != {1}'
                             .format(out_size, self.get_uncompressed_size()))
 
+    def get_data_as_olefile(self, debug_output=False):
+        """ return an OleFileIO that streams from iter_uncompressed
+
+        probably only works if data is an OLE object, otherwise expect
+        exception
+        """
+        if debug_output:
+            record_base.enable_olefile_logging()
+        return record_base.OleFileIO(IterStream(self.iter_uncompressed,
+                                                self.get_uncompressed_size()),
+                                     debug=debug_output)
+
     def __str__(self):
         text = super(PptRecordExOleVbaActiveXAtom, self).__str__()
         compr_text = 'compressed' if self.is_compressed() else 'uncompressed'
@@ -546,11 +669,16 @@ def print_records(record, print_fn, indent, do_print_record):
         #    for chunk in record.iter_uncompressed():
         #        logging.info('{0}--> "{1}"'.format('  ' * indent, chunk))
         #        writer.write(chunk)
-        chunk1 = next(record.iter_uncompressed())
-        logging.info('{0}--> decompressed size {1}, data {2}...'
-                     .format('  ' * indent, record.get_uncompressed_size(),
-                             ', '.join('{0:02x}'.format(ord(c))
-                                       for c in chunk1[:32])))
+
+        #chunk1 = next(record.iter_uncompressed())
+        #logging.info('{0}--> decompressed size {1}, data {2}...'
+        #             .format('  ' * indent, record.get_uncompressed_size(),
+        #                     ', '.join('{0:02x}'.format(ord(c))
+        #                               for c in chunk1[:32])))
+
+        ole = record.get_data_as_olefile()
+        for entry in ole.listdir():
+            logging.info('{0}ole entry {1}'.format('  ' * indent, entry))
 
 
 if __name__ == '__main__':
