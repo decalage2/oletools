@@ -123,6 +123,45 @@ INSTANCE_EXCEPTIONS = dict([
 ])
 
 
+def is_ppt(filename):
+    """ determine whether given file is a PowerPoint 2003 (ppt) OLE file
+
+    tries to ppt-parse the file, return False if that fails. Looks for certain
+    required streams and records.
+    """
+    have_current_user = False
+    have_user_edit = False
+    have_persist_dir = False
+    have_document_container = False
+    try:
+        for stream in PptFile(filename).iter_streams():
+            if stream.name == 'Current User':
+                for record in stream.iter_records():
+                    if isinstance(record, PptRecordCurrentUser):
+                        have_current_user = True
+                        if have_current_user and have_user_edit and \
+                                have_persist_dir and have_document_container:
+                            return  True
+            elif stream.name == 'PowerPoint Document':
+                for record in stream.iter_records():
+                    if record.type == 0x0ff5:
+                        have_user_edit = True
+                    elif record.type == 0x1772:
+                        have_persist_dir = True
+                    elif record.type == 0x03e8:
+                        have_document_container = True
+                    else:
+                        continue
+                    if have_current_user and have_user_edit and \
+                            have_persist_dir and have_document_container:
+                        return  True
+            else:   # ignore other streams/storages since they are optional
+                continue
+    except Exception:
+        pass
+    return False
+
+
 class PptFile(record_base.OleRecordFile):
     """ Record-based view on a PowerPoint ppt file """
 
