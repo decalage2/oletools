@@ -49,12 +49,87 @@ import io
 import zlib
 
 
+# types of relevant records (there are much more than listed here)
+RECORD_TYPES = dict([
+    # file structure types
+    (0x0ff5, 'UserEditAtom'),
+    (0x0ff6, 'CurrentUserAtom'),        # --> use PptRecordCurrentUser instead
+    (0x1772, 'PersistDirectoryAtom'),
+    (0x2f14, 'CryptSession10Container'),
+    # document types
+    (0x03e8, 'DocumentContainer'),
+    (0x0fc9, 'HandoutContainer'),
+    (0x03f0, 'NotesContainer'),
+    (0x03ff, 'VbaInfoContainer'),
+    (0x03e9, 'DocumentAtom'),
+    (0x03ea, 'EndDocumentAtom'),
+    # slide types
+    (0x03ee, 'SlideContainer'),
+    (0x03f8, 'MainMasterContainer'),
+    # external object ty
+    (0x0409, 'ExObjListContainer'),
+    (0x1011, 'ExOleVbaActiveXAtom'),    # --> use PptRecordExOleVbaActiveXAtom
+    (0x1006, 'ExAviMovieContainer'),
+    (0x100e, 'ExCDAudioContainer'),
+    (0x0fee, 'ExControlContainer'),
+    (0x0fd7, 'ExHyperlinkContainer'),
+    (0x1007, 'ExMCIMovieContainer'),
+    (0x100d, 'ExMIDIAudioContainer'),
+    (0x0fcc, 'ExOleEmbedContainer'),
+    (0x0fce, 'ExOleLinkContainer'),
+    (0x100f, 'ExWAVAudioEmbeddedContainer'),
+    (0x1010, 'ExWAVAudioLinkContainer'),
+    (0x1004, 'ExMediaAtom'),
+    (0x040a, 'ExObjListAtom'),
+    (0x0fcd, 'ExOleEmbedAtom'),
+    (0x0fc3, 'ExOleObjAtom'),           # --> use PptRecordExOleObjAtom instead
+    # other types
+    (0x0fc1, 'MetafileBlob'),
+    (0x0fb8, 'FontEmbedDataBlob'),
+    (0x07e7, 'SoundDataBlob'),
+    (0x138b, 'BinaryTagDataBlob'),
+    (0x0fba, 'CString'),
+])
+
+
+# record types where version is not 0x0 or 0xf
+VERSION_EXCEPTIONS = dict([
+    (0x0400, 2),                       # rt_vbainfoatom
+    (0x03ef, 2),                       # rt_slideatom
+])
+
+
+# record types where instance is not 0x0 or 0x1
+INSTANCE_EXCEPTIONS = dict([
+    (0x0fba, (2, 0x14)),                 # rt_cstring,
+    (0x0ff0, (2, 2)),                    # rt_slidelistwithtext,
+    (0x0fd9, (3, 4)),                    # rt_headersfooters,
+    (0x07e4, (5, 5)),                    # rt_soundcollection,
+    (0x03fb, (7, 7)),                    # rt_guideatom,
+    (0x07e9, (2, 2)),                    # rt_bookmarkseeatom,
+    (0x07f0, (6, 6)),                    # rt_colorschemeatom,
+    (0xf125, (0, 5)),                    # rt_timeconditioncontainer,
+    (0xf13d, (0, 0xa)),                  # rt_timepropertylist,
+    (0x0fc8, (2, 2)),                    # rt_kinsoku,
+    (0x0fd2, (3, 3)),                    # rt_kinsokuatom,
+    (0x0f9f, (0, 5)),                    # rt_textheaderatom,
+    (0x0fb7, (0, 128)),                  # rt_fontentityatom,
+    (0x0fa3, (0, 8)),                    # rt_textmasterstyleatom,
+    (0x0fad, (0, 8)),                    # rt_textmasterstyle9atom,
+    (0x0fb2, (0, 8)),                    # rt_textmasterstyle10atom,
+    (0x07f9, (0, 0x80)),                 # rt_blibentitiy9atom,
+    (0x0faf, (0, 5)),                    # rt_outlinetextpropsheader9atom,
+    (0x0fb8, (0, 3)),                    # rt_fontembeddatablob,
+])
+
+
 class PptFile(record_base.OleRecordFile):
     """ Record-based view on a PowerPoint ppt file """
 
     @classmethod
     def stream_class_for_name(self, stream_name):
         return PptStream
+
 
 class PptStream(record_base.OleRecordStream):
     """ a stream of records in a ppt file """
@@ -399,78 +474,6 @@ class PptRecordExOleVbaActiveXAtom(PptRecord):
         text = super(PptRecordExOleVbaActiveXAtom, self).__str__()
         compr_text = 'compressed' if self.is_compressed() else 'uncompressed'
         return '{0}, {1}{2}'.format(text[:-2], compr_text, text[-2:])
-
-
-# types of relevant records (there are much more than listed here)
-RECORD_TYPES = dict([
-    # file structure types
-    (0x0ff5, 'UserEditAtom'),
-    (0x0ff6, 'CurrentUserAtom'),        # --> use PptRecordCurrentUser instead
-    (0x1772, 'PersistDirectoryAtom'),
-    (0x2f14, 'CryptSession10Container'),
-    # document types
-    (0x03e8, 'DocumentContainer'),
-    (0x0fc9, 'HandoutContainer'),
-    (0x03f0, 'NotesContainer'),
-    (0x03ff, 'VbaInfoContainer'),
-    (0x03e9, 'DocumentAtom'),
-    (0x03ea, 'EndDocumentAtom'),
-    # slide types
-    (0x03ee, 'SlideContainer'),
-    (0x03f8, 'MainMasterContainer'),
-    # external object ty
-    (0x0409, 'ExObjListContainer'),
-    (0x1011, 'ExOleVbaActiveXAtom'),    # --> use PptRecordExOleVbaActiveXAtom
-    (0x1006, 'ExAviMovieContainer'),
-    (0x100e, 'ExCDAudioContainer'),
-    (0x0fee, 'ExControlContainer'),
-    (0x0fd7, 'ExHyperlinkContainer'),
-    (0x1007, 'ExMCIMovieContainer'),
-    (0x100d, 'ExMIDIAudioContainer'),
-    (0x0fcc, 'ExOleEmbedContainer'),
-    (0x0fce, 'ExOleLinkContainer'),
-    (0x100f, 'ExWAVAudioEmbeddedContainer'),
-    (0x1010, 'ExWAVAudioLinkContainer'),
-    (0x1004, 'ExMediaAtom'),
-    (0x040a, 'ExObjListAtom'),
-    (0x0fcd, 'ExOleEmbedAtom'),
-    (0x0fc3, 'ExOleObjAtom'),           # --> use PptRecordExOleObjAtom instead
-    # other types
-    (0x0fc1, 'MetafileBlob'),
-    (0x0fb8, 'FontEmbedDataBlob'),
-    (0x07e7, 'SoundDataBlob'),
-    (0x138b, 'BinaryTagDataBlob'),
-    (0x0fba, 'CString'),
-])
-
-# record types where version is not 0x0 or 0xf
-VERSION_EXCEPTIONS = dict([
-    (0x0400, 2),                       # rt_vbainfoatom
-    (0x03ef, 2),                       # rt_slideatom
-])
-
-# record types where instance is not 0x0 or 0x1
-INSTANCE_EXCEPTIONS = dict([
-    (0x0fba, (2, 0x14)),                 # rt_cstring,
-    (0x0ff0, (2, 2)),                    # rt_slidelistwithtext,
-    (0x0fd9, (3, 4)),                    # rt_headersfooters,
-    (0x07e4, (5, 5)),                    # rt_soundcollection,
-    (0x03fb, (7, 7)),                    # rt_guideatom,
-    (0x07e9, (2, 2)),                    # rt_bookmarkseeatom,
-    (0x07f0, (6, 6)),                    # rt_colorschemeatom,
-    (0xf125, (0, 5)),                    # rt_timeconditioncontainer,
-    (0xf13d, (0, 0xa)),                  # rt_timepropertylist,
-    (0x0fc8, (2, 2)),                    # rt_kinsoku,
-    (0x0fd2, (3, 3)),                    # rt_kinsokuatom,
-    (0x0f9f, (0, 5)),                    # rt_textheaderatom,
-    (0x0fb7, (0, 128)),                  # rt_fontentityatom,
-    (0x0fa3, (0, 8)),                    # rt_textmasterstyleatom,
-    (0x0fad, (0, 8)),                    # rt_textmasterstyle9atom,
-    (0x0fb2, (0, 8)),                    # rt_textmasterstyle10atom,
-    (0x07f9, (0, 0x80)),                 # rt_blibentitiy9atom,
-    (0x0faf, (0, 5)),                    # rt_outlinetextpropsheader9atom,
-    (0x0fb8, (0, 3)),                    # rt_fontembeddatablob,
-])
 
 
 ###############################################################################
