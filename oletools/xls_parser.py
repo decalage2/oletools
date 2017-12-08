@@ -55,7 +55,8 @@ import sys
 import os.path
 from struct import unpack
 import logging
-from record_base import OleRecordFile, OleRecordStream, OleRecordBase, test
+from record_base import OleRecordFile, OleRecordStream, OleRecordBase, test, \
+    STGTY_STREAM
 
 
 # === PYTHON 2+3 SUPPORT ======================================================
@@ -452,10 +453,19 @@ class XlsbBeginSupBook(XlsbRecord):
 ###############################################################################
 
 
-def parse_xlsb_part(stream, _, filename):
-    """ Excel xlsb files also have a record structure. iter records """
-    for record in XlsbStream(stream, filename).iter_records():
-        yield record
+def parse_xlsb_part(file_stream, _, filename):
+    """ Excel xlsb files also have bin files with record structure. iter! """
+    xlsb_stream = None
+    try:
+        xlsb_stream = XlsbStream(file_stream, file_stream.size, filename,
+                            STGTY_STREAM)
+        for record in xlsb_stream.iter_records():
+            yield record
+    except Exception:
+        raise
+    finally:
+        if xlsb_stream is not None:
+            xlsb_stream.close()
 
 
 ###############################################################################
