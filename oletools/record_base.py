@@ -5,7 +5,7 @@ record_base.py
 
 Common stuff for ole files whose streams are a sequence of record structures.
 This is the case for xls and ppt, so classes are bases for xls_parser.py and
-ppt_parser.py .
+ppt_record_parser.py .
 """
 
 # === LICENSE =================================================================
@@ -33,11 +33,11 @@ ppt_parser.py .
 
 from __future__ import print_function
 
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # CHANGELOG:
 # 2017-11-30 v0.01 CH: - first version based on xls_parser
 
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # TODO:
 # - read DocumentSummaryInformation first to get more info about streams
 #   (maybe content type or so; identify streams that are never record-based)
@@ -57,16 +57,17 @@ import os.path
 from io import SEEK_CUR
 import logging
 
-# little hack to allow absolute imports even if oletools is not installed.
-# Copied from olevba.py
-_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))  # pylint: disable=invalid-name
-_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))             # pylint: disable=invalid-name
-del _thismodule_dir
-if _parent_dir not in sys.path:
-    sys.path.insert(0, _parent_dir)
-del _parent_dir
-
-from oletools.thirdparty import olefile
+try:
+    from oletools.thirdparty import olefile
+except ImportError:
+    # little hack to allow absolute imports even if oletools is not installed.
+    # Copied from olevba.py
+    PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))))
+    if PARENT_DIR not in sys.path:
+        sys.path.insert(0, PARENT_DIR)
+    del PARENT_DIR
+    from oletools.thirdparty import olefile
 
 
 ###############################################################################
@@ -99,6 +100,7 @@ ENTRY_TYPE2STR = {
 
 SUMMARY_INFORMATION_STREAM_NAMES = ('\x05SummaryInformation',
                                     '\x05DocumentSummaryInformation')
+
 
 class OleRecordFile(olefile.OleFileIO):
     """ an OLE compound file whose streams have (mostly) record structure
@@ -211,7 +213,7 @@ class OleRecordStream(object):
                 data = None
             rec_object = rec_clz(rec_type, rec_size, other, pos, data)
 
-            # "We are microsoft, we do not have to adhere to our specifications"
+            # "We are microsoft, we do not always adhere to our specifications"
             rec_object.read_some_more(self.stream)
             yield rec_object
 
@@ -235,7 +237,7 @@ class OleSummaryInformationStream(OleRecordStream):
     def iter_records(self, fill_data=False):
         """ yields nothing, stops at once """
         return
-        yield
+        yield   # required to make this a generator pylint: disable=unreachable
 
 
 class OleRecordBase(object):
@@ -327,7 +329,8 @@ def test(filenames, ole_file_class=OleRecordFile,
     """
     logging.basicConfig(level=logging.INFO)
     if do_per_record is None:
-        do_per_record = lambda record: None
+        def do_per_record(record):
+            pass   # do nothing
     if not filenames:
         logging.info('need file name[s]')
         return 2
