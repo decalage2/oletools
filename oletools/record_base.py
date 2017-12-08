@@ -145,10 +145,12 @@ class OleRecordFile(olefile.OleFileIO):
                     clz = OleSummaryInformationStream
                 else:
                     clz = self.stream_class_for_name(direntry.name)
-                yield clz(self._open(direntry.isectStart, direntry.size),
-                          direntry.size,
-                          None if is_orphan else direntry.name,
-                          direntry.entry_type)
+                stream = clz(self._open(direntry.isectStart, direntry.size),
+                             direntry.size,
+                             None if is_orphan else direntry.name,
+                             direntry.entry_type)
+                yield stream
+                stream.close()
 
 
 class OleRecordStream(object):
