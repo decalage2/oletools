@@ -209,6 +209,8 @@ class OleRecordStream(object):
             rec_object.read_some_more(self.stream)
             yield rec_object
 
+    def close(self):
+        self.stream.close()
 
     def __str__(self):
         return '[{0} {1} (type {2}, size {3})' \
