@@ -295,7 +295,7 @@ class XlsRecordBof(XlsRecord):
     DOCTYPES = dict([(0x5, 'workbook'), (0x10, 'dialog/worksheet'),
                      (0x20, 'chart'), (0x40, 'macro')])
 
-    def parse(self, _):
+    def finish_constructing(self, _):
         if self.data is None:
             self.doctype = None
             return
@@ -334,7 +334,7 @@ class XlsRecordSupBook(XlsRecord):
     LINK_TYPE_OLE_DDE = 'ole/dde data source'
     LINK_TYPE_EXTERNAL = 'external workbook'
 
-    def parse(self, _):
+    def finish_constructing(self, _):
         # set defaults
         self.ctab = None
         self.cch = None
@@ -403,7 +403,7 @@ class XlsbBeginSupBook(XlsbRecord):
     LINK_TYPE_UNEXPECTED = 'unexpected'
     LINK_TYPE_UNKNOWN = 'unknown'
 
-    def parse(self, _):
+    def finish_constructing(self, _):
         self.link_type = self.LINK_TYPE_UNKNOWN
         self.string1 = ''
         self.string2 = ''
