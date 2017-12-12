@@ -272,6 +272,7 @@ entry_points = {
     'console_scripts': [
         'ezhexviewer=oletools.ezhexviewer:main',
         'mraptor=oletools.mraptor:main',
+        'mraptor3=oletools.mraptor3:main',
         'olebrowse=oletools.olebrowse:main',
         'oledir=oletools.oledir:main',
         'oleid=oletools.oleid:main',
