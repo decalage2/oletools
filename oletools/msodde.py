@@ -730,23 +730,31 @@ def process_xlsx(filepath, filed_filter_mode=None):
 
     # binary parts, e.g. contained in .xlsb
     for subfile, content_type, handle in parser.iter_non_xml():
-        if content_type == 'application/vnd.openxmlformats-officedocument.' + \
-                           'spreadsheetml.printerSettings':
-            continue   # printer settings
-        if not content_type.startswith('application/vnd.ms-excel.') and \
-           not content_type.startswith('application/vnd.ms-office.'):  # pylint: disable=bad-indentation
-           logging.warning('Unexpected content type: ' + content_type)
-               # try parsing anyway
-
-        logging.info('Parsing non-xml subfile {0} with content type {1}'
+        try:
+            logging.info('Parsing non-xml subfile {0} with content type {1}'
+                         .format(subfile, content_type))
+            for record in xls_parser.parse_xlsb_part(handle, content_type, subfile):
+                logging.debug('{0}: {1}'.format(subfile, record))
+                if isinstance(record, xls_parser.XlsbBeginSupBook) and \
+                        record.link_type == \
+                        xls_parser.XlsbBeginSupBook.LINK_TYPE_DDE:
+                    dde_links.append('DDE-Link ' + record.string1 + ' ' +
+                                     record.string2)
+        except Exception:
+            if content_type.startswith('application/vnd.ms-excel.') or \
+               content_type.startswith('application/vnd.ms-office.'):  # pylint: disable=bad-indentation
+                # should really be able to parse these either as xml or records
+                log_func = logging.warning
+            elif content_type.startswith('image/') or content_type == \
+                    'application/vnd.openxmlformats-officedocument.' + \
+                    'spreadsheetml.printerSettings':
+                # understandable that these are not record-base
+                log_func = logging.debug
+            else:   # default
+                log_func = logging.info
+            log_func('Failed to parse {0} of content type {1}'
                      .format(subfile, content_type))
-        for record in xls_parser.parse_xlsb_part(handle, content_type, subfile):
-            logging.debug('{0}: {1}'.format(subfile, record))
-            if isinstance(record, xls_parser.XlsbBeginSupBook) and \
-                    record.link_type == \
-                    xls_parser.XlsbBeginSupBook.LINK_TYPE_DDE:
-                dde_links.append('DDE-Link ' + record.string1 + ' ' +
-                                 record.string2)
+            # in any case: continue with next
 
     return u'\n'.join(dde_links)
 
