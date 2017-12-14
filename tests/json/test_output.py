@@ -49,12 +49,11 @@ class TestValidJson(unittest.TestCase):
 
         # now test output
         if print_output:
-            print(capturer.buffer.getvalue())
-        capturer.buffer.seek(0)    # re-set position in file-like stream
+            print(capturer.get_data())
         try:
-            json_data = json.load(capturer.buffer)
+            json_data = json.loads(capturer.get_data())
         except ValueError:
-            self.fail('Invalid json:\n' + capturer.buffer.getvalue())
+            self.fail('Invalid json:\n' + capturer.get_data())
         self.assertNotEqual(len(json_data), 0, msg='Output was empty')
         return json_data
 

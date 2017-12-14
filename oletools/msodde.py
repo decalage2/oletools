@@ -58,6 +58,7 @@ from __future__ import print_function
 # 2017-11-24       CH: - added support for xls files
 # 2017-11-29       CH: - added support for xlsb files
 # 2017-11-29       PL: - added support for RTF files (issue #223)
+# 2017-12-07       CH: - ensure rtf file is closed
 
 __version__ = '0.52dev9'
 
@@ -68,6 +69,7 @@ __version__ = '0.52dev9'
 # TODO: Test with more interesting (real-world?) samples: xls, xlsx, xlsb, docx
 # TODO: Think about finding all external "connections" of documents, not just
 #       DDE-Links
+# TODO: avoid reading complete rtf file data into memory
 
 #------------------------------------------------------------------------------
 # REFERENCES:
@@ -346,9 +348,9 @@ def process_args(cmd_line_args=None):
                         help="logging level debug/info/warning/error/critical (default=%(default)s)")
     filter_group = parser.add_argument_group(
          title='Filter which OpenXML field commands are returned',
-         description='Only applies to OpenXML (e.g. docx), not to OLE (e.g. '
-                     '.doc). These options are mutually exclusive, last option '
-                     'found on command line overwrites earlier ones.')
+         description='Only applies to OpenXML (e.g. docx) and rtf, not to OLE '
+                     '(e.g. .doc). These options are mutually exclusive, last '
+                     'option found on command line overwrites earlier ones.')
     filter_group.add_argument('-d', '--dde-only', action='store_const',
                               dest='field_filter_mode', const=FIELD_FILTER_DDE,
                               help='Return only DDE and DDEAUTO fields')
@@ -531,17 +533,16 @@ def process_xls(filepath):
 def process_docx(filepath, field_filter_mode=None):
     log.debug('process_docx')
     all_fields = []
-    z = zipfile.ZipFile(filepath)
-    for filepath in z.namelist():
-        if filepath in LOCATIONS:
-            data = z.read(filepath)
-            fields = process_xml(data)
-            if len(fields) > 0:
-                #print ('DDE Links in %s:'%filepath)
-                #for f in fields:
-                #    print(f)
-                all_fields.extend(fields)
-    z.close()
+    with zipfile.ZipFile(filepath) as z:
+        for filepath in z.namelist():
+            if filepath in LOCATIONS:
+                data = z.read(filepath)
+                fields = process_xml(data)
+                if len(fields) > 0:
+                    #print ('DDE Links in %s:'%filepath)
+                    #for f in fields:
+                    #    print(f)
+                    all_fields.extend(fields)
 
     # apply field command filter
     log.debug('filtering with mode "{0}"'.format(field_filter_mode))
@@ -729,23 +730,31 @@ def process_xlsx(filepath, filed_filter_mode=None):
 
     # binary parts, e.g. contained in .xlsb
     for subfile, content_type, handle in parser.iter_non_xml():
-        if content_type == 'application/vnd.openxmlformats-officedocument.' + \
-                           'spreadsheetml.printerSettings':
-            continue   # printer settings
-        if not content_type.startswith('application/vnd.ms-excel.') and \
-           not content_type.startswith('application/vnd.ms-office.'):  # pylint: disable=bad-indentation
-           logging.warning('Unexpected content type: ' + content_type)
-               # try parsing anyway
-
-        logging.info('Parsing non-xml subfile {0} with content type {1}'
+        try:
+            logging.info('Parsing non-xml subfile {0} with content type {1}'
+                         .format(subfile, content_type))
+            for record in xls_parser.parse_xlsb_part(handle, content_type, subfile):
+                logging.debug('{0}: {1}'.format(subfile, record))
+                if isinstance(record, xls_parser.XlsbBeginSupBook) and \
+                        record.link_type == \
+                        xls_parser.XlsbBeginSupBook.LINK_TYPE_DDE:
+                    dde_links.append('DDE-Link ' + record.string1 + ' ' +
+                                     record.string2)
+        except Exception:
+            if content_type.startswith('application/vnd.ms-excel.') or \
+               content_type.startswith('application/vnd.ms-office.'):  # pylint: disable=bad-indentation
+                # should really be able to parse these either as xml or records
+                log_func = logging.warning
+            elif content_type.startswith('image/') or content_type == \
+                    'application/vnd.openxmlformats-officedocument.' + \
+                    'spreadsheetml.printerSettings':
+                # understandable that these are not record-base
+                log_func = logging.debug
+            else:   # default
+                log_func = logging.info
+            log_func('Failed to parse {0} of content type {1}'
                      .format(subfile, content_type))
-        for record in xls_parser.parse_xlsb_part(handle, content_type, subfile):
-            logging.debug('{0}: {1}'.format(subfile, record))
-            if isinstance(record, xls_parser.XlsbBeginSupBook) and \
-                    record.link_type == \
-                    xls_parser.XlsbBeginSupBook.LINK_TYPE_DDE:
-                dde_links.append('DDE-Link ' + record.string1 + ' ' +
-                                 record.string2)
+            # in any case: continue with next
 
     return u'\n'.join(dde_links)
 
@@ -777,19 +786,22 @@ class RtfFieldParser(rtfobj.RtfParser):
         # required to handle control symbols such as '\\'
         # inject the symbol as-is in the text:
         # TODO: handle special symbols properly
-        self.current_destination.data += matchobject.group()[1]
+        self.current_destination.data += matchobject.group()[1:2]
 
 
+RTF_START = b'\x7b\x5c\x72\x74'   # == b'{\rt' but does not mess up auto-indent
 
-def process_rtf(filepath, field_filter_mode=None):
+def process_rtf(file_handle, field_filter_mode=None):
     log.debug('process_rtf')
     all_fields = []
-    data = open(filepath, 'rb').read()
+    data = RTF_START + file_handle.read()   # read complete file into memory!
+    file_handle.close()
     rtfparser = RtfFieldParser(data)
     rtfparser.parse()
-    all_fields = rtfparser.fields
+    all_fields = [field.decode('ascii') for field in rtfparser.fields]
     # apply field command filter
-    log.debug('filtering with mode "{0}"'.format(field_filter_mode))
+    log.debug('found {1} fields, filtering with mode "{0}"'
+              .format(field_filter_mode, len(all_fields)))
     if field_filter_mode in (FIELD_FILTER_ALL, None):
         clean_fields = all_fields
     elif field_filter_mode == FIELD_FILTER_DDE:
@@ -814,18 +826,23 @@ def process_file(filepath, field_filter_mode=None):
             return process_xls(filepath)
         else:
             return process_doc(filepath)
-    elif open(filepath, 'rb').read(4) == b'{\\rt':
-        # This is a RTF file
-        return process_rtf(filepath, field_filter_mode)
+
+    with open(filepath, 'rb') as file_handle:
+       if file_handle.read(4) == RTF_START:
+            # This is a RTF file
+            return process_rtf(file_handle, field_filter_mode)
+
     try:
         doctype = ooxml.get_type(filepath)
-        log.debug('Detected file type: {0}'.format(doctype))
-        if doctype == ooxml.DOCTYPE_EXCEL:
-            return process_xlsx(filepath, field_filter_mode)
-        else:
-            return process_docx(filepath, field_filter_mode)
     except Exception:
         log.debug('Exception trying to xml-parse file', exc_info=True)
+        doctype = None
+
+    if doctype:
+        log.debug('Detected file type: {0}'.format(doctype))
+    if doctype == ooxml.DOCTYPE_EXCEL:
+        return process_xlsx(filepath, field_filter_mode)
+    else:
         return process_docx(filepath, field_filter_mode)
 
 
@@ -875,7 +892,7 @@ def main(cmd_line_args=None):
             jout.append(dict(type='error', error=type(exc).__name__,
                              message=str(exc)))  # strange: str(exc) is enclosed in ""
         else:
-            raise
+            raise  # re-raise last known exception, keeping trace intact
 
     if args.json:
         for line in text.splitlines():
