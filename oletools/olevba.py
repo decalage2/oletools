@@ -2336,7 +2336,8 @@ class VBA_Parser(object):
             # read file from disk, check if it is a Word 2003 XML file (WordProcessingML), Excel 2003 XML,
             # or a plain text file containing VBA code
             if data is None:
-                data = open(filename, 'rb').read()
+                with open(filename, 'rb') as file_handle:
+                    data = file_handle.read()
             # check if it is a Word 2003 XML file (WordProcessingML): must contain the namespace
             if b'http://schemas.microsoft.com/office/word/2003/wordml' in data:
                 self.open_word2003xml(data)
@@ -2398,10 +2399,12 @@ class VBA_Parser(object):
             #TODO: if the zip file is encrypted, suggest to use the -z option, or try '-z infected' automatically
             # check each file within the zip if it is an OLE file, by reading its magic:
             for subfile in z.namelist():
-                magic = z.open(subfile).read(len(olefile.MAGIC))
+                with z.open(subfile) as file_handle:
+                    magic = file_handle.read(len(olefile.MAGIC))
                 if magic == olefile.MAGIC:
                     log.debug('Opening OLE file %s within zip' % subfile)
-                    ole_data = z.open(subfile).read()
+                    with z.open(subfile) as file_handle:
+                        ole_data = file_handle.read()
                     try:
                         self.ole_subfiles.append(
                             VBA_Parser(filename=subfile, data=ole_data,

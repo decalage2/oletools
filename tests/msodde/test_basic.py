@@ -123,8 +123,24 @@ class TestDdeLinks(unittest.TestCase):
         for extn in 'xlsx', 'xlsm', 'xlsb':
             with OutputCapture() as capturer:
                 msodde.main([join(BASE_DIR, 'msodde', 'dde-test.' + extn), ])
-            self.assertEqual(expect, self.get_dde_from_output(capturer))
+            self.assertEqual(expect, self.get_dde_from_output(capturer),
+                             msg='unexpected output for dde-test.{0}: {1}'
+                                 .format(extn, capturer.get_data()))
 
+    def test_clean_rtf_blacklist(self):
+        """ find a lot of hyperlinks in rtf spec """
+        filename = 'RTF-Spec-1.7.rtf'
+        with OutputCapture() as capturer:
+            msodde.main([join(BASE_DIR, 'msodde', filename)])
+        self.assertEqual(len(self.get_dde_from_output(capturer)), 1413)
+
+    def test_clean_rtf_ddeonly(self):
+        """ find no dde links in rtf spec """
+        filename = 'RTF-Spec-1.7.rtf'
+        with OutputCapture() as capturer:
+            msodde.main(['-d', join(BASE_DIR, 'msodde', filename)])
+        self.assertEqual(len(self.get_dde_from_output(capturer)), 0,
+                         msg='Found dde links in output of ' + filename)
 
 
 if __name__ == '__main__':
