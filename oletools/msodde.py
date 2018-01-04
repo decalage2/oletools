@@ -43,9 +43,40 @@ http://www.decalage.info/python/oletools
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+# -- IMPORTS ------------------------------------------------------------------
+
 from __future__ import print_function
 
-#------------------------------------------------------------------------------
+import argparse
+import zipfile
+import os
+from os.path import abspath, dirname
+import sys
+import json
+import logging
+import re
+import csv
+
+# import lxml or ElementTree for XML parsing:
+try:
+    # lxml: best performance for XML processing
+    import lxml.etree as ET
+except ImportError:
+    import xml.etree.cElementTree as ET
+
+# little hack to allow absolute imports even if oletools is not installed
+# Copied from olevba.py
+PARENT_DIR = dirname(dirname(abspath(__file__)))
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+del PARENT_DIR
+
+from oletools.thirdparty import olefile
+from oletools import ooxml
+from oletools import xls_parser
+from oletools import rtfobj
+
+# -----------------------------------------------------------------------------
 # CHANGELOG:
 # 2017-10-18 v0.52 PL: - first version
 # 2017-10-20       PL: - fixed issue #202 (handling empty xml tags)
@@ -76,36 +107,6 @@ __version__ = '0.52dev9'
 # -----------------------------------------------------------------------------
 # REFERENCES:
 
-
-#--- IMPORTS ------------------------------------------------------------------
-
-import argparse
-import zipfile
-import os
-import sys
-import json
-import logging
-import re
-from struct import unpack
-
-# import lxml or ElementTree for XML parsing:
-try:
-    # lxml: best performance for XML processing
-    import lxml.etree as ET
-except ImportError:
-    import xml.etree.cElementTree as ET
-
-# little hack to allow absolute imports even if oletools is not installed
-# Copied from olevba.py
-_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
-_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
-if not _parent_dir in sys.path:
-    sys.path.insert(0, _parent_dir)
-
-from oletools.thirdparty import olefile
-from oletools import ooxml
-from oletools import xls_parser
-from oletools import rtfobj
 
 # === PYTHON 2+3 SUPPORT ======================================================
 
@@ -548,10 +549,10 @@ def process_docx(filepath, field_filter_mode=None):
     """ find dde-links (and other fields) in Word 2007+ files """
     log.debug('process_docx')
     all_fields = []
-    with zipfile.ZipFile(filepath) as z:
-        for filepath in z.namelist():
+    with zipfile.ZipFile(filepath) as zipper:
+        for filepath in zipper.namelist():
             if filepath in LOCATIONS:
-                data = z.read(filepath)
+                data = zipper.read(filepath)
                 fields = process_xml(data)
                 if len(fields) > 0:
                     all_fields.extend(fields)
@@ -590,16 +591,17 @@ def process_xml(data):
 
     for subs in root.iter(TAG_W_P):
         elem = None
-        for e in subs:
-            if e.tag == TAG_W_R:
-                for child in e:
-                    if child.tag == TAG_W_FLDCHAR or child.tag == TAG_W_INSTRTEXT:
+        for curr_elem in subs:
             # check if w:r; parse children to pull out first FLDCHAR/INSTRTEXT
+            if curr_elem.tag == TAG_W_R:
+                for child in curr_elem:
+                    if child.tag == TAG_W_FLDCHAR or \
+                            child.tag == TAG_W_INSTRTEXT:
                         elem = child
                         break
             else:
-                elem = e
-            #this should be an error condition
+                elem = curr_elem
+            # this should be an error condition
             if elem is None:
                 continue
 
@@ -633,12 +635,12 @@ def unquote(field):
     # split into components
     parts = field.strip().split(" ")
     ddestr = ""
-    for p in parts[1:]:
-        try: 
-             ch = chr(int(p))
+    for part in parts[1:]:
+        try:
+            character = chr(int(part))
         except ValueError:
-            ch = p
-        ddestr += ch 
+            character = part
+        ddestr += character
     return ddestr
 
 
