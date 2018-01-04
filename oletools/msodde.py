@@ -841,6 +841,78 @@ def process_rtf(file_handle, field_filter_mode=None):
     return u'\n'.join(clean_fields)
 
 
+# threshold when to consider a csv file "small"; also used as sniffing size
+CSV_SMALL_THRESH = 1024
+
+# format of dde link: program-name | arguments ! unimportant
+DDE_FORMAT = re.compile(r'\s*=(.+)\|(.+)!(.*)\s*')
+
+
+def process_csv(filepath):
+    """ find dde in csv text
+
+    finds text parts like =cmd|'/k ..\\..\\..\\Windows\\System32\\calc.exe'! or
+    =MSEXCEL|'\\..\\..\\..\\Windows\\System32\\regsvr32 [...]
+
+    Hoping here that the :py:class:`csv.Sniffer` determines quote and delimiter
+    chars the same way that excel does. Tested to some extend in unittests.
+
+    This can only find DDE-links, no other "suspicious" constructs (yet).
+    """
+
+    results = []
+    with open(filepath, 'rb') as file_handle:
+        results, dialect = process_csv_dialect(file_handle)
+        is_small = file_handle.tell() < CSV_SMALL_THRESH
+
+        if is_small and not results:
+            # easy to mis-sniff small files. Try different delimiter
+            log.debug('small file, try second dialect')
+            file_handle.seek(0)
+            other_delim = ',\t ;|^'.replace(dialect.delimiter, '')
+            try:
+                results, _ = process_csv_dialect(file_handle, other_delim)
+            except csv.Error:   # e.g. sniffing fails
+                log.debug('failed to csv-parse with different dialect',
+                          exc_info=True)
+
+        if is_small and not results:
+            # try whole file as single cell
+            log.debug('try third time, taking whole file as single cell')
+            file_handle.seek(0)
+            match = DDE_FORMAT.match(file_handle.read(CSV_SMALL_THRESH))
+            if match:
+                results.append(u' '.join(match.groups()[:2]))
+
+    return u'\n'.join(results)
+
+
+def process_csv_dialect(file_handle, delimiters=None):
+    """ helper for process_csv: process with a specific csv dialect """
+
+    # determine dialect = delimiter chars, quote chars, ...
+    dialect = csv.Sniffer().sniff(file_handle.read(CSV_SMALL_THRESH),
+                                  delimiters=delimiters)
+    dialect.strict = False     # microsoft is never strict
+    log.debug('sniffed csv dialect with delimiter {0!r} '
+              'and quote char {1!r}'
+              .format(dialect.delimiter, dialect.quotechar))
+
+    # rewind file handle to start
+    file_handle.seek(0)
+
+    # loop over all csv rows and columns
+    results = []
+    reader = csv.reader(file_handle, dialect)
+    for row in reader:
+        for cell in row:
+            # check if cell matches
+            match = DDE_FORMAT.match(cell)
+            if match:
+                results.append(u' '.join(match.groups()[:2]))
+    return results, dialect
+
+
 def process_file(filepath, field_filter_mode=None):
     """ decides which of the process_* functions to call """
     if olefile.isOleFile(filepath):
@@ -867,6 +939,9 @@ def process_file(filepath, field_filter_mode=None):
     if doctype == ooxml.DOCTYPE_EXCEL:
         log.debug('Process file as excel 2007+ (xlsx)')
         return process_xlsx(filepath)
+    elif doctype is None:
+        log.debug('Process file as csv')
+        return process_csv(filepath)
     else:  # could be docx; if not: this is the old default code path
         log.debug('Process file as word 2007+ (docx)')
         return process_docx(filepath, field_filter_mode)
