@@ -815,7 +815,6 @@ RTF_START = b'\x7b\x5c\x72\x74'   # == b'{\rt' but does not mess up auto-indent
 
 
 def process_rtf(file_handle, field_filter_mode=None):
-    log.debug('process_rtf')
     """ find dde links or other fields in rtf file """
     all_fields = []
     data = RTF_START + file_handle.read()   # read complete file into memory!
@@ -843,30 +842,33 @@ def process_rtf(file_handle, field_filter_mode=None):
 
 
 def process_file(filepath, field_filter_mode=None):
-    """ decides which of process_doc/x or process_xls/x to call """
+    """ decides which of the process_* functions to call """
     if olefile.isOleFile(filepath):
-        log.debug('checking streams to see whether this is xls')
+        log.debug('Is OLE. Checking streams to see whether this is xls')
         if xls_parser.is_xls(filepath):
+            log.debug('Process file as excel 2003 (xls)')
             return process_xls(filepath)
         else:
+            log.debug('Process file as word 2003 (doc)')
             return process_doc(filepath)
 
     with open(filepath, 'rb') as file_handle:
         if file_handle.read(4) == RTF_START:
-            # This is a RTF file
+            log.debug('Process file as rtf')
             return process_rtf(file_handle, field_filter_mode)
 
     try:
         doctype = ooxml.get_type(filepath)
-    except Exception:
-        log.debug('Exception trying to xml-parse file', exc_info=True)
+        log.debug('Detected file type: {0}'.format(doctype))
+    except Exception as exc:
+        log.debug('Exception trying to xml-parse file: {0}'.format(exc))
         doctype = None
 
-    if doctype:
-        log.debug('Detected file type: {0}'.format(doctype))
     if doctype == ooxml.DOCTYPE_EXCEL:
-        return process_xlsx(filepath, field_filter_mode)
-    else:
+        log.debug('Process file as excel 2007+ (xlsx)')
+        return process_xlsx(filepath)
+    else:  # could be docx; if not: this is the old default code path
+        log.debug('Process file as word 2007+ (docx)')
         return process_docx(filepath, field_filter_mode)
 
 
