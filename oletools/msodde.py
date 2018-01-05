@@ -300,8 +300,8 @@ def ensure_stdout_handles_unicode():
     # try to find encoding for sys.stdout
     encoding = None
     try:
-        encoding = sys.stdout.encoding  # variable encoding might not exist
-    except Exception:
+        encoding = sys.stdout.encoding
+    except AttributeError:              # variable "encoding" might not exist
         pass
 
     if encoding not in (None, '', 'ascii'):
@@ -324,7 +324,8 @@ def ensure_stdout_handles_unicode():
     sys.stdout = wrapper(sys.stdout)
 
 
-ensure_stdout_handles_unicode()   # e.g. for print(text) in main()
+if sys.version_info.major < 3:
+    ensure_stdout_handles_unicode()   # e.g. for print(text) in main()
 
 
 # === ARGUMENT PARSING =======================================================
