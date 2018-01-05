@@ -10,18 +10,24 @@ from oletools import ooxml
 
 
 class TestOOXML(unittest.TestCase):
-    """ Tests my cool new feature """
+    """ Tests correct detection of doc type """
 
     DO_DEBUG = False
 
     def test_all_rough(self):
         """Checks all samples, expect either ole files or good ooxml output"""
-        acceptable = ooxml.DOCTYPE_EXCEL, ooxml.DOCTYPE_WORD, \
-                     ooxml.DOCTYPE_POWERPOINT
+        # map from extension to expected doctype
+        ext2doc = dict(
+            docx=ooxml.DOCTYPE_WORD, docm=ooxml.DOCTYPE_WORD,
+            xml=(ooxml.DOCTYPE_EXCEL_XML, ooxml.DOCTYPE_WORD_XML),
+            xlsx=ooxml.DOCTYPE_EXCEL, xlsm=ooxml.DOCTYPE_EXCEL,
+            xlsb=ooxml.DOCTYPE_EXCEL,
+            pptx=ooxml.DOCTYPE_POWERPOINT, pptm=ooxml.DOCTYPE_POWERPOINT,
+        )
 
         # files that are neither OLE nor xml:
         except_files = 'empty', 'text'
-        except_extns = '.xml', '.rtf', '.csv'
+        except_extns = 'rtf'
 
         # analyse all files in data dir
         for base_dir, _, files in os.walk(DATA_BASE_DIR):
@@ -30,7 +36,10 @@ class TestOOXML(unittest.TestCase):
                     if self.DO_DEBUG:
                         print('skip file: ' + filename)
                     continue
-                if splitext(filename)[1] in except_extns:
+                extn = splitext(filename)[1]
+                if extn:
+                    extn = extn[1:]      # remove the dot
+                if extn in except_extns:
                     if self.DO_DEBUG:
                         print('skip extn: ' + filename)
                     continue
@@ -40,6 +49,9 @@ class TestOOXML(unittest.TestCase):
                     if self.DO_DEBUG:
                         print('skip ole: ' + filename)
                     continue
+                acceptable = ext2doc[extn]
+                if not isinstance(acceptable, tuple):
+                    acceptable = (acceptable, )
                 try:
                     doctype = ooxml.get_type(full_name)
                 except Exception:
