@@ -6,9 +6,10 @@
 import unittest
 from tempfile import mkstemp
 import os
+from os.path import join
 
 from oletools import msodde
-from tests.test_utils import OutputCapture
+from tests.test_utils import OutputCapture, DATA_BASE_DIR
 
 
 class TestCSV(unittest.TestCase):
@@ -66,6 +67,18 @@ class TestCSV(unittest.TestCase):
                                 self.assertEqual(n_links, 1, msg)
                             if self.DO_DEBUG:
                                 print('Worked: ' + desc)
+
+    def test_file(self):
+        """ test simple small example file """
+        filename = join(DATA_BASE_DIR, 'msodde', 'dde-in-csv.csv')
+        with OutputCapture() as capturer:
+            capturer.reload_module(msodde)    # re-create logger
+            ret_code = msodde.main([filename, ])
+        self.assertEqual(ret_code, 0)
+        links = self.get_dde_from_output(capturer)
+        self.assertEqual(len(links), 1)
+        self.assertEqual(links[0],
+                         "cmd '/k \..\..\..\Windows\System32\calc.exe'")
 
     def write_and_run(self, sample_text):
         """ helper for test_texts: save text to file, run through msodde """
