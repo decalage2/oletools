@@ -9,6 +9,7 @@ Supported formats:
 - Word 97-2003 (.doc, .dot), Word 2007+ (.docx, .dotx, .docm, .dotm)
 - Excel 97-2003 (.xls), Excel 2007+ (.xlsx, .xlsm, .xlsb)
 - RTF
+- CSV (exported from / imported into Excel)
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -92,8 +93,9 @@ from oletools import rtfobj
 # 2017-11-29       CH: - added support for xlsb files
 # 2017-11-29       PL: - added support for RTF files (issue #223)
 # 2017-12-07       CH: - ensure rtf file is closed
+# 2018-01-05       CH: - add CSV
 
-__version__ = '0.52dev9'
+__version__ = '0.52dev10'
 
 # -----------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these
