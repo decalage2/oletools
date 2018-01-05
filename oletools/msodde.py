@@ -845,7 +845,11 @@ def process_rtf(file_handle, field_filter_mode=None):
 CSV_SMALL_THRESH = 1024
 
 # format of dde link: program-name | arguments ! unimportant
-DDE_FORMAT = re.compile(r'\s*=(.+)\|(.+)!(.*)\s*')
+CSV_DDE_FORMAT = re.compile(r'\s*=(.+)\|(.+)!(.*)\s*')
+
+# allowed delimiters (python sniffer would use nearly any char). Taken from
+# https://data-gov.tw.rpi.edu/wiki/CSV_files_use_delimiters_other_than_commas
+CSV_DELIMITERS = ',\t ;|^'
 
 
 def process_csv(filepath):
@@ -861,33 +865,35 @@ def process_csv(filepath):
     """
 
     results = []
-    with open(filepath, 'rb') as file_handle:
-        results, dialect = process_csv_dialect(file_handle)
+    with open(filepath, 'r') as file_handle:
+        results, dialect = process_csv_dialect(file_handle, CSV_DELIMITERS)
         is_small = file_handle.tell() < CSV_SMALL_THRESH
 
         if is_small and not results:
-            # easy to mis-sniff small files. Try different delimiter
-            log.debug('small file, try second dialect')
+            # easy to mis-sniff small files. Try different delimiters
+            log.debug('small file, no results; try all delimiters')
             file_handle.seek(0)
-            other_delim = ',\t ;|^'.replace(dialect.delimiter, '')
-            try:
-                results, _ = process_csv_dialect(file_handle, other_delim)
-            except csv.Error:   # e.g. sniffing fails
-                log.debug('failed to csv-parse with different dialect',
-                          exc_info=True)
+            other_delim = CSV_DELIMITERS.replace(dialect.delimiter, '')
+            for delim in other_delim:
+                try:
+                    file_handle.seek(0)
+                    results, _ = process_csv_dialect(file_handle, delim)
+                except csv.Error:   # e.g. sniffing fails
+                    log.debug('failed to csv-parse with delimiter {0!r}'
+                              .format(delim))
 
         if is_small and not results:
-            # try whole file as single cell
-            log.debug('try third time, taking whole file as single cell')
+            # try whole file as single cell, since sniffing fails in this case
+            log.debug('last attempt: take whole file as single unquoted cell')
             file_handle.seek(0)
-            match = DDE_FORMAT.match(file_handle.read(CSV_SMALL_THRESH))
+            match = CSV_DDE_FORMAT.match(file_handle.read(CSV_SMALL_THRESH))
             if match:
                 results.append(u' '.join(match.groups()[:2]))
 
     return u'\n'.join(results)
 
 
-def process_csv_dialect(file_handle, delimiters=None):
+def process_csv_dialect(file_handle, delimiters):
     """ helper for process_csv: process with a specific csv dialect """
 
     # determine dialect = delimiter chars, quote chars, ...
@@ -907,7 +913,7 @@ def process_csv_dialect(file_handle, delimiters=None):
     for row in reader:
         for cell in row:
             # check if cell matches
-            match = DDE_FORMAT.match(cell)
+            match = CSV_DDE_FORMAT.match(cell)
             if match:
                 results.append(u' '.join(match.groups()[:2]))
     return results, dialect
