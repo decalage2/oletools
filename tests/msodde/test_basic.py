@@ -17,11 +17,13 @@ from traceback import print_exc
 
 
 class TestReturnCode(unittest.TestCase):
+    """ check return codes and exception behaviour (not text output) """
 
     def test_valid_doc(self):
         """ check that a valid doc file leads to 0 exit status """
-        for filename in ('dde-test-from-office2003', 'dde-test-from-office2016',
-                         'harmless-clean', 'dde-test-from-office2013-utf_16le-korean'):
+        for filename in (
+                'dde-test-from-office2003', 'dde-test-from-office2016',
+                'harmless-clean', 'dde-test-from-office2013-utf_16le-korean'):
             self.do_test_validity(join(BASE_DIR, 'msodde',
                                        filename + '.doc'))
 
@@ -65,9 +67,9 @@ class TestReturnCode(unittest.TestCase):
         except Exception:
             have_exception = True
             print_exc()
-        except SystemExit as se:     # sys.exit() was called
-            return_code = se.code
-            if se.code is None:
+        except SystemExit as exc:     # sys.exit() was called
+            return_code = exc.code
+            if exc.code is None:
                 return_code = 0
 
         self.assertEqual(expect_error, have_exception or (return_code != 0),
@@ -77,9 +79,13 @@ class TestReturnCode(unittest.TestCase):
 
 
 class TestDdeLinks(unittest.TestCase):
+    """ capture output of msodde and check dde-links are found correctly """
 
     def get_dde_from_output(self, capturer):
-        """ helper to read dde links from captured output """
+        """ helper to read dde links from captured output
+
+        duplicate in tests/msodde/test_csv
+        """
         have_start_line = False
         result = []
         for line in capturer:
@@ -90,7 +96,7 @@ class TestDdeLinks(unittest.TestCase):
             elif line == 'DDE Links:':
                 have_start_line = True
 
-        self.assertTrue(have_start_line) # ensure output was complete
+        self.assertTrue(have_start_line)  # ensure output was complete
         return result
 
     def test_with_dde(self):

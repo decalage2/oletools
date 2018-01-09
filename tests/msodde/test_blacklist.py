@@ -39,8 +39,8 @@ EXAMPLES_MATCH = (
     r'ADVANCE \x 150',
     r'AUTHOR',
     r'AUTHOR "Tony Caruso"',
-    r'BIBLIOGRAPHY \l 1033',    # note: the original example has "/l 1033"
-    r'CITATION Ecma01 \l 1033', # note: this also. Hope this is just a typo
+    r'BIBLIOGRAPHY \l 1033',     # note: the original example has "/l 1033"
+    r'CITATION Ecma01 \l 1033',  # note: this also. Hope this is just a typo
     r'COMMENTS',
     r'COMMENTS "I came, I saw, I was not impressed."',
     r'CREATEDATE',
@@ -227,6 +227,7 @@ EXAMPLES_NOMATCH = (
                      r'SalesTax)',
     r'SKIPIF MERGEFIELD Order < 100',
     )
+
 
 class TestBlacklist(unittest.TestCase):
     """ Tests msodde blacklist feature """

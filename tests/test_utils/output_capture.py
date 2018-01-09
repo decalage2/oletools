@@ -2,13 +2,20 @@
 
 from __future__ import print_function
 import sys
+import logging
 
 
 # python 2/3 version conflict:
 if sys.version_info.major <= 2:
     from StringIO import StringIO
+    # reload is a builtin
 else:
     from io import StringIO
+    if sys.version_info.minor < 4:
+        from imp import reload
+    else:
+        from importlib import reload
+
 
 class OutputCapture:
     """ context manager that captures stdout
@@ -24,6 +31,10 @@ class OutputCapture:
         # ...or test all output in one go
         some_test(capturer.get_data())
 
+    In order to solve issues with old logger instances still remembering closed
+    StringIO instances as "their" stdout, logging is shutdown and restarted
+    upon entering this Context Manager. This means that you may have to reload
+    your module, as well.
     """
 
     def __init__(self):
@@ -32,6 +43,11 @@ class OutputCapture:
         self.data = None
 
     def __enter__(self):
+        # Avoid problems with old logger instances that still remember an old
+        # closed StringIO as their sys.stdout
+        logging.shutdown()
+        reload(logging)
+
         # replace sys.stdout with own buffer.
         self.orig_stdout = sys.stdout
         sys.stdout = self.buffer
@@ -61,3 +77,7 @@ class OutputCapture:
     def __iter__(self):
         for line in self.get_data().splitlines():
             yield line
+
+    def reload_module(self, mod):
+        """ Wrapper around reload function for different python versions """
+        return reload(mod)
