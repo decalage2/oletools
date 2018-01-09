@@ -9,6 +9,7 @@ Supported formats:
 - Word 97-2003 (.doc, .dot), Word 2007+ (.docx, .dotx, .docm, .dotm)
 - Excel 97-2003 (.xls), Excel 2007+ (.xlsx, .xlsm, .xlsb)
 - RTF
+- CSV (exported from / imported into Excel)
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -17,74 +18,45 @@ msodde is part of the python-oletools package:
 http://www.decalage.info/python/oletools
 """
 
-# === LICENSE ==================================================================
+# === LICENSE =================================================================
 
 # msodde is copyright (c) 2017 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
-# Redistribution and use in source and binary forms, with or without modification,
-# are permitted provided that the following conditions are met:
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
 #
-#  * Redistributions of source code must retain the above copyright notice, this
-#    list of conditions and the following disclaimer.
+#  * Redistributions of source code must retain the above copyright notice,
+#    this list of conditions and the following disclaimer.
 #  * Redistributions in binary form must reproduce the above copyright notice,
 #    this list of conditions and the following disclaimer in the documentation
 #    and/or other materials provided with the distribution.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# -- IMPORTS ------------------------------------------------------------------
 
 from __future__ import print_function
-
-#------------------------------------------------------------------------------
-# CHANGELOG:
-# 2017-10-18 v0.52 PL: - first version
-# 2017-10-20       PL: - fixed issue #202 (handling empty xml tags)
-# 2017-10-23       ES: - add check for fldSimple codes
-# 2017-10-24       ES: - group tags and track begin/end tags to keep DDE strings together
-# 2017-10-25       CH: - add json output
-# 2017-10-25       CH: - parse doc
-#                  PL: - added logging
-# 2017-11-10       CH: - added field blacklist and corresponding cmd line args
-# 2017-11-23       CH: - added support for xlsx files
-# 2017-11-24       CH: - added support for xls files
-# 2017-11-29       CH: - added support for xlsb files
-# 2017-11-29       PL: - added support for RTF files (issue #223)
-# 2017-12-07       CH: - ensure rtf file is closed
-
-__version__ = '0.52dev9'
-
-#------------------------------------------------------------------------------
-# TODO: field codes can be in headers/footers/comments - parse these
-# TODO: generalize behaviour for xlsx: find all external links (maybe rename
-#       command line flag for "blacklist" to "find all suspicious" or so)
-# TODO: Test with more interesting (real-world?) samples: xls, xlsx, xlsb, docx
-# TODO: Think about finding all external "connections" of documents, not just
-#       DDE-Links
-# TODO: avoid reading complete rtf file data into memory
-
-#------------------------------------------------------------------------------
-# REFERENCES:
-
-
-#--- IMPORTS ------------------------------------------------------------------
 
 import argparse
 import zipfile
 import os
+from os.path import abspath, dirname
 import sys
 import json
 import logging
 import re
-from struct import unpack
+import csv
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -95,15 +67,48 @@ except ImportError:
 
 # little hack to allow absolute imports even if oletools is not installed
 # Copied from olevba.py
-_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
-_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
-if not _parent_dir in sys.path:
-    sys.path.insert(0, _parent_dir)
+PARENT_DIR = dirname(dirname(abspath(__file__)))
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+del PARENT_DIR
 
 from oletools.thirdparty import olefile
 from oletools import ooxml
 from oletools import xls_parser
 from oletools import rtfobj
+
+# -----------------------------------------------------------------------------
+# CHANGELOG:
+# 2017-10-18 v0.52 PL: - first version
+# 2017-10-20       PL: - fixed issue #202 (handling empty xml tags)
+# 2017-10-23       ES: - add check for fldSimple codes
+# 2017-10-24       ES: - group tags and track begin/end tags to keep DDE
+#                        strings together
+# 2017-10-25       CH: - add json output
+# 2017-10-25       CH: - parse doc
+#                  PL: - added logging
+# 2017-11-10       CH: - added field blacklist and corresponding cmd line args
+# 2017-11-23       CH: - added support for xlsx files
+# 2017-11-24       CH: - added support for xls files
+# 2017-11-29       CH: - added support for xlsb files
+# 2017-11-29       PL: - added support for RTF files (issue #223)
+# 2017-12-07       CH: - ensure rtf file is closed
+# 2018-01-05       CH: - add CSV
+
+__version__ = '0.52dev10'
+
+# -----------------------------------------------------------------------------
+# TODO: field codes can be in headers/footers/comments - parse these
+# TODO: generalize behaviour for xlsx: find all external links (maybe rename
+#       command line flag for "blacklist" to "find all suspicious" or so)
+# TODO: Test with more interesting (real-world?) samples: xls, xlsx, xlsb, docx
+# TODO: Think about finding all external "connections" of documents, not just
+#       DDE-Links
+# TODO: avoid reading complete rtf file data into memory
+
+# -----------------------------------------------------------------------------
+# REFERENCES:
+
 
 # === PYTHON 2+3 SUPPORT ======================================================
 
@@ -123,7 +128,9 @@ TAG_W_P = "{%s}p" % NS_WORD
 TAG_W_R = "{%s}r" % NS_WORD
 ATTR_W_INSTR = '{%s}instr' % NS_WORD
 ATTR_W_FLDCHARTYPE = '{%s}fldCharType' % NS_WORD
-LOCATIONS = ['word/document.xml','word/endnotes.xml','word/footnotes.xml','word/header1.xml','word/footer1.xml','word/header2.xml','word/footer2.xml','word/comments.xml']
+LOCATIONS = ('word/document.xml', 'word/endnotes.xml', 'word/footnotes.xml',
+             'word/header1.xml', 'word/footer1.xml', 'word/header2.xml',
+             'word/footer2.xml', 'word/comments.xml')
 
 # list of acceptable, harmless field instructions for blacklist field mode
 # c.f. http://officeopenxml.com/WPfieldInstructions.php or the official
@@ -133,73 +140,74 @@ LOCATIONS = ['word/document.xml','word/endnotes.xml','word/footnotes.xml','word/
 #          switches_with_args, switches_without_args, format_switches)
 FIELD_BLACKLIST = (
     # date and time:
-    ('CREATEDATE', 0, 0, '', 'hs',  'datetime'),
-    ('DATE',       0, 0, '', 'hls', 'datetime'),
-    ('EDITTIME',   0, 0, '', '',    'numeric'),
-    ('PRINTDATE',  0, 0, '', 'hs',  'datetime'),
-    ('SAVEDATE',   0, 0, '', 'hs',  'datetime'),
-    ('TIME',       0, 0, '', '',    'datetime'),
+    ('CREATEDATE', 0, 0, '', 'hs',  'datetime'),                 # pylint: disable=bad-whitespace
+    ('DATE',       0, 0, '', 'hls', 'datetime'),                 # pylint: disable=bad-whitespace
+    ('EDITTIME',   0, 0, '', '',    'numeric'),                  # pylint: disable=bad-whitespace
+    ('PRINTDATE',  0, 0, '', 'hs',  'datetime'),                 # pylint: disable=bad-whitespace
+    ('SAVEDATE',   0, 0, '', 'hs',  'datetime'),                 # pylint: disable=bad-whitespace
+    ('TIME',       0, 0, '', '',    'datetime'),                 # pylint: disable=bad-whitespace
     # exclude document automation (we hate the "auto" in "automation")
     # (COMPARE, DOCVARIABLE, GOTOBUTTON, IF, MACROBUTTON, PRINT)
     # document information
-    ('AUTHOR',      0, 1, '', '',   'string'),
-    ('COMMENTS',    0, 1, '', '',   'string'),
-    ('DOCPROPERTY', 1, 0, '', '',   'string/numeric/datetime'),
-    ('FILENAME',    0, 0, '', 'p',  'string'),
-    ('FILESIZE',    0, 0, '', 'km', 'numeric'),
-    ('KEYWORDS',    0, 1, '', '',   'string'),
-    ('LASTSAVEDBY', 0, 0, '', '',   'string'),
-    ('NUMCHARS',    0, 0, '', '',   'numeric'),
-    ('NUMPAGES',    0, 0, '', '',   'numeric'),
-    ('NUMWORDS',    0, 0, '', '',   'numeric'),
-    ('SUBJECT',     0, 1, '', '',   'string'),
-    ('TEMPLATE',    0, 0, '', 'p',  'string'),
-    ('TITLE',       0, 1, '', '',   'string'),
+    ('AUTHOR',      0, 1, '', '',   'string'),                   # pylint: disable=bad-whitespace
+    ('COMMENTS',    0, 1, '', '',   'string'),                   # pylint: disable=bad-whitespace
+    ('DOCPROPERTY', 1, 0, '', '',   'string/numeric/datetime'),  # pylint: disable=bad-whitespace
+    ('FILENAME',    0, 0, '', 'p',  'string'),                   # pylint: disable=bad-whitespace
+    ('FILESIZE',    0, 0, '', 'km', 'numeric'),                  # pylint: disable=bad-whitespace
+    ('KEYWORDS',    0, 1, '', '',   'string'),                   # pylint: disable=bad-whitespace
+    ('LASTSAVEDBY', 0, 0, '', '',   'string'),                   # pylint: disable=bad-whitespace
+    ('NUMCHARS',    0, 0, '', '',   'numeric'),                  # pylint: disable=bad-whitespace
+    ('NUMPAGES',    0, 0, '', '',   'numeric'),                  # pylint: disable=bad-whitespace
+    ('NUMWORDS',    0, 0, '', '',   'numeric'),                  # pylint: disable=bad-whitespace
+    ('SUBJECT',     0, 1, '', '',   'string'),                   # pylint: disable=bad-whitespace
+    ('TEMPLATE',    0, 0, '', 'p',  'string'),                   # pylint: disable=bad-whitespace
+    ('TITLE',       0, 1, '', '',   'string'),                   # pylint: disable=bad-whitespace
     # equations and formulas
-    # exlude '=' formulae because they have different syntax
-    ('ADVANCE', 0, 0, 'dlruxy', '', ''),
-    ('SYMBOL',  1, 0, 'fs', 'ahju', ''),
+    # exlude '=' formulae because they have different syntax (and can be bad)
+    ('ADVANCE', 0, 0, 'dlruxy', '', ''),                         # pylint: disable=bad-whitespace
+    ('SYMBOL',  1, 0, 'fs', 'ahju', ''),                         # pylint: disable=bad-whitespace
     # form fields
-    ('FORMCHECKBOX', 0, 0, '', '', ''),
-    ('FORMDROPDOWN', 0, 0, '', '', ''),
-    ('FORMTEXT', 0, 0, '', '', ''),
+    ('FORMCHECKBOX', 0, 0, '', '', ''),                          # pylint: disable=bad-whitespace
+    ('FORMDROPDOWN', 0, 0, '', '', ''),                          # pylint: disable=bad-whitespace
+    ('FORMTEXT', 0, 0, '', '', ''),                              # pylint: disable=bad-whitespace
     # index and tables
-    ('INDEX', 0, 0, 'bcdefghklpsz', 'ry', ''),
+    ('INDEX', 0, 0, 'bcdefghklpsz', 'ry', ''),                   # pylint: disable=bad-whitespace
     # exlude RD since that imports data from other files
-    ('TA',  0, 0, 'clrs', 'bi', ''),
-    ('TC',  1, 0, 'fl', 'n', ''),
-    ('TOA', 0, 0, 'bcdegls', 'fhp', ''),
-    ('TOC', 0, 0, 'abcdflnopst', 'huwxz', ''),
-    ('XE',  1, 0, 'frty', 'bi', ''),
+    ('TA',  0, 0, 'clrs', 'bi', ''),                             # pylint: disable=bad-whitespace
+    ('TC',  1, 0, 'fl', 'n', ''),                                # pylint: disable=bad-whitespace
+    ('TOA', 0, 0, 'bcdegls', 'fhp', ''),                         # pylint: disable=bad-whitespace
+    ('TOC', 0, 0, 'abcdflnopst', 'huwxz', ''),                   # pylint: disable=bad-whitespace
+    ('XE',  1, 0, 'frty', 'bi', ''),                             # pylint: disable=bad-whitespace
     # links and references
     # exclude AUTOTEXT and AUTOTEXTLIST since we do not like stuff with 'AUTO'
-    ('BIBLIOGRAPHY', 0, 0, 'lfm', '', ''),
-    ('CITATION', 1, 0, 'lfspvm', 'nty', ''),
+    ('BIBLIOGRAPHY', 0, 0, 'lfm', '', ''),                       # pylint: disable=bad-whitespace
+    ('CITATION', 1, 0, 'lfspvm', 'nty', ''),                     # pylint: disable=bad-whitespace
     # exclude HYPERLINK since we are allergic to URLs
     # exclude INCLUDEPICTURE and INCLUDETEXT (other file or maybe even URL?)
     # exclude LINK and REF (could reference other files)
-    ('NOTEREF', 1, 0, '', 'fhp', ''),
-    ('PAGEREF', 1, 0, '', 'hp', ''),
-    ('QUOTE', 1, 0, '', '', 'datetime'),
-    ('STYLEREF', 1, 0, '', 'lnprtw', ''),
+    ('NOTEREF', 1, 0, '', 'fhp', ''),                            # pylint: disable=bad-whitespace
+    ('PAGEREF', 1, 0, '', 'hp', ''),                             # pylint: disable=bad-whitespace
+    ('QUOTE', 1, 0, '', '', 'datetime'),                         # pylint: disable=bad-whitespace
+    ('STYLEREF', 1, 0, '', 'lnprtw', ''),                        # pylint: disable=bad-whitespace
     # exclude all Mail Merge commands since they import data from other files
     # (ADDRESSBLOCK, ASK, COMPARE, DATABASE, FILLIN, GREETINGLINE, IF,
     #  MERGEFIELD, MERGEREC, MERGESEQ, NEXT, NEXTIF, SET, SKIPIF)
     # Numbering
-    ('LISTNUM',      0, 1, 'ls', '', ''),
-    ('PAGE',         0, 0, '', '', 'numeric'),
-    ('REVNUM',       0, 0, '', '', ''),
-    ('SECTION',      0, 0, '', '', 'numeric'),
-    ('SECTIONPAGES', 0, 0, '', '', 'numeric'),
-    ('SEQ',          1, 1, 'rs', 'chn', 'numeric'),
-    # user information
-    ('USERADDRESS', 0, 1, '', '', 'string'),
-    ('USERINITIALS', 0, 1, '', '', 'string'),
-    ('USERNAME', 0, 1, '', '', 'string'),
+    ('LISTNUM',      0, 1, 'ls', '', ''),                        # pylint: disable=bad-whitespace
+    ('PAGE',         0, 0, '', '', 'numeric'),                   # pylint: disable=bad-whitespace
+    ('REVNUM',       0, 0, '', '', ''),                          # pylint: disable=bad-whitespace
+    ('SECTION',      0, 0, '', '', 'numeric'),                   # pylint: disable=bad-whitespace
+    ('SECTIONPAGES', 0, 0, '', '', 'numeric'),                   # pylint: disable=bad-whitespace
+    ('SEQ',          1, 1, 'rs', 'chn', 'numeric'),              # pylint: disable=bad-whitespace
+    # user information                                           # pylint: disable=bad-whitespace
+    ('USERADDRESS', 0, 1, '', '', 'string'),                     # pylint: disable=bad-whitespace
+    ('USERINITIALS', 0, 1, '', '', 'string'),                    # pylint: disable=bad-whitespace
+    ('USERNAME', 0, 1, '', '', 'string'),                        # pylint: disable=bad-whitespace
 )
 
 FIELD_DDE_REGEX = re.compile(r'^\s*dde(auto)?\s+', re.I)
 
+# filter modes
 FIELD_FILTER_DDE = 'only dde'
 FIELD_FILTER_BLACKLIST = 'exclude blacklisted'
 FIELD_FILTER_ALL = 'keep all'
@@ -229,6 +237,7 @@ LOG_LEVELS = {
     'critical': logging.CRITICAL
 }
 
+
 class NullHandler(logging.Handler):
     """
     Log Handler without output, to avoid printing messages if logging is not
@@ -238,6 +247,7 @@ class NullHandler(logging.Handler):
     """
     def emit(self, record):
         pass
+
 
 def get_logger(name, level=logging.CRITICAL+1):
     """
@@ -251,7 +261,7 @@ def get_logger(name, level=logging.CRITICAL+1):
     # First, test if there is already a logger with the same name, else it
     # will generate duplicate messages (due to duplicate handlers):
     if name in logging.Logger.manager.loggerDict:
-        #NOTE: another less intrusive but more "hackish" solution would be to
+        # NOTE: another less intrusive but more "hackish" solution would be to
         # use getLogger then test if its effective level is not default.
         logger = logging.getLogger(name)
         # make sure level is OK:
@@ -292,8 +302,8 @@ def ensure_stdout_handles_unicode():
     # try to find encoding for sys.stdout
     encoding = None
     try:
-        encoding = sys.stdout.encoding  # variable encoding might not exist
-    except Exception:
+        encoding = sys.stdout.encoding
+    except AttributeError:              # variable "encoding" might not exist
         pass
 
     if encoding not in (None, '', 'ascii'):
@@ -316,7 +326,8 @@ def ensure_stdout_handles_unicode():
     sys.stdout = wrapper(sys.stdout)
 
 
-ensure_stdout_handles_unicode()   # e.g. for print(text) in main()
+if sys.version_info.major < 3:
+    ensure_stdout_handles_unicode()   # e.g. for print(text) in main()
 
 
 # === ARGUMENT PARSING =======================================================
@@ -338,28 +349,34 @@ def existing_file(filename):
 
 def process_args(cmd_line_args=None):
     """ parse command line arguments (given ones or per default sys.argv) """
-    parser = ArgParserWithBanner(description='A python tool to detect and extract DDE links in MS Office files')
+    parser = ArgParserWithBanner(description='A python tool to detect and '
+                                 'extract DDE links in MS Office files')
     parser.add_argument("filepath", help="path of the file to be analyzed",
                         type=existing_file, metavar='FILE')
     parser.add_argument('-j', "--json", action='store_true',
                         help="Output in json format. Do not use with -ldebug")
-    parser.add_argument("--nounquote", help="don't unquote values",action='store_true')
-    parser.add_argument('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
-                        help="logging level debug/info/warning/error/critical (default=%(default)s)")
+    parser.add_argument("--nounquote", help="don't unquote values",
+                        action='store_true')
+    parser.add_argument('-l', '--loglevel', dest="loglevel", action="store",
+                        default=DEFAULT_LOG_LEVEL,
+                        help="logging level debug/info/warning/error/critical "
+                             "(default=%(default)s)")
     filter_group = parser.add_argument_group(
-         title='Filter which OpenXML field commands are returned',
-         description='Only applies to OpenXML (e.g. docx) and rtf, not to OLE '
-                     '(e.g. .doc). These options are mutually exclusive, last '
-                     'option found on command line overwrites earlier ones.')
+        title='Filter which OpenXML field commands are returned',
+        description='Only applies to OpenXML (e.g. docx) and rtf, not to OLE '
+                    '(e.g. .doc). These options are mutually exclusive, last '
+                    'option found on command line overwrites earlier ones.')
     filter_group.add_argument('-d', '--dde-only', action='store_const',
                               dest='field_filter_mode', const=FIELD_FILTER_DDE,
                               help='Return only DDE and DDEAUTO fields')
     filter_group.add_argument('-f', '--filter', action='store_const',
-                              dest='field_filter_mode', const=FIELD_FILTER_BLACKLIST,
-                              help='Return all fields except harmless ones like PAGE')
+                              dest='field_filter_mode',
+                              const=FIELD_FILTER_BLACKLIST,
+                              help='Return all fields except harmless ones')
     filter_group.add_argument('-a', '--all-fields', action='store_const',
                               dest='field_filter_mode', const=FIELD_FILTER_ALL,
-                              help='Return all fields, irrespective of their contents')
+                              help='Return all fields, irrespective of their '
+                                   'contents')
     parser.set_defaults(field_filter_mode=FIELD_FILTER_DEFAULT)
 
     return parser.parse_args(cmd_line_args)
@@ -368,16 +385,19 @@ def process_args(cmd_line_args=None):
 # === FUNCTIONS ==============================================================
 
 # from [MS-DOC], section 2.8.25 (PlcFld):
-# A field consists of two parts: field instructions and, optionally, a result. All fields MUST begin with
-# Unicode character 0x0013 with sprmCFSpec applied with a value of 1. This is the field begin
-# character. All fields MUST end with a Unicode character 0x0015 with sprmCFSpec applied with a value
-# of 1. This is the field end character. If the field has a result, then there MUST be a Unicode character
-# 0x0014 with sprmCFSpec applied with a value of 1 somewhere between the field begin character and
-# the field end character. This is the field separator. The field result is the content between the field
-# separator and the field end character. The field instructions are the content between the field begin
-# character and the field separator, if one is present, or between the field begin character and the field
-# end character if no separator is present. The field begin character, field end character, and field
-# separator are collectively referred to as field characters.
+# A field consists of two parts: field instructions and, optionally, a result.
+# All fields MUST begin with Unicode character 0x0013 with sprmCFSpec applied
+# with a value of 1. This is the field begin character. All fields MUST end
+# with a Unicode character 0x0015 with sprmCFSpec applied with a value of 1.
+# This is the field end character. If the field has a result, then there MUST
+# be a Unicode character 0x0014 with sprmCFSpec applied with a value of 1
+# somewhere between the field begin character and the field end character. This
+# is the field separator. The field result is the content between the field
+# separator and the field end character. The field instructions are the content
+# between the field begin character and the field separator, if one is present,
+# or between the field begin character and the field end character if no
+# separator is present. The field begin character, field end character, and
+# field separator are collectively referred to as field characters.
 
 
 def process_doc_field(data):
@@ -387,7 +407,6 @@ def process_doc_field(data):
     log.debug('processing field \'{0}\''.format(data))
 
     if data.lstrip().lower().startswith(u'dde'):
-        #log.debug('--> is DDE!')
         return data
     elif data.lstrip().lower().startswith(u'\x00d\x00d\x00e\x00'):
         return data
@@ -512,7 +531,6 @@ def process_doc(filepath):
     return u'\n'.join(links)
 
 
-
 def process_xls(filepath):
     """ find dde links in excel ole file """
 
@@ -531,17 +549,15 @@ def process_xls(filepath):
 
 
 def process_docx(filepath, field_filter_mode=None):
+    """ find dde-links (and other fields) in Word 2007+ files """
     log.debug('process_docx')
     all_fields = []
-    with zipfile.ZipFile(filepath) as z:
-        for filepath in z.namelist():
+    with zipfile.ZipFile(filepath) as zipper:
+        for filepath in zipper.namelist():
             if filepath in LOCATIONS:
-                data = z.read(filepath)
+                data = zipper.read(filepath)
                 fields = process_xml(data)
                 if len(fields) > 0:
-                    #print ('DDE Links in %s:'%filepath)
-                    #for f in fields:
-                    #    print(f)
                     all_fields.extend(fields)
 
     # apply field command filter
@@ -560,8 +576,10 @@ def process_docx(filepath, field_filter_mode=None):
                          .format(field_filter_mode))
 
     return u'\n'.join(clean_fields)
-    
+
+
 def process_xml(data):
+    """ Find dde-links and other fields in office XML data """
     # parse the XML data:
     root = ET.fromstring(data)
     fields = []
@@ -569,39 +587,41 @@ def process_xml(data):
     level = 0
     # find all the tags 'w:p':
     # parse each for begin and end tags, to group DDE strings
-    # fldChar can be in either a w:r element, floating alone in the w:p or spread accross w:p tags
+    # fldChar can be in either a w:r element, floating alone in the w:p
+    #    or spread accross w:p tags
     # escape DDE if quoted etc
     # (each is a chunk of a DDE link)
 
     for subs in root.iter(TAG_W_P):
         elem = None
-        for e in subs:
-            #check if w:r and if it is parse children elements to pull out the first FLDCHAR or INSTRTEXT
-            if e.tag == TAG_W_R:
-                for child in e:
-                    if child.tag == TAG_W_FLDCHAR or child.tag == TAG_W_INSTRTEXT:
+        for curr_elem in subs:
+            # check if w:r; parse children to pull out first FLDCHAR/INSTRTEXT
+            if curr_elem.tag == TAG_W_R:
+                for child in curr_elem:
+                    if child.tag == TAG_W_FLDCHAR or \
+                            child.tag == TAG_W_INSTRTEXT:
                         elem = child
                         break
             else:
-                elem = e
-            #this should be an error condition
+                elem = curr_elem
+            # this should be an error condition
             if elem is None:
                 continue
-    
-            #check if FLDCHARTYPE and whether "begin" or "end" tag
+
+            # check if FLDCHARTYPE and whether "begin" or "end" tag
             if elem.attrib.get(ATTR_W_FLDCHARTYPE) is not None:
                 if elem.attrib[ATTR_W_FLDCHARTYPE] == "begin":
-                    level += 1    
+                    level += 1
                 if elem.attrib[ATTR_W_FLDCHARTYPE] == "end":
                     level -= 1
-                    if level == 0 or level == -1 : # edge-case where level becomes -1
+                    if level == 0 or level == -1:  # edge-case; level becomes -1
                         fields.append(ddetext)
                         ddetext = u''
-                        level = 0 # reset edge-case
-        
+                        level = 0  # reset edge-case
+
             # concatenate the text of the field, if present:
             if elem.tag == TAG_W_INSTRTEXT and elem.text is not None:
-                #expand field code if QUOTED
+                # expand field code if QUOTED
                 ddetext += unquote(elem.text)
 
     for elem in root.iter(TAG_W_FLDSIMPLE):
@@ -611,24 +631,27 @@ def process_xml(data):
 
     return fields
 
-def unquote(field): 
+
+def unquote(field):
     if "QUOTE" not in field or NO_QUOTES:
         return field
-    #split into components
+    # split into components
     parts = field.strip().split(" ")
     ddestr = ""
-    for p in parts[1:]:
-        try: 
-             ch = chr(int(p))
+    for part in parts[1:]:
+        try:
+            character = chr(int(part))
         except ValueError:
-            ch = p
-        ddestr += ch 
+            character = part
+        ddestr += character
     return ddestr
+
 
 # "static variables" for field_is_blacklisted:
 FIELD_WORD_REGEX = re.compile(r'"[^"]*"|\S+')
 FIELD_BLACKLIST_CMDS = tuple(field[0].lower() for field in FIELD_BLACKLIST)
 FIELD_SWITCH_REGEX = re.compile(r'^\\[\w#*@]$')
+
 
 def field_is_blacklisted(contents):
     """ Check if given field contents matches any in FIELD_BLACKLIST
@@ -651,7 +674,7 @@ def field_is_blacklisted(contents):
         index = FIELD_BLACKLIST_CMDS.index(words[0].lower())
     except ValueError:    # first word is no blacklisted command
         return False
-    log.debug('trying to match "{0}" to blacklist command {0}'
+    log.debug('trying to match "{0}" to blacklist command {1}'
               .format(contents, FIELD_BLACKLIST[index]))
     _, nargs_required, nargs_optional, sw_with_arg, sw_solo, sw_format \
         = FIELD_BLACKLIST[index]
@@ -706,14 +729,15 @@ def field_is_blacklisted(contents):
             if 'numeric' in sw_format:
                 arg_choices = []  # too many choices to list them here
         else:
-            log.debug('unexpected switch {0} in "{1}"'.format(switch, contents))
+            log.debug('unexpected switch {0} in "{1}"'
+                      .format(switch, contents))
             return False
 
     # if nothing went wrong sofar, the contents seems to match the blacklist
     return True
 
 
-def process_xlsx(filepath, filed_filter_mode=None):
+def process_xlsx(filepath):
     """ process an OOXML excel file (e.g. .xlsx or .xlsb or .xlsm) """
     dde_links = []
     parser = ooxml.XmlParser(filepath)
@@ -733,7 +757,8 @@ def process_xlsx(filepath, filed_filter_mode=None):
         try:
             logging.info('Parsing non-xml subfile {0} with content type {1}'
                          .format(subfile, content_type))
-            for record in xls_parser.parse_xlsb_part(handle, content_type, subfile):
+            for record in xls_parser.parse_xlsb_part(handle, content_type,
+                                                     subfile):
                 logging.debug('{0}: {1}'.format(subfile, record))
                 if isinstance(record, xls_parser.XlsbBeginSupBook) and \
                         record.link_type == \
@@ -791,8 +816,9 @@ class RtfFieldParser(rtfobj.RtfParser):
 
 RTF_START = b'\x7b\x5c\x72\x74'   # == b'{\rt' but does not mess up auto-indent
 
+
 def process_rtf(file_handle, field_filter_mode=None):
-    log.debug('process_rtf')
+    """ find dde links or other fields in rtf file """
     all_fields = []
     data = RTF_START + file_handle.read()   # read complete file into memory!
     file_handle.close()
@@ -818,35 +844,119 @@ def process_rtf(file_handle, field_filter_mode=None):
     return u'\n'.join(clean_fields)
 
 
+# threshold when to consider a csv file "small"; also used as sniffing size
+CSV_SMALL_THRESH = 1024
+
+# format of dde link: program-name | arguments ! unimportant
+CSV_DDE_FORMAT = re.compile(r'\s*=(.+)\|(.+)!(.*)\s*')
+
+# allowed delimiters (python sniffer would use nearly any char). Taken from
+# https://data-gov.tw.rpi.edu/wiki/CSV_files_use_delimiters_other_than_commas
+CSV_DELIMITERS = ',\t ;|^'
+
+
+def process_csv(filepath):
+    """ find dde in csv text
+
+    finds text parts like =cmd|'/k ..\\..\\..\\Windows\\System32\\calc.exe'! or
+    =MSEXCEL|'\\..\\..\\..\\Windows\\System32\\regsvr32 [...]
+
+    Hoping here that the :py:class:`csv.Sniffer` determines quote and delimiter
+    chars the same way that excel does. Tested to some extend in unittests.
+
+    This can only find DDE-links, no other "suspicious" constructs (yet).
+    """
+
+    results = []
+    with open(filepath, 'r') as file_handle:
+        results, dialect = process_csv_dialect(file_handle, CSV_DELIMITERS)
+        is_small = file_handle.tell() < CSV_SMALL_THRESH
+
+        if is_small and not results:
+            # easy to mis-sniff small files. Try different delimiters
+            log.debug('small file, no results; try all delimiters')
+            file_handle.seek(0)
+            other_delim = CSV_DELIMITERS.replace(dialect.delimiter, '')
+            for delim in other_delim:
+                try:
+                    file_handle.seek(0)
+                    results, _ = process_csv_dialect(file_handle, delim)
+                except csv.Error:   # e.g. sniffing fails
+                    log.debug('failed to csv-parse with delimiter {0!r}'
+                              .format(delim))
+
+        if is_small and not results:
+            # try whole file as single cell, since sniffing fails in this case
+            log.debug('last attempt: take whole file as single unquoted cell')
+            file_handle.seek(0)
+            match = CSV_DDE_FORMAT.match(file_handle.read(CSV_SMALL_THRESH))
+            if match:
+                results.append(u' '.join(match.groups()[:2]))
+
+    return u'\n'.join(results)
+
+
+def process_csv_dialect(file_handle, delimiters):
+    """ helper for process_csv: process with a specific csv dialect """
+
+    # determine dialect = delimiter chars, quote chars, ...
+    dialect = csv.Sniffer().sniff(file_handle.read(CSV_SMALL_THRESH),
+                                  delimiters=delimiters)
+    dialect.strict = False     # microsoft is never strict
+    log.debug('sniffed csv dialect with delimiter {0!r} '
+              'and quote char {1!r}'
+              .format(dialect.delimiter, dialect.quotechar))
+
+    # rewind file handle to start
+    file_handle.seek(0)
+
+    # loop over all csv rows and columns
+    results = []
+    reader = csv.reader(file_handle, dialect)
+    for row in reader:
+        for cell in row:
+            # check if cell matches
+            match = CSV_DDE_FORMAT.match(cell)
+            if match:
+                results.append(u' '.join(match.groups()[:2]))
+    return results, dialect
+
+
 def process_file(filepath, field_filter_mode=None):
-    """ decides which of process_doc/x or process_xls/x to call """
+    """ decides which of the process_* functions to call """
     if olefile.isOleFile(filepath):
-        log.debug('checking streams to see whether this is xls')
+        log.debug('Is OLE. Checking streams to see whether this is xls')
         if xls_parser.is_xls(filepath):
+            log.debug('Process file as excel 2003 (xls)')
             return process_xls(filepath)
         else:
+            log.debug('Process file as word 2003 (doc)')
             return process_doc(filepath)
 
     with open(filepath, 'rb') as file_handle:
-       if file_handle.read(4) == RTF_START:
-            # This is a RTF file
+        if file_handle.read(4) == RTF_START:
+            log.debug('Process file as rtf')
             return process_rtf(file_handle, field_filter_mode)
 
     try:
         doctype = ooxml.get_type(filepath)
-    except Exception:
-        log.debug('Exception trying to xml-parse file', exc_info=True)
+        log.debug('Detected file type: {0}'.format(doctype))
+    except Exception as exc:
+        log.debug('Exception trying to xml-parse file: {0}'.format(exc))
         doctype = None
 
-    if doctype:
-        log.debug('Detected file type: {0}'.format(doctype))
     if doctype == ooxml.DOCTYPE_EXCEL:
-        return process_xlsx(filepath, field_filter_mode)
-    else:
+        log.debug('Process file as excel 2007+ (xlsx)')
+        return process_xlsx(filepath)
+    elif doctype is None:
+        log.debug('Process file as csv')
+        return process_csv(filepath)
+    else:  # could be docx; if not: this is the old default code path
+        log.debug('Process file as word 2007+ (docx)')
         return process_docx(filepath, field_filter_mode)
 
 
-#=== MAIN =================================================================
+# === MAIN =================================================================
 
 def main(cmd_line_args=None):
     """ Main function, called if this file is called as a script
@@ -868,10 +978,10 @@ def main(cmd_line_args=None):
     if args.json and args.loglevel.lower() == 'debug':
         log.warning('Debug log output will not be json-compatible!')
 
-    if args.nounquote :
+    if args.nounquote:
         global NO_QUOTES
         NO_QUOTES = True
-        
+
     if args.json:
         jout = []
         jout.append(BANNER_JSON)
@@ -890,7 +1000,7 @@ def main(cmd_line_args=None):
     except Exception as exc:
         if args.json:
             jout.append(dict(type='error', error=type(exc).__name__,
-                             message=str(exc)))  # strange: str(exc) is enclosed in ""
+                             message=str(exc)))
         else:
             raise  # re-raise last known exception, keeping trace intact
 
