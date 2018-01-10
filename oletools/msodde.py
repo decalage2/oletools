@@ -926,6 +926,36 @@ def process_csv_dialect(file_handle, delimiters):
     return results, dialect
 
 
+#: format of dde formula in excel xml files
+XML_DDE_FORMAT = CSV_DDE_FORMAT
+
+
+def process_excel_xml(filepath):
+    """ find dde links in xml files created with excel 2003 or excel 2007+
+
+    TODO: did not manage to create dde-link in the 2007+-xml-format. Find out
+          whether this is possible at all. If so, extend this function
+    """
+    dde_links = []
+    parser = ooxml.XmlParser(filepath)
+    for _, elem, _ in parser.iter_xml():
+        tag = elem.tag.lower()
+        if tag != 'cell' and not tag.endswith('}cell'):
+            continue   # we are only interested in cells
+        formula = None
+        for key in elem.keys():
+            if key.lower() == 'formula' or key.lower().endswith('}formula'):
+                formula = elem.get(key)
+                break
+        if formula is None:
+            continue
+        log.debug('found cell with formula {0}'.format(formula))
+        match = re.match(XML_DDE_FORMAT, formula)
+        if match:
+            dde_links.append(u' '.join(match.groups()[:2]))
+    return u'\n'.join(dde_links)
+
+
 def process_file(filepath, field_filter_mode=None):
     """ decides which of the process_* functions to call """
     if olefile.isOleFile(filepath):
@@ -952,6 +982,9 @@ def process_file(filepath, field_filter_mode=None):
     if doctype == ooxml.DOCTYPE_EXCEL:
         log.debug('Process file as excel 2007+ (xlsx)')
         return process_xlsx(filepath)
+    elif doctype in (ooxml.DOCTYPE_EXCEL_XML, ooxml.DOCTYPE_EXCEL_XML2003):
+        log.debug('Process file as xml from excel 2003/2007+')
+        return process_excel_xml(filepath)
     elif doctype is None:
         log.debug('Process file as csv')
         return process_csv(filepath)
