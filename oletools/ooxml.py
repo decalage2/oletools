@@ -66,8 +66,8 @@ DOCTYPE_NONE = 'none'
 DOCTYPE_MIXED = 'mixed'
 DOCTYPE_WORD_XML = 'word-xml'
 DOCTYPE_EXCEL_XML = 'excel-xml'
-DOCTYPE_WORD_XML2003 = 'word-xml2003'    # not yet used
-DOCTYPE_EXCEL_XML2003 = 'excel-xml2003'  # not yet used
+DOCTYPE_WORD_XML2003 = 'word-xml2003'
+DOCTYPE_EXCEL_XML2003 = 'excel-xml2003'
 
 
 ###############################################################################
@@ -431,7 +431,7 @@ class XmlParser(object):
             try:
                 zipper = ZipFile(self.filename)
                 try:
-                    cont_file = zipper.getinfo(FILE_CONTENT_TYPES)
+                    _ = zipper.getinfo(FILE_CONTENT_TYPES)
                 except KeyError:
                     raise BadOOXML(self.filename,
                                    'No content type information')
@@ -448,8 +448,8 @@ class XmlParser(object):
                 if not args:
                     self.did_iter_all = True
             except KeyError as orig_err:
-                raise BadOOXML(self.filename, 'invalid subfile: ' +
-                                              str(orig_err))
+                raise BadOOXML(self.filename,
+                               'invalid subfile: ' + str(orig_err))
             except BadZipfile:
                 raise BadOOXML(self.filename, 'neither zip nor xml')
             finally:
@@ -516,9 +516,9 @@ class XmlParser(object):
                                 inside_tags.pop()
                             else:
                                 logging.error('found end for wanted tag {0} '
-                                              'but last start tag {1} does not '
-                                              'match'.format(curr_tag,
-                                                             inside_tags[-1]))
+                                              'but last start tag {1} does not'
+                                              ' match'.format(curr_tag,
+                                                              inside_tags[-1]))
                                 # try to recover: close all deeper tags
                                 while inside_tags and \
                                         inside_tags[-1][1] >= depth:
