@@ -49,7 +49,6 @@ http://www.decalage.info/python/oletools
 from __future__ import print_function
 
 import argparse
-import zipfile
 import os
 from os.path import abspath, dirname
 import sys
@@ -57,13 +56,6 @@ import json
 import logging
 import re
 import csv
-
-# import lxml or ElementTree for XML parsing:
-try:
-    # lxml: best performance for XML processing
-    import lxml.etree as ET
-except ImportError:
-    import xml.etree.cElementTree as ET
 
 # little hack to allow absolute imports even if oletools is not installed
 # Copied from olevba.py
@@ -731,7 +723,7 @@ def process_xlsx(filepath):
     """ process an OOXML excel file (e.g. .xlsx or .xlsb or .xlsm) """
     dde_links = []
     parser = ooxml.XmlParser(filepath)
-    for subfile, elem, _ in parser.iter_xml():
+    for _, elem, _ in parser.iter_xml():
         tag = elem.tag.lower()
         if tag == 'ddelink' or tag.endswith('}ddelink'):
             # we have found a dde link. Try to get more info about it
