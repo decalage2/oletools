@@ -70,6 +70,11 @@ DOCTYPE_WORD_XML2003 = 'word-xml2003'    # not yet used
 DOCTYPE_EXCEL_XML2003 = 'excel-xml2003'  # not yet used
 
 
+###############################################################################
+# HELPERS
+###############################################################################
+
+
 def debug_str(elem):
     """ for debugging: print an element """
     if elem is None:
@@ -101,6 +106,19 @@ def debug_str(elem):
         return text[:147] + u'...]'
     else:
         return text + u']'
+
+
+def isstr(some_var):
+    """ version-independent test for isinstance(some_var, (str, unicode)) """
+    if sys.version_info.major == 2:
+        return isinstance(some_var, basestring)  # true for str and unicode
+    else:
+        return isinstance(some_var, str)         # there is no unicode
+
+
+###############################################################################
+# INFO ON FILES
+###############################################################################
 
 
 def get_type(filename):
@@ -156,6 +174,11 @@ def is_ooxml(filename):
         return False
     if doctype == DOCTYPE_NONE:
         return False
+
+
+###############################################################################
+# HELPER CLASSES
+###############################################################################
 
 
 class ZipSubFile(object):
@@ -351,6 +374,11 @@ class BadOOXML(ValueError):
         self.more_info = more_info
 
 
+###############################################################################
+# PARSING
+###############################################################################
+
+
 class XmlParser(object):
     """ parser for OOXML files
 
@@ -389,7 +417,7 @@ class XmlParser(object):
         if not match:
             raise BadOOXML(self.filename, 'is no zip and has no prog_id')
 
-    def iter_files(self, *args):
+    def iter_files(self, args=None):
         """ Find files in zip or just give single xml file """
         if self.is_single_xml():
             if args:
@@ -399,29 +427,36 @@ class XmlParser(object):
             self.did_iter_all = True
         else:
             zipper = None
+            subfiles = None
             try:
                 zipper = ZipFile(self.filename)
-                cont_file = zipper.getinfo(FILE_CONTENT_TYPES)  # --> KeyError
-                if args:
-                    subfiles = args
-                else:
+                try:
+                    cont_file = zipper.getinfo(FILE_CONTENT_TYPES)
+                except KeyError:
+                    raise BadOOXML(self.filename,
+                                   'No content type information')
+                if not args:
                     subfiles = zipper.namelist()
+                elif isstr(args):
+                    subfiles = [args, ]
+                else:
+                    subfiles = tuple(args)   # make a copy in case orig changes
 
                 for subfile in subfiles:
-                    logging.debug(u'subfile {0}'.format(subfile))
                     with zipper.open(subfile, 'r') as handle:
                         yield subfile, handle
                 if not args:
                     self.did_iter_all = True
-            except KeyError:      # zipper.getinfo failed, no content type file
-                raise BadOOXML(self.filename, 'No content type information')
+            except KeyError as orig_err:
+                raise BadOOXML(self.filename, 'invalid subfile: ' +
+                                              str(orig_err))
             except BadZipfile:
                 raise BadOOXML(self.filename, 'neither zip nor xml')
             finally:
                 if zipper:
                     zipper.close()
 
-    def iter_xml(self, *subfiles):
+    def iter_xml(self, subfiles=None, need_children=False, tags=None):
         """ Iterate xml contents of document
 
         If given subfile name[s] as optional arg[s], will only parse that
@@ -434,21 +469,75 @@ class XmlParser(object):
 
         Subfiles that are not xml (e.g. OLE or image files) are remembered
         internally and can be retrieved using iter_non_xml().
+
+        The argument need_children is set to False per default. If you need to
+        access an element's children, set it to True. Note, however, that
+        leaving it at False should save a lot of memory. Otherwise, the parser
+        has to keep every single element in memory since the last element
+        returned is the root which has the rest of the document as children.
+        c.f. http://www.ibm.com/developerworks/xml/library/x-hiperfparse/
+
+        Argument tags restricts output to tags with names from that list (or
+        equal to that string). Children are preserved for these.
         """
-        for subfile, handle in self.iter_files(*subfiles):
+        if tags is None:
+            want_tags = []
+        elif isinstance(tags, (str, unicode)):
+            want_tags = [tags, ]
+            logging.debug('looking for tags: {0}'.format(tags))
+        else:
+            want_tags = tags
+            logging.debug('looking for tags: {0}'.format(tags))
+
+        for subfile, handle in self.iter_files(subfiles):
             events = ('start', 'end')
             depth = 0
+            inside_tags = []
             try:
                 for event, elem in ET.iterparse(handle, events):
                     if elem is None:
                         continue
                     if event == 'start':
+                        if elem.tag in want_tags:
+                            logging.debug('remember start of tag {0} at {1}'
+                                          .format(elem.tag, depth))
+                            inside_tags.append((elem.tag, depth))
                         depth += 1
                         continue
                     assert(event == 'end')
                     depth -= 1
                     assert(depth >= 0)
-                    yield subfile, elem, depth
+
+                    is_wanted = elem.tag in want_tags
+                    if is_wanted:
+                        curr_tag = (elem.tag, depth)
+                        try:
+                            if inside_tags[-1] == curr_tag:
+                                inside_tags.pop()
+                            else:
+                                logging.error('found end for wanted tag {0} '
+                                              'but last start tag {1} does not '
+                                              'match'.format(curr_tag,
+                                                             inside_tags[-1]))
+                                # try to recover: close all deeper tags
+                                while inside_tags and \
+                                        inside_tags[-1][1] >= depth:
+                                    logging.debug('recover: pop {0}'
+                                                  .format(inside_tags[-1]))
+                                    inside_tags.pop()
+                        except IndexError:    # no inside_tag[-1]
+                            logging.error('found end of {0} at depth {1} but '
+                                          'no start event')
+                    # yield element
+                    if is_wanted or not want_tags:
+                        yield subfile, elem, depth
+
+                    # save memory: clear elem so parser memorizes less
+                    if not need_children and not inside_tags:
+                        elem.clear()
+                        # cannot do this since we might be using py-builtin xml
+                        # while elem.getprevious() is not None:
+                        #     del elem.getparent()[0]
             except ET.ParseError as err:
                 self.subfiles_no_xml.add(subfile)
                 if subfile is None:    # this is no zip subfile but single xml
@@ -550,8 +639,8 @@ def test():
     # test complete parsing
     parser = XmlParser(sys.argv[1])
     for subfile, elem, depth in parser.iter_xml():
-        if depth < 3:
-            print(u'{0}{1}{2}'.format(subfile, '  ' * depth, debug_str(elem)))
+        if depth < 4:
+            print(u'{0} {1}{2}'.format(subfile, '  ' * depth, debug_str(elem)))
     for index, (subfile, content_type) in enumerate(parser.iter_non_xml()):
         print(u'Non-XML subfile: {0} of type {1}'
               .format(subfile, content_type or u'unknown'))
