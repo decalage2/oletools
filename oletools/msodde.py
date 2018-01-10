@@ -10,6 +10,7 @@ Supported formats:
 - Excel 97-2003 (.xls), Excel 2007+ (.xlsx, .xlsm, .xlsb)
 - RTF
 - CSV (exported from / imported into Excel)
+- XML (exported from Word 2003, Word 2007+, Excel 2003, (Excel 2007+?)
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -90,6 +91,7 @@ from oletools import rtfobj
 # 2017-12-07       CH: - ensure rtf file is closed
 # 2018-01-05       CH: - add CSV
 # 2018-01-11       PL: - fixed issue #242 (apply unquote to fldSimple tags)
+# 2018-01-10       CH: - add single-xml files (Word 2003/2007+ / Excel 2003)
 
 __version__ = '0.52dev11'
 
