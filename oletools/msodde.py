@@ -554,15 +554,50 @@ def process_xls(filepath):
 
 def process_docx(filepath, field_filter_mode=None):
     """ find dde-links (and other fields) in Word 2007+ files """
-    log.debug('process_docx')
+    parser = ooxml.XmlParser(filepath)
     all_fields = []
-    with zipfile.ZipFile(filepath) as zipper:
-        for filepath in zipper.namelist():
-            if filepath in LOCATIONS:
-                data = zipper.read(filepath)
-                fields = process_xml(data)
-                if len(fields) > 0:
-                    all_fields.extend(fields)
+    level = 0
+    ddetext = u''
+    for _, subs, depth in parser.iter_xml(tags=[TAG_W_P, TAG_W_FLDSIMPLE]):
+        if depth == 0:   # at end of subfile:
+            level = 0    # reset
+        if subs.tag == TAG_W_FLDSIMPLE:
+            # concatenate the attribute of the field, if present:
+            if subs.attrib is not None:
+                all_fields.append(unquote(subs.attrib[ATTR_W_INSTR]))
+            continue
+
+        # have a TAG_W_P
+        elem = None
+        for curr_elem in subs:
+            # check if w:r; parse children to pull out first FLDCHAR/INSTRTEXT
+            if curr_elem.tag == TAG_W_R:
+                for child in curr_elem:
+                    if child.tag == TAG_W_FLDCHAR or \
+                            child.tag == TAG_W_INSTRTEXT:
+                        elem = child
+                        break
+            else:
+                elem = curr_elem
+            if elem is None:
+                logging.warning('this should be an error condition')
+                continue
+
+            # check if FLDCHARTYPE and whether "begin" or "end" tag
+            if elem.attrib.get(ATTR_W_FLDCHARTYPE) is not None:
+                if elem.attrib[ATTR_W_FLDCHARTYPE] == "begin":
+                    level += 1
+                if elem.attrib[ATTR_W_FLDCHARTYPE] == "end":
+                    level -= 1
+                    if level == 0 or level == -1:  # edge-case; level gets -1
+                        all_fields.append(ddetext)
+                        ddetext = u''
+                        level = 0  # reset edge-case
+
+            # concatenate the text of the field, if present:
+            if elem.tag == TAG_W_INSTRTEXT and elem.text is not None:
+                # expand field code if QUOTED
+                ddetext += unquote(elem.text)
 
     # apply field command filter
     log.debug('filtering with mode "{0}"'.format(field_filter_mode))
@@ -580,60 +615,6 @@ def process_docx(filepath, field_filter_mode=None):
                          .format(field_filter_mode))
 
     return u'\n'.join(clean_fields)
-
-
-def process_xml(data):
-    """ Find dde-links and other fields in office XML data """
-    # parse the XML data:
-    root = ET.fromstring(data)
-    fields = []
-    ddetext = u''
-    level = 0
-    # find all the tags 'w:p':
-    # parse each for begin and end tags, to group DDE strings
-    # fldChar can be in either a w:r element, floating alone in the w:p
-    #    or spread accross w:p tags
-    # escape DDE if quoted etc
-    # (each is a chunk of a DDE link)
-
-    for subs in root.iter(TAG_W_P):
-        elem = None
-        for curr_elem in subs:
-            # check if w:r; parse children to pull out first FLDCHAR/INSTRTEXT
-            if curr_elem.tag == TAG_W_R:
-                for child in curr_elem:
-                    if child.tag == TAG_W_FLDCHAR or \
-                            child.tag == TAG_W_INSTRTEXT:
-                        elem = child
-                        break
-            else:
-                elem = curr_elem
-            # this should be an error condition
-            if elem is None:
-                continue
-
-            # check if FLDCHARTYPE and whether "begin" or "end" tag
-            if elem.attrib.get(ATTR_W_FLDCHARTYPE) is not None:
-                if elem.attrib[ATTR_W_FLDCHARTYPE] == "begin":
-                    level += 1
-                if elem.attrib[ATTR_W_FLDCHARTYPE] == "end":
-                    level -= 1
-                    if level == 0 or level == -1:  # edge-case; level becomes -1
-                        fields.append(ddetext)
-                        ddetext = u''
-                        level = 0  # reset edge-case
-
-            # concatenate the text of the field, if present:
-            if elem.tag == TAG_W_INSTRTEXT and elem.text is not None:
-                # expand field code if QUOTED
-                ddetext += unquote(elem.text)
-
-    for elem in root.iter(TAG_W_FLDSIMPLE):
-        # concatenate the attribute of the field, if present:
-        if elem.attrib is not None:
-            fields.append(unquote(elem.attrib[ATTR_W_INSTR]))
-
-    return fields
 
 
 def unquote(field):
@@ -985,6 +966,9 @@ def process_file(filepath, field_filter_mode=None):
     elif doctype in (ooxml.DOCTYPE_EXCEL_XML, ooxml.DOCTYPE_EXCEL_XML2003):
         log.debug('Process file as xml from excel 2003/2007+')
         return process_excel_xml(filepath)
+    elif doctype in (ooxml.DOCTYPE_WORD_XML, ooxml.DOCTYPE_WORD_XML2003):
+        log.debug('Process file as xml from word 2003/2007+')
+        return process_docx(filepath)
     elif doctype is None:
         log.debug('Process file as csv')
         return process_csv(filepath)
