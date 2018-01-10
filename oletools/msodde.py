@@ -123,15 +123,16 @@ if sys.version_info[0] >= 3:
 
 
 NS_WORD = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+NS_WORD_2003 = 'http://schemas.microsoft.com/office/word/2003/wordml'
 NO_QUOTES = False
 # XML tag for 'w:instrText'
-TAG_W_INSTRTEXT = '{%s}instrText' % NS_WORD
-TAG_W_FLDSIMPLE = '{%s}fldSimple' % NS_WORD
-TAG_W_FLDCHAR = '{%s}fldChar' % NS_WORD
-TAG_W_P = "{%s}p" % NS_WORD
-TAG_W_R = "{%s}r" % NS_WORD
-ATTR_W_INSTR = '{%s}instr' % NS_WORD
-ATTR_W_FLDCHARTYPE = '{%s}fldCharType' % NS_WORD
+TAG_W_INSTRTEXT = ['{%s}instrText' % ns for ns in NS_WORD, NS_WORD_2003]
+TAG_W_FLDSIMPLE = ['{%s}fldSimple' % ns for ns in NS_WORD, NS_WORD_2003]
+TAG_W_FLDCHAR = ['{%s}fldChar' % ns for ns in NS_WORD, NS_WORD_2003]
+TAG_W_P = ["{%s}p" % ns for ns in NS_WORD, NS_WORD_2003]
+TAG_W_R = ["{%s}r" % ns for ns in NS_WORD, NS_WORD_2003]
+ATTR_W_INSTR = ['{%s}instr' % ns for ns in NS_WORD, NS_WORD_2003]
+ATTR_W_FLDCHARTYPE = ['{%s}fldCharType' % ns for ns in NS_WORD, NS_WORD_2003]
 LOCATIONS = ('word/document.xml', 'word/endnotes.xml', 'word/footnotes.xml',
              'word/header1.xml', 'word/footer1.xml', 'word/header2.xml',
              'word/footer2.xml', 'word/comments.xml')
@@ -558,23 +559,25 @@ def process_docx(filepath, field_filter_mode=None):
     all_fields = []
     level = 0
     ddetext = u''
-    for _, subs, depth in parser.iter_xml(tags=[TAG_W_P, TAG_W_FLDSIMPLE]):
+    for _, subs, depth in parser.iter_xml(tags=TAG_W_P + TAG_W_FLDSIMPLE):
         if depth == 0:   # at end of subfile:
             level = 0    # reset
-        if subs.tag == TAG_W_FLDSIMPLE:
+        if subs.tag in TAG_W_FLDSIMPLE:
             # concatenate the attribute of the field, if present:
-            if subs.attrib is not None:
-                all_fields.append(unquote(subs.attrib[ATTR_W_INSTR]))
+            attrib_instr = subs.attrib.get(ATTR_W_INSTR[0]) or \
+                           subs.attrib.get(ATTR_W_INSTR[1])
+            if attrib_instr is not None:
+                all_fields.append(unquote(attrib_instr))
             continue
 
         # have a TAG_W_P
         elem = None
         for curr_elem in subs:
             # check if w:r; parse children to pull out first FLDCHAR/INSTRTEXT
-            if curr_elem.tag == TAG_W_R:
+            if curr_elem.tag in TAG_W_R:
                 for child in curr_elem:
-                    if child.tag == TAG_W_FLDCHAR or \
-                            child.tag == TAG_W_INSTRTEXT:
+                    if child.tag in TAG_W_FLDCHAR or \
+                            child.tag in TAG_W_INSTRTEXT:
                         elem = child
                         break
             else:
@@ -584,10 +587,12 @@ def process_docx(filepath, field_filter_mode=None):
                 continue
 
             # check if FLDCHARTYPE and whether "begin" or "end" tag
-            if elem.attrib.get(ATTR_W_FLDCHARTYPE) is not None:
-                if elem.attrib[ATTR_W_FLDCHARTYPE] == "begin":
+            attrib_type = elem.attrib.get(ATTR_W_FLDCHARTYPE[0]) or \
+                          elem.attrib.get(ATTR_W_FLDCHARTYPE[1])
+            if attrib_type is not None:
+                if attrib_type == "begin":
                     level += 1
-                if elem.attrib[ATTR_W_FLDCHARTYPE] == "end":
+                if attrib_type == "end":
                     level -= 1
                     if level == 0 or level == -1:  # edge-case; level gets -1
                         all_fields.append(ddetext)
@@ -595,7 +600,7 @@ def process_docx(filepath, field_filter_mode=None):
                         level = 0  # reset edge-case
 
             # concatenate the text of the field, if present:
-            if elem.tag == TAG_W_INSTRTEXT and elem.text is not None:
+            if elem.tag in TAG_W_INSTRTEXT and elem.text is not None:
                 # expand field code if QUOTED
                 ddetext += unquote(elem.text)
 
