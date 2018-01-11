@@ -482,7 +482,7 @@ class XmlParser(object):
         """
         if tags is None:
             want_tags = []
-        elif isinstance(tags, (str, unicode)):
+        elif isstr(tags):
             want_tags = [tags, ]
             logging.debug('looking for tags: {0}'.format(tags))
         else:
