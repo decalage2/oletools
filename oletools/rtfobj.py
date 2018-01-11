@@ -95,6 +95,7 @@ __version__ = '0.52dev12'
 
 import re, os, sys, binascii, logging, optparse
 import os.path
+from time import time
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
@@ -314,6 +315,22 @@ else:
 RTF_MAGIC = b'\x7b\\rt'   # \x7b == b'{' but does not mess up auto-indent
 
 
+def duration_str(duration):
+    """ create a human-readable string representation of duration [s] """
+    value = duration
+    unit = 's'
+    if value > 90:
+        value /= 60.
+        unit = 'min'
+        if value > 90:
+            value /= 60.
+            unit = 'h'
+            if value > 72:
+                value /= 24.
+                unit = 'days'
+    return '{0:.1f}{1}'.format(value, unit)
+
+
 #=== CLASSES =================================================================
 
 class Destination(object):
@@ -360,6 +377,20 @@ class RtfParser(object):
         self.destinations = [document_destination]
         self.current_destination = document_destination
 
+    def _report_progress(self, start_time):
+        """ report progress on parsing at regular intervals """
+        now = float(time())
+        if now == start_time or self.size == 0:
+            return   # avoid zero-division
+        percent_done = 100. * self.index / self.size
+        time_per_index = (now - start_time) / float(self.index)
+        finish_estim = float(self.size - self.index) * time_per_index
+
+        log.debug('After {0} finished {1:4.1f}% of current file ({2} bytes); '
+                  'will finish in approx {3}'
+                  .format(duration_str(now-start_time), percent_done,
+                          self.size, duration_str(finish_estim)))
+
     def parse(self):
         """
         Parse the RTF data
@@ -368,8 +399,13 @@ class RtfParser(object):
         """
         # Start at beginning of data
         self.index = 0
+        start_time = time()
+        last_report = start_time
         # Loop until the end
         while self.index < self.size:
+            if time() - last_report > 15:     # report every 15s
+                self._report_progress(start_time)
+                last_report = time()
             if self.data[self.index] == BRACE_OPEN:
                 # Found an opening brace "{": Start of a group
                 self._open_group()
