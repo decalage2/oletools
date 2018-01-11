@@ -162,51 +162,64 @@ assert struct_uint16.size == 2  # make sure it matches 2 bytes
 
 # === FUNCTIONS ==============================================================
 
-def read_uint32(data):
+def read_uint32(data, index):
     """
     Read an unsigned integer from the first 32 bits of data.
 
     :param data: bytes string containing the data to be extracted.
-    :return: tuple (value, new_data) containing the read value (int),
-             and the new data without the bytes read.
+    :param index: index to start reading from.
+    :return: tuple (value, index) containing the read value (int),
+             and the index to continue reading next time.
     """
-    value = struct_uint32.unpack(data[0:4])[0]
-    new_data = data[4:]
-    return (value, new_data)
+    value = struct_uint32.unpack(data[index:index+4])[0]
+    return (value, index+4)
 
 
-def read_uint16(data):
+def read_uint16(data, index):
     """
-    Read an unsigned integer from the first 16 bits of data.
+    Read an unsigned integer from the 16 bits of data following index.
 
     :param data: bytes string containing the data to be extracted.
-    :return: tuple (value, new_data) containing the read value (int),
-             and the new data without the bytes read.
+    :param index: index to start reading from.
+    :return: tuple (value, index) containing the read value (int),
+             and the index to continue reading next time.
     """
-    value = struct_uint16.unpack(data[0:2])[0]
-    new_data = data[2:]
-    return (value, new_data)
+    value = struct_uint16.unpack(data[index:index+2])[0]
+    return (value, index+2)
 
 
-def read_LengthPrefixedAnsiString(data):
+def read_LengthPrefixedAnsiString(data, index):
     """
     Read a length-prefixed ANSI string from data.
 
     :param data: bytes string containing the data to be extracted.
-    :return: tuple (value, new_data) containing the read value (bytes string),
-             and the new data without the bytes read.
+    :param index: index in data where string size starts
+    :return: tuple (value, index) containing the read value (bytes string),
+             and the index to start reading from next time.
     """
-    length, data = read_uint32(data)
+    length, index = read_uint32(data, index)
     # if length = 0, return a null string (no null character)
     if length == 0:
-        return ('', data)
+        return ('', index)
     # extract the string without the last null character
-    ansi_string = data[:length-1]
+    ansi_string = data[index:index+length-1]
     # TODO: only in strict mode:
     # check the presence of the null char:
-    assert data[length] == NULL_CHAR
-    new_data = data[length:]
-    return (ansi_string, new_data)
+    assert data[index+length] == NULL_CHAR
+    return (ansi_string, index+length)
+
+
+def read_zero_terminated_ansi_string(data, index):
+    """
+    Read a zero-terminated ANSI string from data
+
+    :param data: bytes string containing an ansi string
+    :param index: index at which the string should start
+    :return: tuple (string, index) containing the read string (bytes string),
+             and the index to start reading from next time.
+    """
+    end_idx = data.find(b'\x00', index)
+    return data[index:end_idx], end_idx+1   # return index after the 0-byte
 
 
 # === CLASSES ================================================================
@@ -254,25 +267,30 @@ class OleNativeStream (object):
         # TODO: strict mode to raise exceptions when values are incorrect
         # (permissive mode by default)
         # An OLE Package object does not have the native data size field
+        index = 0
         if not self.package:
-            self.native_data_size = struct.unpack('<L', data[0:4])[0]
-            data = data[4:]
+            self.native_data_size, index = read_uint32(data, index)
             log.debug('OLE native data size = {0:08X} ({0} bytes)'.format(self.native_data_size))
         # I thought this might be an OLE type specifier ???
-        self.unknown_short, data = read_uint16(data)
-        self.filename, data = data.split(b'\x00', 1)
+        self.unknown_short, index = read_uint16(data, index)
+        self.filename, index = read_zero_terminated_ansi_string(data, index)
         # source path
-        self.src_path, data = data.split(b'\x00', 1)
+        self.src_path, index = read_zero_terminated_ansi_string(data, index)
         # TODO I bet these next 8 bytes are a timestamp => FILETIME from olefile
-        self.unknown_long_1, data = read_uint32(data)
-        self.unknown_long_2, data = read_uint32(data)
+        self.unknown_long_1, index = read_uint32(data, index)
+        self.unknown_long_2, index = read_uint32(data, index)
         # temp path?
-        self.temp_path, data = data.split(b'\x00', 1)
+        self.temp_path, index = read_zero_terminated_ansi_string(data, index)
         # size of the rest of the data
-        self.actual_size, data = read_uint32(data)
-        self.data = data[0:self.actual_size]
-        # TODO: exception when size > remaining data
-        # TODO: SLACK DATA
+        try:
+            self.actual_size, index = read_uint32(data, index)
+            self.data = data[index:index+self.actual_size]
+            # TODO: exception when size > remaining data
+            # TODO: SLACK DATA
+        except IOError:   # data is not embedded but only linked to
+            logging.debug('data is not embedded but only a link')
+            self.actual_size = 0
+            self.data = None
 
 
 class OleObject (object):
@@ -316,24 +334,24 @@ class OleObject (object):
         # print("Parsing OLE object data:")
         # print(hexdump3(data, length=16))
         # Header: see MS-OLEDS 2.2.4 ObjectHeader
-        self.ole_version, data = read_uint32(data)
-        self.format_id, data = read_uint32(data)
+        self.ole_version, index = read_uint32(data, index)
+        self.format_id, index = read_uint32(data, index)
         log.debug('OLE version=%08X - Format ID=%08X' % (self.ole_version, self.format_id))
         assert self.format_id in (self.TYPE_EMBEDDED, self.TYPE_LINKED)
-        self.class_name, data = read_LengthPrefixedAnsiString(data)
-        self.topic_name, data = read_LengthPrefixedAnsiString(data)
-        self.item_name, data = read_LengthPrefixedAnsiString(data)
+        self.class_name, index = read_LengthPrefixedAnsiString(data, index)
+        self.topic_name, index = read_LengthPrefixedAnsiString(data, index)
+        self.item_name, index = read_LengthPrefixedAnsiString(data, index)
         log.debug('Class name=%r - Topic name=%r - Item name=%r'
                       % (self.class_name, self.topic_name, self.item_name))
         if self.format_id == self.TYPE_EMBEDDED:
             # Embedded object: see MS-OLEDS 2.2.5 EmbeddedObject
             #assert self.topic_name != '' and self.item_name != ''
-            self.data_size, data = read_uint32(data)
-            log.debug('Declared data size=%d - remaining size=%d' % (self.data_size, len(data)))
+            self.data_size, index = read_uint32(data, index)
+            log.debug('Declared data size=%d - remaining size=%d' % (self.data_size, len(data)-index))
             # TODO: handle incorrect size to avoid exception
-            self.data = data[:self.data_size]
+            self.data = data[index:index+self.data_size]
             assert len(self.data) == self.data_size
-            self.extra_data = data[self.data_size:]
+            self.extra_data = data[index+self.data_size:]
 
 
 
