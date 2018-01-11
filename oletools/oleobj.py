@@ -85,6 +85,7 @@ if not _parent_dir in sys.path:
 
 from oletools.thirdparty.olefile import olefile
 from oletools.thirdparty.xglob import xglob
+from ppt_record_parser import is_ppt, PptFile, PptRecordExOleVbaActiveXAtom
 
 # === LOGGING =================================================================
 
@@ -358,7 +359,92 @@ def sanitize_filename(filename, replacement='_', max_length=200):
     return sane_fname
 
 
+def find_ole_in_ppt(filename):
+    """ find ole streams in ppt """
+    for stream in PptFile(filename).iter_streams():
+        for record in stream.iter_records():
+            if isinstance(record, PptRecordExOleVbaActiveXAtom):
+                ole = None
+                try:
+                    data_start = next(record.iter_uncompressed())
+                    if data_start[:len(olefile.MAGIC)] != olefile.MAGIC:
+                        continue   # could be an ActiveX control or VBA Storage
+
+                    # otherwise, this should be an OLE object
+                    ole = record.get_data_as_olefile()
+                    yield ole
+                except IOError:
+                    logging.warning('Error reading data from {0} stream or '
+                                    'interpreting it as OLE object'
+                                    .format(stream.name), exc_info=True)
+                finally:
+                    if ole is not None:
+                        ole.close()
+
+
+def find_ole(filename, data):
+    """ try to open somehow as zip/ole/rtf/... ; yield None if fail
+
+    if data is given, filename is ignored
+    """
+
+    try:
+        if data is not None:
+            # assume data is a complete OLE file
+            logging.info('working on raw OLE data (filename: {0})'
+                         .format(filename))
+            yield olefile.OleFileIO(data)
+        elif olefile.isOleFile(filename):
+            if is_ppt(filename):
+                logging.info('is ppt file: ' + filename)
+                for ole in find_ole_in_ppt(filename):
+                    yield ole
+                    ole.close()
+            else:
+                logging.info('is ole file: ' + filename)
+                ole = olefile.OleFileIO(filename)
+                yield ole
+                ole.close()
+        elif is_zipfile(filename):
+            logging.info('is zip file: ' + filename)
+            zipper = ZipFile(filename, 'r')
+            for subfile in zipper.namelist():
+                head = b''
+                try:
+                    with zipper.open(subfile) as file_handle:
+                        head = file_handle.read(len(olefile.MAGIC))
+                except RuntimeError:
+                    logging.error('zip is encrypted: ' + filename)
+                    yield None
+                    continue
+
+                if head == olefile.MAGIC:
+                    logging.info('  unzipping ole: ' + subfile)
+                    with zipper.open(subfile) as file_handle:
+                        ole = olefile.OleFileIO(file_handle)
+                        yield ole
+                        ole.close()
+                else:
+                    logging.debug('unzip skip: ' + subfile)
+        else:
+            logging.warning('open failed: ' + filename)
+            yield None   # --> leads to non-0 return code
+    except Exception:
+        logging.error('Caught exception opening {0}'.format(filename),
+                      exc_info=True)
+        yield None   # --> leads to non-0 return code but try next file first
+
+
 def process_file(container, filename, data, output_dir=None):
+    """ find embedded objects in given file
+
+    if data is given (from xglob for encrypted zip files), then filename is
+    not used for reading. If not (usual case), then data is read from filename
+    on demand.
+
+    If output_dir is given and does not exist, it is created. If it is not
+    given, data is saved to same directory as the input file.
+    """
     if output_dir:
         if not os.path.isdir(output_dir):
             log.info('creating output directory %s' % output_dir)
@@ -372,35 +458,44 @@ def process_file(container, filename, data, output_dir=None):
         fname_prefix = os.path.join(base_dir, sane_fname)
 
     # TODO: option to extract objects to files (false by default)
-    if data is None:
-        data = open(filename, 'rb').read()
     print ('-'*79)
-    print ('File: %r - %d bytes' % (filename, len(data)))
-    ole = olefile.OleFileIO(data)
+    print ('File: %r' % filename)
     index = 1
-    for stream in ole.listdir():
-        if stream[-1] == '\x01Ole10Native':
-            objdata = ole.openstream(stream).read()
-            stream_path = '/'.join(stream)
-            log.debug('Checking stream %r' % stream_path)
-            try:
-                print('extract file embedded in OLE object from stream %r:' % stream_path)
-                print ('Parsing OLE Package')
-                opkg = OleNativeStream(bindata=objdata)
-                print ('Filename = %r' % opkg.filename)
-                print ('Source path = %r' % opkg.src_path)
-                print ('Temp path = %r' % opkg.temp_path)
-                if opkg.filename:
-                    fname = '%s_%s' % (fname_prefix,
-                                       sanitize_filename(opkg.filename))
-                else:
-                    fname = '%s_object_%03d.noname' % (fname_prefix, index)
-                print ('saving to file %s' % fname)
-                open(fname, 'wb').write(opkg.data)
-                index += 1
-            except:
-                log.debug('*** Not an OLE 1.0 Object')
 
+    # look for ole files inside file (e.g. unzip docx)
+    flag_no_ole = False
+    for ole in find_ole(filename, data):
+        if ole is None:    # no ole file found
+            flag_no_ole = True
+            continue
+
+        for stream in ole.listdir():
+            if stream[-1] == '\x01Ole10Native':
+                process_native_stream(ole, stream, fname_prefix, index)
+                index += 1
+
+
+def process_native_stream(ole, stream, fname_prefix, index):
+    """ Dump data from OLE embedded object stream """
+    objdata = ole.openstream(stream).read()
+    stream_path = '/'.join(stream)
+    log.debug('Checking stream %r' % stream_path)
+    try:
+        print('extract file embedded in OLE object from stream %r:' % stream_path)
+        print ('Parsing OLE Package')
+        opkg = OleNativeStream(bindata=objdata)
+        print ('Filename = %r' % opkg.filename)
+        print ('Source path = %r' % opkg.src_path)
+        print ('Temp path = %r' % opkg.temp_path)
+        if opkg.filename:
+            fname = '%s_%s' % (fname_prefix,
+                               sanitize_filename(opkg.filename))
+        else:
+            fname = '%s_object_%03d.noname' % (fname_prefix, index)
+        print ('saving to file %s' % fname)
+        open(fname, 'wb').write(opkg.data)
+    except Exception:
+        log.debug('*** Not an OLE 1.0 Object')
 
 
 #=== MAIN =================================================================
