@@ -20,7 +20,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE =================================================================
 
-# msodde is copyright (c) 2017 Philippe Lagadec (http://www.decalage.info)
+# msodde is copyright (c) 2017-2018 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -94,8 +94,9 @@ from oletools import rtfobj
 # 2017-11-29       PL: - added support for RTF files (issue #223)
 # 2017-12-07       CH: - ensure rtf file is closed
 # 2018-01-05       CH: - add CSV
+# 2018-01-11       PL: - fixed issue #242 (apply unquote to fldSimple tags)
 
-__version__ = '0.52dev10'
+__version__ = '0.52dev11'
 
 # -----------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these
@@ -627,7 +628,7 @@ def process_xml(data):
     for elem in root.iter(TAG_W_FLDSIMPLE):
         # concatenate the attribute of the field, if present:
         if elem.attrib is not None:
-            fields.append(elem.attrib[ATTR_W_INSTR])
+            fields.append(unquote(elem.attrib[ATTR_W_INSTR]))
 
     return fields
 
