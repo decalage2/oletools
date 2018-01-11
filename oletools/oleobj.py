@@ -437,7 +437,17 @@ def main():
     parser.add_option('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
                             help="logging level debug/info/warning/error/critical (default=%default)")
 
+    # options for compatibility with ripOLE
+    parser.add_option('-i', '--more-input', type='str', default=None,
+                      help='Additional file to parse (same as positional arguments)')
+    parser.add_option('-v', '--verbose', action='store_true',
+                      help='verbose mode, set logging to DEBUG (overwrites -l)')
+
     (options, args) = parser.parse_args()
+    if options.more_input:
+        args += [options.more_input, ]
+    if options.verbose:
+        options.loglevel = 'debug'
 
     # Print help if no arguments are passed
     if len(args) == 0:
