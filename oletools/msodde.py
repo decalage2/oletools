@@ -120,13 +120,13 @@ NS_WORD = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
 NS_WORD_2003 = 'http://schemas.microsoft.com/office/word/2003/wordml'
 NO_QUOTES = False
 # XML tag for 'w:instrText'
-TAG_W_INSTRTEXT = ['{%s}instrText' % ns for ns in NS_WORD, NS_WORD_2003]
-TAG_W_FLDSIMPLE = ['{%s}fldSimple' % ns for ns in NS_WORD, NS_WORD_2003]
-TAG_W_FLDCHAR = ['{%s}fldChar' % ns for ns in NS_WORD, NS_WORD_2003]
-TAG_W_P = ["{%s}p" % ns for ns in NS_WORD, NS_WORD_2003]
-TAG_W_R = ["{%s}r" % ns for ns in NS_WORD, NS_WORD_2003]
-ATTR_W_INSTR = ['{%s}instr' % ns for ns in NS_WORD, NS_WORD_2003]
-ATTR_W_FLDCHARTYPE = ['{%s}fldCharType' % ns for ns in NS_WORD, NS_WORD_2003]
+TAG_W_INSTRTEXT = ['{%s}instrText' % ns for ns in (NS_WORD, NS_WORD_2003)]
+TAG_W_FLDSIMPLE = ['{%s}fldSimple' % ns for ns in (NS_WORD, NS_WORD_2003)]
+TAG_W_FLDCHAR = ['{%s}fldChar' % ns for ns in (NS_WORD, NS_WORD_2003)]
+TAG_W_P = ["{%s}p" % ns for ns in (NS_WORD, NS_WORD_2003)]
+TAG_W_R = ["{%s}r" % ns for ns in (NS_WORD, NS_WORD_2003)]
+ATTR_W_INSTR = ['{%s}instr' % ns for ns in (NS_WORD, NS_WORD_2003)]
+ATTR_W_FLDCHARTYPE = ['{%s}fldCharType' % ns for ns in (NS_WORD, NS_WORD_2003)]
 LOCATIONS = ('word/document.xml', 'word/endnotes.xml', 'word/footnotes.xml',
              'word/header1.xml', 'word/footer1.xml', 'word/header2.xml',
              'word/footer2.xml', 'word/comments.xml')
