@@ -422,9 +422,7 @@ class RtfParser(object):
                 # NOTE: the full length of the control word + its optional integer parameter
                 # is limited by MS Word at 253 characters, so we have to run the regex
                 # on a cropped string:
-                data_cropped = self.data[self.index:]
-                if len(data_cropped)>253:
-                    data_cropped = data_cropped[:254]
+                data_cropped = self.data[self.index:self.index+254]
                 # append a space so that the regex can check the following character:
                 data_cropped += b' '
                 # m = re_control_word.match(self.data, self.index, self.index+253)
