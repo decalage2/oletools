@@ -159,6 +159,8 @@ assert struct_uint32.size == 4  # make sure it matches 4 bytes
 struct_uint16 = struct.Struct('<H')
 assert struct_uint16.size == 2  # make sure it matches 2 bytes
 
+# max length of a zero-terminated ansi string. Not sure what this really is
+STR_MAX_LEN = 1024
 
 # === FUNCTIONS ==============================================================
 
@@ -166,34 +168,42 @@ def read_uint32(data, index):
     """
     Read an unsigned integer from the first 32 bits of data.
 
-    :param data: bytes string containing the data to be extracted.
-    :param index: index to start reading from.
+    :param data: bytes string or stream containing the data to be extracted.
+    :param index: index to start reading from or None if data is stream.
     :return: tuple (value, index) containing the read value (int),
              and the index to continue reading next time.
     """
-    value = struct_uint32.unpack(data[index:index+4])[0]
-    return (value, index+4)
+    if index is None:
+        value = struct_uint32.unpack(data.read(4))[0]
+    else:
+        value = struct_uint32.unpack(data[index:index+4])[0]
+        index += 4
+    return (value, index)
 
 
 def read_uint16(data, index):
     """
     Read an unsigned integer from the 16 bits of data following index.
 
-    :param data: bytes string containing the data to be extracted.
-    :param index: index to start reading from.
+    :param data: bytes string or stream containing the data to be extracted.
+    :param index: index to start reading from or None if data is stream
     :return: tuple (value, index) containing the read value (int),
              and the index to continue reading next time.
     """
-    value = struct_uint16.unpack(data[index:index+2])[0]
-    return (value, index+2)
+    if index is None:
+        value = struct_uint16.unpack(data.read(2))[0]
+    else:
+        value = struct_uint16.unpack(data[index:index+2])[0]
+        index += 2
+    return (value, index)
 
 
 def read_LengthPrefixedAnsiString(data, index):
     """
     Read a length-prefixed ANSI string from data.
 
-    :param data: bytes string containing the data to be extracted.
-    :param index: index in data where string size starts
+    :param data: bytes string or stream containing the data to be extracted.
+    :param index: index in data where string size start or None if data is stream
     :return: tuple (value, index) containing the read value (bytes string),
              and the index to start reading from next time.
     """
@@ -202,24 +212,41 @@ def read_LengthPrefixedAnsiString(data, index):
     if length == 0:
         return ('', index)
     # extract the string without the last null character
-    ansi_string = data[index:index+length-1]
+    if index is None:
+        ansi_string = data.read(length-1)
+        null_char = data.read(1)
+    else:
+        ansi_string = data[index:index+length-1]
+        null_char = data[index+length]
+        index += length
     # TODO: only in strict mode:
     # check the presence of the null char:
-    assert data[index+length] == NULL_CHAR
-    return (ansi_string, index+length)
+    assert null_char == NULL_CHAR
+    return (ansi_string, index)
 
 
 def read_zero_terminated_ansi_string(data, index):
     """
     Read a zero-terminated ANSI string from data
 
-    :param data: bytes string containing an ansi string
-    :param index: index at which the string should start
+    Guessing that max length is 256 bytes.
+
+    :param data: bytes string or stream containing an ansi string
+    :param index: index at which the string should start or None if data is stream
     :return: tuple (string, index) containing the read string (bytes string),
              and the index to start reading from next time.
     """
-    end_idx = data.find(b'\x00', index)
-    return data[index:end_idx], end_idx+1   # return index after the 0-byte
+    if index is None:
+        result = []
+        for count in xrange(STR_MAX_LEN):
+            char = data.read(1)
+            if char == b'\x00':
+                return b''.join(result), index
+            result.append(char)
+        raise ValueError('found no string-terminating zero-byte!')
+    else:       # data is byte array, can just search
+        end_idx = data.index(b'\x00', index, index+STR_MAX_LEN)
+        return data[index:end_idx], end_idx+1   # return index after the 0-byte
 
 
 # === CLASSES ================================================================
@@ -240,8 +267,9 @@ class OleNativeStream (object):
         Constructor for OleNativeStream.
         If bindata is provided, it will be parsed using the parse() method.
 
-        :param bindata: bytes, OLENativeStream structure containing an OLE object
-        :param package: bool, set to True when extracting from an OLE Package object
+        :param bindata: forwarded to parse, see docu there
+        :param package: bool, set to True when extracting from an OLE Package
+                        object
         """
         self.filename = None
         self.src_path = None
@@ -261,16 +289,22 @@ class OleNativeStream (object):
         to extract the OLE object it contains.
         (see MS-OLEDS 2.3.6 OLENativeStream)
 
-        :param data: bytes, OLENativeStream structure containing an OLE object
-        :return:
+        :param data: bytes array or stream, containing OLENativeStream
+                     structure containing an OLE object
+        :return: None
         """
         # TODO: strict mode to raise exceptions when values are incorrect
         # (permissive mode by default)
+        if hasattr(data, 'read'):
+            index = None       # marker for read_* functions to expect stream
+        else:
+            index = 0          # marker for read_* functions to expect array
+
         # An OLE Package object does not have the native data size field
-        index = 0
         if not self.package:
             self.native_data_size, index = read_uint32(data, index)
-            log.debug('OLE native data size = {0:08X} ({0} bytes)'.format(self.native_data_size))
+            log.debug('OLE native data size = {0:08X} ({0} bytes)'
+                      .format(self.native_data_size))
         # I thought this might be an OLE type specifier ???
         self.unknown_short, index = read_uint16(data, index)
         self.filename, index = read_zero_terminated_ansi_string(data, index)
@@ -284,10 +318,13 @@ class OleNativeStream (object):
         # size of the rest of the data
         try:
             self.actual_size, index = read_uint32(data, index)
-            self.data = data[index:index+self.actual_size]
+            if index is None:     # data is a bytes stream
+                self.data = data
+            else:                 # data is a bytes array
+                self.data = data[index:index+self.actual_size]
             # TODO: exception when size > remaining data
             # TODO: SLACK DATA
-        except IOError:   # data is not embedded but only linked to
+        except IOError, struct.error:      # no data to read actual_size
             logging.debug('data is not embedded but only a link')
             self.actual_size = 0
             self.data = None
