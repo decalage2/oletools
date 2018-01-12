@@ -165,6 +165,13 @@ STR_MAX_LEN = 1024
 # size of chunks to copy from ole stream to file
 DUMP_CHUNK_SIZE = 4096
 
+# return values from main; can be added
+# (e.g.: did dump but had err parsing and dumping --> return 1+4+8 = 13)
+RETURN_NO_DUMP = 0     # nothing found to dump/extract
+RETURN_DID_DUMP = 1    # did dump/extract successfully
+RETURN_ERR_ARGS = 2    # reserve for OptionParser.parse_args
+RETURN_ERR_STREAM = 4  # error opening/parsing a stream
+RETURN_ERR_DUMP = 8    # error dumping data from stream to file
 
 # === FUNCTIONS ==============================================================
 
@@ -527,12 +534,14 @@ def process_file(container, filename, data, output_dir=None):
     print ('File: %r' % filename)
     index = 1
 
+    # do not throw errors but remember them and try continue with other streams
+    err_stream = False
+    err_dumping = False
+    did_dump = False
+
     # look for ole files inside file (e.g. unzip docx)
-    flag_no_ole = False
-    flag_stream_error = False
     for ole in find_ole(filename, data):
         if ole is None:    # no ole file found
-            flag_no_ole = True
             continue
 
         for path_parts in ole.listdir():
@@ -542,13 +551,14 @@ def process_file(container, filename, data, output_dir=None):
                 stream = None
                 try:
                     stream = ole.openstream(path_parts)
-                    print('extract file embedded in OLE object from stream %r:' % stream_path)
+                    print('extract file embedded in OLE object from stream %r:'
+                          % stream_path)
                     print ('Parsing OLE Package')
                     opkg = OleNativeStream(stream)
                     # leave stream open until dumping is finished
                 except Exception:
                     log.warning('*** Not an OLE 1.0 Object ({0})'.format(exc))
-                    flag_stream_error = True
+                    err_stream = True
                     if stream is not None:
                         stream.close()
                     continue
@@ -583,18 +593,22 @@ def process_file(container, filename, data, output_dir=None):
                                 break
                             next_size  = min(DUMP_CHUNK_SIZE,
                                              opkg.actual_size - n_dumped)
+                    did_dump = True
                 except Exception as exc:
                     log.warning('error dumping to {0} ({1})'
                                 .format(fname, exc))
+                    err_dumping = True
                 finally:
                     stream.close()
 
                 index += 1
+    return err_stream, err_dumping, did_dump
 
 
 #=== MAIN =================================================================
 
 def main():
+    """ main function, called when running this as script """
     # print banner with version
     print ('oleobj %s - http://decalage.info/oletools' % __version__)
     print ('THIS IS WORK IN PROGRESS - Check updates regularly!')
@@ -640,9 +654,12 @@ def main():
 
     # Print help if no arguments are passed
     if len(args) == 0:
-        print (__doc__)
         parser.print_help()
-        sys.exit()
+        return RETURN_ERR_ARGS
+    for filename in args:
+        if not os.path.isfile(filename):
+            print('File does not exist: ' + filename)
+            return RETURN_ERR_ARGS
 
     # Setup logging to the console:
     # here we use stdout instead of stderr by default, so that the output
@@ -652,14 +669,32 @@ def main():
     # enable logging in the modules:
     log.setLevel(logging.NOTSET)
 
+    # remember if there was a problem and continue with other data
+    any_err_stream = False
+    any_err_dumping = False
+    any_did_dump = False
 
     for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
         zip_password=options.zip_password, zip_fname=options.zip_fname):
         # ignore directory names stored in zip files:
         if container and filename.endswith('/'):
             continue
-        process_file(container, filename, data, options.output_dir)
+        err_stream, err_dumping, did_dump = \
+            process_file(container, filename, data, options.output_dir)
+        any_err_stream |= err_stream
+        any_err_dumping |= err_dumping
+        any_did_dump |= did_dump
+
+    # assemble return value
+    return_val = RETURN_NO_DUMP
+    if any_did_dump:
+        return_val += RETURN_DID_DUMP
+    if any_err_stream:
+        return_val += RETURN_ERR_STREAM
+    if any_err_dumping:
+        return_val += RETURN_ERR_DUMP
+    return return_val
+
 
 if __name__ == '__main__':
-    main()
-
+    sys.exit(main())
