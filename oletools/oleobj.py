@@ -284,6 +284,8 @@ class OleNativeStream (object):
         self.actual_size = None
         self.data = None
         self.package = package
+        self.is_link = None
+        self.data_is_stream = None
         if bindata is not None:
             self.parse(data=bindata)
 
@@ -300,8 +302,10 @@ class OleNativeStream (object):
         # TODO: strict mode to raise exceptions when values are incorrect
         # (permissive mode by default)
         if hasattr(data, 'read'):
+            self.data_is_stream = True
             index = None       # marker for read_* functions to expect stream
         else:
+            self.data_is_stream = False
             index = 0          # marker for read_* functions to expect array
 
         # An OLE Package object does not have the native data size field
@@ -322,10 +326,11 @@ class OleNativeStream (object):
         # size of the rest of the data
         try:
             self.actual_size, index = read_uint32(data, index)
-            if index is None:     # data is a bytes stream
+            if self.data_is_stream:
                 self.data = data
-            else:                 # data is a bytes array
+            else:
                 self.data = data[index:index+self.actual_size]
+            self.is_link = False
             # TODO: exception when size > remaining data
             # TODO: SLACK DATA
         except (IOError, struct.error):      # no data to read actual_size
@@ -549,6 +554,10 @@ def process_file(container, filename, data, output_dir=None):
                     continue
 
                 # print info
+                if opkg.is_link:
+                    log.debug('Object is not embedded but only linked to '
+                              '- skip')
+                    continue
                 print ('Filename = %r' % opkg.filename)
                 print ('Source path = %r' % opkg.src_path)
                 print ('Temp path = %r' % opkg.temp_path)
