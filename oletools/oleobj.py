@@ -162,6 +162,10 @@ assert struct_uint16.size == 2  # make sure it matches 2 bytes
 # max length of a zero-terminated ansi string. Not sure what this really is
 STR_MAX_LEN = 1024
 
+# size of chunks to copy from ole stream to file
+DUMP_CHUNK_SIZE = 4096
+
+
 # === FUNCTIONS ==============================================================
 
 def read_uint32(data, index):
@@ -324,8 +328,9 @@ class OleNativeStream (object):
                 self.data = data[index:index+self.actual_size]
             # TODO: exception when size > remaining data
             # TODO: SLACK DATA
-        except IOError, struct.error:      # no data to read actual_size
+        except (IOError, struct.error):      # no data to read actual_size
             logging.debug('data is not embedded but only a link')
+            self.is_link = True
             self.actual_size = 0
             self.data = None
 
@@ -519,38 +524,63 @@ def process_file(container, filename, data, output_dir=None):
 
     # look for ole files inside file (e.g. unzip docx)
     flag_no_ole = False
+    flag_stream_error = False
     for ole in find_ole(filename, data):
         if ole is None:    # no ole file found
             flag_no_ole = True
             continue
 
-        for stream in ole.listdir():
-            if stream[-1] == '\x01Ole10Native':
-                process_native_stream(ole, stream, fname_prefix, index)
+        for path_parts in ole.listdir():
+            if path_parts[-1] == '\x01Ole10Native':
+                stream_path = '/'.join(path_parts)
+                log.debug('Checking stream %r' % stream_path)
+                stream = None
+                try:
+                    stream = ole.openstream(path_parts)
+                    print('extract file embedded in OLE object from stream %r:' % stream_path)
+                    print ('Parsing OLE Package')
+                    opkg = OleNativeStream(stream)
+                    # leave stream open until dumping is finished
+                except Exception:
+                    log.warning('*** Not an OLE 1.0 Object ({0})'.format(exc))
+                    flag_stream_error = True
+                    if stream is not None:
+                        stream.close()
+                    continue
+
+                # print info
+                print ('Filename = %r' % opkg.filename)
+                print ('Source path = %r' % opkg.src_path)
+                print ('Temp path = %r' % opkg.temp_path)
+                if opkg.filename:
+                    fname = '%s_%s' % (fname_prefix,
+                                       sanitize_filename(opkg.filename))
+                else:
+                    fname = '%s_object_%03d.noname' % (fname_prefix, index)
+
+                # dump
+                try:
+                    print ('saving to file %s' % fname)
+                    with open(fname, 'wb') as writer:
+                        n_dumped = 0
+                        next_size  = min(DUMP_CHUNK_SIZE, opkg.actual_size)
+                        while next_size:
+                            data = stream.read(next_size)
+                            writer.write(data)
+                            n_dumped += len(data)
+                            if len(data) != next_size:
+                                logging.warning('Wanted to read {0}, got {1}'
+                                                .format(next_size, len(data)))
+                                break
+                            next_size  = min(DUMP_CHUNK_SIZE,
+                                             opkg.actual_size - n_dumped)
+                except Exception as exc:
+                    log.warning('error dumping to {0} ({1})'
+                                .format(fname, exc))
+                finally:
+                    stream.close()
+
                 index += 1
-
-
-def process_native_stream(ole, stream, fname_prefix, index):
-    """ Dump data from OLE embedded object stream """
-    objdata = ole.openstream(stream).read()
-    stream_path = '/'.join(stream)
-    log.debug('Checking stream %r' % stream_path)
-    try:
-        print('extract file embedded in OLE object from stream %r:' % stream_path)
-        print ('Parsing OLE Package')
-        opkg = OleNativeStream(bindata=objdata)
-        print ('Filename = %r' % opkg.filename)
-        print ('Source path = %r' % opkg.src_path)
-        print ('Temp path = %r' % opkg.temp_path)
-        if opkg.filename:
-            fname = '%s_%s' % (fname_prefix,
-                               sanitize_filename(opkg.filename))
-        else:
-            fname = '%s_object_%03d.noname' % (fname_prefix, index)
-        print ('saving to file %s' % fname)
-        open(fname, 'wb').write(opkg.data)
-    except Exception:
-        log.debug('*** Not an OLE 1.0 Object')
 
 
 #=== MAIN =================================================================
