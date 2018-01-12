@@ -275,8 +275,8 @@ def guess_encoding(data):
             return result
         except UnicodeError:
             pass
-    logging.warning('failed to guess encoding for string, falling back to '
-                    'ascii with replace')
+    log.warning('failed to guess encoding for string, falling back to '
+                'ascii with replace')
     return data.decode('ascii', errors='replace')
 
 
@@ -387,7 +387,7 @@ class OleNativeStream(object):
             # TODO: there can be extra data, no idea what it is for
             # TODO: SLACK DATA
         except (IOError, struct.error):      # no data to read actual_size
-            logging.debug('data is not embedded but only a link')
+            log.debug('data is not embedded but only a link')
             self.is_link = True
             self.actual_size = 0
             self.data = None
@@ -441,20 +441,20 @@ class OleObject(object):
         index = 0
         self.ole_version, index = read_uint32(data, index)
         self.format_id, index = read_uint32(data, index)
-        log.debug('OLE version=%08X - Format ID=%08X'
-                  % (self.ole_version, self.format_id))
+        log.debug('OLE version=%08X - Format ID=%08X',
+                  self.ole_version, self.format_id)
         assert self.format_id in (self.TYPE_EMBEDDED, self.TYPE_LINKED)
         self.class_name, index = read_length_prefixed_string(data, index)
         self.topic_name, index = read_length_prefixed_string(data, index)
         self.item_name, index = read_length_prefixed_string(data, index)
-        log.debug('Class name=%r - Topic name=%r - Item name=%r'
-                  % (self.class_name, self.topic_name, self.item_name))
+        log.debug('Class name=%r - Topic name=%r - Item name=%r',
+                  self.class_name, self.topic_name, self.item_name)
         if self.format_id == self.TYPE_EMBEDDED:
             # Embedded object: see MS-OLEDS 2.2.5 EmbeddedObject
             # assert self.topic_name != '' and self.item_name != ''
             self.data_size, index = read_uint32(data, index)
-            log.debug('Declared data size=%d - remaining size=%d'
-                      % (self.data_size, len(data)-index))
+            log.debug('Declared data size=%d - remaining size=%d',
+                      self.data_size, len(data)-index)
             # TODO: handle incorrect size to avoid exception
             self.data = data[index:index+self.data_size]
             assert len(self.data) == self.data_size
@@ -498,9 +498,9 @@ def find_ole_in_ppt(filename):
                     ole = record.get_data_as_olefile()
                     yield ole
                 except IOError:
-                    logging.warning('Error reading data from {0} stream or '
-                                    'interpreting it as OLE object'
-                                    .format(stream.name), exc_info=True)
+                    log.warning('Error reading data from {0} stream or '
+                                'interpreting it as OLE object'
+                                .format(stream.name), exc_info=True)
                 finally:
                     if ole is not None:
                         ole.close()
@@ -515,22 +515,22 @@ def find_ole(filename, data):
     try:
         if data is not None:
             # assume data is a complete OLE file
-            logging.info('working on raw OLE data (filename: {0})'
-                         .format(filename))
+            log.info('working on raw OLE data (filename: {0})'
+                     .format(filename))
             yield olefile.OleFileIO(data)
         elif olefile.isOleFile(filename):
             if is_ppt(filename):
-                logging.info('is ppt file: ' + filename)
+                log.info('is ppt file: ' + filename)
                 for ole in find_ole_in_ppt(filename):
                     yield ole
                     ole.close()
             else:
-                logging.info('is ole file: ' + filename)
+                log.info('is ole file: ' + filename)
                 ole = olefile.OleFileIO(filename)
                 yield ole
                 ole.close()
         elif is_zipfile(filename):
-            logging.info('is zip file: ' + filename)
+            log.info('is zip file: ' + filename)
             zipper = ZipFile(filename, 'r')
             for subfile in zipper.namelist():
                 head = b''
@@ -538,24 +538,24 @@ def find_ole(filename, data):
                     with zipper.open(subfile) as file_handle:
                         head = file_handle.read(len(olefile.MAGIC))
                 except RuntimeError:
-                    logging.error('zip is encrypted: ' + filename)
+                    log.error('zip is encrypted: ' + filename)
                     yield None
                     continue
 
                 if head == olefile.MAGIC:
-                    logging.info('  unzipping ole: ' + subfile)
+                    log.info('  unzipping ole: ' + subfile)
                     with zipper.open(subfile) as file_handle:
                         ole = olefile.OleFileIO(file_handle)
                         yield ole
                         ole.close()
                 else:
-                    logging.debug('unzip skip: ' + subfile)
+                    log.debug('unzip skip: ' + subfile)
         else:
-            logging.warning('open failed: ' + filename)
+            log.warning('open failed: ' + filename)
             yield None   # --> leads to non-0 return code
     except Exception:
-        logging.error('Caught exception opening {0}'.format(filename),
-                      exc_info=True)
+        log.error('Caught exception opening {0}'.format(filename),
+                  exc_info=True)
         yield None   # --> leads to non-0 return code but try next file first
 
 
@@ -571,7 +571,7 @@ def process_file(filename, data, output_dir=None):
     """
     if output_dir:
         if not os.path.isdir(output_dir):
-            log.info('creating output directory %s' % output_dir)
+            log.info('creating output directory %s', output_dir)
             os.mkdir(output_dir)
 
         fname_prefix = os.path.join(output_dir,
@@ -592,6 +592,8 @@ def process_file(filename, data, output_dir=None):
     did_dump = False
 
     # look for ole files inside file (e.g. unzip docx)
+    # have to finish work on every ole stream inside iteration, since handles
+    # are closed in find_ole
     for ole in find_ole(filename, data):
         if ole is None:    # no ole file found
             continue
@@ -599,7 +601,7 @@ def process_file(filename, data, output_dir=None):
         for path_parts in ole.listdir():
             if path_parts[-1] == '\x01Ole10Native':
                 stream_path = '/'.join(path_parts)
-                log.debug('Checking stream %r' % stream_path)
+                log.debug('Checking stream %r', stream_path)
                 stream = None
                 try:
                     stream = ole.openstream(path_parts)
@@ -608,8 +610,8 @@ def process_file(filename, data, output_dir=None):
                     print('Parsing OLE Package')
                     opkg = OleNativeStream(stream)
                     # leave stream open until dumping is finished
-                except Exception as exc:
-                    log.warning('*** Not an OLE 1.0 Object ({0})'.format(exc))
+                except Exception:
+                    log.warning('*** Not an OLE 1.0 Object')
                     err_stream = True
                     if stream is not None:
                         stream.close()
@@ -640,8 +642,8 @@ def process_file(filename, data, output_dir=None):
                             writer.write(data)
                             n_dumped += len(data)
                             if len(data) != next_size:
-                                logging.warning('Wanted to read {0}, got {1}'
-                                                .format(next_size, len(data)))
+                                log.warning('Wanted to read {0}, got {1}'
+                                            .format(next_size, len(data)))
                                 break
                             next_size = min(DUMP_CHUNK_SIZE,
                                             opkg.actual_size - n_dumped)
