@@ -262,29 +262,46 @@ def read_length_prefixed_string(data, index):
     return (ansi_string, index)
 
 
+def guess_encoding(data):
+    """ guess encoding of byte string to create unicode
+
+    Since this is used to decode path names from ole objects, prefer latin1
+    over utf* codecs if ascii is not enough
+    """
+    for encoding in 'ascii', 'latin1', 'utf8', 'utf-16-le', 'utf16':
+        try:
+            result = data.decode(encoding, errors='strict')
+            log.debug(u'encoded using {0}: "{1}"'.format(encoding, result))
+            return result
+        except UnicodeError:
+            pass
+    logging.warning('failed to guess encoding for string, falling back to '
+                    'ascii with replace')
+    return data.decode('ascii', errors='replace')
+
+
 def read_zero_terminated_string(data, index):
     """
-    Read a zero-terminated ANSI string from data
-
-    Guessing that max length is 256 bytes.
+    Read a zero-terminated string from data
 
     :param data: bytes string or stream containing an ansi string
     :param index: index at which the string should start or None if data is
                   stream
-    :return: tuple (string, index) containing the read string (bytes string),
+    :return: tuple (unicode, index) containing the read string (unicode),
              and the index to start reading from next time.
     """
     if index is None:
-        result = []
+        result = bytearray()
         for _ in xrange(STR_MAX_LEN):
-            char = data.read(1)
-            if char == b'\x00':
-                return b''.join(result), index
+            char = ord(data.read(1))    # need ord() for py3
+            if char == 0:
+                return guess_encoding(result), index
             result.append(char)
         raise ValueError('found no string-terminating zero-byte!')
     else:       # data is byte array, can just search
         end_idx = data.index(b'\x00', index, index+STR_MAX_LEN)
-        return data[index:end_idx], end_idx+1   # return index after the 0-byte
+        # encode and return with index after the 0-byte
+        return guess_encoding(data[index:end_idx]), end_idx+1
 
 
 # === CLASSES =================================================================
@@ -294,6 +311,8 @@ class OleNativeStream(object):
     """
     OLE object contained into an OLENativeStream structure.
     (see MS-OLEDS 2.3.6 OLENativeStream)
+
+    Filename and paths are decoded to unicode.
     """
     # constants for the type attribute:
     # see MS-OLEDS 2.2.4 ObjectHeader
@@ -446,7 +465,7 @@ def sanitize_filename(filename, replacement='_', max_length=200):
     """compute basename of filename. Replaces all non-whitelisted characters.
        The returned filename is always a basename of the file."""
     basepath = os.path.basename(filename).strip()
-    sane_fname = re.sub(r'[^\w\.\- ]', replacement, basepath)
+    sane_fname = re.sub(u'[^\\w\\.\\- ]', replacement, basepath)
 
     while ".." in sane_fname:
         sane_fname = sane_fname.replace('..', '.')
