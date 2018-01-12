@@ -67,7 +67,8 @@ except ImportError:
     del PARENT_DIR
     from oletools.thirdparty import olefile
 from oletools.thirdparty import xglob
-from ppt_record_parser import is_ppt, PptFile, PptRecordExOleVbaActiveXAtom
+from oletools.ppt_record_parser import (is_ppt, PptFile,
+                                        PptRecordExOleVbaActiveXAtom)
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:
