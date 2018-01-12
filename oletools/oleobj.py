@@ -69,6 +69,7 @@ except ImportError:
 from oletools.thirdparty import xglob
 from oletools.ppt_record_parser import (is_ppt, PptFile,
                                         PptRecordExOleVbaActiveXAtom)
+from oletools.ooxml import ZipSubFile
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:
@@ -545,7 +546,7 @@ def find_ole(filename, data):
 
                 if head == olefile.MAGIC:
                     log.info('  unzipping ole: ' + subfile)
-                    with zipper.open(subfile) as file_handle:
+                    with ZipSubFile(zipper, subfile) as file_handle:
                         ole = olefile.OleFileIO(file_handle)
                         yield ole
                         ole.close()
