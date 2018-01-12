@@ -667,8 +667,12 @@ def existing_file(filename):
     return filename
 
 
-def main():
-    """ main function, called when running this as script """
+def main(cmd_line_args=None):
+    """ main function, called when running this as script
+
+    Per default (cmd_line_args=None) uses sys.argv. For testing, however, can
+    provide other arguments.
+    """
     # print banner with version
     print('oleobj %s - http://decalage.info/oletools' % __version__)
     print('THIS IS WORK IN PROGRESS - Check updates regularly!')
@@ -711,7 +715,7 @@ def main():
                         help='verbose mode, set logging to DEBUG '
                              '(overwrites -l)')
 
-    options = parser.parse_args()
+    options = parser.parse_args(cmd_line_args)
     if options.more_input:
         options.input += [options.more_input, ]
     if options.verbose:
