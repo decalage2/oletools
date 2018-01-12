@@ -130,13 +130,13 @@ class ZipSubFile(object):
 
     ZipFile.open() gives file handles that can be read but not seek()ed since
     the file is being decompressed in the background. This class implements a
-    reset() function which corresponds to a seek to 0 (which just closes the
-    stream and re-opens it behind the scenes.)
-    --> can be used e.g. for olefile.isOleFile()
+    reset() function (close and re-open stream) and a seek() that uses it.
+    --> can be used as argument to olefile.OleFileIO and olefile.isOleFile()
 
     Can be used as a context manager::
 
         with zipfile.ZipFile('file.zip') as zipper:
+            # replaces with zipper.open(subfile) as handle:
             with ZipSubFile(zipper, 'subfile') as handle:
                 print('subfile in file.zip has size {0}, starts with {1}'
                       .format(handle.size, handle.read(20)))
@@ -147,10 +147,12 @@ class ZipSubFile(object):
     name: name of file within zip file
     mode: open-mode, 'r' per default
     size: size of the stream (constructor arg or taken from ZipFile.getinfo)
+    closed: True if there was an open() but no close() since then
 
     Attributes only not-None after open() and before close():
-    handle: direkt handle to subfile stream, created by ZipFile.open()
-    pos: current position within stream
+    handle: direct handle to subfile stream, created by ZipFile.open()
+    pos: current position within stream (can deviate from actual position in
+         self.handle if we fake jump to end)
     """
 
     def __init__(self, container, filename, mode='r', size=None):
@@ -168,6 +170,7 @@ class ZipSubFile(object):
         self.mode = mode
         self.handle = None
         self.pos = None
+        self.closed = True
 
     def open(self):
         """ open subfile for reading; open mode given to constructor before """
@@ -175,6 +178,8 @@ class ZipSubFile(object):
             raise IOError('re-opening file not supported!')
         self.handle = self.container.open(self.name, self.mode)
         self.pos = 0
+        self.closed = False
+        # print('ZipSubFile: opened; size={}'.format(self.size))
         return self
 
     def write(self, *args, **kwargs):                          # pylint: disable=unused-argument,no-self-use
@@ -187,59 +192,91 @@ class ZipSubFile(object):
 
         returns bytes (i.e. str in python2, bytes in python3)
         """
-        if size is None:
-            self.pos = self.size
-        else:
-            self.pos += size
-        return self.handle.read(size)
+        if self.handle is None:
+            raise IOError('read on closed handle')
+        if self.pos >= self.size:
+            # print('ZipSubFile: read fake at end')
+            return b''   # fake being at the end, even if we are not
+        data = self.handle.read(size)
+        self.pos += len(data)
+        # print('ZipSubFile: read {} bytes, pos now {}'.format(size, self.pos))
+        return data
 
-    def seek(self, pos, offset):
-        """ re-position point so read() will continue elsewhere
-
-        only re-positioning to start of file is allowed
-        """
-        CHUNK_SIZE = 4096
-        if pos == 0 and offset == io.SEEK_SET:
-            self.reset()
+    def seek(self, pos, offset=io.SEEK_SET):
+        """ re-position point so read() will continue elsewhere """
+        # calc target position from self.pos, pos and offset
+        if offset == io.SEEK_SET:
+            new_pos = pos
         elif offset == io.SEEK_CUR:
-            if pos == -self.pos:
-                self.reset()
-            elif pos == 0:
-                return
-            elif pos > 0:
-                skipped = 0
-                n_chunks, leftover = divmod(pos, CHUNK_SIZE)
-                for _ in range(n_chunks):
-                    self.read(CHUNK_SIZE)    # just read and discard
-                self.read(leftover)
-            else:
-                raise NotImplementedError('could reset() and read()?')
+            new_pos = self.pos + pos
+        elif offset == io.SEEK_END:
+            new_pos = self.size + pos
         else:
-            raise NotImplementedError('could reset() and read()?')
+            raise ValueError("invalid offset {0}, need SEEK_* constant"
+                             .format(offset))
+
+        # now get to that position, doing reads and resets as necessary
+        if new_pos < 0:
+            # print('ZipSubFile: Error: seek to {}'.format(new_pos))
+            raise IOError('Seek beyond start of file not allowed')
+        elif new_pos == self.pos:
+            # print('ZipSubFile: nothing to do')
+            pass
+        elif new_pos == 0:
+            # print('ZipSubFile: seek to start')
+            self.reset()
+        elif new_pos < self.pos:
+            # print('ZipSubFile: seek back')
+            self.reset()
+            self._seek_skip(new_pos)             # --> read --> update self.pos
+        elif new_pos < self.size:
+            # print('ZipSubFile: seek forward')
+            self._seek_skip(new_pos - self.pos)  # --> read --> update self.pos
+        else:   # new_pos >= self.size
+            # print('ZipSubFile: seek to end')
+            self.pos = new_pos    # fake being at the end; remember pos >= size
+
+    def _seek_skip(self, to_skip):
+        """ helper for seek: skip forward by given amount using read() """
+        # print('ZipSubFile: seek by skipping {} bytes starting at {}'
+        #       .format(self.pos, to_skip))
+        CHUNK_SIZE = 4096
+        n_chunks, leftover = divmod(to_skip, CHUNK_SIZE)
+        for _ in range(n_chunks):
+            self.read(CHUNK_SIZE)    # just read and discard
+        self.read(leftover)
+        # print('ZipSubFile: seek by skipping done, pos now {}'
+        #       .format(self.pos))
 
     def tell(self):
         """ inform about position of next read """
+        # print('ZipSubFile: tell-ing we are at {}'.format(self.pos))
         return self.pos
 
     def reset(self):
         """ close and re-open """
+        # print('ZipSubFile: resetting')
         self.close()
         self.open()
 
     def close(self):
         """ close file """
+        # print('ZipSubFile: closing')
         if self.handle is not None:
             self.handle.close()
         self.pos = None
         self.handle = None
+        self.closed = True
 
     def __enter__(self):
         """ start of context manager; opens the file """
+        # print('ZipSubFile: entering context')
         self.open()
         return self
 
     def __exit__(self, *args, **kwargs):
         """ end of context manager; closes the file """
+        # print('ZipSubFile: exiting context')
         self.close()
 
     def __str__(self):
