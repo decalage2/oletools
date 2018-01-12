@@ -46,7 +46,7 @@ from __future__ import print_function
 
 import logging
 import struct
-import optparse
+import argparse
 import os
 import re
 import sys
@@ -660,6 +660,13 @@ def process_file(filename, data, output_dir=None):
 # === MAIN ====================================================================
 
 
+def existing_file(filename):
+    """ called by argument parser to see whether given file exists """
+    if not os.path.isfile(filename):
+        raise argparse.ArgumentTypeError('{0} is not a file.'.format(filename))
+    return filename
+
+
 def main():
     """ main function, called when running this as script """
     # print banner with version
@@ -669,53 +676,51 @@ def main():
           'https://github.com/decalage2/oletools/issues')
     print('')
 
-    usage = 'usage: %prog [options] <filename> [filename2 ...]'
-    parser = optparse.OptionParser(usage=usage)
-    # parser.add_option('-o', '--outfile', dest='outfile',
+    usage = 'usage: %(prog)s [options] <filename> [filename2 ...]'
+    parser = argparse.ArgumentParser(usage=usage)
+    # parser.add_argument('-o', '--outfile', dest='outfile',
     #     help='output file')
-    # parser.add_option('-c', '--csv', dest='csv',
+    # parser.add_argument('-c', '--csv', dest='csv',
     #     help='export results to a CSV file')
-    parser.add_option("-r", action="store_true", dest="recursive",
-                      help='find files recursively in subdirectories.')
-    parser.add_option("-d", type="str", dest="output_dir", default=None,
-                      help='use specified directory to output files.')
-    parser.add_option("-z", "--zip", dest='zip_password', type='str',
-                      default=None,
-                      help='if the file is a zip archive, open first file from'
-                           'it, using the provided password (requires Python '
-                           '2.6+)')
-    parser.add_option("-f", "--zipfname", dest='zip_fname', type='str',
-                      default='*',
-                      help='if the file is a zip archive, file(s) to be opened'
-                           'within the zip. Wildcards * and ? are supported. '
-                           '(default:*)')
-    parser.add_option('-l', '--loglevel', dest="loglevel", action="store",
-                      default=DEFAULT_LOG_LEVEL,
-                      help='logging level debug/info/warning/error/critical '
-                           '(default=%default)')
+    parser.add_argument("-r", action="store_true", dest="recursive",
+                        help='find files recursively in subdirectories.')
+    parser.add_argument("-d", type=str, dest="output_dir", default=None,
+                        help='use specified directory to output files.')
+    parser.add_argument("-z", "--zip", dest='zip_password', type=str,
+                        default=None,
+                        help='if the file is a zip archive, open first file '
+                             'from it, using the provided password (requires '
+                             'Python 2.6+)')
+    parser.add_argument("-f", "--zipfname", dest='zip_fname', type=str,
+                        default='*',
+                        help='if the file is a zip archive, file(s) to be '
+                             'opened within the zip. Wildcards * and ? are '
+                             'supported. (default:*)')
+    parser.add_argument('-l', '--loglevel', dest="loglevel", action="store",
+                        default=DEFAULT_LOG_LEVEL,
+                        help='logging level debug/info/warning/error/critical '
+                             '(default=%(default)s)')
+    parser.add_argument('input', nargs='*', type=existing_file, metavar='FILE',
+                        help='Office files to parse (same as -i)')
 
     # options for compatibility with ripOLE
-    parser.add_option('-i', '--more-input', type='str', default=None,
-                      help='Additional file to parse (same as positional '
-                           'arguments)')
-    parser.add_option('-v', '--verbose', action='store_true',
-                      help='verbose mode, set logging to DEBUG '
-                           '(overwrites -l)')
+    parser.add_argument('-i', '--more-input', type=str, metavar='FILE',
+                        help='Additional file to parse (same as positional '
+                             'arguments)')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='verbose mode, set logging to DEBUG '
+                             '(overwrites -l)')
 
-    (options, args) = parser.parse_args()
+    options = parser.parse_args()
     if options.more_input:
-        args += [options.more_input, ]
+        options.input += [options.more_input, ]
     if options.verbose:
         options.loglevel = 'debug'
 
     # Print help if no arguments are passed
-    if not args:
+    if not options.input:
         parser.print_help()
         return RETURN_ERR_ARGS
-    for filename in args:
-        if not os.path.isfile(filename):
-            print('File does not exist: ' + filename)
-            return RETURN_ERR_ARGS
 
     # Setup logging to the console:
     # here we use stdout instead of stderr by default, so that the output
@@ -731,7 +736,7 @@ def main():
     any_did_dump = False
 
     for container, filename, data in \
-            xglob.iter_files(args, recursive=options.recursive,
+            xglob.iter_files(options.input, recursive=options.recursive,
                              zip_password=options.zip_password,
                              zip_fname=options.zip_fname):
         # ignore directory names stored in zip files:
