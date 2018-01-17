@@ -45,7 +45,7 @@ Alternative to ppt_parser.py that works on records
 import sys
 from struct import unpack      # unsigned: 1 Byte = B, 2 Byte = H, 4 Byte = L
 import logging
-import record_base
+from . import record_base
 import io
 import zlib
 
