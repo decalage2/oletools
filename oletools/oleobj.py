@@ -516,6 +516,7 @@ def find_ole(filename, data):
     if data is given, filename is ignored
     """
 
+    ole = None
     try:
         if data is not None:
             # assume data is a complete OLE file
@@ -527,12 +528,10 @@ def find_ole(filename, data):
                 log.info('is ppt file: ' + filename)
                 for ole in find_ole_in_ppt(filename):
                     yield ole
-                    ole.close()
             else:
                 log.info('is ole file: ' + filename)
                 ole = olefile.OleFileIO(filename)
                 yield ole
-                ole.close()
         elif is_zipfile(filename):
             log.info('is zip file: ' + filename)
             zipper = ZipFile(filename, 'r')
@@ -549,9 +548,18 @@ def find_ole(filename, data):
                 if head == olefile.MAGIC:
                     log.info('  unzipping ole: ' + subfile)
                     with ZipSubFile(zipper, subfile) as file_handle:
-                        ole = olefile.OleFileIO(file_handle)
-                        yield ole
-                        ole.close()
+                        try:
+                            ole = olefile.OleFileIO(file_handle)
+                            yield ole
+                        except IOError:
+                            log.warning('Error reading data from {0}/{1} or '
+                                        'interpreting it as OLE object'
+                                        .format(filename, subfile))
+                            log.debug('', exc_info=True)
+                        finally:
+                            if ole is not None:
+                                ole.close()
+                                ole = None
                 else:
                     log.debug('unzip skip: ' + subfile)
         else:
@@ -561,6 +569,9 @@ def find_ole(filename, data):
         log.error('Caught exception opening {0}'.format(filename),
                   exc_info=True)
         yield None   # --> leads to non-0 return code but try next file first
+    finally:
+        if ole is not None:
+            ole.close()
 
 
 def process_file(filename, data, output_dir=None):
