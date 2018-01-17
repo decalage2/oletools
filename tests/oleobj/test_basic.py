@@ -58,7 +58,9 @@ class TestOleObj(unittest.TestCase):
     def test_no_output(self):
         """ test that oleobj does not find data where it should not """
         args = ['-d', self.temp_dir]
-        for sample_name in ('sample_with_lnk_to_calc.doc', ):
+        for sample_name in ('sample_with_lnk_to_calc.doc',
+                            'embedded-simple-2007.xml',
+                            'embedded-simple-2007-as2003.xml'):
             full_name = join(DATA_BASE_DIR, 'oleobj', sample_name)
             ret_val = oleobj.main(args + [full_name, ])
             if glob(self.temp_dir + 'ole-object-*'):
@@ -69,11 +71,23 @@ class TestOleObj(unittest.TestCase):
         """ helper for test_md5 and test_md5_args """
         # name of sample, extension of embedded file, md5 hash of embedded file
         EXPECTED_RESULTS = (
-            ('sample_with_calc_embedded.doc', 'calc.exe', '40e85286357723f326980a3b30f84e4f'),
-            ('sample_with_lnk_file.doc', 'calc.lnk', '6aedb1a876d4ad5236f1fbbbeb7274f3'),
-            ('sample_with_lnk_file.pps', 'calc.lnk', '6aedb1a876d4ad5236f1fbbbeb7274f3'),
-            ('sample_with_lnk_file.ppt', 'calc.lnk', '6aedb1a876d4ad5236f1fbbbeb7274f3'),
-            ('embedded-unicode.doc', '_nic_de-___________.txt', '264397735b6f09039ba0adf0dc9fb942'),
+            ('sample_with_calc_embedded.doc', 'calc.exe',
+             '40e85286357723f326980a3b30f84e4f'),
+            ('sample_with_lnk_file.doc', 'calc.lnk',
+             '6aedb1a876d4ad5236f1fbbbeb7274f3'),
+            ('sample_with_lnk_file.pps', 'calc.lnk',
+             '6aedb1a876d4ad5236f1fbbbeb7274f3'),
+            ('sample_with_lnk_file.ppt', 'calc.lnk',
+             '6aedb1a876d4ad5236f1fbbbeb7274f3'),
+            ('embedded-unicode.doc', '_nic_de-___________.txt',
+             '264397735b6f09039ba0adf0dc9fb942'),
+            ('embedded-unicode-2007.docx', '_nic_de-___________.txt',
+             '264397735b6f09039ba0adf0dc9fb942'),
+        )
+        EXPECTED_RESULTS += tuple(
+            ('embedded-simple-2007.' + extn, 'simple-text-file.txt',
+             'bd5c063a5a43f67b3c50dc7b0f1195af')
+            for extn in ('doc', 'dot', 'docx', 'docm', 'dotx', 'dotm')
         )
 
         data_dir = join(DATA_BASE_DIR, 'oleobj')
