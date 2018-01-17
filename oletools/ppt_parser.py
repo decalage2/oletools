@@ -6,11 +6,19 @@ Code much influenced by olevba._extract_vba but much more object-oriented
 (possibly slightly excessively so)
 
 Currently quite narrowly focused on extracting VBA from ppt files, no slides or
-stuff, but built to be extended to parsing more/all of the file
+stuff, but built to be extended to parsing more/all of the file. For better
+"understanding" of ppt files, see module ppt_record_parser, which will probably
+replace this module some time soon.
 
 References:
 * https://msdn.microsoft.com/en-us/library/dd921564%28v=office.12%29.aspx
   and links there-in
+
+WARNING!
+Before thinking about understanding or even extending this module, please keep
+in mind that module ppt_record_parser has a better "understanding" of the ppt
+file structure and will replace this module some time soon!
+
 """
 
 # === LICENSE =================================================================
@@ -24,6 +32,7 @@ References:
 # - license
 # - make buffered stream from output of iterative_decompress
 # - maybe can merge the 2 decorators into 1? (with_opened_main_stream)
+# - REPLACE THIS MODULE with ppt_record_parser
 
 
 # CHANGELOG:
