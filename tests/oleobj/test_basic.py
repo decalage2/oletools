@@ -18,13 +18,13 @@ DEBUG = False
 
 def calc_md5(filename):
     """ calc md5sum of given file in temp_dir """
-    CHUNK_SIZE = 4096
+    chunk_size = 4096
     hasher = md5()
     with open(filename, 'rb') as handle:
-        buf = handle.read(CHUNK_SIZE)
+        buf = handle.read(chunk_size)
         while buf:
             hasher.update(buf)
-            buf = handle.read(CHUNK_SIZE)
+            buf = handle.read(chunk_size)
     return hasher.hexdigest()
 
 
@@ -70,7 +70,7 @@ class TestOleObj(unittest.TestCase):
     def do_test_md5(self, args):
         """ helper for test_md5 and test_md5_args """
         # name of sample, extension of embedded file, md5 hash of embedded file
-        EXPECTED_RESULTS = (
+        expected_results = (
             ('sample_with_calc_embedded.doc', 'calc.exe',
              '40e85286357723f326980a3b30f84e4f'),
             ('sample_with_lnk_file.doc', 'calc.lnk',
@@ -84,14 +84,14 @@ class TestOleObj(unittest.TestCase):
             ('embedded-unicode-2007.docx', '_nic_de-___________.txt',
              '264397735b6f09039ba0adf0dc9fb942'),
         )
-        EXPECTED_RESULTS += tuple(
+        expected_results += tuple(
             ('embedded-simple-2007.' + extn, 'simple-text-file.txt',
              'bd5c063a5a43f67b3c50dc7b0f1195af')
             for extn in ('doc', 'dot', 'docx', 'docm', 'dotx', 'dotm')
         )
 
         data_dir = join(DATA_BASE_DIR, 'oleobj')
-        for sample_name, embedded_name, expect_hash in EXPECTED_RESULTS:
+        for sample_name, embedded_name, expect_hash in expected_results:
             ret_val = oleobj.main(args + [join(data_dir, sample_name), ])
             self.assertEqual(ret_val, oleobj.RETURN_DID_DUMP)
             expect_name = join(self.temp_dir,
@@ -101,11 +101,11 @@ class TestOleObj(unittest.TestCase):
                 self.fail('{0} not created from {1}'.format(expect_name,
                                                             sample_name))
                 continue
-            hash = calc_md5(expect_name)
-            if hash != expect_hash:
+            md5_hash = calc_md5(expect_name)
+            if md5_hash != expect_hash:
                 self.did_fail = True
                 self.fail('Wrong md5 {0} of {1} from {2}'
-                          .format(hash, expect_name, sample_name))
+                          .format(md5_hash, expect_name, sample_name))
                 continue
 
 
