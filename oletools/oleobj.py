@@ -466,9 +466,10 @@ class OleObject(object):
 
 def sanitize_filename(filename, replacement='_', max_length=200):
     """compute basename of filename. Replaces all non-whitelisted characters.
-       The returned filename is always a basename of the file."""
+       The returned filename is always a ascii basename of the file."""
     basepath = os.path.basename(filename).strip()
-    sane_fname = re.sub(u'[^\\w\\.\\- ]', replacement, basepath)
+    sane_fname = re.sub(u'[^a-zA-Z0-9.\\-_ ]', replacement, basepath)
+    sane_fname = str(sane_fname)    # py3: does nothing;   py2: unicode --> str
 
     while ".." in sane_fname:
         sane_fname = sane_fname.replace('..', '.')
@@ -637,9 +638,9 @@ def process_file(filename, data, output_dir=None):
                     log.debug('Object is not embedded but only linked to '
                               '- skip')
                     continue
-                print('Filename = %r' % opkg.filename)
-                print('Source path = %r' % opkg.src_path)
-                print('Temp path = %r' % opkg.temp_path)
+                print(u'Filename = "%s"' % opkg.filename)
+                print(u'Source path = "%s"' % opkg.src_path)
+                print(u'Temp path = "%s"' % opkg.temp_path)
                 if opkg.filename:
                     fname = '%s_%s' % (fname_prefix,
                                        sanitize_filename(opkg.filename))
