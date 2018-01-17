@@ -106,7 +106,8 @@ LOG_LEVELS = {'debug':    logging.DEBUG,
               'info':     logging.INFO,
               'warning':  logging.WARNING,
               'error':    logging.ERROR,
-              'critical': logging.CRITICAL}
+              'critical': logging.CRITICAL,
+              'debug-olefile': logging.DEBUG}
 
 
 class NullHandler(logging.Handler):
@@ -273,7 +274,7 @@ def guess_encoding(data):
     for encoding in 'ascii', 'latin1', 'utf8', 'utf-16-le', 'utf16':
         try:
             result = data.decode(encoding, errors='strict')
-            log.debug(u'encoded using {0}: "{1}"'.format(encoding, result))
+            log.debug(u'decoded using {0}: "{1}"'.format(encoding, result))
             return result
         except UnicodeError:
             pass
@@ -502,7 +503,8 @@ def find_ole_in_ppt(filename):
                 except IOError:
                     log.warning('Error reading data from {0} stream or '
                                 'interpreting it as OLE object'
-                                .format(stream.name), exc_info=True)
+                                .format(stream.name))
+                    log.debug('', exc_info=True)
                 finally:
                     if ole is not None:
                         ole.close()
@@ -737,6 +739,8 @@ def main(cmd_line_args=None):
                         format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
     log.setLevel(logging.NOTSET)
+    if options.loglevel == 'debug-olefile':
+        olefile.enable_logging()
 
     # remember if there was a problem and continue with other data
     any_err_stream = False
