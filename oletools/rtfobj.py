@@ -109,7 +109,6 @@ if not _parent_dir in sys.path:
 
 from oletools.thirdparty.xglob import xglob
 from oletools.thirdparty.tablestream import tablestream
-from oletools.oleobj import OleObject, OleNativeStream
 from oletools import oleobj
 
 # === LOGGING =================================================================
@@ -613,7 +612,7 @@ class RtfObjParser(RtfParser):
             rtfobj.rawdata = object_data
             # TODO: check if all hex data is extracted properly
 
-            obj = OleObject()
+            obj = oleobj.OleObject()
             try:
                 obj.parse(object_data)
                 rtfobj.format_id = obj.format_id
@@ -622,7 +621,8 @@ class RtfObjParser(RtfParser):
                 rtfobj.oledata = obj.data
                 rtfobj.is_ole = True
                 if obj.class_name.lower() == 'package':
-                    opkg = OleNativeStream(bindata=obj.data, package=True)
+                    opkg = oleobj.OleNativeStream(bindata=obj.data,
+                                                  package=True)
                     rtfobj.filename = opkg.filename
                     rtfobj.src_path = opkg.src_path
                     rtfobj.temp_path = opkg.temp_path
