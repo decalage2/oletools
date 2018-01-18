@@ -45,9 +45,23 @@ Alternative to ppt_parser.py that works on records
 import sys
 from struct import unpack      # unsigned: 1 Byte = B, 2 Byte = H, 4 Byte = L
 import logging
-from . import record_base
 import io
 import zlib
+
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+try:
+    from oletools import record_base
+except ImportError:
+    PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))))
+    if PARENT_DIR not in sys.path:
+        sys.path.insert(0, PARENT_DIR)
+    del PARENT_DIR
+    from oletools import record_base
 
 
 # types of relevant records (there are much more than listed here)
