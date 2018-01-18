@@ -3,8 +3,7 @@
 oleobj.py
 
 oleobj is a Python script and module to parse OLE objects and files stored
-into various file formats such as RTF or MS Office documents
-(e.g. Word, Excel).
+into various MS Office file formats (doc, xls, ppt, docx, xlsx, pptx, etc)
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -80,8 +79,10 @@ from oletools.ooxml import ZipSubFile
 # 2016-11-17 v0.51 PL: - fixed OLE native object extraction
 # 2016-11-18       PL: - added main for setup.py entry point
 # 2017-05-03       PL: - fixed absolute imports (issue #141)
+# 2018-01-18       CH: - added support for zipped-xml-based types (docx, pptx,
+#                        xlsx), and ppt
 
-__version__ = '0.51'
+__version__ = '0.52'
 
 # -----------------------------------------------------------------------------
 # TODO:
