@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-from __future__ import print_function
 """
 oleobj.py
 
 oleobj is a Python script and module to parse OLE objects and files stored
-into various file formats such as RTF or MS Office documents (e.g. Word, Excel).
+into various MS Office file formats (doc, xls, ppt, docx, xlsx, pptx, etc)
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -13,33 +12,65 @@ oleobj is part of the python-oletools package:
 http://www.decalage.info/python/oletools
 """
 
-# === LICENSE ==================================================================
+# === LICENSE =================================================================
 
 # oleobj is copyright (c) 2015-2017 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
-# Redistribution and use in source and binary forms, with or without modification,
-# are permitted provided that the following conditions are met:
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
 #
-#  * Redistributions of source code must retain the above copyright notice, this
-#    list of conditions and the following disclaimer.
+#  * Redistributions of source code must retain the above copyright notice,
+#    this list of conditions and the following disclaimer.
 #  * Redistributions in binary form must reproduce the above copyright notice,
 #    this list of conditions and the following disclaimer in the documentation
 #    and/or other materials provided with the distribution.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
 
 
-#------------------------------------------------------------------------------
+# -- IMPORTS ------------------------------------------------------------------
+
+from __future__ import print_function
+
+import logging
+import struct
+import argparse
+import os
+import re
+import sys
+from zipfile import is_zipfile, ZipFile
+
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+try:
+    from oletools.thirdparty import olefile
+except ImportError:
+    PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))))
+    if PARENT_DIR not in sys.path:
+        sys.path.insert(0, PARENT_DIR)
+    del PARENT_DIR
+    from oletools.thirdparty import olefile
+from oletools.thirdparty import xglob
+from oletools.ppt_record_parser import (is_ppt, PptFile,
+                                        PptRecordExOleVbaActiveXAtom)
+from oletools.ooxml import ZipSubFile
+
+# -----------------------------------------------------------------------------
 # CHANGELOG:
 # 2015-12-05 v0.01 PL: - first version
 # 2016-06          PL: - added main and process_file (not working yet)
@@ -48,15 +79,17 @@ http://www.decalage.info/python/oletools
 # 2016-11-17 v0.51 PL: - fixed OLE native object extraction
 # 2016-11-18       PL: - added main for setup.py entry point
 # 2017-05-03       PL: - fixed absolute imports (issue #141)
+# 2018-01-18       CH: - added support for zipped-xml-based types (docx, pptx,
+#                        xlsx), and ppt
 
-__version__ = '0.51'
+__version__ = '0.52'
 
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # TODO:
 # + setup logging (common with other oletools)
 
 
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # REFERENCES:
 
 # Reference for the storage of embedded OLE objects/files:
@@ -67,36 +100,28 @@ __version__ = '0.51'
 # TODO: oledump
 
 
-#--- IMPORTS ------------------------------------------------------------------
-
-import logging, struct, optparse, os, re, sys
-
-# IMPORTANT: it should be possible to run oletools directly as scripts
-# in any directory without installing them with pip or setup.py.
-# In that case, relative imports are NOT usable.
-# And to enable Python 2+3 compatibility, we need to use absolute imports,
-# so we add the oletools parent folder to sys.path (absolute+normalized path):
-_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
-# print('_thismodule_dir = %r' % _thismodule_dir)
-_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
-# print('_parent_dir = %r' % _thirdparty_dir)
-if not _parent_dir in sys.path:
-    sys.path.insert(0, _parent_dir)
-
-from oletools.thirdparty.olefile import olefile
-from oletools.thirdparty.xglob import xglob
-
 # === LOGGING =================================================================
+
+DEFAULT_LOG_LEVEL = "warning"
+LOG_LEVELS = {'debug':    logging.DEBUG,
+              'info':     logging.INFO,
+              'warning':  logging.WARNING,
+              'error':    logging.ERROR,
+              'critical': logging.CRITICAL,
+              'debug-olefile': logging.DEBUG}
+
 
 class NullHandler(logging.Handler):
     """
     Log Handler without output, to avoid printing messages if logging is not
     configured by the main application.
     Python 2.7 has logging.NullHandler, but this is necessary for 2.6:
-    see https://docs.python.org/2.6/library/logging.html#configuring-logging-for-a-library
+    see https://docs.python.org/2.6/library/logging.html section
+    configuring-logging-for-a-library
     """
     def emit(self, record):
         pass
+
 
 def get_logger(name, level=logging.CRITICAL+1):
     """
@@ -110,7 +135,7 @@ def get_logger(name, level=logging.CRITICAL+1):
     # First, test if there is already a logger with the same name, else it
     # will generate duplicate messages (due to duplicate handlers):
     if name in logging.Logger.manager.loggerDict:
-        #NOTE: another less intrusive but more "hackish" solution would be to
+        # NOTE: another less intrusive but more "hackish" solution would be to
         # use getLogger then test if its effective level is not default.
         logger = logging.getLogger(name)
         # make sure level is OK:
@@ -124,8 +149,10 @@ def get_logger(name, level=logging.CRITICAL+1):
     logger.setLevel(level)
     return logger
 
+
 # a global logger object used for debugging:
-log = get_logger('oleobj')
+log = get_logger('oleobj')     # pylint: disable=invalid-name
+
 
 def enable_logging():
     """
@@ -136,7 +163,7 @@ def enable_logging():
     log.setLevel(logging.NOTSET)
 
 
-# === CONSTANTS ==============================================================
+# === CONSTANTS ===============================================================
 
 # some str methods on Python 2.x return characters,
 # while the equivalent bytes methods return integers on Python 3.x:
@@ -145,89 +172,165 @@ if sys.version_info[0] <= 2:
     NULL_CHAR = '\x00'
 else:
     # Python 3.x
-    NULL_CHAR = 0
+    NULL_CHAR = 0     # pylint: disable=redefined-variable-type
+    xrange = range    # pylint: disable=redefined-builtin, invalid-name
 
 
-# === GLOBAL VARIABLES =======================================================
+# === GLOBAL VARIABLES ========================================================
 
 # struct to parse an unsigned integer of 32 bits:
-struct_uint32 = struct.Struct('<L')
-assert struct_uint32.size == 4  # make sure it matches 4 bytes
+STRUCT_UINT32 = struct.Struct('<L')
+assert STRUCT_UINT32.size == 4  # make sure it matches 4 bytes
 
 # struct to parse an unsigned integer of 16 bits:
-struct_uint16 = struct.Struct('<H')
-assert struct_uint16.size == 2  # make sure it matches 2 bytes
+STRUCT_UINT16 = struct.Struct('<H')
+assert STRUCT_UINT16.size == 2  # make sure it matches 2 bytes
+
+# max length of a zero-terminated ansi string. Not sure what this really is
+STR_MAX_LEN = 1024
+
+# size of chunks to copy from ole stream to file
+DUMP_CHUNK_SIZE = 4096
+
+# return values from main; can be added
+# (e.g.: did dump but had err parsing and dumping --> return 1+4+8 = 13)
+RETURN_NO_DUMP = 0     # nothing found to dump/extract
+RETURN_DID_DUMP = 1    # did dump/extract successfully
+RETURN_ERR_ARGS = 2    # reserve for OptionParser.parse_args
+RETURN_ERR_STREAM = 4  # error opening/parsing a stream
+RETURN_ERR_DUMP = 8    # error dumping data from stream to file
 
 
-# === FUNCTIONS ==============================================================
+# === FUNCTIONS ===============================================================
 
-def read_uint32(data):
+
+def read_uint32(data, index):
     """
     Read an unsigned integer from the first 32 bits of data.
 
-    :param data: bytes string containing the data to be extracted.
-    :return: tuple (value, new_data) containing the read value (int),
-             and the new data without the bytes read.
+    :param data: bytes string or stream containing the data to be extracted.
+    :param index: index to start reading from or None if data is stream.
+    :return: tuple (value, index) containing the read value (int),
+             and the index to continue reading next time.
     """
-    value = struct_uint32.unpack(data[0:4])[0]
-    new_data = data[4:]
-    return (value, new_data)
+    if index is None:
+        value = STRUCT_UINT32.unpack(data.read(4))[0]
+    else:
+        value = STRUCT_UINT32.unpack(data[index:index+4])[0]
+        index += 4
+    return (value, index)
 
 
-def read_uint16(data):
+def read_uint16(data, index):
     """
-    Read an unsigned integer from the first 16 bits of data.
+    Read an unsigned integer from the 16 bits of data following index.
 
-    :param data: bytes string containing the data to be extracted.
-    :return: tuple (value, new_data) containing the read value (int),
-             and the new data without the bytes read.
+    :param data: bytes string or stream containing the data to be extracted.
+    :param index: index to start reading from or None if data is stream
+    :return: tuple (value, index) containing the read value (int),
+             and the index to continue reading next time.
     """
-    value = struct_uint16.unpack(data[0:2])[0]
-    new_data = data[2:]
-    return (value, new_data)
+    if index is None:
+        value = STRUCT_UINT16.unpack(data.read(2))[0]
+    else:
+        value = STRUCT_UINT16.unpack(data[index:index+2])[0]
+        index += 2
+    return (value, index)
 
 
-def read_LengthPrefixedAnsiString(data):
+def read_length_prefixed_string(data, index):
     """
     Read a length-prefixed ANSI string from data.
 
-    :param data: bytes string containing the data to be extracted.
-    :return: tuple (value, new_data) containing the read value (bytes string),
-             and the new data without the bytes read.
+    :param data: bytes string or stream containing the data to be extracted.
+    :param index: index in data where string size start or None if data is
+                  stream
+    :return: tuple (value, index) containing the read value (bytes string),
+             and the index to start reading from next time.
     """
-    length, data = read_uint32(data)
+    length, index = read_uint32(data, index)
     # if length = 0, return a null string (no null character)
     if length == 0:
-        return ('', data)
+        return ('', index)
     # extract the string without the last null character
-    ansi_string = data[:length-1]
+    if index is None:
+        ansi_string = data.read(length-1)
+        null_char = data.read(1)
+    else:
+        ansi_string = data[index:index+length-1]
+        null_char = data[index+length]
+        index += length
     # TODO: only in strict mode:
     # check the presence of the null char:
-    assert data[length] == NULL_CHAR
-    new_data = data[length:]
-    return (ansi_string, new_data)
+    assert null_char == NULL_CHAR
+    return (ansi_string, index)
 
 
-# === CLASSES ================================================================
+def guess_encoding(data):
+    """ guess encoding of byte string to create unicode
 
-class OleNativeStream (object):
+    Since this is used to decode path names from ole objects, prefer latin1
+    over utf* codecs if ascii is not enough
+    """
+    for encoding in 'ascii', 'latin1', 'utf8', 'utf-16-le', 'utf16':
+        try:
+            result = data.decode(encoding, errors='strict')
+            log.debug(u'decoded using {0}: "{1}"'.format(encoding, result))
+            return result
+        except UnicodeError:
+            pass
+    log.warning('failed to guess encoding for string, falling back to '
+                'ascii with replace')
+    return data.decode('ascii', errors='replace')
+
+
+def read_zero_terminated_string(data, index):
+    """
+    Read a zero-terminated string from data
+
+    :param data: bytes string or stream containing an ansi string
+    :param index: index at which the string should start or None if data is
+                  stream
+    :return: tuple (unicode, index) containing the read string (unicode),
+             and the index to start reading from next time.
+    """
+    if index is None:
+        result = bytearray()
+        for _ in xrange(STR_MAX_LEN):
+            char = ord(data.read(1))    # need ord() for py3
+            if char == 0:
+                return guess_encoding(result), index
+            result.append(char)
+        raise ValueError('found no string-terminating zero-byte!')
+    else:       # data is byte array, can just search
+        end_idx = data.index(b'\x00', index, index+STR_MAX_LEN)
+        # encode and return with index after the 0-byte
+        return guess_encoding(data[index:end_idx]), end_idx+1
+
+
+# === CLASSES =================================================================
+
+
+class OleNativeStream(object):
     """
     OLE object contained into an OLENativeStream structure.
     (see MS-OLEDS 2.3.6 OLENativeStream)
+
+    Filename and paths are decoded to unicode.
     """
     # constants for the type attribute:
     # see MS-OLEDS 2.2.4 ObjectHeader
     TYPE_LINKED = 0x01
     TYPE_EMBEDDED = 0x02
 
-
     def __init__(self, bindata=None, package=False):
         """
         Constructor for OleNativeStream.
         If bindata is provided, it will be parsed using the parse() method.
 
-        :param bindata: bytes, OLENativeStream structure containing an OLE object
-        :param package: bool, set to True when extracting from an OLE Package object
+        :param bindata: forwarded to parse, see docu there
+        :param package: bool, set to True when extracting from an OLE Package
+                        object
         """
         self.filename = None
         self.src_path = None
@@ -238,6 +341,8 @@ class OleNativeStream (object):
         self.actual_size = None
         self.data = None
         self.package = package
+        self.is_link = None
+        self.data_is_stream = None
         if bindata is not None:
             self.parse(data=bindata)
 
@@ -247,34 +352,52 @@ class OleNativeStream (object):
         to extract the OLE object it contains.
         (see MS-OLEDS 2.3.6 OLENativeStream)
 
-        :param data: bytes, OLENativeStream structure containing an OLE object
-        :return:
+        :param data: bytes array or stream, containing OLENativeStream
+                     structure containing an OLE object
+        :return: None
         """
         # TODO: strict mode to raise exceptions when values are incorrect
         # (permissive mode by default)
+        if hasattr(data, 'read'):
+            self.data_is_stream = True
+            index = None       # marker for read_* functions to expect stream
+        else:
+            self.data_is_stream = False
+            index = 0          # marker for read_* functions to expect array
+
         # An OLE Package object does not have the native data size field
         if not self.package:
-            self.native_data_size = struct.unpack('<L', data[0:4])[0]
-            data = data[4:]
-            log.debug('OLE native data size = {0:08X} ({0} bytes)'.format(self.native_data_size))
+            self.native_data_size, index = read_uint32(data, index)
+            log.debug('OLE native data size = {0:08X} ({0} bytes)'
+                      .format(self.native_data_size))
         # I thought this might be an OLE type specifier ???
-        self.unknown_short, data = read_uint16(data)
-        self.filename, data = data.split(b'\x00', 1)
+        self.unknown_short, index = read_uint16(data, index)
+        self.filename, index = read_zero_terminated_string(data, index)
         # source path
-        self.src_path, data = data.split(b'\x00', 1)
-        # TODO I bet these next 8 bytes are a timestamp => FILETIME from olefile
-        self.unknown_long_1, data = read_uint32(data)
-        self.unknown_long_2, data = read_uint32(data)
+        self.src_path, index = read_zero_terminated_string(data, index)
+        # TODO: I bet these 8 bytes are a timestamp ==> FILETIME from olefile
+        self.unknown_long_1, index = read_uint32(data, index)
+        self.unknown_long_2, index = read_uint32(data, index)
         # temp path?
-        self.temp_path, data = data.split(b'\x00', 1)
+        self.temp_path, index = read_zero_terminated_string(data, index)
         # size of the rest of the data
-        self.actual_size, data = read_uint32(data)
-        self.data = data[0:self.actual_size]
-        # TODO: exception when size > remaining data
-        # TODO: SLACK DATA
+        try:
+            self.actual_size, index = read_uint32(data, index)
+            if self.data_is_stream:
+                self.data = data
+            else:
+                self.data = data[index:index+self.actual_size]
+            self.is_link = False
+            # TODO: there can be extra data, no idea what it is for
+            # TODO: SLACK DATA
+        except (IOError, struct.error):      # no data to read actual_size
+            log.debug('data is not embedded but only a link')
+            self.is_link = True
+            self.actual_size = 0
+            self.data = None
 
 
-class OleObject (object):
+class OleObject(object):
     """
     OLE 1.0 Object
 
@@ -286,13 +409,15 @@ class OleObject (object):
     TYPE_LINKED = 0x01
     TYPE_EMBEDDED = 0x02
 
-
     def __init__(self, bindata=None):
         """
         Constructor for OleObject.
         If bindata is provided, it will be parsed using the parse() method.
 
-        :param bindata: bytes, OLE 1.0 Object structure containing an OLE object
+        :param bindata: bytes, OLE 1.0 Object structure containing OLE object
+
+        Note: Code can easily by generalized to work with byte streams instead
+              of arrays just like in OleNativeStream.
         """
         self.ole_version = None
         self.format_id = None
@@ -301,6 +426,8 @@ class OleObject (object):
         self.item_name = None
         self.data = None
         self.data_size = None
+        if bindata is not None:
+            self.parse(bindata)
 
     def parse(self, data):
         """
@@ -315,32 +442,35 @@ class OleObject (object):
         # print("Parsing OLE object data:")
         # print(hexdump3(data, length=16))
         # Header: see MS-OLEDS 2.2.4 ObjectHeader
-        self.ole_version, data = read_uint32(data)
-        self.format_id, data = read_uint32(data)
-        log.debug('OLE version=%08X - Format ID=%08X' % (self.ole_version, self.format_id))
+        index = 0
+        self.ole_version, index = read_uint32(data, index)
+        self.format_id, index = read_uint32(data, index)
+        log.debug('OLE version=%08X - Format ID=%08X',
+                  self.ole_version, self.format_id)
         assert self.format_id in (self.TYPE_EMBEDDED, self.TYPE_LINKED)
-        self.class_name, data = read_LengthPrefixedAnsiString(data)
-        self.topic_name, data = read_LengthPrefixedAnsiString(data)
-        self.item_name, data = read_LengthPrefixedAnsiString(data)
-        log.debug('Class name=%r - Topic name=%r - Item name=%r'
-                      % (self.class_name, self.topic_name, self.item_name))
+        self.class_name, index = read_length_prefixed_string(data, index)
+        self.topic_name, index = read_length_prefixed_string(data, index)
+        self.item_name, index = read_length_prefixed_string(data, index)
+        log.debug('Class name=%r - Topic name=%r - Item name=%r',
+                  self.class_name, self.topic_name, self.item_name)
         if self.format_id == self.TYPE_EMBEDDED:
             # Embedded object: see MS-OLEDS 2.2.5 EmbeddedObject
-            #assert self.topic_name != '' and self.item_name != ''
-            self.data_size, data = read_uint32(data)
-            log.debug('Declared data size=%d - remaining size=%d' % (self.data_size, len(data)))
+            # assert self.topic_name != '' and self.item_name != ''
+            self.data_size, index = read_uint32(data, index)
+            log.debug('Declared data size=%d - remaining size=%d',
+                      self.data_size, len(data)-index)
             # TODO: handle incorrect size to avoid exception
-            self.data = data[:self.data_size]
+            self.data = data[index:index+self.data_size]
             assert len(self.data) == self.data_size
-            self.extra_data = data[self.data_size:]
-
+            self.extra_data = data[index+self.data_size:]
 
 
 def sanitize_filename(filename, replacement='_', max_length=200):
     """compute basename of filename. Replaces all non-whitelisted characters.
-       The returned filename is always a basename of the file."""
+       The returned filename is always a ascii basename of the file."""
     basepath = os.path.basename(filename).strip()
-    sane_fname = re.sub(r'[^\w\.\- ]', replacement, basepath)
+    sane_fname = re.sub(u'[^a-zA-Z0-9.\\-_ ]', replacement, basepath)
+    sane_fname = str(sane_fname)    # py3: does nothing;   py2: unicode --> str
 
     while ".." in sane_fname:
         sane_fname = sane_fname.replace('..', '.')
@@ -348,7 +478,7 @@ def sanitize_filename(filename, replacement='_', max_length=200):
     while "  " in sane_fname:
         sane_fname = sane_fname.replace('  ', ' ')
 
-    if not len(filename):
+    if not filename:
         sane_fname = 'NONAME'
 
     # limit filename length
@@ -358,10 +488,107 @@ def sanitize_filename(filename, replacement='_', max_length=200):
     return sane_fname
 
 
-def process_file(container, filename, data, output_dir=None):
+def find_ole_in_ppt(filename):
+    """ find ole streams in ppt """
+    for stream in PptFile(filename).iter_streams():
+        for record in stream.iter_records():
+            if isinstance(record, PptRecordExOleVbaActiveXAtom):
+                ole = None
+                try:
+                    data_start = next(record.iter_uncompressed())
+                    if data_start[:len(olefile.MAGIC)] != olefile.MAGIC:
+                        continue   # could be an ActiveX control or VBA Storage
+
+                    # otherwise, this should be an OLE object
+                    ole = record.get_data_as_olefile()
+                    yield ole
+                except IOError:
+                    log.warning('Error reading data from {0} stream or '
+                                'interpreting it as OLE object'
+                                .format(stream.name))
+                    log.debug('', exc_info=True)
+                finally:
+                    if ole is not None:
+                        ole.close()
+
+
+def find_ole(filename, data):
+    """ try to open somehow as zip/ole/rtf/... ; yield None if fail
+
+    if data is given, filename is ignored
+    """
+
+    ole = None
+    try:
+        if data is not None:
+            # assume data is a complete OLE file
+            log.info('working on raw OLE data (filename: {0})'
+                     .format(filename))
+            yield olefile.OleFileIO(data)
+        elif olefile.isOleFile(filename):
+            if is_ppt(filename):
+                log.info('is ppt file: ' + filename)
+                for ole in find_ole_in_ppt(filename):
+                    yield ole
+            else:
+                log.info('is ole file: ' + filename)
+                ole = olefile.OleFileIO(filename)
+                yield ole
+        elif is_zipfile(filename):
+            log.info('is zip file: ' + filename)
+            zipper = ZipFile(filename, 'r')
+            for subfile in zipper.namelist():
+                head = b''
+                try:
+                    with zipper.open(subfile) as file_handle:
+                        head = file_handle.read(len(olefile.MAGIC))
+                except RuntimeError:
+                    log.error('zip is encrypted: ' + filename)
+                    yield None
+                    continue
+
+                if head == olefile.MAGIC:
+                    log.info('  unzipping ole: ' + subfile)
+                    with ZipSubFile(zipper, subfile) as file_handle:
+                        try:
+                            ole = olefile.OleFileIO(file_handle)
+                            yield ole
+                        except IOError:
+                            log.warning('Error reading data from {0}/{1} or '
+                                        'interpreting it as OLE object'
+                                        .format(filename, subfile))
+                            log.debug('', exc_info=True)
+                        finally:
+                            if ole is not None:
+                                ole.close()
+                                ole = None
+                else:
+                    log.debug('unzip skip: ' + subfile)
+        else:
+            log.warning('open failed: ' + filename)
+            yield None   # --> leads to non-0 return code
+    except Exception:
+        log.error('Caught exception opening {0}'.format(filename),
+                  exc_info=True)
+        yield None   # --> leads to non-0 return code but try next file first
+    finally:
+        if ole is not None:
+            ole.close()
+
+
+def process_file(filename, data, output_dir=None):
+    """ find embedded objects in given file
+
+    if data is given (from xglob for encrypted zip files), then filename is
+    not used for reading. If not (usual case), then data is read from filename
+    on demand.
+
+    If output_dir is given and does not exist, it is created. If it is not
+    given, data is saved to same directory as the input file.
+    """
     if output_dir:
         if not os.path.isdir(output_dir):
-            log.info('creating output directory %s' % output_dir)
+            log.info('creating output directory %s', output_dir)
             os.mkdir(output_dir)
 
         fname_prefix = os.path.join(output_dir,
@@ -372,78 +599,151 @@ def process_file(container, filename, data, output_dir=None):
         fname_prefix = os.path.join(base_dir, sane_fname)
 
     # TODO: option to extract objects to files (false by default)
-    if data is None:
-        data = open(filename, 'rb').read()
-    print ('-'*79)
-    print ('File: %r - %d bytes' % (filename, len(data)))
-    ole = olefile.OleFileIO(data)
+    print('-'*79)
+    print('File: %r' % filename)
     index = 1
-    for stream in ole.listdir():
-        if stream[-1] == '\x01Ole10Native':
-            objdata = ole.openstream(stream).read()
-            stream_path = '/'.join(stream)
-            log.debug('Checking stream %r' % stream_path)
-            try:
-                print('extract file embedded in OLE object from stream %r:' % stream_path)
-                print ('Parsing OLE Package')
-                opkg = OleNativeStream(bindata=objdata)
-                print ('Filename = %r' % opkg.filename)
-                print ('Source path = %r' % opkg.src_path)
-                print ('Temp path = %r' % opkg.temp_path)
+
+    # do not throw errors but remember them and try continue with other streams
+    err_stream = False
+    err_dumping = False
+    did_dump = False
+
+    # look for ole files inside file (e.g. unzip docx)
+    # have to finish work on every ole stream inside iteration, since handles
+    # are closed in find_ole
+    for ole in find_ole(filename, data):
+        if ole is None:    # no ole file found
+            continue
+
+        for path_parts in ole.listdir():
+            if path_parts[-1] == '\x01Ole10Native':
+                stream_path = '/'.join(path_parts)
+                log.debug('Checking stream %r', stream_path)
+                stream = None
+                try:
+                    stream = ole.openstream(path_parts)
+                    print('extract file embedded in OLE object from stream %r:'
+                          % stream_path)
+                    print('Parsing OLE Package')
+                    opkg = OleNativeStream(stream)
+                    # leave stream open until dumping is finished
+                except Exception:
+                    log.warning('*** Not an OLE 1.0 Object')
+                    err_stream = True
+                    if stream is not None:
+                        stream.close()
+                    continue
+
+                # print info
+                if opkg.is_link:
+                    log.debug('Object is not embedded but only linked to '
+                              '- skip')
+                    continue
+                print(u'Filename = "%s"' % opkg.filename)
+                print(u'Source path = "%s"' % opkg.src_path)
+                print(u'Temp path = "%s"' % opkg.temp_path)
                 if opkg.filename:
                     fname = '%s_%s' % (fname_prefix,
                                        sanitize_filename(opkg.filename))
                 else:
                     fname = '%s_object_%03d.noname' % (fname_prefix, index)
-                print ('saving to file %s' % fname)
-                open(fname, 'wb').write(opkg.data)
+
+                # dump
+                try:
+                    print('saving to file %s' % fname)
+                    with open(fname, 'wb') as writer:
+                        n_dumped = 0
+                        next_size = min(DUMP_CHUNK_SIZE, opkg.actual_size)
+                        while next_size:
+                            data = stream.read(next_size)
+                            writer.write(data)
+                            n_dumped += len(data)
+                            if len(data) != next_size:
+                                log.warning('Wanted to read {0}, got {1}'
+                                            .format(next_size, len(data)))
+                                break
+                            next_size = min(DUMP_CHUNK_SIZE,
+                                            opkg.actual_size - n_dumped)
+                    did_dump = True
+                except Exception as exc:
+                    log.warning('error dumping to {0} ({1})'
+                                .format(fname, exc))
+                    err_dumping = True
+                finally:
+                    stream.close()
+
                 index += 1
-            except:
-                log.debug('*** Not an OLE 1.0 Object')
+    return err_stream, err_dumping, did_dump
 
 
+# === MAIN ====================================================================
 
-#=== MAIN =================================================================
 
-def main():
+def existing_file(filename):
+    """ called by argument parser to see whether given file exists """
+    if not os.path.isfile(filename):
+        raise argparse.ArgumentTypeError('{0} is not a file.'.format(filename))
+    return filename
+
+
+def main(cmd_line_args=None):
+    """ main function, called when running this as script
+
+    Per default (cmd_line_args=None) uses sys.argv. For testing, however, can
+    provide other arguments.
+    """
     # print banner with version
-    print ('oleobj %s - http://decalage.info/oletools' % __version__)
-    print ('THIS IS WORK IN PROGRESS - Check updates regularly!')
-    print ('Please report any issue at https://github.com/decalage2/oletools/issues')
-    print ('')
+    print('oleobj %s - http://decalage.info/oletools' % __version__)
+    print('THIS IS WORK IN PROGRESS - Check updates regularly!')
+    print('Please report any issue at '
+          'https://github.com/decalage2/oletools/issues')
+    print('')
 
-    DEFAULT_LOG_LEVEL = "warning" # Default log level
-    LOG_LEVELS = {'debug':    logging.DEBUG,
-              'info':     logging.INFO,
-              'warning':  logging.WARNING,
-              'error':    logging.ERROR,
-              'critical': logging.CRITICAL
-             }
-
-    usage = 'usage: %prog [options] <filename> [filename2 ...]'
-    parser = optparse.OptionParser(usage=usage)
-    # parser.add_option('-o', '--outfile', dest='outfile',
+    usage = 'usage: %(prog)s [options] <filename> [filename2 ...]'
+    parser = argparse.ArgumentParser(usage=usage)
+    # parser.add_argument('-o', '--outfile', dest='outfile',
     #     help='output file')
-    # parser.add_option('-c', '--csv', dest='csv',
+    # parser.add_argument('-c', '--csv', dest='csv',
     #     help='export results to a CSV file')
-    parser.add_option("-r", action="store_true", dest="recursive",
-        help='find files recursively in subdirectories.')
-    parser.add_option("-d", type="str", dest="output_dir",
-        help='use specified directory to output files.', default=None)
-    parser.add_option("-z", "--zip", dest='zip_password', type='str', default=None,
-        help='if the file is a zip archive, open first file from it, using the provided password (requires Python 2.6+)')
-    parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
-        help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
-    parser.add_option('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
-                            help="logging level debug/info/warning/error/critical (default=%default)")
+    parser.add_argument("-r", action="store_true", dest="recursive",
+                        help='find files recursively in subdirectories.')
+    parser.add_argument("-d", type=str, dest="output_dir", default=None,
+                        help='use specified directory to output files.')
+    parser.add_argument("-z", "--zip", dest='zip_password', type=str,
+                        default=None,
+                        help='if the file is a zip archive, open first file '
+                             'from it, using the provided password (requires '
+                             'Python 2.6+)')
+    parser.add_argument("-f", "--zipfname", dest='zip_fname', type=str,
+                        default='*',
+                        help='if the file is a zip archive, file(s) to be '
+                             'opened within the zip. Wildcards * and ? are '
+                             'supported. (default:*)')
+    parser.add_argument('-l', '--loglevel', dest="loglevel", action="store",
+                        default=DEFAULT_LOG_LEVEL,
+                        help='logging level debug/info/warning/error/critical '
+                             '(default=%(default)s)')
+    parser.add_argument('input', nargs='*', type=existing_file, metavar='FILE',
+                        help='Office files to parse (same as -i)')
 
-    (options, args) = parser.parse_args()
+    # options for compatibility with ripOLE
+    parser.add_argument('-i', '--more-input', type=str, metavar='FILE',
+                        help='Additional file to parse (same as positional '
+                             'arguments)')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='verbose mode, set logging to DEBUG '
+                             '(overwrites -l)')
+
+    options = parser.parse_args(cmd_line_args)
+    if options.more_input:
+        options.input += [options.more_input, ]
+    if options.verbose:
+        options.loglevel = 'debug'
 
     # Print help if no arguments are passed
-    if len(args) == 0:
-        print (__doc__)
+    if not options.input:
         parser.print_help()
-        sys.exit()
+        return RETURN_ERR_ARGS
 
     # Setup logging to the console:
     # here we use stdout instead of stderr by default, so that the output
@@ -452,15 +752,37 @@ def main():
                         format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
     log.setLevel(logging.NOTSET)
+    if options.loglevel == 'debug-olefile':
+        olefile.enable_logging()
 
+    # remember if there was a problem and continue with other data
+    any_err_stream = False
+    any_err_dumping = False
+    any_did_dump = False
 
-    for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
-        zip_password=options.zip_password, zip_fname=options.zip_fname):
+    for container, filename, data in \
+            xglob.iter_files(options.input, recursive=options.recursive,
+                             zip_password=options.zip_password,
+                             zip_fname=options.zip_fname):
         # ignore directory names stored in zip files:
         if container and filename.endswith('/'):
             continue
-        process_file(container, filename, data, options.output_dir)
+        err_stream, err_dumping, did_dump = \
+            process_file(filename, data, options.output_dir)
+        any_err_stream |= err_stream
+        any_err_dumping |= err_dumping
+        any_did_dump |= did_dump
+
+    # assemble return value
+    return_val = RETURN_NO_DUMP
+    if any_did_dump:
+        return_val += RETURN_DID_DUMP
+    if any_err_stream:
+        return_val += RETURN_ERR_STREAM
+    if any_err_dumping:
+        return_val += RETURN_ERR_DUMP
+    return return_val
+
 
 if __name__ == '__main__':
-    main()
-
+    sys.exit(main())
