@@ -67,10 +67,14 @@ except ImportError:
 
 # little hack to allow absolute imports even if oletools is not installed
 # Copied from olevba.py
-PARENT_DIR = dirname(dirname(abspath(__file__)))
-if PARENT_DIR not in sys.path:
-    sys.path.insert(0, PARENT_DIR)
-del PARENT_DIR
+try:
+    from oletools.thirdparty import olefile
+except ImportError:
+    PARENT_DIR = dirname(dirname(abspath(__file__)))
+    if PARENT_DIR not in sys.path:
+        sys.path.insert(0, PARENT_DIR)
+    del PARENT_DIR
+    from oletools.thirdparty import olefile
 
 from oletools.thirdparty import olefile
 from oletools import ooxml
@@ -536,7 +540,7 @@ def process_xls(filepath):
     """ find dde links in excel ole file """
 
     result = []
-    for stream in xls_parser.XlsFile(filepath).get_streams():
+    for stream in xls_parser.XlsFile(filepath).iter_streams():
         if not isinstance(stream, xls_parser.WorkbookStream):
             continue
         for record in stream.iter_records():
