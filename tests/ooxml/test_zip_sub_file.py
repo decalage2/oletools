@@ -13,7 +13,7 @@ from oletools.ooxml import ZipSubFile
 
 
 # flag to get more output to facilitate search for errors
-DEBUG = True
+DEBUG = False
 
 # name of a temporary .zip file on the system
 ZIP_TEMP_FILE = ''
