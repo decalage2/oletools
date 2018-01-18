@@ -55,8 +55,18 @@ import sys
 import os.path
 from struct import unpack
 import logging
-from record_base import OleRecordFile, OleRecordStream, OleRecordBase, test, \
-    STGTY_STREAM
+
+try:
+    from oletools import record_base
+except ImportError:
+    # little hack to allow absolute imports even if oletools is not installed.
+    # Copied from olevba.py
+    PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))))
+    if PARENT_DIR not in sys.path:
+        sys.path.insert(0, PARENT_DIR)
+    del PARENT_DIR
+    from oletools import record_base
 
 
 # === PYTHON 2+3 SUPPORT ======================================================
@@ -114,7 +124,7 @@ def read_unicode_2byte(data, start_idx, n_chars):
 # File, Storage, Stream
 ###############################################################################
 
-class XlsFile(OleRecordFile):
+class XlsFile(record_base.OleRecordFile):
     """ An xls file has most streams made up of records """
 
     @classmethod
@@ -123,7 +133,7 @@ class XlsFile(OleRecordFile):
         return XlsStream
 
 
-class XlsStream(OleRecordStream):
+class XlsStream(record_base.OleRecordStream):
     """ most streams in xls file consist of records """
 
     def read_record_head(self):
@@ -162,7 +172,7 @@ class WorkbookStream(XlsStream):
             return XlsRecord, False
 
 
-class XlsbStream(OleRecordStream):
+class XlsbStream(record_base.OleRecordStream):
     """ binary stream of an xlsb file, usually have a record structure """
 
     HIGH_BIT_MASK = 0b10000000
@@ -274,7 +284,7 @@ FREQUENT_RECORDS_XLSB = dict([
 ])
 
 
-class XlsRecord(OleRecordBase):
+class XlsRecord(record_base.OleRecordBase):
     """ basic building block of data in workbook stream """
 
     #: max size of a record in xls stream (does not apply to xlsb)
@@ -374,7 +384,7 @@ class XlsRecordSupBook(XlsRecord):
         return 'SupBook Record ({0})'.format(self.support_link_type)
 
 
-class XlsbRecord(OleRecordBase):
+class XlsbRecord(record_base.OleRecordBase):
     """ like an xls record, but from binary part of xlsb file
 
     has no MAX_SIZE and types have different meanings
@@ -458,7 +468,7 @@ def parse_xlsb_part(file_stream, _, filename):
     xlsb_stream = None
     try:
         xlsb_stream = XlsbStream(file_stream, file_stream.size, filename,
-                            STGTY_STREAM)
+                                 record_base.STGTY_STREAM)
         for record in xlsb_stream.iter_records():
             yield record
     except Exception:
@@ -474,4 +484,4 @@ def parse_xlsb_part(file_stream, _, filename):
 
 
 if __name__ == '__main__':
-    sys.exit(test(sys.argv[1:], XlsFile, WorkbookStream))
+    sys.exit(record_base.test(sys.argv[1:], XlsFile, WorkbookStream))
