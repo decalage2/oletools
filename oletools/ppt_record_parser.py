@@ -298,7 +298,8 @@ class PptContainerRecord(PptRecord):
         if not self.data:
             return
 
-        logging.debug('parsing contents of container record {0}'.format(self))
+        # logging.debug('parsing contents of container record {0}'
+        #               .format(self))
 
         # create a stream from self.data and parse it like any other
         data_stream = io.BytesIO(self.data)
@@ -306,8 +307,8 @@ class PptContainerRecord(PptRecord):
                                   'PptContainerRecordSubstream',
                                   record_base.STGTY_SUBSTREAM)
         self.records = list(record_stream.iter_records())
-        logging.debug('done parsing contents of container record {0}'
-                      .format(self))
+        # logging.debug('done parsing contents of container record {0}'
+        #               .format(self))
 
     def __str__(self):
         text = super(PptContainerRecord, self).__str__()
@@ -471,7 +472,7 @@ class IterStream(io.RawIOBase):
         super(IterStream, self).__init__()
         self.iterable_creator = iterable_creator
         self.size = size
-        logging.debug('IterStream.size is {0}'.format(self.size))
+        # logging.debug('IterStream.size is {0}'.format(self.size))
         self.reset()
 
     def reset(self):
@@ -492,37 +493,37 @@ class IterStream(io.RawIOBase):
 
     def readinto(self, target):
         """ read as much data from iterable as necessary to fill target """
-        logging.debug('IterStream.readinto size {0}'.format(len(target)))
+        # logging.debug('IterStream.readinto size {0}'.format(len(target)))
         if self.at_end:
-            logging.debug('IterStream: we are at (fake) end')
+            # logging.debug('IterStream: we are at (fake) end')
             return 0
         if self.iterable is None:
             self.iterable = self.iterable_creator()
-            logging.debug('IterStream: created iterable {0}'
-                          .format(self.iterable))
+            # logging.debug('IterStream: created iterable {0}'
+            #               .format(self.iterable))
             self.curr_pos = 0
         try:
             target_len = len(target)  # we should return at most this much
             chunk = self.leftover or next(self.iterable)
-            logging.debug('IterStream: chunk is size {0}'.format(len(chunk)))
+            # logging.debug('IterStream: chunk is size {0}'.format(len(chunk)))
             output, self.leftover = chunk[:target_len], chunk[target_len:]
-            logging.debug('IterStream: output is size {0}, leftover is {1}'
-                          .format(len(output), len(self.leftover)))
+            # logging.debug('IterStream: output is size {0}, leftover is {1}'
+            #               .format(len(output), len(self.leftover)))
             target[:len(output)] = output
             self.curr_pos += len(output)
-            logging.debug('IterStream: pos updated to {0}'
-                          .format(self.curr_pos))
+            # logging.debug('IterStream: pos updated to {0}'
+            #               .format(self.curr_pos))
             return len(output)
         except StopIteration:
-            logging.debug('IterStream: source iterable exhausted')
+            # logging.debug('IterStream: source iterable exhausted')
             self.at_end = True
             return 0    # indicate EOF
 
     def seek(self, offset, whence=io.SEEK_SET):
         """ can seek to start, possibly end """
         if offset != 0 and whence == io.SEEK_SET:
-            logging.debug('IterStream: trying to seek to offset {0}.'
-                          .format(offset))
+            # logging.debug('IterStream: trying to seek to offset {0}.'
+            #               .format(offset))
             if offset > self.curr_pos:
                 self.readinto(bytearray(offset - self.curr_pos))
             elif offset == self.curr_pos:
@@ -531,34 +532,35 @@ class IterStream(io.RawIOBase):
                 self.reset()
                 self.readinto(bytearray(offset))
             if self.curr_pos != offset:
-                logging.debug('IterStream: curr_pos {0} != offset {1}!'
-                              .format(self.curr_pos, offset))
+                # logging.debug('IterStream: curr_pos {0} != offset {1}!'
+                #               .format(self.curr_pos, offset))
                 raise RuntimeError('programming error in IterStream.tell!')
             return self.curr_pos
         elif whence == io.SEEK_END:  # seek to end
-            logging.debug('IterStream: seek to end')
+            # logging.debug('IterStream: seek to end')
             if self.size is None:
-                logging.debug('IterStream: trying to seek to end but size '
-                              'unknown --> raise IOError')
+                # logging.debug('IterStream: trying to seek to end but size '
+                #               'unknown --> raise IOError')
                 raise IOError('size unknown, cannot seek to end')
             self.at_end = True   # fake jumping to the end
             self.iterable = None   # cannot safely be used any more
             self.leftover = None
             return self.size
         elif whence == io.SEEK_SET:   # seek to start
-            logging.debug('IterStream: seek to start')
+            # logging.debug('IterStream: seek to start')
             self.reset()
             return 0
         elif whence == io.SEEK_CUR:   # e.g. called by tell()
-            logging.debug('IterStream: seek to curr pos')
+            # logging.debug('IterStream: seek to curr pos')
             if self.at_end:
                 return self.size
             return self.curr_pos
         elif whence not in (io.SEEK_SET, io.SEEK_CUR, io.SEEK_END):
-            logging.debug('Illegal 2nd argument to seek(): {0}'.format(whence))
+            # logging.debug('Illegal 2nd argument to seek(): {0}'
+            #               .format(whence))
             raise IOError('Illegal 2nd argument to seek(): {0}'.format(whence))
         else:
-            logging.debug('not implemented: {0}, {1}'.format(offset, whence))
+            # logging.debug('not implemented: {0}, {1}'.format(offset, whence))
             raise NotImplementedError('seek only partially implemented. '
                                       'Cannot yet seek to {0} from {1}'
                                       .format(offset, whence))
