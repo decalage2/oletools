@@ -56,6 +56,7 @@ import zlib
 try:
     from oletools import record_base
 except ImportError:
+    import os.path
     PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
         os.path.abspath(__file__))))
     if PARENT_DIR not in sys.path:
@@ -141,8 +142,11 @@ INSTANCE_EXCEPTIONS = dict([
 def is_ppt(filename):
     """ determine whether given file is a PowerPoint 2003 (ppt) OLE file
 
-    tries to ppt-parse the file, return False if that fails. Looks for certain
+    Tries to ppt-parse the file, return False if that fails. Looks for certain
     required streams and records.
+
+    Param filename can be anything that OleFileIO constructor accepts: name of
+    file or file data or data stream.
     """
     have_current_user = False
     have_user_edit = False
@@ -156,20 +160,20 @@ def is_ppt(filename):
                         have_current_user = True
                         if have_current_user and have_user_edit and \
                                 have_persist_dir and have_document_container:
-                            return  True
+                            return True
             elif stream.name == 'PowerPoint Document':
                 for record in stream.iter_records():
-                    if record.type == 0x0ff5:
+                    if record.type == 0x0ff5:     # UserEditAtom
                         have_user_edit = True
-                    elif record.type == 0x1772:
+                    elif record.type == 0x1772:   # PersisDirectoryAtom
                         have_persist_dir = True
-                    elif record.type == 0x03e8:
+                    elif record.type == 0x03e8:   # DocumentContainer
                         have_document_container = True
                     else:
                         continue
                     if have_current_user and have_user_edit and \
                             have_persist_dir and have_document_container:
-                        return  True
+                        return True
             else:   # ignore other streams/storages since they are optional
                 continue
     except Exception:
@@ -178,7 +182,11 @@ def is_ppt(filename):
 
 
 class PptFile(record_base.OleRecordFile):
-    """ Record-based view on a PowerPoint ppt file """
+    """ Record-based view on a PowerPoint ppt file
+
+    This is a subclass of OleFileIO, so can be constructed from file name or
+    file data or data stream.
+    """
 
     @classmethod
     def stream_class_for_name(cls, stream_name):
@@ -451,8 +459,11 @@ class PptRecordExOleObjAtom(PptRecord):
 class IterStream(io.RawIOBase):
     """ make a read-only, seekable bytes-stream from an iterable
 
-    copied from stackoverflow answer by Mechanical snail from Nov 18th 2013
-    https://stackoverflow.com/a/20260030/4405656 and extended
+    Copied from stackoverflow answer by Mechanical snail from Nov 18th 2013
+    https://stackoverflow.com/a/20260030/4405656 and extended.
+
+    See also (and maybe could some day merge with): ooxml.ZipSubFile;
+    also: oleobj.FakeFile
     """
 
     def __init__(self, iterable_creator, size=None):
@@ -592,9 +603,10 @@ class PptRecordExOleVbaActiveXAtom(PptRecord):
     def get_uncompressed_size(self):
         """ Get size of data in uncompressed form
 
-        For uncompressed data, this just returns self.size. For compressed data,
-        this reads and returns the doecmpressedSize field value from self.data.
-        Raises a value error if compressed and data is not available.
+        For uncompressed data, this just returns self.size. For compressed
+        data, this reads and returns the doecmpressedSize field value from
+        self.data.  Raises a value error if compressed and data is not
+        available.
         """
         if not self.is_compressed():
             return self.size
@@ -682,17 +694,6 @@ def print_records(record, print_fn, indent, do_print_record):
                      .format(record.ex_obj_id, record.persist_id_ref,
                              '  ' * indent))
     elif isinstance(record, PptRecordExOleVbaActiveXAtom):
-        #with open('testdump', 'wb') as writer:
-        #    for chunk in record.iter_uncompressed():
-        #        logging.info('{0}--> "{1}"'.format('  ' * indent, chunk))
-        #        writer.write(chunk)
-
-        #chunk1 = next(record.iter_uncompressed())
-        #logging.info('{0}--> decompressed size {1}, data {2}...'
-        #             .format('  ' * indent, record.get_uncompressed_size(),
-        #                     ', '.join('{0:02x}'.format(ord(c))
-        #                               for c in chunk1[:32])))
-
         ole = record.get_data_as_olefile()
         for entry in ole.listdir():
             logging.info('{0}ole entry {1}'.format('  ' * indent, entry))
