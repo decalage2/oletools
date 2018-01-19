@@ -56,6 +56,7 @@ import zlib
 try:
     from oletools import record_base
 except ImportError:
+    import os.path
     PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
         os.path.abspath(__file__))))
     if PARENT_DIR not in sys.path:
@@ -141,8 +142,11 @@ INSTANCE_EXCEPTIONS = dict([
 def is_ppt(filename):
     """ determine whether given file is a PowerPoint 2003 (ppt) OLE file
 
-    tries to ppt-parse the file, return False if that fails. Looks for certain
+    Tries to ppt-parse the file, return False if that fails. Looks for certain
     required streams and records.
+
+    Param filename can be anything that OleFileIO constructor accepts: name of
+    file or file data or data stream.
     """
     have_current_user = False
     have_user_edit = False
@@ -156,20 +160,20 @@ def is_ppt(filename):
                         have_current_user = True
                         if have_current_user and have_user_edit and \
                                 have_persist_dir and have_document_container:
-                            return  True
+                            return True
             elif stream.name == 'PowerPoint Document':
                 for record in stream.iter_records():
-                    if record.type == 0x0ff5:
+                    if record.type == 0x0ff5:     # UserEditAtom
                         have_user_edit = True
-                    elif record.type == 0x1772:
+                    elif record.type == 0x1772:   # PersisDirectoryAtom
                         have_persist_dir = True
-                    elif record.type == 0x03e8:
+                    elif record.type == 0x03e8:   # DocumentContainer
                         have_document_container = True
                     else:
                         continue
                     if have_current_user and have_user_edit and \
                             have_persist_dir and have_document_container:
-                        return  True
+                        return True
             else:   # ignore other streams/storages since they are optional
                 continue
     except Exception:
@@ -178,7 +182,11 @@ def is_ppt(filename):
 
 
 class PptFile(record_base.OleRecordFile):
-    """ Record-based view on a PowerPoint ppt file """
+    """ Record-based view on a PowerPoint ppt file
+
+    This is a subclass of OleFileIO, so can be constructed from file name or
+    file data or data stream.
+    """
 
     @classmethod
     def stream_class_for_name(cls, stream_name):
@@ -290,7 +298,8 @@ class PptContainerRecord(PptRecord):
         if not self.data:
             return
 
-        logging.debug('parsing contents of container record {0}'.format(self))
+        # logging.debug('parsing contents of container record {0}'
+        #               .format(self))
 
         # create a stream from self.data and parse it like any other
         data_stream = io.BytesIO(self.data)
@@ -298,8 +307,8 @@ class PptContainerRecord(PptRecord):
                                   'PptContainerRecordSubstream',
                                   record_base.STGTY_SUBSTREAM)
         self.records = list(record_stream.iter_records())
-        logging.debug('done parsing contents of container record {0}'
-                      .format(self))
+        # logging.debug('done parsing contents of container record {0}'
+        #               .format(self))
 
     def __str__(self):
         text = super(PptContainerRecord, self).__str__()
@@ -451,8 +460,11 @@ class PptRecordExOleObjAtom(PptRecord):
 class IterStream(io.RawIOBase):
     """ make a read-only, seekable bytes-stream from an iterable
 
-    copied from stackoverflow answer by Mechanical snail from Nov 18th 2013
-    https://stackoverflow.com/a/20260030/4405656 and extended
+    Copied from stackoverflow answer by Mechanical snail from Nov 18th 2013
+    https://stackoverflow.com/a/20260030/4405656 and extended.
+
+    See also (and maybe could some day merge with): ooxml.ZipSubFile;
+    also: oleobj.FakeFile
     """
 
     def __init__(self, iterable_creator, size=None):
@@ -460,7 +472,7 @@ class IterStream(io.RawIOBase):
         super(IterStream, self).__init__()
         self.iterable_creator = iterable_creator
         self.size = size
-        logging.debug('IterStream.size is {0}'.format(self.size))
+        # logging.debug('IterStream.size is {0}'.format(self.size))
         self.reset()
 
     def reset(self):
@@ -481,37 +493,37 @@ class IterStream(io.RawIOBase):
 
     def readinto(self, target):
         """ read as much data from iterable as necessary to fill target """
-        logging.debug('IterStream.readinto size {0}'.format(len(target)))
+        # logging.debug('IterStream.readinto size {0}'.format(len(target)))
         if self.at_end:
-            logging.debug('IterStream: we are at (fake) end')
+            # logging.debug('IterStream: we are at (fake) end')
             return 0
         if self.iterable is None:
             self.iterable = self.iterable_creator()
-            logging.debug('IterStream: created iterable {0}'
-                          .format(self.iterable))
+            # logging.debug('IterStream: created iterable {0}'
+            #               .format(self.iterable))
             self.curr_pos = 0
         try:
             target_len = len(target)  # we should return at most this much
             chunk = self.leftover or next(self.iterable)
-            logging.debug('IterStream: chunk is size {0}'.format(len(chunk)))
+            # logging.debug('IterStream: chunk is size {0}'.format(len(chunk)))
             output, self.leftover = chunk[:target_len], chunk[target_len:]
-            logging.debug('IterStream: output is size {0}, leftover is {1}'
-                          .format(len(output), len(self.leftover)))
+            # logging.debug('IterStream: output is size {0}, leftover is {1}'
+            #               .format(len(output), len(self.leftover)))
             target[:len(output)] = output
             self.curr_pos += len(output)
-            logging.debug('IterStream: pos updated to {0}'
-                          .format(self.curr_pos))
+            # logging.debug('IterStream: pos updated to {0}'
+            #               .format(self.curr_pos))
             return len(output)
         except StopIteration:
-            logging.debug('IterStream: source iterable exhausted')
+            # logging.debug('IterStream: source iterable exhausted')
             self.at_end = True
             return 0    # indicate EOF
 
     def seek(self, offset, whence=io.SEEK_SET):
         """ can seek to start, possibly end """
         if offset != 0 and whence == io.SEEK_SET:
-            logging.debug('IterStream: trying to seek to offset {0}.'
-                          .format(offset))
+            # logging.debug('IterStream: trying to seek to offset {0}.'
+            #               .format(offset))
             if offset > self.curr_pos:
                 self.readinto(bytearray(offset - self.curr_pos))
             elif offset == self.curr_pos:
@@ -520,34 +532,35 @@ class IterStream(io.RawIOBase):
                 self.reset()
                 self.readinto(bytearray(offset))
             if self.curr_pos != offset:
-                logging.debug('IterStream: curr_pos {0} != offset {1}!'
-                              .format(self.curr_pos, offset))
+                # logging.debug('IterStream: curr_pos {0} != offset {1}!'
+                #               .format(self.curr_pos, offset))
                 raise RuntimeError('programming error in IterStream.tell!')
             return self.curr_pos
         elif whence == io.SEEK_END:  # seek to end
-            logging.debug('IterStream: seek to end')
+            # logging.debug('IterStream: seek to end')
             if self.size is None:
-                logging.debug('IterStream: trying to seek to end but size '
-                              'unknown --> raise IOError')
+                # logging.debug('IterStream: trying to seek to end but size '
+                #               'unknown --> raise IOError')
                 raise IOError('size unknown, cannot seek to end')
             self.at_end = True   # fake jumping to the end
             self.iterable = None   # cannot safely be used any more
             self.leftover = None
             return self.size
         elif whence == io.SEEK_SET:   # seek to start
-            logging.debug('IterStream: seek to start')
+            # logging.debug('IterStream: seek to start')
             self.reset()
             return 0
         elif whence == io.SEEK_CUR:   # e.g. called by tell()
-            logging.debug('IterStream: seek to curr pos')
+            # logging.debug('IterStream: seek to curr pos')
             if self.at_end:
                 return self.size
             return self.curr_pos
         elif whence not in (io.SEEK_SET, io.SEEK_CUR, io.SEEK_END):
-            logging.debug('Illegal 2nd argument to seek(): {0}'.format(whence))
+            # logging.debug('Illegal 2nd argument to seek(): {0}'
+            #               .format(whence))
             raise IOError('Illegal 2nd argument to seek(): {0}'.format(whence))
         else:
-            logging.debug('not implemented: {0}, {1}'.format(offset, whence))
+            # logging.debug('not implemented: {0}, {1}'.format(offset, whence))
             raise NotImplementedError('seek only partially implemented. '
                                       'Cannot yet seek to {0} from {1}'
                                       .format(offset, whence))
@@ -592,9 +605,10 @@ class PptRecordExOleVbaActiveXAtom(PptRecord):
     def get_uncompressed_size(self):
         """ Get size of data in uncompressed form
 
-        For uncompressed data, this just returns self.size. For compressed data,
-        this reads and returns the doecmpressedSize field value from self.data.
-        Raises a value error if compressed and data is not available.
+        For uncompressed data, this just returns self.size. For compressed
+        data, this reads and returns the doecmpressedSize field value from
+        self.data.  Raises a value error if compressed and data is not
+        available.
         """
         if not self.is_compressed():
             return self.size
@@ -682,17 +696,6 @@ def print_records(record, print_fn, indent, do_print_record):
                      .format(record.ex_obj_id, record.persist_id_ref,
                              '  ' * indent))
     elif isinstance(record, PptRecordExOleVbaActiveXAtom):
-        #with open('testdump', 'wb') as writer:
-        #    for chunk in record.iter_uncompressed():
-        #        logging.info('{0}--> "{1}"'.format('  ' * indent, chunk))
-        #        writer.write(chunk)
-
-        #chunk1 = next(record.iter_uncompressed())
-        #logging.info('{0}--> decompressed size {1}, data {2}...'
-        #             .format('  ' * indent, record.get_uncompressed_size(),
-        #                     ', '.join('{0:02x}'.format(ord(c))
-        #                               for c in chunk1[:32])))
-
         ole = record.get_data_as_olefile()
         for entry in ole.listdir():
             logging.info('{0}ole entry {1}'.format('  ' * indent, entry))

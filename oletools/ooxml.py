@@ -95,11 +95,11 @@ def get_type(filename):
         logging.debug(u'  ' + debug_str(elem))
         try:
             is_xls |= elem.attrib['ContentType'].startswith(
-                                            CONTENT_TYPES_EXCEL)
+                CONTENT_TYPES_EXCEL)
             is_doc |= elem.attrib['ContentType'].startswith(
-                                            CONTENT_TYPES_WORD)
+                CONTENT_TYPES_WORD)
             is_ppt |= elem.attrib['ContentType'].startswith(
-                                            CONTENT_TYPES_PPT)
+                CONTENT_TYPES_PPT)
         except KeyError:         # ContentType not an attr
             pass
 
@@ -153,6 +153,9 @@ class ZipSubFile(object):
     handle: direct handle to subfile stream, created by ZipFile.open()
     pos: current position within stream (can deviate from actual position in
          self.handle if we fake jump to end)
+
+    See also (and maybe could some day merge with):
+    ppt_record_parser.IterStream; also: oleobj.FakeFile
     """
 
     def __init__(self, container, filename, mode='r', size=None):
@@ -171,6 +174,15 @@ class ZipSubFile(object):
         self.handle = None
         self.pos = None
         self.closed = True
+
+    def readable(self):
+        return True
+
+    def writable(self):
+        return False
+
+    def seekable(self):
+        return True
 
     def open(self):
         """ open subfile for reading; open mode given to constructor before """
