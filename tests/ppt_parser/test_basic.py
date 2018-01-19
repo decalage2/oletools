@@ -2,7 +2,7 @@
 
 import unittest
 import os
-from os.path import join
+from os.path import join, splitext
 
 # Directory with test data, independent of current working directory
 from tests.test_utils import DATA_BASE_DIR
@@ -22,7 +22,8 @@ class TestBasic(unittest.TestCase):
                 if filename in exceptions:
                     continue
                 full_name = join(base_dir, filename)
-                if filename.endswith('.ppt') or filename.endswith('.pps'):
+                extn = splitext(filename)[1]
+                if extn in ('.ppt', '.pps', '.pot'):
                     self.assertTrue(ppt_record_parser.is_ppt(full_name),
                                     msg='{0} not recognized as ppt file'
                                         .format(full_name))
