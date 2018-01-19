@@ -25,10 +25,14 @@ class TestOOXML(unittest.TestCase):
         # map from extension to expected doctype
         ext2doc = dict(
             docx=ooxml.DOCTYPE_WORD, docm=ooxml.DOCTYPE_WORD,
+            dotx=ooxml.DOCTYPE_WORD, dotm=ooxml.DOCTYPE_WORD,
             xml=(ooxml.DOCTYPE_EXCEL_XML, ooxml.DOCTYPE_WORD_XML),
             xlsx=ooxml.DOCTYPE_EXCEL, xlsm=ooxml.DOCTYPE_EXCEL,
-            xlsb=ooxml.DOCTYPE_EXCEL,
+            xlsb=ooxml.DOCTYPE_EXCEL, xlam=ooxml.DOCTYPE_EXCEL,
+            xltx=ooxml.DOCTYPE_EXCEL, xltm=ooxml.DOCTYPE_EXCEL,
             pptx=ooxml.DOCTYPE_POWERPOINT, pptm=ooxml.DOCTYPE_POWERPOINT,
+            ppsx=ooxml.DOCTYPE_POWERPOINT, ppsm=ooxml.DOCTYPE_POWERPOINT,
+            potx=ooxml.DOCTYPE_POWERPOINT, potm=ooxml.DOCTYPE_POWERPOINT,
         )
 
         # files that are neither OLE nor xml:
