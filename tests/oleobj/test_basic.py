@@ -16,6 +16,35 @@ from oletools import oleobj
 DEBUG = False
 
 
+# test samples in test-data/oleobj: filename, embedded file name, embedded md5
+SAMPLES = (
+    ('sample_with_calc_embedded.doc', 'calc.exe',
+     '40e85286357723f326980a3b30f84e4f'),
+    ('sample_with_lnk_file.doc', 'calc.lnk',
+     '6aedb1a876d4ad5236f1fbbbeb7274f3'),
+    ('sample_with_lnk_file.pps', 'calc.lnk',
+     '6aedb1a876d4ad5236f1fbbbeb7274f3'),
+    ('sample_with_lnk_file.ppt', 'calc.lnk',
+     '6aedb1a876d4ad5236f1fbbbeb7274f3'),
+    ('embedded-unicode.doc', '_nic_de-___________.txt',
+     '264397735b6f09039ba0adf0dc9fb942'),
+    ('embedded-unicode-2007.docx', '_nic_de-___________.txt',
+     '264397735b6f09039ba0adf0dc9fb942'),
+)
+SAMPLES += tuple(
+    ('embedded-simple-2007.' + extn, 'simple-text-file.txt',
+     'bd5c063a5a43f67b3c50dc7b0f1195af')
+    for extn in ('doc', 'dot', 'docx', 'docm', 'dotx', 'dotm')
+)
+SAMPLES += tuple(
+    ('embedded-simple-2007.' + extn, 'simple-text-file.txt',
+     'ab8c65e4c0fc51739aa66ca5888265b4')
+    for extn in ('xls', 'xlsx', 'xlsb', 'xlsm', 'xla', 'xlam', 'xlt', 'xltm',
+                 'xltx', 'ppt', 'pptx', 'pptm', 'pps', 'ppsx', 'ppsm', 'pot',
+                 'potx', 'potm')
+)
+
+
 def calc_md5(filename):
     """ calc md5sum of given file in temp_dir """
     chunk_size = 4096
@@ -28,6 +57,21 @@ def calc_md5(filename):
     return hasher.hexdigest()
 
 
+def preread_file(args):
+    """helper for TestOleObj.test_non_streamed: preread + call process_file"""
+    ignore_arg, output_dir, filename = args
+    if ignore_arg != '-d':
+        raise ValueError('ignore_arg not as expected!')
+    with open(filename, 'rb') as file_handle:
+        data = file_handle.read()
+    err_stream, err_dumping, did_dump = \
+        oleobj.process_file(filename, data, output_dir=output_dir)
+    if did_dump and not err_stream and not err_dumping:
+        return oleobj.RETURN_DID_DUMP
+    else:
+        return oleobj.RETURN_NO_DUMP   # just anything else
+
+
 class TestOleObj(unittest.TestCase):
     """ Tests oleobj basic feature """
 
@@ -35,6 +79,10 @@ class TestOleObj(unittest.TestCase):
         """ fixture start: create temp dir """
         self.temp_dir = mkdtemp(prefix='oletools-oleobj-')
         self.did_fail = False
+        if DEBUG:
+            import logging
+            logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO)
+            oleobj.log.setLevel(logging.NOTSET)
 
     def tearDown(self):
         """ fixture end: remove temp dir """
@@ -67,32 +115,12 @@ class TestOleObj(unittest.TestCase):
                 self.fail('found embedded data in {0}'.format(sample_name))
             self.assertEqual(ret_val, oleobj.RETURN_NO_DUMP)
 
-    def do_test_md5(self, args):
+    def do_test_md5(self, args, test_fun=oleobj.main):
         """ helper for test_md5 and test_md5_args """
         # name of sample, extension of embedded file, md5 hash of embedded file
-        expected_results = (
-            ('sample_with_calc_embedded.doc', 'calc.exe',
-             '40e85286357723f326980a3b30f84e4f'),
-            ('sample_with_lnk_file.doc', 'calc.lnk',
-             '6aedb1a876d4ad5236f1fbbbeb7274f3'),
-            ('sample_with_lnk_file.pps', 'calc.lnk',
-             '6aedb1a876d4ad5236f1fbbbeb7274f3'),
-            ('sample_with_lnk_file.ppt', 'calc.lnk',
-             '6aedb1a876d4ad5236f1fbbbeb7274f3'),
-            ('embedded-unicode.doc', '_nic_de-___________.txt',
-             '264397735b6f09039ba0adf0dc9fb942'),
-            ('embedded-unicode-2007.docx', '_nic_de-___________.txt',
-             '264397735b6f09039ba0adf0dc9fb942'),
-        )
-        expected_results += tuple(
-            ('embedded-simple-2007.' + extn, 'simple-text-file.txt',
-             'bd5c063a5a43f67b3c50dc7b0f1195af')
-            for extn in ('doc', 'dot', 'docx', 'docm', 'dotx', 'dotm')
-        )
-
         data_dir = join(DATA_BASE_DIR, 'oleobj')
-        for sample_name, embedded_name, expect_hash in expected_results:
-            ret_val = oleobj.main(args + [join(data_dir, sample_name), ])
+        for sample_name, embedded_name, expect_hash in SAMPLES:
+            ret_val = test_fun(args + [join(data_dir, sample_name), ])
             self.assertEqual(ret_val, oleobj.RETURN_DID_DUMP)
             expect_name = join(self.temp_dir,
                                sample_name + '_' + embedded_name)
@@ -107,6 +135,10 @@ class TestOleObj(unittest.TestCase):
                 self.fail('Wrong md5 {0} of {1} from {2}'
                           .format(md5_hash, expect_name, sample_name))
                 continue
+
+    def test_non_streamed(self):
+        """ Ensure old oleobj behaviour still works: pre-read whole file """
+        return self.do_test_md5(['-d', self.temp_dir], test_fun=preread_file)
 
 
 # just in case somebody calls this file as a script
