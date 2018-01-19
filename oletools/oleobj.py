@@ -49,6 +49,7 @@ import argparse
 import os
 import re
 import sys
+import io
 from zipfile import is_zipfile, ZipFile
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
@@ -59,6 +60,7 @@ from zipfile import is_zipfile, ZipFile
 try:
     from oletools.thirdparty import olefile
 except ImportError:
+    import os.path
     PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
         os.path.abspath(__file__))))
     if PARENT_DIR not in sys.path:
@@ -489,9 +491,19 @@ def sanitize_filename(filename, replacement='_', max_length=200):
 
 
 def find_ole_in_ppt(filename):
-    """ find ole streams in ppt """
+    """ find ole streams in ppt
+
+    This may be a bit confusing: we get an ole file (or its name) as input and
+    as output we produce possibly several ole files. This is because the
+    data structure can be pretty nested:
+    A ppt file has many streams that consist of records. Some of these records
+    can contain data which contains data for another complete ole file (which
+    we yield). This embedded ole file can have several streams, one of which
+    can contain the actual embedded file we are looking for (caller will check
+    for these).
+    """
     for stream in PptFile(filename).iter_streams():
-        for record in stream.iter_records():
+        for record_idx, record in enumerate(stream.iter_records()):
             if isinstance(record, PptRecordExOleVbaActiveXAtom):
                 ole = None
                 try:
@@ -500,6 +512,9 @@ def find_ole_in_ppt(filename):
                         continue   # could be an ActiveX control or VBA Storage
 
                     # otherwise, this should be an OLE object
+                    log.debug('Found record with embedded ole object in ppt '
+                              '(stream "{0}", record no {1})'
+                              .format(stream.name, record_idx))
                     ole = record.get_data_as_olefile()
                     yield ole
                 except IOError:
@@ -512,31 +527,109 @@ def find_ole_in_ppt(filename):
                         ole.close()
 
 
+class FakeFile(io.RawIOBase):
+    """ create file-like object from data without copying it
+
+    BytesIO is what I would like to use but it copies all the data. This class
+    does not. On the downside: data can only be read and seeked, not written.
+
+    Assume that given data is bytes (str in py2, bytes in py3).
+
+    See also (and maybe can put into common file with):
+    ppt_record_parser.IterStream, ooxml.ZipSubFile
+    """
+
+    def __init__(self, data):
+        """ create FakeFile with given bytes data """
+        super(FakeFile, self).__init__()
+        self.data = data   # this does not actually copy (python is lazy)
+        self.pos = 0
+        self.size = len(data)
+
+    def readable(self):
+        return True
+
+    def writable(self):
+        return False
+
+    def seekable(self):
+        return True
+
+    def readinto(self, target):
+        """ read into pre-allocated target """
+        n_data = min(len(target), self.size-self.pos)
+        if n_data == 0:
+            return 0
+        target[:n_data] = self.data[self.pos:self.pos+n_data]
+        self.pos += n_data
+        return n_data
+
+    def read(self, n_data=-1):
+        """ read and return data """
+        if self.pos >= self.size:
+            return bytes()
+        if n_data == -1:
+            n_data = self.size - self.pos
+        result = self.data[self.pos:self.pos+n_data]
+        self.pos += n_data
+        return result
+
+    def seek(self, pos, offset=io.SEEK_SET):
+        """ jump to another position in file """
+        # calc target position from self.pos, pos and offset
+        if offset == io.SEEK_SET:
+            new_pos = pos
+        elif offset == io.SEEK_CUR:
+            new_pos = self.pos + pos
+        elif offset == io.SEEK_END:
+            new_pos = self.size + pos
+        else:
+            raise ValueError("invalid offset {0}, need SEEK_* constant"
+                             .format(offset))
+        if new_pos < 0:
+            raise IOError('Seek beyond start of file not allowed')
+        self.pos = new_pos
+
+    def tell(self):
+        """ tell where in file we are positioned """
+        return self.pos
+
+
 def find_ole(filename, data):
     """ try to open somehow as zip/ole/rtf/... ; yield None if fail
 
-    if data is given, filename is ignored
+    If data is given, filename is (mostly) ignored.
+
+    yields embedded ole streams in form of OleFileIO.
     """
+
+    if data is not None:
+        # isOleFile and is_ppt can work on data directly but zip need file
+        # --> wrap data in a file-like object without copying data
+        log.debug('working on data, file is not touched below')
+        arg_for_ole = data
+        arg_for_zip = FakeFile(data)
+    else:
+        # we only have a file name
+        log.debug('working on file by name')
+        arg_for_ole = filename
+        arg_for_zip = filename
 
     ole = None
     try:
-        if data is not None:
-            # assume data is a complete OLE file
-            log.info('working on raw OLE data (filename: {0})'
-                     .format(filename))
-            yield olefile.OleFileIO(data)
-        elif olefile.isOleFile(filename):
-            if is_ppt(filename):
+        if olefile.isOleFile(arg_for_ole):
+            if is_ppt(arg_for_ole):
                 log.info('is ppt file: ' + filename)
-                for ole in find_ole_in_ppt(filename):
+                for ole in find_ole_in_ppt(arg_for_ole):
                     yield ole
-            else:
-                log.info('is ole file: ' + filename)
-                ole = olefile.OleFileIO(filename)
-                yield ole
-        elif is_zipfile(filename):
+                    ole = None   # is closed in find_ole_in_ppt
+            # in any case: check for embedded stuff in non-sectored streams
+            log.info('is ole file: ' + filename)
+            ole = olefile.OleFileIO(arg_for_ole)
+            yield ole
+        elif is_zipfile(arg_for_zip):
             log.info('is zip file: ' + filename)
-            zipper = ZipFile(filename, 'r')
+            zipper = ZipFile(arg_for_zip, 'r')
             for subfile in zipper.namelist():
                 head = b''
                 try:
@@ -565,12 +658,13 @@ def find_ole(filename, data):
                 else:
                     log.debug('unzip skip: ' + subfile)
         else:
-            log.warning('open failed: ' + filename)
-            yield None   # --> leads to non-0 return code
+            log.warning('open failed: {0} (or its data) is neither zip nor OLE'
+                        .format(filename))
+            yield None
     except Exception:
         log.error('Caught exception opening {0}'.format(filename),
                   exc_info=True)
-        yield None   # --> leads to non-0 return code but try next file first
+        yield None
     finally:
         if ole is not None:
             ole.close()
