@@ -76,7 +76,6 @@ except ImportError:
     del PARENT_DIR
     from oletools.thirdparty import olefile
 
-from oletools.thirdparty import olefile
 from oletools import ooxml
 from oletools import xls_parser
 from oletools import rtfobj
