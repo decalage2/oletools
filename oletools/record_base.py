@@ -93,6 +93,7 @@ ENTRY_TYPE2STR = {
     STGTY_SUBSTREAM: 'substream'
 }
 
+
 def enable_olefile_logging():
     """ enable logging olefile e.g., to get debug info from OleFileIO """
     olefile.enable_logging()
@@ -204,8 +205,8 @@ class OleRecordStream(object):
 
             # read first few bytes, determine record type and size
             rec_type, rec_size, other = self.read_record_head()
-            logging.debug('Record type {0} of size {1}'
-                          .format(rec_type, rec_size))
+            # logging.debug('Record type {0} of size {1}'
+            #               .format(rec_type, rec_size))
 
             # determine what class to wrap this into
             rec_clz, force_read = self.record_class_for_type(rec_type)
@@ -336,7 +337,7 @@ def test(filenames, ole_file_class=OleRecordFile,
     """
     logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO)
     if do_per_record is None:
-        def do_per_record(record):
+        def do_per_record(record):         # pylint: disable=function-redefined
             pass   # do nothing
     if not filenames:
         logging.info('need file name[s]')
