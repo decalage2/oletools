@@ -73,12 +73,13 @@ http://www.decalage.info/python/oletools
 # 2017-05-04       PL: - fixed issue #164 to handle linked OLE objects
 # 2017-06-08       PL: - fixed issue/PR #143: bin object with negative length
 # 2017-06-29       PL: - temporary fix for issue #178
-# 2017-07-14 v0.51.1 PL: - disabled logging of each control word (issue #184)
+# 2017-07-14 v0.52 PL: - disabled logging of each control word (issue #184)
 # 2017-07-24       PL: - fixed call to RtfParser._end_of_file (issue #185)
 #                      - ignore optional space after \bin (issue #185)
 # 2017-09-06       PL: - fixed issue #196: \pxe is not a destination
+# 2018-02-01      JRM: - fixed issue #251: \bin without argument
 
-__version__ = '0.51.1dev4'
+__version__ = '0.52dev12'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -511,12 +512,13 @@ class RtfParser(object):
 
     def _bin(self, matchobject, param):
         if param is None:
+            log.info('Detected anti-analysis trick: \\bin object without length at index %X' % self.index)
             binlen = 0
         else:
             binlen = int(param)
         # handle negative length
         if binlen < 0:
-            log.warn('Detected anti-analysis trick: \\bin object with negative length at index %X' % self.index)
+            log.info('Detected anti-analysis trick: \\bin object with negative length at index %X' % self.index)
             # binlen = int(param.strip('-'))
             # According to my tests, if the bin length is negative,
             # it should be treated as a null length:
