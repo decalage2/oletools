@@ -28,7 +28,7 @@ class TestValidJson(unittest.TestCase):
             for filename in filenames:
                 yield join(dirpath, filename)
 
-    def run_and_parse(self, program, args, print_output=False):
+    def run_and_parse(self, program, args, print_output=False, check_return_code=True):
         """ run single program with single file and parse output """
         return_code = None
         with OutputCapture() as capturer:       # capture stdout
@@ -38,7 +38,7 @@ class TestValidJson(unittest.TestCase):
                 return_code = 1   # would result in non-zero exit
             except SystemExit as se:
                 return_code = se.code or 0   # se.code can be None
-        if return_code is not 0:
+        if check_return_code and return_code is not 0:
             if print_output:
                 print('Command failed ({0}) -- not parsing output'
                       .format(return_code))
@@ -82,7 +82,8 @@ class TestValidJson(unittest.TestCase):
     def test_olevba_recurse(self):
         """ Test olevba.py with -r """
         json_data = self.run_and_parse(olevba.main,
-                                       ['-j', '-r', join(DATA_BASE_DIR, '*')])
+                                       ['-j', '-r', join(DATA_BASE_DIR, '*')],
+                                       check_return_code=False)
         self.assertNotEqual(len(json_data), 0,
                             msg='olevba[3] returned non-zero or no output')
         self.assertNotEqual(json_data[-1]['n_processed'], 0,

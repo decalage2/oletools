@@ -293,6 +293,7 @@ from oletools.thirdparty.pyparsing.pyparsing import \
         infixNotation, ParserElement
 from oletools import ppt_parser
 from oletools import oleform
+from oletools import rtfobj
 
 
 # monkeypatch email to fix issue #32:

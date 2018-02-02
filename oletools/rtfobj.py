@@ -701,7 +701,7 @@ def is_rtf(arg, treat_str_as_data=False):
     if isinstance(arg, str):      # could be bytes, but we assume file name
         if treat_str_as_data:
             try:
-                return arg[:magic_len].encode('ascii', error='strict').lower()\
+                return arg[:magic_len].encode('ascii', errors='strict').lower()\
                     == RTF_MAGIC
             except UnicodeError:
                 return False
