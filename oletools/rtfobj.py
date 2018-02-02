@@ -510,7 +510,10 @@ class RtfParser(object):
         pass
 
     def _bin(self, matchobject, param):
-        binlen = int(param)
+        if param is None:
+            binlen = 0
+        else:
+            binlen = int(param)
         # handle negative length
         if binlen < 0:
             log.warn('Detected anti-analysis trick: \\bin object with negative length at index %X' % self.index)
