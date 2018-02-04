@@ -689,14 +689,11 @@ def is_rtf(arg, treat_str_as_data=False):
     """
     magic_len = len(RTF_MAGIC)
     if isinstance(arg, UNICODE_TYPE):
-        print('test file name')
         with open(arg, 'rb') as reader:
             return reader.read(len(RTF_MAGIC)).lower() == RTF_MAGIC
     if isinstance(arg, bytes) and not isinstance(arg, str):  # only in PY3
-        print('test byte array')
         return arg[:magic_len].lower() == RTF_MAGIC
     if isinstance(arg, bytearray):
-        print('test byte array')
         return arg[:magic_len].lower() == RTF_MAGIC
     if isinstance(arg, str):      # could be bytes, but we assume file name
         if treat_str_as_data:
@@ -706,17 +703,13 @@ def is_rtf(arg, treat_str_as_data=False):
             except UnicodeError:
                 return False
         else:
-            print('test file name')
             with open(arg, 'rb') as reader:
                 return reader.read(len(RTF_MAGIC)).lower() == RTF_MAGIC
     if hasattr(arg, 'read'):      # a stream (i.e. file-like object)
-        print('test stream')
         return arg.read(len(RTF_MAGIC)).lower() == RTF_MAGIC
     if isinstance(arg, (list, tuple)):
-        print('test list/tuple')
         iter_arg = iter(arg)
     else:
-        print('test iterable')
         iter_arg = arg
 
     # check iterable

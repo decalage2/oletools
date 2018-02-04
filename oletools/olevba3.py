@@ -237,6 +237,7 @@ import os
 import logging
 import struct
 from _io import StringIO,BytesIO
+from oletools import rtfobj
 import math
 import zipfile
 import re
@@ -2361,6 +2362,13 @@ class VBA_Parser(object):
                 self.open_mht(data)
         #TODO: handle exceptions
         #TODO: Excel 2003 XML
+            # Check whether this is rtf
+            if rtfobj.is_rtf(data, treat_str_as_data=True):
+                # Ignore RTF since it contains no macros and methods in here will not find macros
+                # in embedded objects. run rtfobj and repeat on its output.
+                msg = '%s is RTF, need to run rtfobj.py and find VBA Macros in its output.' % self.filename
+                log.info(msg)
+                raise FileOpenError(msg)
             # Check if this is a plain text VBA or VBScript file:
             # To avoid scanning binary files, we simply check for some control chars:
             if self.type is None and b'\x00' not in data:
