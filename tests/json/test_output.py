@@ -1,8 +1,8 @@
 """ Test validity of json output
 
 Some scripts have a json output flag. Verify that at default log levels output
-can be captured as-is and parsed by a json parser -- at least if the scripts
-return 0
+can be captured as-is and parsed by a json parser -- checking the return code
+if desired.
 """
 
 import unittest
@@ -20,7 +20,11 @@ else:
 
 
 class TestValidJson(unittest.TestCase):
-    """ Ensure that script output is valid json (if return code is 0) """
+    """
+    Ensure that script output is valid json.
+    If check_return_code is True we also ignore the output
+    of runs that didn't succeed.
+    """
 
     def iter_test_files(self):
         """ Iterate over all test files in DATA_BASE_DIR """
