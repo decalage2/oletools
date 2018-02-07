@@ -1174,7 +1174,7 @@ def decompress_stream(compressed_container):
     # DecompressedChunkStart: The location of the first byte of the DecompressedChunk (section 2.4.1.1.3) within the
     #                         DecompressedBuffer (section 2.4.1.1.2).
 
-    decompressed_container = b''  # result
+    decompressed_container = bytearray()  # result
     compressed_current = 0
 
     sig_byte = compressed_container[compressed_current]
@@ -1223,7 +1223,7 @@ def decompress_stream(compressed_container):
             # MS-OVBA 2.4.1.3.3 Decompressing a RawChunk
             # uncompressed chunk: read the next 4096 bytes as-is
             #TODO: check if there are at least 4096 bytes left
-            decompressed_container += bytes([compressed_container[compressed_current:compressed_current + 4096]])
+            decompressed_container.extend([compressed_container[compressed_current:compressed_current + 4096]])
             compressed_current += 4096
         else:
             # MS-OVBA 2.4.1.3.2 Decompressing a CompressedChunk
@@ -1246,7 +1246,7 @@ def decompress_stream(compressed_container):
                     #log.debug('bit_index=%d: flag_bit=%d' % (bit_index, flag_bit))
                     if flag_bit == 0:  # LiteralToken
                         # copy one byte directly to output
-                        decompressed_container += bytes([compressed_container[compressed_current]])
+                        decompressed_container.extend([compressed_container[compressed_current]])
                         compressed_current += 1
                     else:  # CopyToken
                         # MS-OVBA 2.4.1.3.19.2 Unpack CopyToken
@@ -1262,9 +1262,9 @@ def decompress_stream(compressed_container):
                         #log.debug('offset=%d length=%d' % (offset, length))
                         copy_source = len(decompressed_container) - offset
                         for index in range(copy_source, copy_source + length):
-                            decompressed_container += bytes([decompressed_container[index]])
+                            decompressed_container.extend([decompressed_container[index]])
                         compressed_current += 2
-    return decompressed_container
+    return bytes(decompressed_container)
 
 
 def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
