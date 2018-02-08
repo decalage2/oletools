@@ -23,9 +23,9 @@ class TestIsRtf(unittest.TestCase):
 
     def test_bytes(self):
         """ test that is_rtf works with bytearray """
-        self.assertTrue(is_rtf(RTF_MAGIC + b'asasdffdfasdfasdfasdfasdf', True), True)
-        self.assertTrue(is_rtf(RTF_MAGIC.upper() + b'asdffasdfasdasdff', True), True)
-        self.assertFalse(is_rtf(b'asdfasdfasdfasdfasdfasdasdfffsdfsdfa', True), True)
+        self.assertTrue(is_rtf(RTF_MAGIC + b'asasdffdfasdfasdfasdfasdf', True))
+        self.assertTrue(is_rtf(RTF_MAGIC.upper() + b'asdffasdfasdasdff', True))
+        self.assertFalse(is_rtf(b'asdfasdfasdfasdfasdfasdasdfffsdfsdfa', True))
 
     def test_tuple(self):
         """ test that is_rtf works with byte tuples """
