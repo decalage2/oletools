@@ -26,7 +26,8 @@ class TestValidJson(unittest.TestCase):
     of runs that didn't succeed.
     """
 
-    def iter_test_files(self):
+    @staticmethod
+    def iter_test_files():
         """ Iterate over all test files in DATA_BASE_DIR """
         for dirpath, _, filenames in os.walk(DATA_BASE_DIR):
             for filename in filenames:
@@ -34,7 +35,6 @@ class TestValidJson(unittest.TestCase):
 
     def run_and_parse(self, program, args, print_output=False, check_return_code=True):
         """ run single program with single file and parse output """
-        return_code = None
         with OutputCapture() as capturer:       # capture stdout
             try:
                 return_code = program(args)
