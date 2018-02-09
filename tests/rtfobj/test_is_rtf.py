@@ -60,8 +60,8 @@ class TestIsRtf(unittest.TestCase):
                                  .format(full_path, expect))
                 with open(full_path, 'rb') as handle:
                     self.assertEqual(is_rtf(handle), expect,
-                                    'is_rtf(open({0})) did not return {1}'
-                                    .format(full_path, expect))
+                                     'is_rtf(open({0})) did not return {1}'
+                                     .format(full_path, expect))
 
 
 # just in case somebody calls this file as a script
