@@ -690,35 +690,36 @@ def is_rtf(arg, treat_str_as_data=False):
     magic_len = len(RTF_MAGIC)
     if isinstance(arg, UNICODE_TYPE):
         with open(arg, 'rb') as reader:
-            return reader.read(len(RTF_MAGIC)).lower() == RTF_MAGIC
+            return reader.read(len(RTF_MAGIC)) == RTF_MAGIC
     if isinstance(arg, bytes) and not isinstance(arg, str):  # only in PY3
-        return arg[:magic_len].lower() == RTF_MAGIC
+        return arg[:magic_len] == RTF_MAGIC
     if isinstance(arg, bytearray):
-        return arg[:magic_len].lower() == RTF_MAGIC
+        return arg[:magic_len] == RTF_MAGIC
     if isinstance(arg, str):      # could be bytes, but we assume file name
         if treat_str_as_data:
             try:
-                return arg[:magic_len].encode('ascii', errors='strict').lower()\
+                return arg[:magic_len].encode('ascii', errors='strict')\
                     == RTF_MAGIC
             except UnicodeError:
                 return False
         else:
             with open(arg, 'rb') as reader:
-                return reader.read(len(RTF_MAGIC)).lower() == RTF_MAGIC
+                return reader.read(len(RTF_MAGIC)) == RTF_MAGIC
     if hasattr(arg, 'read'):      # a stream (i.e. file-like object)
-        return arg.read(len(RTF_MAGIC)).lower() == RTF_MAGIC
+        return arg.read(len(RTF_MAGIC)) == RTF_MAGIC
     if isinstance(arg, (list, tuple)):
         iter_arg = iter(arg)
     else:
         iter_arg = arg
 
     # check iterable
-    for magic_byte, upper_cased in zip(RTF_MAGIC, RTF_MAGIC.upper()):
+    for magic_byte in zip(RTF_MAGIC):
         try:
-            if next(iter_arg) not in (magic_byte, upper_cased):
+            if next(iter_arg) not in magic_byte:
                 return False
         except StopIteration:
             return False
+
     return True  # checked the complete magic without returning False --> match
 
 

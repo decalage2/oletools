@@ -18,13 +18,13 @@ class TestIsRtf(unittest.TestCase):
     def test_bytearray(self):
         """ test that is_rtf works with bytearray """
         self.assertTrue(is_rtf(bytearray(RTF_MAGIC + b'asdfasdfasdfasdfasdf')))
-        self.assertTrue(is_rtf(bytearray(RTF_MAGIC.upper() + b'asdfasdasdff')))
+        self.assertFalse(is_rtf(bytearray(RTF_MAGIC.upper() + b'asdfasdasdff')))
         self.assertFalse(is_rtf(bytearray(b'asdfasdfasdfasdfasdfasdfsdfsdfa')))
 
     def test_bytes(self):
         """ test that is_rtf works with bytearray """
         self.assertTrue(is_rtf(RTF_MAGIC + b'asasdffdfasdfasdfasdfasdf', True))
-        self.assertTrue(is_rtf(RTF_MAGIC.upper() + b'asdffasdfasdasdff', True))
+        self.assertFalse(is_rtf(RTF_MAGIC.upper() + b'asdffasdfasdasdff', True))
         self.assertFalse(is_rtf(b'asdfasdfasdfasdfasdfasdasdfffsdfsdfa', True))
 
     def test_tuple(self):
@@ -33,7 +33,7 @@ class TestIsRtf(unittest.TestCase):
         self.assertTrue(is_rtf(data))
 
         data = tuple(byte_char for byte_char in RTF_MAGIC.upper() + b'asfasdf')
-        self.assertTrue(is_rtf(data))
+        self.assertFalse(is_rtf(data))
 
         data = tuple(byte_char for byte_char in b'asdfasfassdfsdsfeereasdfwdf')
         self.assertFalse(is_rtf(data))
@@ -44,7 +44,7 @@ class TestIsRtf(unittest.TestCase):
         self.assertTrue(is_rtf(data))
 
         data = (byte_char for byte_char in RTF_MAGIC.upper() + b'asdfassfasdf')
-        self.assertTrue(is_rtf(data))
+        self.assertFalse(is_rtf(data))
 
         data = (byte_char for byte_char in b'asdfasfasasdfasdfasdfsdfdwerwedf')
         self.assertFalse(is_rtf(data))
@@ -60,8 +60,8 @@ class TestIsRtf(unittest.TestCase):
                                  .format(full_path, expect))
                 with open(full_path, 'rb') as handle:
                     self.assertEqual(is_rtf(handle), expect,
-                                    'is_rtf(open({0})) did not return {1}'
-                                    .format(full_path, expect))
+                                     'is_rtf(open({0})) did not return {1}'
+                                     .format(full_path, expect))
 
 
 # just in case somebody calls this file as a script
