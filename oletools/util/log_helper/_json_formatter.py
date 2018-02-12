@@ -3,6 +3,9 @@ import json
 
 
 class JsonFormatter(logging.Formatter):
+    """
+    Format every message to be logged as a JSON object
+    """
     def __init__(self, fmt=None, datefmt=None):
         super(JsonFormatter, self).__init__(fmt, datefmt)
         self._is_first_line = True
@@ -19,7 +22,7 @@ class JsonFormatter(logging.Formatter):
             self._is_first_line = False
 
         json_dict = record.msg \
-            if type(record.msg) is dict \
+            if isinstance(record.msg, dict) \
             else dict(msg=record.msg)
         json_dict['level'] = record.levelname
 
