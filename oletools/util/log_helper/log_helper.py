@@ -125,7 +125,10 @@ class LogHelper:
             print('[')
 
     def end_logging(self):
-        """ called at end of main """
+        """
+        Must be called at the end of the main function
+        if the caller wants json-compatible ouptut
+        """
         if not self._is_enabled:
             return
         self._is_enabled = False
@@ -171,7 +174,9 @@ class LogHelper:
         return logger
 
     def _make_json(self, logger):
-        # remove handlers (sometimes there are multiple by default)
+        """
+        Replace handlers of every logger by a handler that uses the JSON formatter
+        """
         for handler in logger.handlers:
             logger.removeHandler(handler)
         new_handler = logging.StreamHandler(sys.stdout)
