@@ -7,14 +7,18 @@ http://www.ecma-international.org/publications/standards/Ecma-376.htm
 
 See also: Notes on Microsoft's implementation of ECMA-376: [MS-0E376]
 
+TODO: may have to tell apart single xml types: office2003 looks much different
+      than 2006+ --> DOCTYPE_*_XML2003
+
 .. codeauthor:: Intra2net AG <info@intra2net>
 """
 
 import sys
 import logging
-from zipfile import ZipFile, BadZipfile
+from zipfile import ZipFile, BadZipfile, is_zipfile
 from os.path import splitext
 import io
+import re
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -49,12 +53,26 @@ CONTENT_TYPES_NEUTRAL = (
     'application/vnd.openxmlformats-officedocument.extended-properties+xml'
 )
 
+#: constants used to determine type of single-xml files
+OFFICE_XML_PROGID_REGEX = r'<\?mso-application progid="(.*)"\?>'
+WORD_XML_PROG_ID = 'Word.Document'
+EXCEL_XML_PROG_ID = 'Excel.Sheet'
+
 #: constants for document type
 DOCTYPE_WORD = 'word'
 DOCTYPE_EXCEL = 'excel'
 DOCTYPE_POWERPOINT = 'powerpoint'
 DOCTYPE_NONE = 'none'
 DOCTYPE_MIXED = 'mixed'
+DOCTYPE_WORD_XML = 'word-xml'
+DOCTYPE_EXCEL_XML = 'excel-xml'
+DOCTYPE_WORD_XML2003 = 'word-xml2003'
+DOCTYPE_EXCEL_XML2003 = 'excel-xml2003'
+
+
+###############################################################################
+# HELPERS
+###############################################################################
 
 
 def debug_str(elem):
@@ -66,9 +84,9 @@ def debug_str(elem):
     else:
         parts = ['[tag={0}'.format(elem.tag), ]
     if elem.text:
-        parts.append(u'text="{0}"'.format(elem.text))
+        parts.append(u'text="{0}"'.format(elem.text.replace('\n', '\\n')))
     if elem.tail:
-        parts.append(u'tail="{0}"'.format(elem.tail))
+        parts.append(u'tail="{0}"'.format(elem.tail.replace('\n', '\\n')))
     for key, value in elem.attrib.items():
         parts.append(u'{0}="{1}"'.format(key, value))
         if key == 'ContentType':
@@ -83,25 +101,55 @@ def debug_str(elem):
             else:
                 parts[-1] += u'!!!'
 
-    return u', '.join(parts) + u']'
+    text = u', '.join(parts)
+    if len(text) > 150:
+        return text[:147] + u'...]'
+    else:
+        return text + u']'
+
+
+def isstr(some_var):
+    """ version-independent test for isinstance(some_var, (str, unicode)) """
+    if sys.version_info.major == 2:
+        return isinstance(some_var, basestring)  # true for str and unicode
+    else:
+        return isinstance(some_var, str)         # there is no unicode
+
+
+###############################################################################
+# INFO ON FILES
+###############################################################################
 
 
 def get_type(filename):
     """ return one of the DOCTYPE_* constants or raise error """
+    parser = XmlParser(filename)
+    if parser.is_single_xml():
+        match = None
+        with open(filename, 'r') as handle:
+            match = re.search(OFFICE_XML_PROGID_REGEX, handle.read(1024))
+        if not match:
+            return DOCTYPE_NONE
+        prog_id = match.groups()[0]
+        if prog_id == WORD_XML_PROG_ID:
+            return DOCTYPE_WORD_XML
+        elif prog_id == EXCEL_XML_PROG_ID:
+            return DOCTYPE_EXCEL_XML
+        else:
+            return DOCTYPE_NONE
+
     is_doc = False
     is_xls = False
     is_ppt = False
-    for _, elem, _ in XmlParser(filename).iter_xml(FILE_CONTENT_TYPES):
+    for _, elem, _ in parser.iter_xml(FILE_CONTENT_TYPES):
         logging.debug(u'  ' + debug_str(elem))
         try:
-            is_xls |= elem.attrib['ContentType'].startswith(
-                CONTENT_TYPES_EXCEL)
-            is_doc |= elem.attrib['ContentType'].startswith(
-                CONTENT_TYPES_WORD)
-            is_ppt |= elem.attrib['ContentType'].startswith(
-                CONTENT_TYPES_PPT)
+            content_type = elem.attrib['ContentType']
         except KeyError:         # ContentType not an attr
-            pass
+            continue
+        is_xls |= content_type.startswith(CONTENT_TYPES_EXCEL)
+        is_doc |= content_type.startswith(CONTENT_TYPES_WORD)
+        is_ppt |= content_type.startswith(CONTENT_TYPES_PPT)
 
     if is_doc and not is_xls and not is_ppt:
         return DOCTYPE_WORD
@@ -112,17 +160,25 @@ def get_type(filename):
     if not is_doc and not is_xls and not is_ppt:
         return DOCTYPE_NONE
     else:
+        logging.warning('Encountered contradictory content types')
         return DOCTYPE_MIXED
 
 
 def is_ooxml(filename):
     """ Determine whether given file is an ooxml file; tries get_type """
     try:
-        get_type(filename)
-    except BadZipfile:
+        doctype = get_type(filename)
+    except BadOOXML:
         return False
     except IOError:   # one of the required files is not present
         return False
+    if doctype == DOCTYPE_NONE:
+        return False
+
+
+###############################################################################
+# HELPER CLASSES
+###############################################################################
 
 
 class ZipSubFile(object):
@@ -306,15 +362,101 @@ class ZipSubFile(object):
                .format(self.name, self.size, self.mode, status)
 
 
+class BadOOXML(ValueError):
+    """ exception thrown if file is not an office XML file """
+
+    def __init__(self, filename, more_info=None):
+        """ create exception, remember filename and more_info """
+        super(BadOOXML, self).__init__(
+            '{0} is not an Office XML file{1}'
+            .format(filename, ': ' + more_info if more_info else ''))
+        self.filename = filename
+        self.more_info = more_info
+
+
+###############################################################################
+# PARSING
+###############################################################################
+
+
 class XmlParser(object):
-    """ parser for OOXML files """
+    """ parser for OOXML files
+
+    handles two different types of files: "regular" OOXML files are zip
+    archives that contain xml data and possibly other files in binary format.
+    In Office 2003, Microsoft introduced another xml-based format, which uses
+    a single xml file as data source. The content of these types is also
+    different. Method :py:meth:`is_single_xml` tells them apart.
+    """
 
     def __init__(self, filename):
         self.filename = filename
         self.did_iter_all = False
         self.subfiles_no_xml = set()
+        self._is_single_xml = None
 
-    def iter_xml(self, *args):
+    def is_single_xml(self):
+        """ determine whether this is "regular" ooxml or a single xml file
+
+        Raises a BadOOXML if this is neither one or the other
+        """
+        if self._is_single_xml is not None:
+            return self._is_single_xml
+
+        if is_zipfile(self.filename):
+            self._is_single_xml = False
+            return False
+
+        # find prog id in xml prolog
+        match = None
+        with open(self.filename, 'r') as handle:
+            match = re.search(OFFICE_XML_PROGID_REGEX, handle.read(1024))
+        if match:
+            self._is_single_xml = True
+            return True
+        if not match:
+            raise BadOOXML(self.filename, 'is no zip and has no prog_id')
+
+    def iter_files(self, args=None):
+        """ Find files in zip or just give single xml file """
+        if self.is_single_xml():
+            if args:
+                raise BadOOXML(self.filename, 'xml has no subfiles')
+            with open(self.filename, 'r') as handle:
+                yield None, handle   # the subfile=None is needed in iter_xml
+            self.did_iter_all = True
+        else:
+            zipper = None
+            subfiles = None
+            try:
+                zipper = ZipFile(self.filename)
+                try:
+                    _ = zipper.getinfo(FILE_CONTENT_TYPES)
+                except KeyError:
+                    raise BadOOXML(self.filename,
+                                   'No content type information')
+                if not args:
+                    subfiles = zipper.namelist()
+                elif isstr(args):
+                    subfiles = [args, ]
+                else:
+                    subfiles = tuple(args)   # make a copy in case orig changes
+
+                for subfile in subfiles:
+                    with zipper.open(subfile, 'r') as handle:
+                        yield subfile, handle
+                if not args:
+                    self.did_iter_all = True
+            except KeyError as orig_err:
+                raise BadOOXML(self.filename,
+                               'invalid subfile: ' + str(orig_err))
+            except BadZipfile:
+                raise BadOOXML(self.filename, 'neither zip nor xml')
+            finally:
+                if zipper:
+                    zipper.close()
+
+    def iter_xml(self, subfiles=None, need_children=False, tags=None):
         """ Iterate xml contents of document
 
         If given subfile name[s] as optional arg[s], will only parse that
@@ -327,41 +469,87 @@ class XmlParser(object):
 
         Subfiles that are not xml (e.g. OLE or image files) are remembered
         internally and can be retrieved using iter_non_xml().
-        """
-        with ZipFile(self.filename) as zipper:
-            if args:
-                subfiles = args
-            else:
-                subfiles = zipper.namelist()
 
+        The argument need_children is set to False per default. If you need to
+        access an element's children, set it to True. Note, however, that
+        leaving it at False should save a lot of memory. Otherwise, the parser
+        has to keep every single element in memory since the last element
+        returned is the root which has the rest of the document as children.
+        c.f. http://www.ibm.com/developerworks/xml/library/x-hiperfparse/
+
+        Argument tags restricts output to tags with names from that list (or
+        equal to that string). Children are preserved for these.
+        """
+        if tags is None:
+            want_tags = []
+        elif isstr(tags):
+            want_tags = [tags, ]
+            logging.debug('looking for tags: {0}'.format(tags))
+        else:
+            want_tags = tags
+            logging.debug('looking for tags: {0}'.format(tags))
+
+        for subfile, handle in self.iter_files(subfiles):
             events = ('start', 'end')
-            for subfile in subfiles:
-                logging.debug(u'subfile {0}'.format(subfile))
-                depth = 0
-                try:
-                    with zipper.open(subfile, 'r') as handle:
-                        for event, elem in ET.iterparse(handle, events):
-                            if elem is None:
-                                continue
-                            if event == 'start':
-                                depth += 1
-                                continue
-                            assert(event == 'end')
-                            depth -= 1
-                            assert(depth >= 0)
-                            yield subfile, elem, depth
-                except ET.ParseError as err:
-                    if subfile.endswith('.xml'):
-                        logger = logging.warning
-                    else:
-                        logger = logging.debug
-                    logger('  xml-parsing for {0} failed ({1}). '
-                           .format(subfile, err) +
-                           'Run iter_non_xml to investigate.')
-                    self.subfiles_no_xml.add(subfile)
-                assert(depth == 0)
-        if not args:
-            self.did_iter_all = True
+            depth = 0
+            inside_tags = []
+            try:
+                for event, elem in ET.iterparse(handle, events):
+                    if elem is None:
+                        continue
+                    if event == 'start':
+                        if elem.tag in want_tags:
+                            logging.debug('remember start of tag {0} at {1}'
+                                          .format(elem.tag, depth))
+                            inside_tags.append((elem.tag, depth))
+                        depth += 1
+                        continue
+                    assert(event == 'end')
+                    depth -= 1
+                    assert(depth >= 0)
+
+                    is_wanted = elem.tag in want_tags
+                    if is_wanted:
+                        curr_tag = (elem.tag, depth)
+                        try:
+                            if inside_tags[-1] == curr_tag:
+                                inside_tags.pop()
+                            else:
+                                logging.error('found end for wanted tag {0} '
+                                              'but last start tag {1} does not'
+                                              ' match'.format(curr_tag,
+                                                              inside_tags[-1]))
+                                # try to recover: close all deeper tags
+                                while inside_tags and \
+                                        inside_tags[-1][1] >= depth:
+                                    logging.debug('recover: pop {0}'
+                                                  .format(inside_tags[-1]))
+                                    inside_tags.pop()
+                        except IndexError:    # no inside_tag[-1]
+                            logging.error('found end of {0} at depth {1} but '
+                                          'no start event')
+                    # yield element
+                    if is_wanted or not want_tags:
+                        yield subfile, elem, depth
+
+                    # save memory: clear elem so parser memorizes less
+                    if not need_children and not inside_tags:
+                        elem.clear()
+                        # cannot do this since we might be using py-builtin xml
+                        # while elem.getprevious() is not None:
+                        #     del elem.getparent()[0]
+            except ET.ParseError as err:
+                self.subfiles_no_xml.add(subfile)
+                if subfile is None:    # this is no zip subfile but single xml
+                    raise BadOOXML(self.filename, 'is neither zip nor xml')
+                elif subfile.endswith('.xml'):
+                    logger = logging.warning
+                else:
+                    logger = logging.debug
+                logger('  xml-parsing for {0} failed ({1}). '
+                       .format(subfile, err) +
+                       'Run iter_non_xml to investigate.')
+            assert(depth == 0)
 
     def get_content_types(self):
         """ retrieve subfile infos from [Content_Types].xml subfile
@@ -372,6 +560,9 @@ class XmlParser(object):
 
         No guarantees on accuracy of these content types!
         """
+        if self.is_single_xml():
+            return {}, {}
+
         defaults = []
         files = []
         for _, elem, _ in self.iter_xml(FILE_CONTENT_TYPES):
@@ -409,6 +600,10 @@ class XmlParser(object):
         if not self.subfiles_no_xml:
             raise StopIteration()
 
+        # case of single xml files (office 2003+)
+        if self.is_single_xml():
+            raise StopIteration()   # "return"
+
         content_types, content_defaults = self.get_content_types()
 
         with ZipFile(self.filename) as zipper:
@@ -437,12 +632,21 @@ def test():
     if len(sys.argv) != 2:
         print(u'To test this code, give me a single file as arg')
         return 2
+
+    # test get_type
+    print('Detected type: ' + get_type(sys.argv[1]))
+
+    # test complete parsing
     parser = XmlParser(sys.argv[1])
     for subfile, elem, depth in parser.iter_xml():
-        print(u'{0}{1}{2}'.format(subfile, '  ' * depth, debug_str(elem)))
-    for subfile, content_type in parser.iter_non_xml():
+        if depth < 4:
+            print(u'{0} {1}{2}'.format(subfile, '  ' * depth, debug_str(elem)))
+    for index, (subfile, content_type) in enumerate(parser.iter_non_xml()):
         print(u'Non-XML subfile: {0} of type {1}'
               .format(subfile, content_type or u'unknown'))
+        if index > 100:
+            print(u'...')
+            break
     return 0
 
 
