@@ -10,6 +10,7 @@ Supported formats:
 - Excel 97-2003 (.xls), Excel 2007+ (.xlsx, .xlsm, .xlsb)
 - RTF
 - CSV (exported from / imported into Excel)
+- XML (exported from Word 2003, Word 2007+, Excel 2003, (Excel 2007+?)
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -49,7 +50,6 @@ http://www.decalage.info/python/oletools
 from __future__ import print_function
 
 import argparse
-import zipfile
 import os
 from os.path import abspath, dirname
 import sys
@@ -57,13 +57,6 @@ import json
 import logging
 import re
 import csv
-
-# import lxml or ElementTree for XML parsing:
-try:
-    # lxml: best performance for XML processing
-    import lxml.etree as ET
-except ImportError:
-    import xml.etree.cElementTree as ET
 
 # little hack to allow absolute imports even if oletools is not installed
 # Copied from olevba.py
@@ -98,6 +91,7 @@ from oletools import rtfobj
 # 2017-12-07       CH: - ensure rtf file is closed
 # 2018-01-05       CH: - add CSV
 # 2018-01-11       PL: - fixed issue #242 (apply unquote to fldSimple tags)
+# 2018-01-10       CH: - add single-xml files (Word 2003/2007+ / Excel 2003)
 
 __version__ = '0.52dev11'
 
@@ -123,15 +117,16 @@ if sys.version_info[0] >= 3:
 
 
 NS_WORD = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+NS_WORD_2003 = 'http://schemas.microsoft.com/office/word/2003/wordml'
 NO_QUOTES = False
 # XML tag for 'w:instrText'
-TAG_W_INSTRTEXT = '{%s}instrText' % NS_WORD
-TAG_W_FLDSIMPLE = '{%s}fldSimple' % NS_WORD
-TAG_W_FLDCHAR = '{%s}fldChar' % NS_WORD
-TAG_W_P = "{%s}p" % NS_WORD
-TAG_W_R = "{%s}r" % NS_WORD
-ATTR_W_INSTR = '{%s}instr' % NS_WORD
-ATTR_W_FLDCHARTYPE = '{%s}fldCharType' % NS_WORD
+TAG_W_INSTRTEXT = ['{%s}instrText' % ns for ns in (NS_WORD, NS_WORD_2003)]
+TAG_W_FLDSIMPLE = ['{%s}fldSimple' % ns for ns in (NS_WORD, NS_WORD_2003)]
+TAG_W_FLDCHAR = ['{%s}fldChar' % ns for ns in (NS_WORD, NS_WORD_2003)]
+TAG_W_P = ["{%s}p" % ns for ns in (NS_WORD, NS_WORD_2003)]
+TAG_W_R = ["{%s}r" % ns for ns in (NS_WORD, NS_WORD_2003)]
+ATTR_W_INSTR = ['{%s}instr' % ns for ns in (NS_WORD, NS_WORD_2003)]
+ATTR_W_FLDCHARTYPE = ['{%s}fldCharType' % ns for ns in (NS_WORD, NS_WORD_2003)]
 LOCATIONS = ('word/document.xml', 'word/endnotes.xml', 'word/footnotes.xml',
              'word/header1.xml', 'word/footer1.xml', 'word/header2.xml',
              'word/footer2.xml', 'word/comments.xml')
@@ -554,15 +549,54 @@ def process_xls(filepath):
 
 def process_docx(filepath, field_filter_mode=None):
     """ find dde-links (and other fields) in Word 2007+ files """
-    log.debug('process_docx')
+    parser = ooxml.XmlParser(filepath)
     all_fields = []
-    with zipfile.ZipFile(filepath) as zipper:
-        for filepath in zipper.namelist():
-            if filepath in LOCATIONS:
-                data = zipper.read(filepath)
-                fields = process_xml(data)
-                if len(fields) > 0:
-                    all_fields.extend(fields)
+    level = 0
+    ddetext = u''
+    for _, subs, depth in parser.iter_xml(tags=TAG_W_P + TAG_W_FLDSIMPLE):
+        if depth == 0:   # at end of subfile:
+            level = 0    # reset
+        if subs.tag in TAG_W_FLDSIMPLE:
+            # concatenate the attribute of the field, if present:
+            attrib_instr = subs.attrib.get(ATTR_W_INSTR[0]) or \
+                           subs.attrib.get(ATTR_W_INSTR[1])
+            if attrib_instr is not None:
+                all_fields.append(unquote(attrib_instr))
+            continue
+
+        # have a TAG_W_P
+        elem = None
+        for curr_elem in subs:
+            # check if w:r; parse children to pull out first FLDCHAR/INSTRTEXT
+            if curr_elem.tag in TAG_W_R:
+                for child in curr_elem:
+                    if child.tag in TAG_W_FLDCHAR or \
+                            child.tag in TAG_W_INSTRTEXT:
+                        elem = child
+                        break
+            else:
+                elem = curr_elem
+            if elem is None:
+                logging.warning('this should be an error condition')
+                continue
+
+            # check if FLDCHARTYPE and whether "begin" or "end" tag
+            attrib_type = elem.attrib.get(ATTR_W_FLDCHARTYPE[0]) or \
+                          elem.attrib.get(ATTR_W_FLDCHARTYPE[1])
+            if attrib_type is not None:
+                if attrib_type == "begin":
+                    level += 1
+                if attrib_type == "end":
+                    level -= 1
+                    if level == 0 or level == -1:  # edge-case; level gets -1
+                        all_fields.append(ddetext)
+                        ddetext = u''
+                        level = 0  # reset edge-case
+
+            # concatenate the text of the field, if present:
+            if elem.tag in TAG_W_INSTRTEXT and elem.text is not None:
+                # expand field code if QUOTED
+                ddetext += unquote(elem.text)
 
     # apply field command filter
     log.debug('filtering with mode "{0}"'.format(field_filter_mode))
@@ -580,60 +614,6 @@ def process_docx(filepath, field_filter_mode=None):
                          .format(field_filter_mode))
 
     return u'\n'.join(clean_fields)
-
-
-def process_xml(data):
-    """ Find dde-links and other fields in office XML data """
-    # parse the XML data:
-    root = ET.fromstring(data)
-    fields = []
-    ddetext = u''
-    level = 0
-    # find all the tags 'w:p':
-    # parse each for begin and end tags, to group DDE strings
-    # fldChar can be in either a w:r element, floating alone in the w:p
-    #    or spread accross w:p tags
-    # escape DDE if quoted etc
-    # (each is a chunk of a DDE link)
-
-    for subs in root.iter(TAG_W_P):
-        elem = None
-        for curr_elem in subs:
-            # check if w:r; parse children to pull out first FLDCHAR/INSTRTEXT
-            if curr_elem.tag == TAG_W_R:
-                for child in curr_elem:
-                    if child.tag == TAG_W_FLDCHAR or \
-                            child.tag == TAG_W_INSTRTEXT:
-                        elem = child
-                        break
-            else:
-                elem = curr_elem
-            # this should be an error condition
-            if elem is None:
-                continue
-
-            # check if FLDCHARTYPE and whether "begin" or "end" tag
-            if elem.attrib.get(ATTR_W_FLDCHARTYPE) is not None:
-                if elem.attrib[ATTR_W_FLDCHARTYPE] == "begin":
-                    level += 1
-                if elem.attrib[ATTR_W_FLDCHARTYPE] == "end":
-                    level -= 1
-                    if level == 0 or level == -1:  # edge-case; level becomes -1
-                        fields.append(ddetext)
-                        ddetext = u''
-                        level = 0  # reset edge-case
-
-            # concatenate the text of the field, if present:
-            if elem.tag == TAG_W_INSTRTEXT and elem.text is not None:
-                # expand field code if QUOTED
-                ddetext += unquote(elem.text)
-
-    for elem in root.iter(TAG_W_FLDSIMPLE):
-        # concatenate the attribute of the field, if present:
-        if elem.attrib is not None:
-            fields.append(unquote(elem.attrib[ATTR_W_INSTR]))
-
-    return fields
 
 
 def unquote(field):
@@ -745,7 +725,7 @@ def process_xlsx(filepath):
     """ process an OOXML excel file (e.g. .xlsx or .xlsb or .xlsm) """
     dde_links = []
     parser = ooxml.XmlParser(filepath)
-    for subfile, elem, _ in parser.iter_xml():
+    for _, elem, _ in parser.iter_xml():
         tag = elem.tag.lower()
         if tag == 'ddelink' or tag.endswith('}ddelink'):
             # we have found a dde link. Try to get more info about it
@@ -926,6 +906,36 @@ def process_csv_dialect(file_handle, delimiters):
     return results, dialect
 
 
+#: format of dde formula in excel xml files
+XML_DDE_FORMAT = CSV_DDE_FORMAT
+
+
+def process_excel_xml(filepath):
+    """ find dde links in xml files created with excel 2003 or excel 2007+
+
+    TODO: did not manage to create dde-link in the 2007+-xml-format. Find out
+          whether this is possible at all. If so, extend this function
+    """
+    dde_links = []
+    parser = ooxml.XmlParser(filepath)
+    for _, elem, _ in parser.iter_xml():
+        tag = elem.tag.lower()
+        if tag != 'cell' and not tag.endswith('}cell'):
+            continue   # we are only interested in cells
+        formula = None
+        for key in elem.keys():
+            if key.lower() == 'formula' or key.lower().endswith('}formula'):
+                formula = elem.get(key)
+                break
+        if formula is None:
+            continue
+        log.debug('found cell with formula {0}'.format(formula))
+        match = re.match(XML_DDE_FORMAT, formula)
+        if match:
+            dde_links.append(u' '.join(match.groups()[:2]))
+    return u'\n'.join(dde_links)
+
+
 def process_file(filepath, field_filter_mode=None):
     """ decides which of the process_* functions to call """
     if olefile.isOleFile(filepath):
@@ -952,6 +962,12 @@ def process_file(filepath, field_filter_mode=None):
     if doctype == ooxml.DOCTYPE_EXCEL:
         log.debug('Process file as excel 2007+ (xlsx)')
         return process_xlsx(filepath)
+    elif doctype in (ooxml.DOCTYPE_EXCEL_XML, ooxml.DOCTYPE_EXCEL_XML2003):
+        log.debug('Process file as xml from excel 2003/2007+')
+        return process_excel_xml(filepath)
+    elif doctype in (ooxml.DOCTYPE_WORD_XML, ooxml.DOCTYPE_WORD_XML2003):
+        log.debug('Process file as xml from word 2003/2007+')
+        return process_docx(filepath)
     elif doctype is None:
         log.debug('Process file as csv')
         return process_csv(filepath)

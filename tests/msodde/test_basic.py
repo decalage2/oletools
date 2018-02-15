@@ -39,11 +39,11 @@ class TestReturnCode(unittest.TestCase):
             self.do_test_validity(join(BASE_DIR, 'msodde',
                                        filename + '.docm'))
 
-    def test_invalid_other(self):
-        """ check that xml do not work yet """
-        for extn in '-2003.xml', '.xml':
-            self.do_test_validity(join(BASE_DIR, 'msodde',
-                                       'harmless-clean' + extn), True)
+    def test_valid_xml(self):
+        """ check that xml leads to 0 exit status """
+        for filename in 'harmless-clean-2003.xml', 'dde-in-excel2003.xml', \
+                'dde-in-word2003.xml', 'dde-in-word2007.xml':
+            self.do_test_validity(join(BASE_DIR, 'msodde', filename))
 
     def test_invalid_none(self):
         """ check that no file argument leads to non-zero exit status """
@@ -132,6 +132,20 @@ class TestDdeLinks(unittest.TestCase):
             self.assertEqual(expect, self.get_dde_from_output(capturer),
                              msg='unexpected output for dde-test.{0}: {1}'
                                  .format(extn, capturer.get_data()))
+
+    def test_xml(self):
+        """ check that dde in xml from word / excel is found """
+        for name_part in 'excel2003', 'word2003', 'word2007':
+            filename = 'dde-in-' + name_part + '.xml'
+            with OutputCapture() as capturer:
+                msodde.main([join(BASE_DIR, 'msodde', filename), ])
+            links = self.get_dde_from_output(capturer)
+            self.assertEqual(len(links), 1, 'found {0} dde-links in {1}'
+                                            .format(len(links), filename))
+            self.assertTrue('cmd' in links[0], 'no "cmd" in dde-link for {0}'
+                                               .format(filename))
+            self.assertTrue('calc' in links[0], 'no "calc" in dde-link for {0}'
+                                                .format(filename))
 
     def test_clean_rtf_blacklist(self):
         """ find a lot of hyperlinks in rtf spec """
