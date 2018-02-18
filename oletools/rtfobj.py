@@ -77,9 +77,10 @@ http://www.decalage.info/python/oletools
 # 2017-07-24       PL: - fixed call to RtfParser._end_of_file (issue #185)
 #                      - ignore optional space after \bin (issue #185)
 # 2017-09-06       PL: - fixed issue #196: \pxe is not a destination
+# 2018-01-11       CH: - speedup RTF parsing (PR #244)
 # 2018-02-01      JRM: - fixed issue #251: \bin without argument
 
-__version__ = '0.52dev12'
+__version__ = '0.52dev13'
 
 # ------------------------------------------------------------------------------
 # TODO:
