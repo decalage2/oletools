@@ -1,4 +1,4 @@
-python-oletools v0.51 documentation
+python-oletools v0.52 documentation
 ===================================
 
 This is the home page of the documentation for python-oletools. The latest version can be found 
@@ -25,20 +25,26 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 Tools in python-oletools:
 -------------------------
 
-- **[[olebrowse]]**: A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to
-  view and extract individual data streams.
+### Tools to analyze malicious documents
+
 - **[[oleid]]**: to analyze OLE files to detect specific characteristics usually found in malicious files.
-- **[[olemeta]]**: to extract all standard properties (metadata) from OLE files.
-- **[[oletimes]]**: to extract creation and modification timestamps of all streams and storages.
-- **[[oledir]]**: to display all the directory entries of an OLE file, including free and orphaned entries.
-- **[[olemap]]**: to display a map of all the sectors in an OLE file.
 - **[[olevba]]**: to extract and analyze VBA Macro source code from MS Office documents (OLE and OpenXML).
 - **[[mraptor]]**: to detect malicious VBA Macros
+- **[[msodde]]**: to detect and extract DDE/DDEAUTO links from MS Office documents, RTF and CSV
 - **[[pyxswf]]**: to detect, extract and analyze Flash objects (SWF) that may
   be embedded in files such as MS Office documents (e.g. Word, Excel) and RTF,
   which is especially useful for malware analysis.
 - **[[oleobj]]**: to extract embedded objects from OLE files.
 - **[[rtfobj]]**: to extract embedded objects from RTF files.
+
+### Tools to analyze the structure of OLE files 
+
+- **[[olebrowse]]**: A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to
+  view and extract individual data streams.
+- **[[olemeta]]**: to extract all standard properties (metadata) from OLE files.
+- **[[oletimes]]**: to extract creation and modification timestamps of all streams and storages.
+- **[[oledir]]**: to display all the directory entries of an OLE file, including free and orphaned entries.
+- **[[olemap]]**: to display a map of all the sectors in an OLE file.
 - and a few others (coming soon)
 
 --------------------------------------------------------------------------
@@ -51,14 +57,15 @@ python-oletools documentation
 - [[Install]]
 - [[Contribute]], Suggest Improvements or Report Issues
 - Tools:
-	- [[olebrowse]]
-	- [[oleid]]
-	- [[olemeta]]
-	- [[oletimes]]
-	- [[oledir]]
-	- [[olemap]]
-	- [[olevba]]
 	- [[mraptor]]
-	- [[pyxswf]]
+	- [[msodde]]
+	- [[olebrowse]]
+	- [[oledir]]
+	- [[oleid]]
+	- [[olemap]]
+	- [[olemeta]]
 	- [[oleobj]]
+	- [[oletimes]]
+	- [[olevba]]
+	- [[pyxswf]]
 	- [[rtfobj]]

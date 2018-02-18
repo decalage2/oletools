@@ -1,56 +1,92 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
-  <title></title>
-  <style type="text/css">code{white-space: pre;}</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Untitled</title>
   <style type="text/css">
-div.sourceCode { overflow-x: auto; }
-table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
-  margin: 0; padding: 0; vertical-align: baseline; border: none; }
-table.sourceCode { width: 100%; line-height: 100%; }
-td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
-td.sourceCode { padding-left: 5px; }
-code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
-code > span.dt { color: #902000; } /* DataType */
-code > span.dv { color: #40a070; } /* DecVal */
-code > span.bn { color: #40a070; } /* BaseN */
-code > span.fl { color: #40a070; } /* Float */
-code > span.ch { color: #4070a0; } /* Char */
-code > span.st { color: #4070a0; } /* String */
-code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
-code > span.ot { color: #007020; } /* Other */
-code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
-code > span.fu { color: #06287e; } /* Function */
-code > span.er { color: #ff0000; font-weight: bold; } /* Error */
-code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
-code > span.cn { color: #880000; } /* Constant */
-code > span.sc { color: #4070a0; } /* SpecialChar */
-code > span.vs { color: #4070a0; } /* VerbatimString */
-code > span.ss { color: #bb6688; } /* SpecialString */
-code > span.im { } /* Import */
-code > span.va { color: #19177c; } /* Variable */
-code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
-code > span.op { color: #666666; } /* Operator */
-code > span.bu { } /* BuiltIn */
-code > span.ex { } /* Extension */
-code > span.pp { color: #bc7a00; } /* Preprocessor */
-code > span.at { color: #7d9029; } /* Attribute */
-code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
-code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
-code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
-code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
   </style>
+  <style type="text/css">
+a.sourceLine { display: inline-block; line-height: 1.25; }
+a.sourceLine { pointer-events: none; color: inherit; text-decoration: inherit; }
+a.sourceLine:empty { height: 1.2em; position: absolute; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+a.sourceLine { text-indent: -1em; padding-left: 1em; }
+}
+pre.numberSource a.sourceLine
+  { position: relative; }
+pre.numberSource a.sourceLine:empty
+  { position: absolute; }
+pre.numberSource a.sourceLine::before
+  { content: attr(data-line-number);
+    position: absolute; left: -5em; text-align: right; vertical-align: baseline;
+    border: none; pointer-events: all;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {  }
+@media screen {
+a.sourceLine::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
 </head>
 <body>
 <h1 id="oleid">oleid</h1>
-<p>oleid is a script to analyze OLE files such as MS Office documents (e.g. Word, Excel), to detect specific characteristics usually found in malicious files (e.g. malware). For example it can detect VBA macros and embedded Flash objects.</p>
+<p>oleid is a script to analyze OLE files such as MS Office documents (e.g. Word, Excel), to detect specific characteristics usually found in malicious files (e.g. malware). For example it can detect VBA macros and embedded Flash objects.</p>
 <p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
 <h2 id="main-features">Main Features</h2>
 <ul>
-<li>Detect OLE file type from its internal structure (e.g. MS Word, Excel, PowerPoint, ...)</li>
+<li>Detect OLE file type from its internal structure (e.g. MS Word, Excel, PowerPoint, …)</li>
 <li>Detect VBA Macros</li>
 <li>Detect embedded Flash objects</li>
 <li>Detect embedded OLE objects</li>
@@ -94,9 +130,9 @@ Filename: word_flash_vba.doc
 +-------------------------------+-----------------------+</code></pre>
 <h2 id="how-to-use-oleid-in-your-python-applications">How to use oleid in your Python applications</h2>
 <p>First, import oletools.oleid, and create an <strong>OleID</strong> object to scan a file:</p>
-<div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python"><span class="im">import</span> oletools.oleid
-
-oid <span class="op">=</span> oletools.oleid.OleID(filename)</code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="im">import</span> oletools.oleid</a>
+<a class="sourceLine" id="cb3-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb3-3" data-line-number="3">oid <span class="op">=</span> oletools.oleid.OleID(filename)</a></code></pre></div>
 <p>Note: filename can be a filename, a file-like object, or a bytes string containing the file to be analyzed.</p>
 <p>Second, call the <strong>check()</strong> method. It returns a list of <strong>Indicator</strong> objects.</p>
 <p>Each Indicator object has the following attributes:</p>
@@ -104,15 +140,15 @@ oid <span class="op">=</span> oletools.oleid.OleID(filename)</code></pre></div>
 <li><strong>id</strong>: str, identifier for the indicator</li>
 <li><strong>name</strong>: str, name to display the indicator</li>
 <li><strong>description</strong>: str, long description of the indicator</li>
-<li><strong>type</strong>: class of the indicator (e.g. bool, str, int)</li>
+<li><strong>type</strong>: class of the indicator (e.g. bool, str, int)</li>
 <li><strong>value</strong>: value of the indicator</li>
 </ul>
 <p>For example, the following code displays all the indicators:</p>
-<div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">indicators <span class="op">=</span> oid.check()
-<span class="cf">for</span> i <span class="kw">in</span> indicators:
-    <span class="bu">print</span> <span class="st">&#39;Indicator id=</span><span class="sc">%s</span><span class="st"> name=&quot;</span><span class="sc">%s</span><span class="st">&quot; type=</span><span class="sc">%s</span><span class="st"> value=</span><span class="sc">%s</span><span class="st">&#39;</span> <span class="op">%</span> (i.<span class="bu">id</span>, i.name, i.<span class="bu">type</span>, <span class="bu">repr</span>(i.value))
-    <span class="bu">print</span> <span class="st">&#39;description:&#39;</span>, i.description
-    <span class="bu">print</span> <span class="st">&#39;&#39;</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb4-1" data-line-number="1">indicators <span class="op">=</span> oid.check()</a>
+<a class="sourceLine" id="cb4-2" data-line-number="2"><span class="cf">for</span> i <span class="kw">in</span> indicators:</a>
+<a class="sourceLine" id="cb4-3" data-line-number="3">    <span class="bu">print</span> <span class="st">&#39;Indicator id=</span><span class="sc">%s</span><span class="st"> name=&quot;</span><span class="sc">%s</span><span class="st">&quot; type=</span><span class="sc">%s</span><span class="st"> value=</span><span class="sc">%s</span><span class="st">&#39;</span> <span class="op">%</span> (i.<span class="bu">id</span>, i.name, i.<span class="bu">type</span>, <span class="bu">repr</span>(i.value))</a>
+<a class="sourceLine" id="cb4-4" data-line-number="4">    <span class="bu">print</span> <span class="st">&#39;description:&#39;</span>, i.description</a>
+<a class="sourceLine" id="cb4-5" data-line-number="5">    <span class="bu">print</span> <span class="st">&#39;&#39;</span></a></code></pre></div>
 <p>See the source code of oleid.py for more details.</p>
 <hr />
 <h2 id="python-oletools-documentation">python-oletools documentation</h2>
@@ -123,16 +159,17 @@ oid <span class="op">=</span> oletools.oleid.OleID(filename)</code></pre></div>
 <li><a href="Contribute.html">Contribute</a>, Suggest Improvements or Report Issues</li>
 <li>Tools:
 <ul>
-<li><a href="olebrowse.html">olebrowse</a></li>
-<li><a href="oleid.html">oleid</a></li>
-<li><a href="olemeta.html">olemeta</a></li>
-<li><a href="oletimes.html">oletimes</a></li>
-<li><a href="oledir.html">oledir</a></li>
-<li><a href="olemap.html">olemap</a></li>
-<li><a href="olevba.html">olevba</a></li>
 <li><a href="mraptor.html">mraptor</a></li>
-<li><a href="pyxswf.html">pyxswf</a></li>
+<li><a href="msodde.html">msodde</a></li>
+<li><a href="olebrowse.html">olebrowse</a></li>
+<li><a href="oledir.html">oledir</a></li>
+<li><a href="oleid.html">oleid</a></li>
+<li><a href="olemap.html">olemap</a></li>
+<li><a href="olemeta.html">olemeta</a></li>
 <li><a href="oleobj.html">oleobj</a></li>
+<li><a href="oletimes.html">oletimes</a></li>
+<li><a href="olevba.html">olevba</a></li>
+<li><a href="pyxswf.html">pyxswf</a></li>
 <li><a href="rtfobj.html">rtfobj</a></li>
 </ul></li>
 </ul>
