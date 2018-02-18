@@ -1,18 +1,26 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
-  <title></title>
-  <style type="text/css">code{white-space: pre;}</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Untitled</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
 </head>
 <body>
 <h1 id="mraptor-macroraptor">mraptor (MacroRaptor)</h1>
 <p>mraptor is a tool designed to detect most malicious VBA Macros using generic heuristics. Unlike antivirus engines, it does not rely on signatures.</p>
 <p>In a nutshell, mraptor detects keywords corresponding to the three following types of behaviour that are present in clear text in almost any macro malware: - A: Auto-execution trigger - W: Write to the file system or memory - X: Execute a file or any payload outside the VBA context</p>
 <p>mraptor considers that a macro is suspicious when A and (W or X) is true.</p>
-<p>For more information about mraptor's detection algorithm, see the article <a href="http://www.decalage.info/mraptor">How to detect most malicious macros without an antivirus</a>.</p>
+<p>For more information about mraptor’s detection algorithm, see the article <a href="http://www.decalage.info/mraptor">How to detect most malicious macros without an antivirus</a>.</p>
 <p>mraptor can be used either as a command-line tool, or as a python module from your own applications.</p>
 <p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
 <h2 id="usage">Usage</h2>
@@ -42,17 +50,14 @@ An exit code is returned based on the analysis result:
 <h3 id="examples">Examples</h3>
 <p>Scan a single file:</p>
 <pre class="text"><code>mraptor.py file.doc</code></pre>
-<p>Scan a single file, stored in a Zip archive with password &quot;infected&quot;:</p>
+<p>Scan a single file, stored in a Zip archive with password “infected”:</p>
 <pre class="text"><code>mraptor.py malicious_file.xls.zip -z infected</code></pre>
 <p>Scan a collection of files stored in a folder:</p>
 <pre class="text"><code>mraptor.py &quot;MalwareZoo/VBA/*&quot;</code></pre>
 <p><strong>Important</strong>: on Linux/MacOSX, always add double quotes around a file name when you use wildcards such as <code>*</code> and <code>?</code>. Otherwise, the shell may replace the argument with the actual list of files matching the wildcards before starting the script.</p>
-<div class="figure">
-<img src="mraptor1.png" />
-
-</div>
+<p><img src="mraptor1.png" /></p>
 <h2 id="python-3-support---mraptor3">Python 3 support - mraptor3</h2>
-<p>As of v0.50, mraptor has been ported to Python 3 thanks to <span class="citation">@sebdraven</span>. However, the differences between Python 2 and 3 are significant and for now there is a separate version of mraptor named mraptor3 to be used with Python 3.</p>
+<p>As of v0.50, mraptor has been ported to Python 3 thanks to <span class="citation" data-cites="sebdraven">@sebdraven</span>. However, the differences between Python 2 and 3 are significant and for now there is a separate version of mraptor named mraptor3 to be used with Python 3.</p>
 <hr />
 <h2 id="how-to-use-mraptor-in-python-applications">How to use mraptor in Python applications</h2>
 <p>TODO</p>
@@ -65,16 +70,17 @@ An exit code is returned based on the analysis result:
 <li><a href="Contribute.html">Contribute</a>, Suggest Improvements or Report Issues</li>
 <li>Tools:
 <ul>
-<li><a href="olebrowse.html">olebrowse</a></li>
-<li><a href="oleid.html">oleid</a></li>
-<li><a href="olemeta.html">olemeta</a></li>
-<li><a href="oletimes.html">oletimes</a></li>
-<li><a href="oledir.html">oledir</a></li>
-<li><a href="olemap.html">olemap</a></li>
-<li><a href="olevba.html">olevba</a></li>
 <li><a href="mraptor.html">mraptor</a></li>
-<li><a href="pyxswf.html">pyxswf</a></li>
+<li><a href="msodde.html">msodde</a></li>
+<li><a href="olebrowse.html">olebrowse</a></li>
+<li><a href="oledir.html">oledir</a></li>
+<li><a href="oleid.html">oleid</a></li>
+<li><a href="olemap.html">olemap</a></li>
+<li><a href="olemeta.html">olemeta</a></li>
 <li><a href="oleobj.html">oleobj</a></li>
+<li><a href="oletimes.html">oletimes</a></li>
+<li><a href="olevba.html">olevba</a></li>
+<li><a href="pyxswf.html">pyxswf</a></li>
 <li><a href="rtfobj.html">rtfobj</a></li>
 </ul></li>
 </ul>

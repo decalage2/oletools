@@ -4,7 +4,7 @@ License for python-oletools
 This license applies to the [python-oletools](http://www.decalage.info/python/oletools) package, apart from the 
 thirdparty folder which contains third-party files published with their own license.
 
-The python-oletools package is copyright (c) 2012-2017 Philippe Lagadec ([http://www.decalage.info](http://www.decalage.info))
+The python-oletools package is copyright (c) 2012-2018 Philippe Lagadec ([http://www.decalage.info](http://www.decalage.info))
 
 All rights reserved.
 
@@ -66,14 +66,15 @@ python-oletools documentation
 - [[Install]]
 - [[Contribute]], Suggest Improvements or Report Issues
 - Tools:
-	- [[olebrowse]]
-	- [[oleid]]
-	- [[olemeta]]
-	- [[oletimes]]
-	- [[oledir]]
-	- [[olemap]]
-	- [[olevba]]
 	- [[mraptor]]
-	- [[pyxswf]]
+	- [[msodde]]
+	- [[olebrowse]]
+	- [[oledir]]
+	- [[oleid]]
+	- [[olemap]]
+	- [[olemeta]]
 	- [[oleobj]]
+	- [[oletimes]]
+	- [[olevba]]
+	- [[pyxswf]]
 	- [[rtfobj]]
