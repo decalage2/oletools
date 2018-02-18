@@ -17,7 +17,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# rtfobj is copyright (c) 2012-2017, Philippe Lagadec (http://www.decalage.info)
+# rtfobj is copyright (c) 2012-2018, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -80,7 +80,7 @@ http://www.decalage.info/python/oletools
 # 2018-01-11       CH: - speedup RTF parsing (PR #244)
 # 2018-02-01      JRM: - fixed issue #251: \bin without argument
 
-__version__ = '0.52dev13'
+__version__ = '0.52'
 
 # ------------------------------------------------------------------------------
 # TODO:

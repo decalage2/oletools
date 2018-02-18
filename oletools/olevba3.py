@@ -26,7 +26,7 @@ https://github.com/unixfreak0037/officeparser
 
 # === LICENSE ==================================================================
 
-# olevba is copyright (c) 2014-2017 Philippe Lagadec (http://www.decalage.info)
+# olevba is copyright (c) 2014-2018 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -196,9 +196,9 @@ from __future__ import print_function
 # 2017-05-31     c1fe: - PR #135 fixing issue #132 for some Mac files
 # 2017-06-08       PL: - fixed issue #122 Chr() with negative numbers
 # 2017-06-15       PL: - deobfuscation line by line to handle large files
-# 2017-07-11 v0.51.1 PL: - raise exception instead of sys.exit (issue #180)
+# 2017-07-11 v0.52 PL: - raise exception instead of sys.exit (issue #180)
 
-__version__ = '0.51.1dev1'
+__version__ = '0.52'
 
 #------------------------------------------------------------------------------
 # TODO:
