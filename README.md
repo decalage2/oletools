@@ -48,24 +48,24 @@ Tools:
 
 ### Tools to analyze malicious documents
 
-- **[oleid](https://github.com/decalage2/oletools/wiki/oleid)**: to analyze OLE files to detect specific characteristics usually found in malicious files.
-- **[olevba](https://github.com/decalage2/oletools/wiki/olevba)**: to extract and analyze VBA Macro source code from MS Office documents (OLE and OpenXML).
-- **[MacroRaptor](https://github.com/decalage2/oletools/wiki/mraptor)**: to detect malicious VBA Macros
-- **[msodde](https://github.com/decalage2/oletools/wiki/msodde)**: to detect and extract DDE/DDEAUTO links from MS Office documents, RTF and CSV
-- **[pyxswf](https://github.com/decalage2/oletools/wiki/pyxswf)**: to detect, extract and analyze Flash objects (SWF) that may
+- [oleid](https://github.com/decalage2/oletools/wiki/oleid): to analyze OLE files to detect specific characteristics usually found in malicious files.
+- [olevba](https://github.com/decalage2/oletools/wiki/olevba): to extract and analyze VBA Macro source code from MS Office documents (OLE and OpenXML).
+- [MacroRaptor](https://github.com/decalage2/oletools/wiki/mraptor): to detect malicious VBA Macros
+- [msodde](https://github.com/decalage2/oletools/wiki/msodde): to detect and extract DDE/DDEAUTO links from MS Office documents, RTF and CSV
+- [pyxswf](https://github.com/decalage2/oletools/wiki/pyxswf): to detect, extract and analyze Flash objects (SWF) that may
   be embedded in files such as MS Office documents (e.g. Word, Excel) and RTF,
   which is especially useful for malware analysis.
-- **[oleobj](https://github.com/decalage2/oletools/wiki/oleobj)**: to extract embedded objects from OLE files.
-- **[rtfobj](https://github.com/decalage2/oletools/wiki/rtfobj)**: to extract embedded objects from RTF files.
+- [oleobj](https://github.com/decalage2/oletools/wiki/oleobj): to extract embedded objects from OLE files.
+- [rtfobj](https://github.com/decalage2/oletools/wiki/rtfobj): to extract embedded objects from RTF files.
 
 ### Tools to analyze the structure of OLE files
 
-- **[olebrowse](https://github.com/decalage2/oletools/wiki/olebrowse)**: A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to
+- [olebrowse](https://github.com/decalage2/oletools/wiki/olebrowse): A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to
   view and extract individual data streams.
-- **[olemeta](https://github.com/decalage2/oletools/wiki/olemeta)**: to extract all standard properties (metadata) from OLE files.
-- **[oletimes](https://github.com/decalage2/oletools/wiki/oletimes)**: to extract creation and modification timestamps of all streams and storages.
-- **[oledir](https://github.com/decalage2/oletools/wiki/oledir)**: to display all the directory entries of an OLE file, including free and orphaned entries.
-- **[olemap](https://github.com/decalage2/oletools/wiki/olemap)**: to display a map of all the sectors in an OLE file.
+- [olemeta](https://github.com/decalage2/oletools/wiki/olemeta): to extract all standard properties (metadata) from OLE files.
+- [oletimes](https://github.com/decalage2/oletools/wiki/oletimes): to extract creation and modification timestamps of all streams and storages.
+- [oledir](https://github.com/decalage2/oletools/wiki/oledir): to display all the directory entries of an OLE file, including free and orphaned entries.
+- [olemap](https://github.com/decalage2/oletools/wiki/olemap): to display a map of all the sectors in an OLE file.
 
 
 Projects using oletools:
