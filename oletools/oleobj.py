@@ -14,7 +14,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE =================================================================
 
-# oleobj is copyright (c) 2015-2017 Philippe Lagadec (http://www.decalage.info)
+# oleobj is copyright (c) 2015-2018 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -81,7 +81,7 @@ from oletools.ooxml import ZipSubFile
 # 2016-11-17 v0.51 PL: - fixed OLE native object extraction
 # 2016-11-18       PL: - added main for setup.py entry point
 # 2017-05-03       PL: - fixed absolute imports (issue #141)
-# 2018-01-18       CH: - added support for zipped-xml-based types (docx, pptx,
+# 2018-01-18 v0.52 CH: - added support for zipped-xml-based types (docx, pptx,
 #                        xlsx), and ppt
 
 __version__ = '0.52'

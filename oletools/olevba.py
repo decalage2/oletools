@@ -26,7 +26,7 @@ https://github.com/unixfreak0037/officeparser
 
 # === LICENSE ==================================================================
 
-# olevba is copyright (c) 2014-2017 Philippe Lagadec (http://www.decalage.info)
+# olevba is copyright (c) 2014-2018 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -203,7 +203,7 @@ from __future__ import print_function
 # 2017-11-24       PL: - added keywords to detect self-modifying macros and
 #                        attempts to disable macro security (issue #221)
 
-__version__ = '0.52dev7'
+__version__ = '0.52'
 
 #------------------------------------------------------------------------------
 # TODO:

@@ -93,7 +93,7 @@ from oletools import rtfobj
 # 2018-01-11       PL: - fixed issue #242 (apply unquote to fldSimple tags)
 # 2018-01-10       CH: - add single-xml files (Word 2003/2007+ / Excel 2003)
 
-__version__ = '0.52dev11'
+__version__ = '0.52'
 
 # -----------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these
