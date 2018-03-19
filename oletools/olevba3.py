@@ -197,8 +197,9 @@ from __future__ import print_function
 # 2017-06-08       PL: - fixed issue #122 Chr() with negative numbers
 # 2017-06-15       PL: - deobfuscation line by line to handle large files
 # 2017-07-11 v0.52 PL: - raise exception instead of sys.exit (issue #180)
+# 2018-03-19       PL: - removed pyparsing from the thirdparty subfolder
 
-__version__ = '0.52'
+__version__ = '0.52.3'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -281,7 +282,7 @@ if not _parent_dir in sys.path:
 from oletools.thirdparty import olefile
 from oletools.thirdparty.prettytable import prettytable
 from oletools.thirdparty.xglob import xglob, PathNotFoundException
-from oletools.thirdparty.pyparsing.pyparsing import \
+from pyparsing import \
         CaselessKeyword, CaselessLiteral, Combine, Forward, Literal, \
         Optional, QuotedString,Regex, Suppress, Word, WordStart, \
         alphanums, alphas, hexnums,nums, opAssoc, srange, \

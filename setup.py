@@ -23,6 +23,7 @@ to install this package.
 # 2016-09-05       PL: - added more entry points
 # 2017-01-18 v0.51 PL: - added package zipfile27 (issue #121)
 # 2017-10-18 v0.52 PL: - added msodde
+# 2018-03-19 v0.52.3      PL: - added install_requires, removed thirdparty.pyparsing
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -42,7 +43,7 @@ import os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.52.2'
+version      = '0.52.3'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       = "Philippe Lagadec"
@@ -83,7 +84,6 @@ packages=[
     'oletools.thirdparty.prettytable',
     'oletools.thirdparty.xglob',
     'oletools.thirdparty.DridexUrlDecoder',
-    'oletools.thirdparty.pyparsing',
     'oletools.thirdparty.colorclass',
     'oletools.thirdparty.tablestream',
     'oletools.thirdparty.zipfile27',
@@ -180,9 +180,6 @@ package_data={
         ],
     'oletools.thirdparty.DridexUrlDecoder': [
         'LICENSE.txt',
-        ],
-    'oletools.thirdparty.pyparsing': [
-        'LICENSE', 'README',
         ],
     'oletools.thirdparty.colorclass': [
         'LICENSE.txt',
@@ -322,6 +319,7 @@ def main():
         entry_points=entry_points,
         test_suite="tests",
         # scripts=scripts,
+        install_requires=["pyparsing"],
     )
 
 
