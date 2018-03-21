@@ -833,7 +833,8 @@ def process_rtf(file_handle, field_filter_mode=None):
 CSV_SMALL_THRESH = 1024
 
 # format of dde link: program-name | arguments ! unimportant
-CSV_DDE_FORMAT = re.compile(r'\s*=(.+)\|(.+)!(.*)\s*')
+# can be enclosed in "", prefixed with + or = or - or cmds like @SUM(...)
+CSV_DDE_FORMAT = re.compile(r'\s*"?[=+-@](.+)\|(.+)!(.*)\s*')
 
 # allowed delimiters (python sniffer would use nearly any char). Taken from
 # https://data-gov.tw.rpi.edu/wiki/CSV_files_use_delimiters_other_than_commas
