@@ -131,6 +131,17 @@ class TestCSV(unittest.TestCase):
         self.assertTrue(have_start_line)  # ensure output was complete
         return result
 
+    def test_regex(self):
+        """ check that regex captures other ways to include dde commands
+        
+        from http://www.exploresecurity.com/from-csv-to-cmd-to-qwerty/ and/or
+        https://www.contextis.com/blog/comma-separated-vulnerabilities
+        """
+        kernel = "cmd|'/c calc'!A0"
+        for wrap in '={0}', '@SUM({0})', '"={0}"', '+{0}', '-{0}':
+            cmd = wrap.format(kernel)
+            self.assertNotEqual(msodde.CSV_DDE_FORMAT.match(cmd), None)
+
 
 # just in case somebody calls this file as a script
 if __name__ == '__main__':
