@@ -83,8 +83,9 @@ from oletools.ooxml import ZipSubFile
 # 2017-05-03       PL: - fixed absolute imports (issue #141)
 # 2018-01-18 v0.52 CH: - added support for zipped-xml-based types (docx, pptx,
 #                        xlsx), and ppt
+# 2018-03-27       PL: - fixed issue #274 in read_length_prefixed_string
 
-__version__ = '0.52'
+__version__ = '0.52.4'
 
 # -----------------------------------------------------------------------------
 # TODO:
@@ -260,7 +261,7 @@ def read_length_prefixed_string(data, index):
         null_char = data.read(1)
     else:
         ansi_string = data[index:index+length-1]
-        null_char = data[index+length]
+        null_char = data[index+length-1]
         index += length
     # TODO: only in strict mode:
     # check the presence of the null char:
