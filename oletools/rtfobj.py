@@ -79,8 +79,9 @@ http://www.decalage.info/python/oletools
 # 2017-09-06       PL: - fixed issue #196: \pxe is not a destination
 # 2018-01-11       CH: - speedup RTF parsing (PR #244)
 # 2018-02-01      JRM: - fixed issue #251: \bin without argument
+# 2018-04-09       PL: - fixed issue #280: OLE Package were not detected on Python 3
 
-__version__ = '0.52'
+__version__ = '0.52.5'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -664,7 +665,7 @@ class RtfObjParser(RtfParser):
                 rtfobj.oledata_size = obj.data_size
                 rtfobj.oledata = obj.data
                 rtfobj.is_ole = True
-                if obj.class_name.lower() == 'package':
+                if obj.class_name.lower() == b'package':
                     opkg = oleobj.OleNativeStream(bindata=obj.data,
                                                   package=True)
                     rtfobj.filename = opkg.filename
@@ -904,7 +905,9 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
 
 def main():
     # print banner with version
-    print ('rtfobj %s - http://decalage.info/python/oletools' % __version__)
+    python_version = '%d.%d.%d' % sys.version_info[0:3]
+    print ('rtfobj %s on Python %s - http://decalage.info/python/oletools' %
+           (__version__, python_version))
     print ('THIS IS WORK IN PROGRESS - Check updates regularly!')
     print ('Please report any issue at https://github.com/decalage2/oletools/issues')
     print ('')
