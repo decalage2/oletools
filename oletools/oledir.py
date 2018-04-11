@@ -14,7 +14,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE ==================================================================
 
-# oledir is copyright (c) 2015-2017 Philippe Lagadec (http://www.decalage.info)
+# oledir is copyright (c) 2015-2018 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -48,8 +48,9 @@ from __future__ import print_function
 # 2016-08-09       PL: - fixed issue #77 (imports from thirdparty dir)
 # 2017-03-08 v0.51 PL: - fixed absolute imports, added optparse
 #                      - added support for zip files and wildcards
+# 2018-04-11 v0.53 PL: - added table displaying storage tree and CLSIDs
 
-__version__ = '0.51'
+__version__ = '0.53dev1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -105,7 +106,7 @@ STORAGE_NAMES = {
 
 STORAGE_COLORS = {
     olefile.STGTY_EMPTY:     'green',
-    olefile.STGTY_STORAGE:   'blue',
+    olefile.STGTY_STORAGE:   'cyan',
     olefile.STGTY_STREAM:    'yellow',
     olefile.STGTY_LOCKBYTES: 'magenta',
     olefile.STGTY_PROPERTY:  'magenta',
@@ -118,6 +119,12 @@ STATUS_COLORS = {
     'ORPHAN':   'red',
 }
 
+KNOWN_CLSIDS = {
+    '00020906-0000-0000-C000-000000000046': 'MS Word',
+    '0002CE02-0000-0000-C000-000000000046': 'MS Equation Editor (may trigger CVE-2017-11882)',
+    '00000300-0000-0000-C000-000000000046': 'StdOleLink (embedded OLE object)',
+}
+
 
 # === FUNCTIONS ==============================================================
 
@@ -127,6 +134,13 @@ def sid_display(sid):
     else:
         return sid
 
+def clsid_display(clsid):
+    if clsid in KNOWN_CLSIDS:
+        clsid += '\n%s' % KNOWN_CLSIDS[clsid]
+    color = 'yellow'
+    if 'CVE-' in clsid:
+        color = 'red'
+    return (clsid, color)
 
 # === MAIN ===================================================================
 
