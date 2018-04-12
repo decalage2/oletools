@@ -117,7 +117,7 @@ def detect_flash (data):
         # Read Header
         header = data[start:start+3]
         # Read Version
-        ver = struct.unpack('<b', data[start+3])[0]
+        ver = struct.unpack('<b', data[start+3:start+4])[0]
         # Error check for version above 20
         #TODO: is this accurate? (check SWF specifications)
         if ver > 20:
