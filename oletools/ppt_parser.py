@@ -1423,7 +1423,7 @@ class PptParser(object):
         .. seealso:: search_vba_storage
         """
 
-        logging.debug('looking for VBA info containers')
+        log.debug('looking for VBA info containers')
 
         pattern = VBAInfoContainer.generate_pattern(
                                 rec_len=VBAInfoContainer.RECORD_LENGTH) \
@@ -1475,7 +1475,7 @@ class PptParser(object):
         .. seealso:: :py:meth:`search_vba_info`
         """
 
-        logging.debug('looking for VBA storage objects')
+        log.debug('looking for VBA storage objects')
         for obj_type in (ExternalObjectStorageUncompressed,
                          ExternalObjectStorageCompressed):
             # re-position stream at start
