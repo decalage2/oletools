@@ -49,8 +49,9 @@ from __future__ import print_function
 # 2017-03-08 v0.51 PL: - fixed absolute imports, added optparse
 #                      - added support for zip files and wildcards
 # 2018-04-11 v0.53 PL: - added table displaying storage tree and CLSIDs
+# 2018-04-13       PL: - moved KNOWN_CLSIDS to common.clsid
 
-__version__ = '0.53dev2'
+__version__ = '0.53dev3'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -89,7 +90,7 @@ if os.name == 'nt':
 from oletools.thirdparty import olefile
 from oletools.thirdparty.tablestream import tablestream
 from oletools.thirdparty.xglob import xglob
-
+from oletools.common.clsid import KNOWN_CLSIDS
 
 # === CONSTANTS ==============================================================
 
@@ -117,31 +118,6 @@ STATUS_COLORS = {
     'unused':   'green',
     '<Used>':   'yellow',
     'ORPHAN':   'red',
-}
-
-KNOWN_CLSIDS = {
-    # MS Office files
-    '00020906-0000-0000-C000-000000000046': 'Microsoft Word 97-2003 Document',
-    '00020900-0000-0000-C000-000000000046': 'Microsoft Word 6.0-7.0 Document',
-    '00020832-0000-0000-C000-000000000046': 'Excel sheet with macro enabled',
-    '00020833-0000-0000-C000-000000000046': 'Excel binary sheet with macro enabled',
-    
-    # OLE Objects
-    '00000300-0000-0000-C000-000000000046': 'StdOleLink (embedded OLE object)',
-    '0002CE02-0000-0000-C000-000000000046': 'MS Equation Editor (may trigger CVE-2017-11882 or CVE-2018-0802)',
-    'F20DA720-C02F-11CE-927B-0800095AE340': 'Package (may contain and run any file)',
-    '0003000C-0000-0000-C000-000000000046': 'Package (may contain and run any file)',
-    'D27CDB6E-AE6D-11CF-96B8-444553540000': 'Shockwave Flash Object (may trigger many CVEs)',
-    'A08A033D-1A75-4AB6-A166-EAD02F547959': 'otkloadr CWRAssembly Object (may trigger CVE-2015-1641)',
-    'D7053240-CE69-11CD-A777-00DD01143C57': 'Microsoft Forms 2.0 CommandButton',
-    # Monikers
-    '00000303-0000-0000-C000-000000000046': 'File Moniker (may trigger CVE-2017-0199 or CVE-2017-8570)',
-    '00000309-0000-0000-C000-000000000046': 'Composite Moniker (may trigger CVE-2017-8570)',
-    '0002034c-0000-0000-C000-000000000046': 'OutlookAttachMoniker',
-    '0002034e-0000-0000-C000-000000000046': 'OutlookMessageMoniker',
-    '79EAC9E0-BAF9-11CE-8C82-00AA004BA90B': 'URL Moniker (may trigger CVE-2017-0199 or CVE-2017-8570)',
-    'ECABB0C7-7F19-11D2-978E-0000F8757E2A': 'SOAP Moniker (may trigger CVE-2017-8759)',
-    'ECABAFC6-7F19-11D2-978E-0000F8757E2A': 'New Moniker',
 }
 
 
