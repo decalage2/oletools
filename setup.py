@@ -77,6 +77,7 @@ classifiers=[
 
 packages=[
     "oletools",
+    "oletools.common",
     'oletools.thirdparty',
     'oletools.thirdparty.olefile',
     'oletools.thirdparty.easygui',
