@@ -2878,7 +2878,9 @@ class VBA_Parser(object):
                 self.vba_code_all_modules = ''
                 for (_, _, _, vba_code) in self.extract_all_macros():
                     #TODO: filter code? (each module)
-                    self.vba_code_all_modules += vba_code.decode('utf-8', 'ignore') + '\n'
+                    if isinstance(vba_code, bytes):
+                        vba_code = vba_code.decode('utf-8', 'ignore')
+                    self.vba_code_all_modules += vba_code + '\n'
                 for (_, _, form_string) in self.extract_form_strings():
                     self.vba_code_all_modules += form_string.decode('utf-8', 'ignore') + '\n'
             # Analyze the whole code at once:
