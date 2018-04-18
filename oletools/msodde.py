@@ -565,20 +565,21 @@ def process_docx(filepath, field_filter_mode=None):
             continue
 
         # have a TAG_W_P
-        elem = None
         for curr_elem in subs:
             # check if w:r; parse children to pull out first FLDCHAR/INSTRTEXT
+            elem = None
             if curr_elem.tag in TAG_W_R:
                 for child in curr_elem:
                     if child.tag in TAG_W_FLDCHAR or \
                             child.tag in TAG_W_INSTRTEXT:
                         elem = child
                         break
+                if elem is None:
+                    continue   # no fldchar or instrtext in this w:r
             else:
                 elem = curr_elem
             if elem is None:
-                logging.warning('this should be an error condition')
-                continue
+                raise BadOOXML(filepath, 'Got "None"-Element from iter_xml')
 
             # check if FLDCHARTYPE and whether "begin" or "end" tag
             attrib_type = elem.attrib.get(ATTR_W_FLDCHARTYPE[0]) or \
