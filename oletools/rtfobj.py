@@ -80,8 +80,9 @@ http://www.decalage.info/python/oletools
 # 2018-01-11       CH: - speedup RTF parsing (PR #244)
 # 2018-02-01      JRM: - fixed issue #251: \bin without argument
 # 2018-04-09       PL: - fixed issue #280: OLE Package were not detected on Python 3
+# 2018-03-24 v0.53 PL: - fixed issue #292: \margSz is a destination
 
-__version__ = '0.52.5'
+__version__ = '0.53dev5'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -295,7 +296,9 @@ DESTINATION_CONTROL_WORDS = frozenset((
     b"result", b"revtbl", b"revtim", b"rsidtbl", b"rtf", b"rxe", b"shp", b"shpgrp", b"shpinst", b"shppict", b"shprslt", b"shptxt",
     b"sn", b"sp", b"staticval", b"stylesheet", b"subject", b"sv", b"svb", b"tc", b"template", b"themedata", b"title", b"txe", b"ud",
     b"upr", b"userprops", b"wgrffmtfilter", b"windowcaption", b"writereservation", b"writereservhash", b"xe", b"xform",
-    b"xmlattrname", b"xmlattrvalue", b"xmlclose", b"xmlname", b"xmlnstbl", b"xmlopen"
+    b"xmlattrname", b"xmlattrvalue", b"xmlclose", b"xmlname", b"xmlnstbl", b"xmlopen",
+    # added for issue #292: https://github.com/decalage2/oletools/issues/292
+    b"margSz",
     ))
 
 
