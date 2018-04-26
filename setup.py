@@ -22,6 +22,8 @@ to install this package.
 # 2016-07-29       PL: - use setuptools if available
 # 2016-09-05       PL: - added more entry points
 # 2017-01-18 v0.51 PL: - added package zipfile27 (issue #121)
+# 2017-10-18 v0.52 PL: - added msodde
+# 2018-03-19 v0.52.3      PL: - added install_requires, removed thirdparty.pyparsing
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -41,11 +43,11 @@ import os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.51a1'
+version      = '0.53dev6'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       = "Philippe Lagadec"
-author_email = "decalage at laposte dot net"
+author_email = "nospam@decalage.info"
 url          = "http://www.decalage.info/python/oletools"
 license      = "BSD"
 download_url = "https://github.com/decalage2/oletools/releases"
@@ -62,7 +64,11 @@ classifiers=[
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 2",
+    "Programming Language :: Python :: 2.7",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.4",
+    "Programming Language :: Python :: 3.5",
+    "Programming Language :: Python :: 3.6",
     "Topic :: Security",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
@@ -71,6 +77,7 @@ classifiers=[
 
 packages=[
     "oletools",
+    "oletools.common",
     'oletools.thirdparty',
     'oletools.thirdparty.olefile',
     'oletools.thirdparty.easygui',
@@ -78,7 +85,6 @@ packages=[
     'oletools.thirdparty.prettytable',
     'oletools.thirdparty.xglob',
     'oletools.thirdparty.DridexUrlDecoder',
-    'oletools.thirdparty.pyparsing',
     'oletools.thirdparty.colorclass',
     'oletools.thirdparty.tablestream',
     'oletools.thirdparty.zipfile27',
@@ -176,9 +182,6 @@ package_data={
     'oletools.thirdparty.DridexUrlDecoder': [
         'LICENSE.txt',
         ],
-    'oletools.thirdparty.pyparsing': [
-        'LICENSE', 'README',
-        ],
     'oletools.thirdparty.colorclass': [
         'LICENSE.txt',
         ],
@@ -271,6 +274,7 @@ entry_points = {
     'console_scripts': [
         'ezhexviewer=oletools.ezhexviewer:main',
         'mraptor=oletools.mraptor:main',
+        'mraptor3=oletools.mraptor3:main',
         'olebrowse=oletools.olebrowse:main',
         'oledir=oletools.oledir:main',
         'oleid=oletools.oleid:main',
@@ -278,9 +282,11 @@ entry_points = {
         'olemeta=oletools.olemeta:main',
         'oletimes=oletools.oletimes:main',
         'olevba=oletools.olevba:main',
+        'olevba3=oletools.olevba3:main',
         'pyxswf=oletools.pyxswf:main',
         'rtfobj=oletools.rtfobj:main',
         'oleobj=oletools.oleobj:main',
+        'msodde=oletools.msodde:main',
     ],
 }
 
@@ -312,7 +318,9 @@ def main():
         download_url=download_url,
 #        data_files=data_files,
         entry_points=entry_points,
+        test_suite="tests",
         # scripts=scripts,
+        install_requires=["pyparsing"],
     )
 
 

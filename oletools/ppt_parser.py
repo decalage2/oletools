@@ -6,15 +6,25 @@ Code much influenced by olevba._extract_vba but much more object-oriented
 (possibly slightly excessively so)
 
 Currently quite narrowly focused on extracting VBA from ppt files, no slides or
-stuff, but built to be extended to parsing more/all of the file
+stuff, but built to be extended to parsing more/all of the file. For better
+"understanding" of ppt files, see module ppt_record_parser, which will probably
+replace this module some time soon.
 
 References:
 * https://msdn.microsoft.com/en-us/library/dd921564%28v=office.12%29.aspx
   and links there-in
+
+WARNING!
+Before thinking about understanding or even extending this module, please keep
+in mind that module ppt_record_parser has a better "understanding" of the ppt
+file structure and will replace this module some time soon!
+
 """
 
 # === LICENSE =================================================================
 # TODO
+
+
 #------------------------------------------------------------------------------
 # TODO:
 # - make stream optional in PptUnexpectedData
@@ -22,14 +32,17 @@ References:
 # - license
 # - make buffered stream from output of iterative_decompress
 # - maybe can merge the 2 decorators into 1? (with_opened_main_stream)
-#
+# - REPLACE THIS MODULE with ppt_record_parser
+
+
 # CHANGELOG:
 # 2016-05-04 v0.01 CH: - start parsing "Current User" stream
 # 2016-07-20 v0.50 SL: - added Python 3 support
 # 2016-09-13       PL: - fixed olefile import for Python 2+3
 #                      - fixed format strings for Python 2.6 (issue #75)
+# 2017-04-23 v0.51 PL: - fixed absolute imports and issue #101
 
-__version__ = '0.50'
+__version__ = '0.51'
 
 
 # --- IMPORTS ------------------------------------------------------------------
@@ -39,15 +52,21 @@ import logging
 import struct
 import traceback
 import os
-
-try:
-    # absolute import when oletools is installed
-    import oletools.thirdparty.olefile as olefile
-except:
-    # relative import otherwise
-    import thirdparty.olefile as olefile
-
 import zlib
+
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if not _parent_dir in sys.path:
+    sys.path.insert(0, _parent_dir)
+
+from oletools.thirdparty.olefile import olefile
 
 
 # a global logger object used for debugging:
@@ -1130,7 +1149,7 @@ class PptParser(object):
             log.debug('using open OleFileIO')
             self.ole = ole
         else:
-            log.debug('Opening file ' + ole)
+            log.debug('Opening file {0}'.format(ole))
             self.ole = olefile.OleFileIO(ole)
 
         self.fast_fail = fast_fail
@@ -1404,7 +1423,7 @@ class PptParser(object):
         .. seealso:: search_vba_storage
         """
 
-        logging.debug('looking for VBA info containers')
+        log.debug('looking for VBA info containers')
 
         pattern = VBAInfoContainer.generate_pattern(
                                 rec_len=VBAInfoContainer.RECORD_LENGTH) \
@@ -1456,7 +1475,7 @@ class PptParser(object):
         .. seealso:: :py:meth:`search_vba_info`
         """
 
-        logging.debug('looking for VBA storage objects')
+        log.debug('looking for VBA storage objects')
         for obj_type in (ExternalObjectStorageUncompressed,
                          ExternalObjectStorageCompressed):
             # re-position stream at start

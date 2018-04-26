@@ -16,7 +16,7 @@ Usage in a python application:
 
 ezhexviewer project website: http://www.decalage.info/python/ezhexviewer
 
-ezhexviewer is copyright (c) 2012-2016, Philippe Lagadec (http://www.decalage.info)
+ezhexviewer is copyright (c) 2012-2017, Philippe Lagadec (http://www.decalage.info)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -46,16 +46,32 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # 2012-10-04 v0.02 PL: - added license
 # 2016-09-06 v0.50 PL: - added main function for entry points in setup.py
 # 2016-10-26       PL: - fixed to run on Python 2+3
+# 2017-03-23 v0.51 PL: - fixed display of control characters (issue #151)
+# 2017-04-26       PL: - fixed absolute imports (issue #141)
 
-__version__ = '0.50'
+__version__ = '0.51'
 
-#------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 # TODO:
 # + options to set title and msg
 
+# === IMPORTS ================================================================
 
-from .thirdparty.easygui import easygui
-import sys
+import sys, os
+
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if not _parent_dir in sys.path:
+    sys.path.insert(0, _parent_dir)
+
+from oletools.thirdparty.easygui import easygui
 
 # === PYTHON 2+3 SUPPORT ======================================================
 
@@ -106,7 +122,7 @@ def bchr(x):
 # PSF license: http://docs.python.org/license.html
 # Copyright (c) 2001-2012 Python Software Foundation; All Rights Reserved
 
-FILTER = b''.join([(len(repr(bchr(x)))<=4 and x != 0x0A) and bchr(x) or b'.' for x in range(256)])
+FILTER = b''.join([(len(repr(bchr(x)))<=4 and x>=0x20) and bchr(x) or b'.' for x in range(256)])
 
 def hexdump3(src, length=8, startindex=0):
     """

@@ -1,0 +1,250 @@
+""" Test the msodde blacklist feature
+
+Take a few examples from the standard (iso29500-1:2016) and see that they match
+"""
+
+import unittest
+from oletools.msodde import field_is_blacklisted
+
+EXAMPLES_MATCH = (
+    r'DATE',
+    r'DATE \@ "dddd, MMMM dd, yyyy"',
+    r'DATE \@ "dddd, MMMM dd, yyyy" \h',
+    r'DATE \@ "M/d/yyyy"',
+    r'DATE \@ "dddd, MMMM dd, yyyy"',
+    r'DATE \@ "MMMM d, yyyy"',
+    r'DATE \@ "M/d/yy"',
+    r'DATE \@ "yyyy-MM-dd"',
+    r'DATE \@ "d-MMM-yy"',
+    r'DATE \@ "M.d.yyyy"',
+    r'DATE \@ "MMM. d, yy"',
+    r'DATE \@ "d MMMM yyyy"',
+    r'DATE \@ "MMMM yy"',
+    r'DATE \@ "MMM-yy"',
+    r'DATE \@ "M/d/yyyy h:mm am/pm"',
+    r'DATE \@ "M/d/yyyy h:mm:ss am/pm"',
+    r'DATE \@ "h:mm am/pm"',
+    r'DATE \@ "h:mm:ss am/pm"',
+    r'DATE \@ "HH:mm"',
+    r'DATE \@ "\'Today is \'HH:mm:ss"',
+    r'USERNAME "mary smith" \* Caps',
+    r'USERNAME "mary smith" \* FirstCap',
+    r'USERNAME "Mary Smith" \* Lower',
+    r'USERNAME "Mary Smith" \* Upper',
+    r'DATE \* CHARFORMAT',
+    r'TIME \@ "HH:mm:ss" \* MERGEFORMAT',
+    r'ADVANCE \u 6',
+    r'ADVANCE \d 12',
+    r'ADVANCE \l 20',
+    r'ADVANCE \x 150',
+    r'AUTHOR',
+    r'AUTHOR "Tony Caruso"',
+    r'BIBLIOGRAPHY \l 1033',     # note: the original example has "/l 1033"
+    r'CITATION Ecma01 \l 1033',  # note: this also. Hope this is just a typo
+    r'COMMENTS',
+    r'COMMENTS "I came, I saw, I was not impressed."',
+    r'CREATEDATE',
+    r'CREATEDATE \@ "dddd, MMMM dd, yyyy HH:mm:ss"',
+    r'CREATEDATE \@ "dddd, MMMM dd, yyyy HH:mm:ss" \h',
+    r'CREATEDATE \@ "dddd, MMMM dd, yyyy HH:mm:ss" \s',
+    r'DATE',
+    r'DATE \@ "dddd, MMMM dd, yyyy HH:mm:ss"',
+    r'DATE \@ "dddd, MMMM dd, yyyy HH:mm:ss" \h',
+    r'DATE \@ "dddd, MMMM dd, yyyy HH:mm:ss" \s',
+    r'EDITTIME',
+    r'EDITTIME \* OrdText',
+    r'FILENAME \* Upper',
+    r'FILENAME \p',
+    r'FILESIZE \# #,##0',
+    r'FILESIZE \k',
+    r'FILESIZE \m',
+    r'FORMCHECKBOX',
+    r'FORMDROPDOWN',
+    r'FORMTEXT',
+    r'INDEX \c "1" \e "tab" \g " to " \h "A" \z "1033"',
+    r'KEYWORDS',
+    r'KEYWORDS "field, formatting, switch, syntax"',
+    r'LASTSAVEDBY \* Upper',
+    r'LISTNUM NumberDefault \l 3 \s 1',
+    r'LISTNUM',
+    r'LISTNUM NumberDefault',
+    r'LISTNUM NumberDefault \s 3',
+    r'LISTNUM NumberDefault \l 1',
+    r'LISTNUM NumberDefault \l 1 \s 1',
+    r'LISTNUM LegalDefault \l 1 \s 1',   # note: original example uses '\1'
+    r'NOTEREF F10',
+    r'NUMCHARS',
+    r'NUMCHARS \# #,##0',
+    r'NUMPAGES \# #,##0',
+    r'NUMPAGES \* OrdText',
+    r'NUMWORDS',
+    r'NUMWORDS \# #,##0',
+    r'PAGE',
+    r'PAGE \* ArabicDash',
+    r'PAGE \* ALPHABETIC',
+    r'PAGE \* roman',
+    r'PAGEREF Worldpop1990 \p',
+    r'PRINTDATE',
+    r'PRINTDATE \@ "dddd, MMMM dd, yyyy HH:mm:ss"',
+    r'REVNUM',
+    r'SAVEDATE',
+    r'SAVEDATE \@ "dddd, MMMM dd, yyyy HH:mm:ss"',
+    r'SECTION',
+    r'SECTION \* ArabicDash',
+    r'SECTION \* ALPHABETIC',
+    r'SECTION \* roman',
+    r'SECTIONPAGES',
+    r'SECTIONPAGES \* ArabicDash',
+    r'SECTIONPAGES \* ALPHABETIC',
+    r'SECTIONPAGES \* roman',
+    r'SEQ Figure',
+    r'SEQ Figure \* roman',
+    r'SEQ Figure \n',
+    r'SEQ Figure \c',
+    r'SEQ Figure \h',
+    r'SEQ Figure',
+    r'SEQ Figure \r 1',
+    r'SEQ Figure',
+    r'STYLEREF "Heading 3"',
+    r'STYLEREF "Last Name"',
+    r'STYLEREF "Last Name" \l',
+    r'SUBJECT',
+    r'SUBJECT "A specification for WordprocessingML Fields"',
+    r'SYMBOL 65',
+    r'SYMBOL 66 \a',
+    r'SYMBOL 67 \u',
+    r'SYMBOL 0x20ac \u',
+    r'SYMBOL 68',
+    r'SYMBOL 68 \f Symbol',
+    r'SYMBOL 40 \f Wingdings \s 24',
+    r'TA \l "Hotels v. Leisure Time" \c 2',
+    r'TA \l "Baldwin v. Alberti, 58 Wn. 2d 243 (1961)" \s "Baldwin v. Alberti"'
+        r'\c 1 \b',
+    r'INDEX \e "tab" \c "1" \z "1033"',
+    r'TEMPLATE \* Upper',
+    r'TEMPLATE \p',
+    r'TIME',
+    r'TIME \@ "dddd, MMMM dd, yyyy HH:mm:ss"',
+    r'TITLE "My Life, the Fantasy" \* Upper',
+    r'TITLE',
+    r'TOC \o "3-3" \h \z \t "Heading 1,1,Heading 2,2,Appendix 1,1,'
+                           r'Appendix 2,2,Unnumbered Heading,1"',
+    r'USERADDRESS',
+    r'USERADDRESS "10 Top Secret Lane, Chiswick" \* Upper',
+    r'USERINITIALS \* Lower',
+    r'USERINITIALS "JaJ"',
+    r'USERINITIALS "jaj" \* Upper',
+    r'XE "Office Open XML" \b',
+    r'XE "syntax" \f "Introduction"',
+    r'XE "behavior:implementation-defined" \b',
+    r'XE "Office Open XML" \i',
+    r'XE "behavior:implementation-defined:documenting" \b',
+    r'XE "grammar" \f "Introduction" \b',
+    r'XE "Office Open XML"',
+    r'XE "item: package-relationship" \t "See package-relationship item"',
+    r'XE "XML" \r OOXMLPageRange',
+    r'XE "grammar" \f "Introduction"',
+    r'XE "production" \f "Introduction"'
+    )
+
+# not (yet) covered
+# (because it should be handled as bad or because our parser does not cover it)
+EXAMPLES_NOMATCH = (
+    r'INCLUDETEXT "E:\\ReadMe.txt"',
+    r'IF DATE \@ "M-d"<>"1-1" "not " new year\'s day.',
+    r'=X + Y',
+    r'=Result * 10',
+    r'=((-1 + X^2) * 3 - Y)/2',
+    r'=COUNT(BELOW)',
+    r'=SUM(LEFT)',
+    r'=AVERAGE(ABOVE)',
+    r'=4+5 \# 00.00',
+    r'=9+6 \# $###',
+    r'=111053+111439 \# x##',
+    r'=1/8 \# 0.00x',
+    r'=3/4 \# .x',
+    r'=95.4 \# $###.00',
+    r'=2456800 \# $#,###,###',
+    r'=80-90 \# -##',
+    r'=90-80 \# -##',
+    r'=90-80 \# +##',
+    r'=33 \# ##%',
+    r'=Price*15% \# "##0.00 \'is the sales tax\'"',
+    r'=SUM(A1:D4) \# "##0.00 \'is the total of Table\' `table`"',
+    r'=Sales95 \# $#,##0.00;-$#,##0.00',
+    r'=Sales95 \# $#,##0.00;-$#,##0.00;$0',
+    r'1 \* AIUEO',
+    r'=54 \* ALPHABETIC',
+    r'=52 \* alphabetic',
+    r'AUTOTEXT "- PAGE -"',
+    r'AUTOTEXT "Yours truly,"',
+    r'AUTOTEXT Confidential',
+    r'AUTOTEXTLIST "List of salutations" \s Salutation '
+                                       r'\t "Choose a salutation"',
+    r'ADDRESSBLOCK \f "<<_TITLE0_ >><<_FIRST0_>><< _LAST0_>><< _SUFFIX0_>>\n'
+                     r'<<_COMPANY_>>\n<<_STREET1_>>\n'
+                     r'<<_STREET2_>>\n'
+                     r'<<_CITY_>><<, _STATE_>><< _POSTAL_>><<_COUNTRY_>>"',
+    r'ASK AskResponse "What is your first name?"',
+    r'REF AskResponse',
+    r'{ IF { = OR ( { COMPARE { MERGEFIELD CustomerNumber } >= 4 },',
+    r'{ COMPARE { MERGEFIELD CustomerRating } <= 9 } ) } = 1 '
+        r'"Credit not acceptable" "Credit acceptable"}',
+    r'{ COMPARE "{ MERGEFIELD PostalCode }" = "985*" }',
+    r'{ DATABASE \d "C:\\Data\\Sales93.mdb" \c "DSN=MS Access Database;',
+    r'DBQ=C:\\Data\\Sales93.mdb; FIL=RedISAM" '
+       r'\s "select * from \"Customer List\"" \f "2445" \t "2486" \l "2"',
+    r' FILLIN "Please enter the appointment time for '
+             r'MERGEFIELD PatientName :"',
+    r'GOTOBUTTON MyBookmark Dest',
+    r'GOTOBUTTON p3 Page',
+    r'GOTOBUTTON "f 2" Footnote',
+    r'HYPERLINK http://www.example.com/',
+    r'HYPERLINK "E:\\ReadMe.txt"',
+    r'{IF order >= 100 "Thanks" "The minimum order is 100 units" }',
+    r'INCLUDEPICTURE "file:///g:/photos/Ellen%20in%20Oslo.jpg"',
+    r'INCLUDETEXT "file:///C:/Winword/Port Development RFP" Summary',
+    r'INCLUDETEXT "file:///C:/Resume.xml" \n xmlns:a=\"resume-schema\" '
+                  r'\t "file:///C:/display.xsl" \x a:Resume/a:Name',
+    r'{ LINK Excel.Sheet.8 "C:\\My Documents\\Profits.xls"',
+    r'"Sheet1!R1C1:R4C4" \a \p }',
+    r'MERGEFIELD CoutesyTitle \f " "',
+    r'MERGEFIELD FirstName \f " "',
+    r'MERGEFIELD LastName',
+    r'= { PRINTDATE \@ "MMddyyyyHHmm" + MERGEREC }',
+    r'MERGEFIELD Name MERGEFIELD Phone',
+    r'NEXT MERGEFIELD Name MERGEFIELD Phone',
+    r'NEXT MERGEFIELD Name MERGEFIELD Phone',
+    r' QUOTE IF DATE \@ "M" = 1 "12" "= DATE \@ "M" - 1"/1/2000 \@',
+    r'"MMMM"',
+    r'RD C:\\Manual\\Chapters\\Chapter1.doc',
+    r'REF _Ref116788778 \r \h',
+    r'SET EnteredBy "Paul Smith"',
+    r'SET UnitCost 25.00',
+    r'SET Quantity FILLIN "Enter number of items ordered:"',
+    r'SET SalesTax 10%',
+    r'SET TotalCost = (UnitCost * Quantity) + ((UnitCost * Quantity) * '
+                     r'SalesTax)',
+    r'SKIPIF MERGEFIELD Order < 100',
+    )
+
+
+class TestBlacklist(unittest.TestCase):
+    """ Tests msodde blacklist feature """
+
+    def test_matches(self):
+        """ check a long list of examples that should match the blacklist """
+        for example in EXAMPLES_MATCH:
+            self.assertTrue(field_is_blacklisted(example),
+                            msg="Failed to match: '{0}'".format(example))
+
+    def test_nomatches(self):
+        """ check a long list of examples that should match the blacklist """
+        for example in EXAMPLES_NOMATCH:
+            self.assertFalse(field_is_blacklisted(example),
+                             msg="Accidentally matched: '{0}'".format(example))
+
+
+# just in case somebody calls this file as a script
+if __name__ == '__main__':
+    unittest.main()

@@ -22,7 +22,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE ==================================================================
 
-# MacroRaptor is copyright (c) 2016 Philippe Lagadec (http://www.decalage.info)
+# MacroRaptor is copyright (c) 2016-2017 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -55,6 +55,7 @@ http://www.decalage.info/python/oletools
 # 2016-09-05       PL: - added Document_BeforeClose keyword for MS Publisher (.pub)
 # 2016-10-25       PL: - fixed print for Python 3
 # 2016-12-21 v0.51 PL: - added more ActiveX macro triggers
+# 2017-03-08       PL: - fixed absolute imports
 
 __version__ = '0.51'
 
@@ -64,12 +65,24 @@ __version__ = '0.51'
 
 #--- IMPORTS ------------------------------------------------------------------
 
-import sys, logging, optparse, re
+import sys, logging, optparse, re, os
 
-from .thirdparty.xglob import xglob
-from .thirdparty.tablestream import tablestream
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if not _parent_dir in sys.path:
+    sys.path.insert(0, _parent_dir)
 
-import olevba
+from oletools.thirdparty.xglob import xglob
+from oletools.thirdparty.tablestream import tablestream
+
+from oletools import olevba
 
 # === LOGGING =================================================================
 
@@ -228,7 +241,7 @@ def main():
         'critical': logging.CRITICAL
         }
 
-    usage = 'usage: %prog [options] <filename> [filename2 ...]'
+    usage = 'usage: mraptor [options] <filename> [filename2 ...]'
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("-r", action="store_true", dest="recursive",
                       help='find files recursively in subdirectories.')
@@ -247,6 +260,8 @@ def main():
 
     # Print help if no arguments are passed
     if len(args) == 0:
+        print('MacroRaptor %s - http://decalage.info/python/oletools' % __version__)
+        print('This is work in progress, please report issues at %s' % URL_ISSUES)
         print(__doc__)
         parser.print_help()
         print('\nAn exit code is returned based on the analysis result:')

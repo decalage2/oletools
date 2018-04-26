@@ -18,7 +18,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# oleid is copyright (c) 2012-2016, Philippe Lagadec (http://www.decalage.info)
+# oleid is copyright (c) 2012-2018, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -53,8 +53,10 @@ from __future__ import print_function
 # 2014-11-30 v0.03 PL: - improved output with prettytable
 # 2016-10-25 v0.50 PL: - fixed print and bytes strings for Python 3
 # 2016-12-12 v0.51 PL: - fixed relative imports for Python 3 (issue #115)
+# 2017-04-26       PL: - fixed absolute imports (issue #141)
+# 2017-09-01       SA: - detect OpenXML encryption
 
-__version__ = '0.51'
+__version__ = '0.53dev6'
 
 
 #------------------------------------------------------------------------------
@@ -77,19 +79,20 @@ __version__ = '0.51'
 
 import optparse, sys, os, re, zlib, struct
 
-try:
-    # Relative imports (only works when imported from package):
-    from .thirdparty import olefile
-    from .thirdparty.prettytable import prettytable
-except:
-    # if it does not work, fall back to absolute imports:
-    # add this module's folder to sys.path (absolute+normalized path):
-    _thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
-    if not _thismodule_dir in sys.path:
-        sys.path.insert(0, _thismodule_dir)
-    # absolute imports:
-    from thirdparty import olefile
-    from thirdparty.prettytable import prettytable
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if not _parent_dir in sys.path:
+    sys.path.insert(0, _parent_dir)
+
+from oletools.thirdparty import olefile
+from oletools.thirdparty.prettytable import prettytable
 
 
 
@@ -115,7 +118,7 @@ def detect_flash (data):
         # Read Header
         header = data[start:start+3]
         # Read Version
-        ver = struct.unpack('<b', data[start+3])[0]
+        ver = struct.unpack('<b', data[start+3:start+4])[0]
         # Error check for version above 20
         #TODO: is this accurate? (check SWF specifications)
         if ver > 20:
@@ -209,6 +212,9 @@ class OleID:
         if 0x13 in self.suminfo:
             if self.suminfo[0x13] & 1:
                 self.encrypted.value = True
+        # check if this is an OpenXML encrypted file
+        elif self.ole.exists('EncryptionInfo'):
+            self.encrypted.value = True
 
     def check_word (self):
         word = Indicator('word', False, name='Word Document',

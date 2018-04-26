@@ -17,7 +17,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# rtfobj is copyright (c) 2012-2016, Philippe Lagadec (http://www.decalage.info)
+# rtfobj is copyright (c) 2012-2018, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -65,8 +65,24 @@ http://www.decalage.info/python/oletools
 # 2016-08-09       PL: - fixed issue #78, improved regex
 # 2016-09-06       PL: - fixed issue #83, backward compatible API
 # 2016-11-17 v0.51 PL: - updated call to oleobj.OleNativeStream
+# 2017-03-12       PL: - fixed imports for Python 2+3
+#                      - fixed hex decoding bug in RtfObjParser (issue #103)
+# 2017-03-29       PL: - fixed RtfParser to handle issue #152 (control word with
+#                        long parameter)
+# 2017-04-11       PL: - added detection of the OLE2Link vulnerability CVE-2017-0199
+# 2017-05-04       PL: - fixed issue #164 to handle linked OLE objects
+# 2017-06-08       PL: - fixed issue/PR #143: bin object with negative length
+# 2017-06-29       PL: - temporary fix for issue #178
+# 2017-07-14 v0.52 PL: - disabled logging of each control word (issue #184)
+# 2017-07-24       PL: - fixed call to RtfParser._end_of_file (issue #185)
+#                      - ignore optional space after \bin (issue #185)
+# 2017-09-06       PL: - fixed issue #196: \pxe is not a destination
+# 2018-01-11       CH: - speedup RTF parsing (PR #244)
+# 2018-02-01      JRM: - fixed issue #251: \bin without argument
+# 2018-04-09       PL: - fixed issue #280: OLE Package were not detected on Python 3
+# 2018-03-24 v0.53 PL: - fixed issue #292: \margSz is a destination
 
-__version__ = '0.51'
+__version__ = '0.53dev5'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -82,11 +98,23 @@ __version__ = '0.51'
 
 import re, os, sys, binascii, logging, optparse
 import os.path
+from time import time
 
-from .thirdparty.xglob import xglob
-from .thirdparty.tablestream import tablestream
-from .oleobj import OleObject, OleNativeStream
-from . import oleobj
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if not _parent_dir in sys.path:
+    sys.path.insert(0, _parent_dir)
+
+from oletools.thirdparty.xglob import xglob
+from oletools.thirdparty.tablestream import tablestream
+from oletools import oleobj
 
 # === LOGGING =================================================================
 
@@ -172,8 +200,8 @@ ASCII_NAME = b'([a-zA-Z]{1,250})'
 # SIGNED_INTEGER = r'(-?\d{1,250})'
 SIGNED_INTEGER = b'(-?\\d+)'
 
-# Note for issue #78: need to match "\A-" not followed by digits
-CONTROL_WORD = b'(?:\\\\' + ASCII_NAME + b'(?:' + SIGNED_INTEGER + b'(?=[^0-9])|(?=[^a-zA-Z0-9])))'
+# Note for issue #78: need to match "\A-" not followed by digits (or the end of string)
+CONTROL_WORD = b'(?:\\\\' + ASCII_NAME + b'(?:' + SIGNED_INTEGER + b'(?=[^0-9])|(?=[^a-zA-Z0-9])|$))'
 
 re_control_word = re.compile(CONTROL_WORD)
 
@@ -260,11 +288,17 @@ DESTINATION_CONTROL_WORDS = frozenset((
     b"mzeroAsc", b"mzeroDesc", b"mzeroWid", b"nesttableprops", b"nexctfile", b"nonesttables", b"objalias", b"objclass",
     b"objdata", b"object", b"objname", b"objsect", b"objtime", b"oldcprops", b"oldpprops", b"oldsprops", b"oldtprops",
     b"oleclsid", b"operator", b"panose", b"password", b"passwordhash", b"pgp", b"pgptbl", b"picprop", b"pict", b"pn", b"pnseclvl",
-    b"pntext", b"pntxta", b"pntxtb", b"printim", b"private", b"propname", b"protend", b"protstart", b"protusertbl", b"pxe",
+    b"pntext", b"pntxta", b"pntxtb", b"printim",
+    # It seems \private should not be treated as a destination (issue #178)
+    # Same for \pxe (issue #196)
+    # b"private", b"pxe",
+    b"propname", b"protend", b"protstart", b"protusertbl",
     b"result", b"revtbl", b"revtim", b"rsidtbl", b"rtf", b"rxe", b"shp", b"shpgrp", b"shpinst", b"shppict", b"shprslt", b"shptxt",
     b"sn", b"sp", b"staticval", b"stylesheet", b"subject", b"sv", b"svb", b"tc", b"template", b"themedata", b"title", b"txe", b"ud",
     b"upr", b"userprops", b"wgrffmtfilter", b"windowcaption", b"writereservation", b"writereservhash", b"xe", b"xform",
-    b"xmlattrname", b"xmlattrvalue", b"xmlclose", b"xmlname", b"xmlnstbl", b"xmlopen"
+    b"xmlattrname", b"xmlattrvalue", b"xmlclose", b"xmlname", b"xmlnstbl", b"xmlopen",
+    # added for issue #292: https://github.com/decalage2/oletools/issues/292
+    b"margSz",
     ))
 
 
@@ -275,11 +309,31 @@ if sys.version_info[0] <= 2:
     BACKSLASH = '\\'
     BRACE_OPEN = '{'
     BRACE_CLOSE = '}'
+    UNICODE_TYPE = unicode
 else:
     # Python 3.x - Integers
     BACKSLASH = ord('\\')
     BRACE_OPEN = ord('{')
     BRACE_CLOSE = ord('}')
+    UNICODE_TYPE = str
+
+RTF_MAGIC = b'\x7b\\rt'   # \x7b == b'{' but does not mess up auto-indent
+
+
+def duration_str(duration):
+    """ create a human-readable string representation of duration [s] """
+    value = duration
+    unit = 's'
+    if value > 90:
+        value /= 60.
+        unit = 'min'
+        if value > 90:
+            value /= 60.
+            unit = 'h'
+            if value > 72:
+                value /= 24.
+                unit = 'days'
+    return '{0:.1f}{1}'.format(value, unit)
 
 
 #=== CLASSES =================================================================
@@ -309,10 +363,16 @@ class Destination(object):
 
 class RtfParser(object):
     """
-    Very simple generic RTF parser
+    Very simple but robust generic RTF parser, designed to handle
+    malformed malicious RTF as MS Word does
     """
 
     def __init__(self, data):
+        """
+        RtfParser constructor.
+        
+        :param data: bytes object containing the RTF data to be parsed 
+        """
         self.data = data
         self.index = 0
         self.size = len(data)
@@ -322,43 +382,84 @@ class RtfParser(object):
         self.destinations = [document_destination]
         self.current_destination = document_destination
 
+    def _report_progress(self, start_time):
+        """ report progress on parsing at regular intervals """
+        now = float(time())
+        if now == start_time or self.size == 0:
+            return   # avoid zero-division
+        percent_done = 100. * self.index / self.size
+        time_per_index = (now - start_time) / float(self.index)
+        finish_estim = float(self.size - self.index) * time_per_index
+
+        log.debug('After {0} finished {1:4.1f}% of current file ({2} bytes); '
+                  'will finish in approx {3}'
+                  .format(duration_str(now-start_time), percent_done,
+                          self.size, duration_str(finish_estim)))
+
     def parse(self):
+        """
+        Parse the RTF data
+        
+        :return: nothing
+        """
+        # Start at beginning of data
         self.index = 0
+        start_time = time()
+        last_report = start_time
+        # Loop until the end
         while self.index < self.size:
+            if time() - last_report > 15:     # report every 15s
+                self._report_progress(start_time)
+                last_report = time()
             if self.data[self.index] == BRACE_OPEN:
+                # Found an opening brace "{": Start of a group
                 self._open_group()
                 self.index += 1
                 continue
             if self.data[self.index] == BRACE_CLOSE:
+                # Found a closing brace "}": End of a group
                 self._close_group()
                 self.index += 1
                 continue
             if self.data[self.index] == BACKSLASH:
-                m = re_control_word.match(self.data, self.index)
+                # Found a backslash "\": Start of a control word or control symbol
+                # Use a regex to extract the control word name if present:
+                # NOTE: the full length of the control word + its optional integer parameter
+                # is limited by MS Word at 253 characters, so we have to run the regex
+                # on a cropped string:
+                data_cropped = self.data[self.index:self.index+254]
+                # append a space so that the regex can check the following character:
+                data_cropped += b' '
+                # m = re_control_word.match(self.data, self.index, self.index+253)
+                m = re_control_word.match(data_cropped)
                 if m:
                     cword = m.group(1)
                     param = None
                     if len(m.groups()) > 1:
                         param = m.group(2)
-                    # log.debug('control word %r at index %Xh - cword=%r param=%r' % (m.group(), self.index, cword, param))
+                    # log.debug('control word at index %Xh - cword=%r param=%r  %r' % (self.index, cword, param, m.group()))
                     self._control_word(m, cword, param)
                     self.index += len(m.group())
                     # if it's \bin, call _bin after updating index
                     if cword == b'bin':
                         self._bin(m, param)
                     continue
+                # Otherwise, it may be a control symbol:
                 m = re_control_symbol.match(self.data, self.index)
                 if m:
                     self.control_symbol(m)
                     self.index += len(m.group())
                     continue
+            # Otherwise, this is plain text:
+            # Use a regex to match all characters until the next brace or backslash:
             m = re_text.match(self.data, self.index)
             if m:
                 self._text(m)
                 self.index += len(m.group())
                 continue
             raise RuntimeError('Should not have reached this point - index=%Xh' % self.index)
-        self.end_of_file()
+        # call _end_of_file to make sure all groups are closed properly
+        self._end_of_file()
 
 
     def _open_group(self):
@@ -428,6 +529,8 @@ class RtfParser(object):
 
     def _control_word(self, matchobject, cword, param):
         #log.debug('control word %r at index %Xh' % (matchobject.group(), self.index))
+        # TODO: according to RTF specs v1.9.1, "Destination changes are legal only immediately after an opening brace ({)"
+        # (not counting the special control symbol \*, of course)
         if cword in DESTINATION_CONTROL_WORDS:
             # log.debug('%r is a destination control word: starting a new destination' % cword)
             self._open_destination(matchobject, cword)
@@ -451,10 +554,24 @@ class RtfParser(object):
         pass
 
     def _bin(self, matchobject, param):
-        binlen = int(param)
+        if param is None:
+            log.info('Detected anti-analysis trick: \\bin object without length at index %X' % self.index)
+            binlen = 0
+        else:
+            binlen = int(param)
+        # handle negative length
+        if binlen < 0:
+            log.info('Detected anti-analysis trick: \\bin object with negative length at index %X' % self.index)
+            # binlen = int(param.strip('-'))
+            # According to my tests, if the bin length is negative,
+            # it should be treated as a null length:
+            binlen=0
+        # ignore optional space after \bin
+        if self.data[self.index] == ' ':
+            log.debug('\\bin: ignoring whitespace before data')
+            self.index += 1
         log.debug('\\bin: reading %d bytes of binary data' % binlen)
-        # TODO: handle optional space?
-        # TODO: handle negative length, and length greater than data
+        # TODO: handle length greater than data
         bindata = self.data[self.index:self.index + binlen]
         self.index += binlen
         self.bin(bindata)
@@ -466,7 +583,7 @@ class RtfParser(object):
         # log.debug('%Xh Reached End of File')
         # close any group/destination that is still open:
         while self.group_level > 0:
-            # log.debug('Group Level = %d, closing group' % self.group_level)
+            log.debug('Group Level = %d, closing group' % self.group_level)
             self._close_group()
         self.end_of_file()
 
@@ -515,6 +632,7 @@ class RtfObjParser(RtfParser):
         self.objects = []
 
     def open_destination(self, destination):
+        # TODO: detect when the destination is within an objdata, report as obfuscation
         if destination.cword == b'objdata':
             log.debug('*** Start object data at index %Xh' % destination.start)
 
@@ -528,10 +646,10 @@ class RtfObjParser(RtfParser):
             # Filter out all whitespaces first (just ignored):
             hexdata1 = destination.data.translate(None, b' \t\r\n\f\v')
             # Then filter out any other non-hex character:
-            hexdata = re.sub(b'[^a-hA-H0-9]', b'', hexdata1)
+            hexdata = re.sub(b'[^a-fA-F0-9]', b'', hexdata1)
             if len(hexdata) < len(hexdata1):
                 # this is only for debugging:
-                nonhex = re.sub(b'[a-hA-H0-9]', b'', hexdata1)
+                nonhex = re.sub(b'[a-fA-F0-9]', b'', hexdata1)
                 log.debug('Found non-hex chars in hexdata: %r' % nonhex)
             # MS Word accepts an extra hex digit, so we need to trim it if present:
             if len(hexdata) & 1:
@@ -542,7 +660,7 @@ class RtfObjParser(RtfParser):
             rtfobj.rawdata = object_data
             # TODO: check if all hex data is extracted properly
 
-            obj = OleObject()
+            obj = oleobj.OleObject()
             try:
                 obj.parse(object_data)
                 rtfobj.format_id = obj.format_id
@@ -550,8 +668,9 @@ class RtfObjParser(RtfParser):
                 rtfobj.oledata_size = obj.data_size
                 rtfobj.oledata = obj.data
                 rtfobj.is_ole = True
-                if obj.class_name.lower() == 'package':
-                    opkg = OleNativeStream(bindata=obj.data, package=True)
+                if obj.class_name.lower() == b'package':
+                    opkg = oleobj.OleNativeStream(bindata=obj.data,
+                                                  package=True)
                     rtfobj.filename = opkg.filename
                     rtfobj.src_path = opkg.src_path
                     rtfobj.temp_path = opkg.temp_path
@@ -571,6 +690,7 @@ class RtfObjParser(RtfParser):
         # TODO: extract useful cwords such as objclass
         # TODO: keep track of cwords inside objdata, because it is unusual and indicates potential obfuscation
         # TODO: same with control symbols, and opening bracket
+        # log.debug('- Control word "%s", param=%s, level=%d' % (cword, param, self.group_level))
         pass
 
 
@@ -596,7 +716,50 @@ def rtf_iter_objects(filename, min_size=32):
         yield obj.start, orig_len, obj.rawdata
 
 
+def is_rtf(arg, treat_str_as_data=False):
+    """ determine whether given file / stream / array represents an rtf file
 
+    arg can be either a file name, a byte stream (located at start), a
+    list/tuple or a an iterable that contains bytes.
+
+    For str it is not clear whether data is a file name or the data read from
+    it (at least for py2-str which is bytes). Argument treat_str_as_data
+    clarifies.
+    """
+    magic_len = len(RTF_MAGIC)
+    if isinstance(arg, UNICODE_TYPE):
+        with open(arg, 'rb') as reader:
+            return reader.read(len(RTF_MAGIC)) == RTF_MAGIC
+    if isinstance(arg, bytes) and not isinstance(arg, str):  # only in PY3
+        return arg[:magic_len] == RTF_MAGIC
+    if isinstance(arg, bytearray):
+        return arg[:magic_len] == RTF_MAGIC
+    if isinstance(arg, str):      # could be bytes, but we assume file name
+        if treat_str_as_data:
+            try:
+                return arg[:magic_len].encode('ascii', errors='strict')\
+                    == RTF_MAGIC
+            except UnicodeError:
+                return False
+        else:
+            with open(arg, 'rb') as reader:
+                return reader.read(len(RTF_MAGIC)) == RTF_MAGIC
+    if hasattr(arg, 'read'):      # a stream (i.e. file-like object)
+        return arg.read(len(RTF_MAGIC)) == RTF_MAGIC
+    if isinstance(arg, (list, tuple)):
+        iter_arg = iter(arg)
+    else:
+        iter_arg = arg
+
+    # check iterable
+    for magic_byte in zip(RTF_MAGIC):
+        try:
+            if next(iter_arg) not in magic_byte:
+                return False
+        except StopIteration:
+            return False
+
+    return True  # checked the complete magic without returning False --> match
 
 
 def sanitize_filename(filename, replacement='_', max_length=200):
@@ -647,11 +810,22 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
     rtfp = RtfObjParser(data)
     rtfp.parse()
     for rtfobj in rtfp.objects:
+        ole_color = None
         pkg_color = None
         if rtfobj.is_ole:
-            ole_column = 'format_id: %d\n' % rtfobj.format_id
+            ole_column = 'format_id: %d ' % rtfobj.format_id
+            if rtfobj.format_id == oleobj.OleObject.TYPE_EMBEDDED:
+                ole_column += '(Embedded)\n'
+            elif rtfobj.format_id == oleobj.OleObject.TYPE_LINKED:
+                ole_column += '(Linked)\n'
+            else:
+                ole_column += '(Unknown)\n'
             ole_column += 'class name: %r\n' % rtfobj.class_name
-            ole_column += 'data size: %d' % rtfobj.oledata_size
+            # if the object is linked and not embedded, data_size=None:
+            if rtfobj.oledata_size is None:
+                ole_column += 'data size: N/A'
+            else:
+                ole_column += 'data size: %d' % rtfobj.oledata_size
             if rtfobj.is_package:
                 pkg_column = 'Filename: %r\n' % rtfobj.filename
                 pkg_column += 'Source path: %r\n' % rtfobj.src_path
@@ -665,6 +839,11 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                     pkg_column += '\nEXECUTABLE FILE'
             else:
                 pkg_column = 'Not an OLE Package'
+            # Detect OLE2Link exploit
+            # http://www.kb.cert.org/vuls/id/921560
+            if rtfobj.class_name == 'OLE2Link':
+                ole_color = 'red'
+                ole_column += '\nPossibly an exploit for the OLE2Link vulnerability (VU#921560, CVE-2017-0199)'
         else:
             pkg_column = ''
             ole_column = 'Not a well-formed OLE object'
@@ -674,7 +853,7 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
             '%08Xh' % rtfobj.start,
             ole_column,
             pkg_column
-            ), colors=(None, None, None, pkg_color)
+            ), colors=(None, None, ole_color, pkg_color)
         )
         tstream.write_sep()
     if save_object:
@@ -701,7 +880,8 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                     fname = '%s_object_%08X.noname' % (fname_prefix, rtfobj.start)
                 print('  saving to file %s' % fname)
                 open(fname, 'wb').write(rtfobj.olepkgdata)
-            elif rtfobj.is_ole:
+            # When format_id=TYPE_LINKED, oledata_size=None
+            elif rtfobj.is_ole and rtfobj.oledata_size is not None:
                 print('Saving file embedded in OLE object #%d:' % i)
                 print('  format_id  = %d' % rtfobj.format_id)
                 print('  class name = %r' % rtfobj.class_name)
@@ -728,7 +908,9 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
 
 def main():
     # print banner with version
-    print ('rtfobj %s - http://decalage.info/python/oletools' % __version__)
+    python_version = '%d.%d.%d' % sys.version_info[0:3]
+    print ('rtfobj %s on Python %s - http://decalage.info/python/oletools' %
+           (__version__, python_version))
     print ('THIS IS WORK IN PROGRESS - Check updates regularly!')
     print ('Please report any issue at https://github.com/decalage2/oletools/issues')
     print ('')
@@ -787,7 +969,7 @@ def main():
                         format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
     log.setLevel(logging.NOTSET)
-    oleobj.log.setLevel(logging.NOTSET)
+    oleobj.enable_logging()
 
     for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
         zip_password=options.zip_password, zip_fname=options.zip_fname):
