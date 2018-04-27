@@ -47,6 +47,7 @@ __version__ = '0.53dev5'
 
 KNOWN_CLSIDS = {
     # MS Office files
+    'F4754C9B-64F5-4B40-8AF4-679732AC0607': 'Microsoft Word Document',
     '00020906-0000-0000-C000-000000000046': 'Microsoft Word 97-2003 Document',
     '00020900-0000-0000-C000-000000000046': 'Microsoft Word 6.0-7.0 Document',
     '00020832-0000-0000-C000-000000000046': 'Excel sheet with macro enabled',
@@ -65,14 +66,13 @@ KNOWN_CLSIDS = {
     "996BF5E0-8044-4650-ADEB-0B013914E99C": "MSCOMCTL.ListViewCtrl (may trigger CVE-2012-0158)",
     "C74190B6-8589-11d1-B16A-00C0F0283628": "MSCOMCTL.TreeCtrl (may trigger CVE-2012-0158)",
     "9181DC5F-E07D-418A-ACA6-8EEA1ECB8E9E": "MSCOMCTL.TreeCtrl (may trigger CVE-2012-0158)",
-    "1EFB6596-857C-11D1-B16A-00C0F0283628": "MSCOMCTL.TabStrip (may trigger CVE-2012-1856, CVE-2013-3906)",
+    "1EFB6596-857C-11D1-B16A-00C0F0283628": "MSCOMCTL.TabStrip (may trigger CVE-2012-1856, CVE-2013-3906 - often used for heap spray)",
     "66833FE6-8583-11D1-B16A-00C0F0283628": "MSCOMCTL.Toolbar (may trigger CVE-2012-1856)",
     "DD9DA666-8594-11D1-B16A-00C0F0283628": "MSCOMCTL.ImageComboCtrl (may trigger CVE-2014-1761)",
     "00000535-0000-0010-8000-00AA006D2EA4": "ADODB.RecordSet (may trigger CVE-2015-0097)",
     "0E59F1D5-1FBE-11D0-8FF2-00A0D10038BC": "MSScriptControl.ScriptControl (may trigger CVE-2015-0097)",
     "05741520-C4EB-440A-AC3F-9643BBC9F847": "otkloadr.WRLoader (may trigger CVE-2015-1641)",
-    'A08A033D-1A75-4AB6-A166-EAD02F547959': 'otkloadr CWRAssembly Object (may trigger CVE-2015-1641)',
-    # TODO "F4754C9B-64F5-4B40-8AF4-679732AC0607": "Microsoft Word Document (may trigger CVE-2015-1641)", ???
+    'A08A033D-1A75-4AB6-A166-EAD02F547959': 'otkloadr WRAssembly Object (may trigger CVE-2015-1641)',
     "4C599241-6926-101B-9992-00000B65C6F9": "Forms.Image (may trigger CVE-2015-2424)",
     "44F9A03B-A3EC-4F3B-9364-08E0007F21DF": "Control.TaskSymbol (may trigger CVE-2015-2424)",
     '3050F4D8-98B5-11CF-BB82-00AA00BDCE0B': 'HTML Application (may trigger CVE-2017-0199)',
@@ -93,5 +93,12 @@ KNOWN_CLSIDS = {
     # ref: https://justhaifei1.blogspot.nl/2017/07/bypassing-microsofts-cve-2017-0199-patch.html
     '06290BD2-48AA-11D2-8432-006008C3FBFC': 'Factory bindable using IPersistMoniker (scripletfile)',
     '06290BD3-48AA-11D2-8432-006008C3FBFC': 'Script Moniker, aka Moniker to a Windows Script Component (may trigger CVE-2017-0199)',
+
+    "F414C260-6AC0-11CF-B6D1-00AA00BBBB58": "jscript.dll - JScript Language (ProgID: ECMAScript, JavaScript, JScript, LiveScript)",
+    "B54F3741-5B07-11CF-A4B0-00AA004A55E8": "vbscript.dll - VB Script Language (ProgID: VBS, VBScript)",
+    "85131630-480C-11D2-B1F9-00C04F86C324": "scrrun.dll - JS File Host Encode Object (ProgID: JSFile.HostEncode)",
+    "85131631-480C-11D2-B1F9-00C04F86C324": "scrrun.dll - VBS File Host Encode Object (ProgID: VBSFile.HostEncode)",
+    "0CF774D0-F077-11D1-B1BC-00C04F86C324": "scrrun.dll - HTML File Host Encode Object (ProgID: HTML.HostEncode)",
+    "0D43FE01-F093-11CF-8940-00A0C9054228": "scrrun.dll - FileSystem Object (ProgID: Scripting.FileSystemObject)",
 }
 
