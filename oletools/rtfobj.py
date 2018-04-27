@@ -81,8 +81,9 @@ http://www.decalage.info/python/oletools
 # 2018-02-01      JRM: - fixed issue #251: \bin without argument
 # 2018-04-09       PL: - fixed issue #280: OLE Package were not detected on Python 3
 # 2018-03-24 v0.53 PL: - fixed issue #292: \margSz is a destination
+# 2018-04-27       PL: - extract and display the CLSID of OLE objects
 
-__version__ = '0.53dev5'
+__version__ = '0.53dev7'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -115,6 +116,8 @@ if not _parent_dir in sys.path:
 from oletools.thirdparty.xglob import xglob
 from oletools.thirdparty.tablestream import tablestream
 from oletools import oleobj
+from oletools.thirdparty.olefile import olefile
+from oletools.common import clsid
 
 # === LOGGING =================================================================
 
@@ -618,6 +621,10 @@ class RtfObject(object):
         self.filename = None
         self.src_path = None
         self.temp_path = None
+        # Additional OLE object data
+        self.clsid = None
+        self.clsid_desc = None
+
 
 
 
@@ -676,6 +683,12 @@ class RtfObjParser(RtfParser):
                     rtfobj.temp_path = opkg.temp_path
                     rtfobj.olepkgdata = opkg.data
                     rtfobj.is_package = True
+                else:
+                    if olefile.isOleFile(obj.data):
+                        ole = olefile.OleFileIO(obj.data)
+                        rtfobj.clsid = ole.root.clsid
+                        rtfobj.clsid_desc = clsid.KNOWN_CLSIDS.get(rtfobj.clsid,
+                            'unknown CLSID (please report at https://github.com/decalage2/oletools/issues)')
             except:
                 pass
                 log.debug('*** Not an OLE 1.0 Object')
@@ -803,15 +816,14 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
     print('='*79)
     print('File: %r - size: %d bytes' % (filename, len(data)))
     tstream = tablestream.TableStream(
-        column_width=(3, 10, 31, 31),
-        header_row=('id', 'index', 'OLE Object', 'OLE Package'),
+        column_width=(3, 10, 63),
+        header_row=('id', 'index', 'OLE Object'),
         style=tablestream.TableStyleSlim
     )
     rtfp = RtfObjParser(data)
     rtfp.parse()
     for rtfobj in rtfp.objects:
         ole_color = None
-        pkg_color = None
         if rtfobj.is_ole:
             ole_column = 'format_id: %d ' % rtfobj.format_id
             if rtfobj.format_id == oleobj.OleObject.TYPE_EMBEDDED:
@@ -827,33 +839,37 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
             else:
                 ole_column += 'data size: %d' % rtfobj.oledata_size
             if rtfobj.is_package:
-                pkg_column = 'Filename: %r\n' % rtfobj.filename
-                pkg_column += 'Source path: %r\n' % rtfobj.src_path
-                pkg_column += 'Temp path = %r' % rtfobj.temp_path
-                pkg_color = 'yellow'
+                ole_column += '\nOLE Package object:'
+                ole_column += '\nFilename: %r' % rtfobj.filename
+                ole_column += '\nSource path: %r' % rtfobj.src_path
+                ole_column += '\nTemp path = %r' % rtfobj.temp_path
+                ole_color = 'yellow'
                 # check if the file extension is executable:
                 _, ext = os.path.splitext(rtfobj.filename)
                 log.debug('File extension: %r' % ext)
                 if re_executable_extensions.match(ext):
-                    pkg_color = 'red'
-                    pkg_column += '\nEXECUTABLE FILE'
-            else:
-                pkg_column = 'Not an OLE Package'
+                    ole_color = 'red'
+                    ole_column += '\nEXECUTABLE FILE'
+            # else:
+            #     pkg_column = 'Not an OLE Package'
+            if rtfobj.clsid is not None:
+                ole_column += '\nCLSID: %s' % rtfobj.clsid
+                ole_column += '\n%s' % rtfobj.clsid_desc
+                if 'CVE' in rtfobj.clsid_desc:
+                    ole_color = 'red'
             # Detect OLE2Link exploit
             # http://www.kb.cert.org/vuls/id/921560
             if rtfobj.class_name == 'OLE2Link':
                 ole_color = 'red'
                 ole_column += '\nPossibly an exploit for the OLE2Link vulnerability (VU#921560, CVE-2017-0199)'
         else:
-            pkg_column = ''
             ole_column = 'Not a well-formed OLE object'
         tstream.write_row((
             rtfp.objects.index(rtfobj),
             # filename,
             '%08Xh' % rtfobj.start,
-            ole_column,
-            pkg_column
-            ), colors=(None, None, ole_color, pkg_color)
+            ole_column
+            ), colors=(None, None, ole_color)
         )
         tstream.write_sep()
     if save_object:
