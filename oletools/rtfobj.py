@@ -82,8 +82,9 @@ http://www.decalage.info/python/oletools
 # 2018-04-09       PL: - fixed issue #280: OLE Package were not detected on Python 3
 # 2018-03-24 v0.53 PL: - fixed issue #292: \margSz is a destination
 # 2018-04-27       PL: - extract and display the CLSID of OLE objects
+# 2018-04-30       PL: - handle "\'" obfuscation trick - issue #281
 
-__version__ = '0.53dev7'
+__version__ = '0.53dev8'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -705,6 +706,28 @@ class RtfObjParser(RtfParser):
         # TODO: same with control symbols, and opening bracket
         # log.debug('- Control word "%s", param=%s, level=%d' % (cword, param, self.group_level))
         pass
+
+    def control_symbol(self, matchobject):
+        # log.debug('control symbol %r at index %Xh' % (matchobject.group(), self.index))
+        symbol = matchobject.group()[1:2]
+        if symbol == "'":
+            # read the two hex digits following "\'" - which can be any characters, not just hex digits
+            # (because within an objdata destination, they are simply ignored)
+            hexdigits = self.data[self.index+2:self.index+4]
+            # print(hexdigits)
+            # move the index two bytes forward
+            self.index += 2
+            if self.current_destination.cword == 'objdata':
+                # Here's the tricky part: there is a bug in the MS Word RTF parser at least
+                # until Word 2016, that removes the last hex digit before the \'hh control
+                # symbol, ONLY IF the number of hex digits read so far is odd.
+                # So to emulate that bug, we have to clean the data read so far by keeping
+                # only the hex digits:
+                # Filter out any non-hex character:
+                self.current_destination.data = re.sub(b'[^a-fA-F0-9]', b'', self.current_destination.data)
+                if len(self.current_destination.data) & 1 == 1:
+                    # If the number of hex digits is odd, remove the last one:
+                    self.current_destination.data = self.current_destination.data[:-1]
 
 
 #=== FUNCTIONS ===============================================================
