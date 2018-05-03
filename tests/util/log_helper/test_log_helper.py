@@ -5,17 +5,20 @@ Check if it handles imported modules correctly
 and that the default silent logger won't log when nothing is enabled
 """
 
+from __future__ import print_function
+
 import unittest
 import sys
 import json
 import re
 from tests.util.log_helper import log_helper_test_main
 from tests.util.log_helper import log_helper_test_imported
-from os.path import dirname, join
+from os.path import dirname, join, relpath, abspath
 from subprocess import check_output, STDOUT, CalledProcessError
 
-ROOT_DIRECTORY = dirname(dirname(dirname(__file__)))
-TEST_FILE = join(dirname(__file__), 'log_helper_test_main.py')
+# this is the common base of "tests" and "oletools" dirs
+ROOT_DIRECTORY = dirname(dirname(dirname(dirname(abspath(__file__)))))
+TEST_FILE = relpath(join(dirname(__file__), 'log_helper_test_main.py'), ROOT_DIRECTORY)
 PYTHON_EXECUTABLE = sys.executable
 REGEX = re.compile('<#(.*)(:?#>|Traceback)', re.MULTILINE | re.DOTALL)
 
@@ -146,6 +149,10 @@ class TestLogHelper(unittest.TestCase):
                 output = ex.output
             else:
                 # we want tests to fail if an exception occur
+                print('Caught unexpected error. Print output and re-raise')
+                for line in ex.output.splitlines():
+                    print('error output: {}'.format(line.rstrip()))
+                print('(If you have errors about imports, try unsetting PYTHONPATH)')
                 raise ex
 
         return REGEX.search(output).group(1).strip()
