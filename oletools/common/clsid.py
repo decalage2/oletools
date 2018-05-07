@@ -42,14 +42,16 @@ http://www.decalage.info/python/oletools
 #                  SQ: - several additions by Shiao Qu
 # 2018-04-18       PL: - added known-bad CLSIDs from Cuckoo sandbox (issue #290)
 
-__version__ = '0.53dev5'
+__version__ = '0.53dev9'
 
 
 KNOWN_CLSIDS = {
     # MS Office files
-    'F4754C9B-64F5-4B40-8AF4-679732AC0607': 'Microsoft Word Document',
-    '00020906-0000-0000-C000-000000000046': 'Microsoft Word 97-2003 Document',
     '00020900-0000-0000-C000-000000000046': 'Microsoft Word 6.0-7.0 Document',
+    '00020906-0000-0000-C000-000000000046': 'Microsoft Word 97-2003 Document',
+    'F4754C9B-64F5-4B40-8AF4-679732AC0607': 'Microsoft Word Document',
+
+    '00020820-0000-0000-C000-000000000046': 'Microsoft Excel 97-2003 Worksheet',
     '00020832-0000-0000-C000-000000000046': 'Excel sheet with macro enabled',
     '00020833-0000-0000-C000-000000000046': 'Excel binary sheet with macro enabled',
 
