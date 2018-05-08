@@ -57,27 +57,27 @@ KNOWN_CLSIDS = {
 
     # OLE Objects
     '00000300-0000-0000-C000-000000000046': 'StdOleLink (embedded OLE object)',
-    'D7053240-CE69-11CD-A777-00DD01143C57': 'Microsoft Forms 2.0 CommandButton',
     '0002CE02-0000-0000-C000-000000000046': 'MS Equation Editor (may trigger CVE-2017-11882 or CVE-2018-0802)',
-    'F20DA720-C02F-11CE-927B-0800095AE340': 'Package (may contain and run any file)',
     '0003000C-0000-0000-C000-000000000046': 'Package (may contain and run any file)',
     'D27CDB6E-AE6D-11CF-96B8-444553540000': 'Shockwave Flash Object (may trigger many CVEs)',
+    'D7053240-CE69-11CD-A777-00DD01143C57': 'Microsoft Forms 2.0 CommandButton',
+    'F20DA720-C02F-11CE-927B-0800095AE340': 'Package (may contain and run any file)',
     # Known-bad CLSIDs from Cuckoo Sandbox:
     # https://github.com/cuckoosandbox/community/blob/master/modules/signatures/windows/office.py#L314
-    "BDD1F04B-858B-11D1-B16A-00C0F0283628": "MSCOMCTL.ListViewCtrl (may trigger CVE-2012-0158)",
-    "996BF5E0-8044-4650-ADEB-0B013914E99C": "MSCOMCTL.ListViewCtrl (may trigger CVE-2012-0158)",
-    "C74190B6-8589-11d1-B16A-00C0F0283628": "MSCOMCTL.TreeCtrl (may trigger CVE-2012-0158)",
-    "9181DC5F-E07D-418A-ACA6-8EEA1ECB8E9E": "MSCOMCTL.TreeCtrl (may trigger CVE-2012-0158)",
-    "1EFB6596-857C-11D1-B16A-00C0F0283628": "MSCOMCTL.TabStrip (may trigger CVE-2012-1856, CVE-2013-3906 - often used for heap spray)",
-    "66833FE6-8583-11D1-B16A-00C0F0283628": "MSCOMCTL.Toolbar (may trigger CVE-2012-1856)",
-    "DD9DA666-8594-11D1-B16A-00C0F0283628": "MSCOMCTL.ImageComboCtrl (may trigger CVE-2014-1761)",
     "00000535-0000-0010-8000-00AA006D2EA4": "ADODB.RecordSet (may trigger CVE-2015-0097)",
-    "0E59F1D5-1FBE-11D0-8FF2-00A0D10038BC": "MSScriptControl.ScriptControl (may trigger CVE-2015-0097)",
     "05741520-C4EB-440A-AC3F-9643BBC9F847": "otkloadr.WRLoader (may trigger CVE-2015-1641)",
-    'A08A033D-1A75-4AB6-A166-EAD02F547959': 'otkloadr WRAssembly Object (may trigger CVE-2015-1641)',
-    "4C599241-6926-101B-9992-00000B65C6F9": "Forms.Image (may trigger CVE-2015-2424)",
+    "0E59F1D5-1FBE-11D0-8FF2-00A0D10038BC": "MSScriptControl.ScriptControl (may trigger CVE-2015-0097)",
+    "1EFB6596-857C-11D1-B16A-00C0F0283628": "MSCOMCTL.TabStrip (may trigger CVE-2012-1856, CVE-2013-3906 - often used for heap spray)",
     "44F9A03B-A3EC-4F3B-9364-08E0007F21DF": "Control.TaskSymbol (may trigger CVE-2015-2424)",
+    "4C599241-6926-101B-9992-00000B65C6F9": "Forms.Image (may trigger CVE-2015-2424)",
+    "66833FE6-8583-11D1-B16A-00C0F0283628": "MSCOMCTL.Toolbar (may trigger CVE-2012-1856)",
+    "9181DC5F-E07D-418A-ACA6-8EEA1ECB8E9E": "MSCOMCTL.TreeCtrl (may trigger CVE-2012-0158)",
+    "996BF5E0-8044-4650-ADEB-0B013914E99C": "MSCOMCTL.ListViewCtrl (may trigger CVE-2012-0158)",
+    "BDD1F04B-858B-11D1-B16A-00C0F0283628": "MSCOMCTL.ListViewCtrl (may trigger CVE-2012-0158)",
+    "C74190B6-8589-11d1-B16A-00C0F0283628": "MSCOMCTL.TreeCtrl (may trigger CVE-2012-0158)",
+    "DD9DA666-8594-11D1-B16A-00C0F0283628": "MSCOMCTL.ImageComboCtrl (may trigger CVE-2014-1761)",
     '3050F4D8-98B5-11CF-BB82-00AA00BDCE0B': 'HTML Application (may trigger CVE-2017-0199)',
+    'A08A033D-1A75-4AB6-A166-EAD02F547959': 'otkloadr WRAssembly Object (may trigger CVE-2015-1641)',
 
     # Monikers
     '00000303-0000-0000-C000-000000000046': 'File Moniker (may trigger CVE-2017-0199 or CVE-2017-8570)',
@@ -90,17 +90,17 @@ KNOWN_CLSIDS = {
     '0002034c-0000-0000-C000-000000000046': 'OutlookAttachMoniker',
     '0002034e-0000-0000-C000-000000000046': 'OutlookMessageMoniker',
     '79EAC9E0-BAF9-11CE-8C82-00AA004BA90B': 'URL Moniker (may trigger CVE-2017-0199 or CVE-2017-8570)',
-    'ECABB0C7-7F19-11D2-978E-0000F8757E2A': 'SOAP Moniker (may trigger CVE-2017-8759)',
     'ECABAFC6-7F19-11D2-978E-0000F8757E2A': 'New Moniker',
+    'ECABB0C7-7F19-11D2-978E-0000F8757E2A': 'SOAP Moniker (may trigger CVE-2017-8759)',
     # ref: https://justhaifei1.blogspot.nl/2017/07/bypassing-microsofts-cve-2017-0199-patch.html
     '06290BD2-48AA-11D2-8432-006008C3FBFC': 'Factory bindable using IPersistMoniker (scripletfile)',
     '06290BD3-48AA-11D2-8432-006008C3FBFC': 'Script Moniker, aka Moniker to a Windows Script Component (may trigger CVE-2017-0199)',
 
-    "F414C260-6AC0-11CF-B6D1-00AA00BBBB58": "jscript.dll - JScript Language (ProgID: ECMAScript, JavaScript, JScript, LiveScript)",
-    "B54F3741-5B07-11CF-A4B0-00AA004A55E8": "vbscript.dll - VB Script Language (ProgID: VBS, VBScript)",
-    "85131630-480C-11D2-B1F9-00C04F86C324": "scrrun.dll - JS File Host Encode Object (ProgID: JSFile.HostEncode)",
-    "85131631-480C-11D2-B1F9-00C04F86C324": "scrrun.dll - VBS File Host Encode Object (ProgID: VBSFile.HostEncode)",
     "0CF774D0-F077-11D1-B1BC-00C04F86C324": "scrrun.dll - HTML File Host Encode Object (ProgID: HTML.HostEncode)",
     "0D43FE01-F093-11CF-8940-00A0C9054228": "scrrun.dll - FileSystem Object (ProgID: Scripting.FileSystemObject)",
+    "85131630-480C-11D2-B1F9-00C04F86C324": "scrrun.dll - JS File Host Encode Object (ProgID: JSFile.HostEncode)",
+    "85131631-480C-11D2-B1F9-00C04F86C324": "scrrun.dll - VBS File Host Encode Object (ProgID: VBSFile.HostEncode)",
+    "B54F3741-5B07-11CF-A4B0-00AA004A55E8": "vbscript.dll - VB Script Language (ProgID: VBS, VBScript)",
+    "F414C260-6AC0-11CF-B6D1-00AA00BBBB58": "jscript.dll - JScript Language (ProgID: ECMAScript, JavaScript, JScript, LiveScript)",
 }
 
