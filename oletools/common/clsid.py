@@ -41,15 +41,18 @@ http://www.decalage.info/python/oletools
 # 2018-04-13       PL: - moved KNOWN_CLSIDS from oledir to common.clsid
 #                  SQ: - several additions by Shiao Qu
 # 2018-04-18       PL: - added known-bad CLSIDs from Cuckoo sandbox (issue #290)
-# 2018-05-08       PL: - added more CLSIDs (issue #299), merged and sorted
+# 2018-05-08       PL: - added more CLSIDs (issues #299, #304), merged and sorted
 
 __version__ = '0.53dev9'
 
 
 # REFERENCES:
+
 # Known-bad CLSIDs from Cuckoo Sandbox:
 # https://github.com/cuckoosandbox/community/blob/master/modules/signatures/windows/office.py#L314
-# ref: https://justhaifei1.blogspot.nl/2017/07/bypassing-microsofts-cve-2017-0199-patch.html
+
+# https://justhaifei1.blogspot.nl/2017/07/bypassing-microsofts-cve-2017-0199-patch.html
+# https://github.com/nccgroup/yaml2yara/blob/master/sample_data/office_exploits/ole.yaml
 
 
 KNOWN_CLSIDS = {
@@ -78,7 +81,7 @@ KNOWN_CLSIDS = {
     '0002CE03-0000-0000-C000-000000000046': 'MathType Equation Object',
     '0003000C-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
     '048EB43E-2059-422F-95E0-557DA96038AF': 'Microsoft Powerpoint.Slide.12',
-    '05741520-C4EB-440A-AC3F-9643BBC9F847': 'otkloadr.WRLoader (may trigger CVE-2015-1641)',
+    '05741520-C4EB-440A-AC3F-9643BBC9F847': 'otkloadr.WRLoader (can be used to bypass ASLR after triggering an exploit)',
     '06290BD2-48AA-11D2-8432-006008C3FBFC': 'Factory bindable using IPersistMoniker (scripletfile)',
     '06290BD3-48AA-11D2-8432-006008C3FBFC': 'Script Moniker, aka Moniker to a Windows Script Component (may trigger CVE-2017-0199)',
     '0CF774D0-F077-11D1-B1BC-00C04F86C324': 'scrrun.dll - HTML File Host Encode Object (ProgID: HTML.HostEncode)',
@@ -103,7 +106,7 @@ KNOWN_CLSIDS = {
     '8E75D913-3D21-11D2-85C4-080009A0C626': 'AutoCAD 2004-2006 Document',
     '9181DC5F-E07D-418A-ACA6-8EEA1ECB8E9E': 'MSCOMCTL.TreeCtrl (may trigger CVE-2012-0158)',
     '996BF5E0-8044-4650-ADEB-0B013914E99C': 'MSCOMCTL.ListViewCtrl (may trigger CVE-2012-0158)',
-    'A08A033D-1A75-4AB6-A166-EAD02F547959': 'otkloadr WRAssembly Object (may trigger CVE-2015-1641)',
+    'A08A033D-1A75-4AB6-A166-EAD02F547959': 'otkloadr WRAssembly Object (can be used to bypass ASLR after triggering an exploit)',
     'B54F3741-5B07-11CF-A4B0-00AA004A55E8': 'vbscript.dll - VB Script Language (ProgID: VBS, VBScript)',
     'BDD1F04B-858B-11D1-B16A-00C0F0283628': 'MSCOMCTL.ListViewCtrl (may trigger CVE-2012-0158)',
     'C62A69F0-16DC-11CE-9E98-00AA00574A4F': 'Forms.Form',
@@ -120,5 +123,17 @@ KNOWN_CLSIDS = {
     'F20DA720-C02F-11CE-927B-0800095AE340': 'OLE Package Object (may contain and run any file)',
     'F414C260-6AC0-11CF-B6D1-00AA00BBBB58': 'jscript.dll - JScript Language (ProgID: ECMAScript, JavaScript, JScript, LiveScript)',
     'F4754C9B-64F5-4B40-8AF4-679732AC0607': 'Microsoft Word Document (Word.Document.12)',
+    '1461A561-24E8-4BA3-8D4A-FFEEF980556B': 'BCSAddin.Connect (potential exploit CVE-2016-0042 / MS16-014)',
+    '6AD4AE40-2FF1-4D88-B27A-F76FC7B40440': 'BCSAddin.ManageSolutionHelper (potential exploit CVE-2016-0042 / MS16-014)',
+    'e8cc4cbe-fdff-11d0-b865-00a0c9081c1d': 'MSDAORA.1 (potential exploit CVE TODO)', # TODO
+    '23CE100B-1390-49D6-BA00-F17D3AEE149C': 'UmOutlookAddin.UmEvmCtrl (potential exploit document CVE-2016-0042 / MS16-014)',
+    '8627E73B-B5AA-4643-A3B0-570EDA17E3E7': 'UmOutlookAddin.ButtonBar (potential exploit document CVE-2016-0042 / MS16-014)',
+    'F959DBBB-3867-41F2-8E5F-3B8BEFAA81B3': 'UmOutlookAddin.FormRegionAddin (potential exploit document CVE-2016-0042 / MS16-014)',
+    'ECF44975-786E-462F-B02A-CBCCB1A2C4A2': 'UmOutlookAddin.FormRegionContext (potential exploit document CVE-2016-0042 / MS16-014)',
+    'CDF1C8AA-2D25-43C7-8AFE-01F73A3C66DA': 'UmOutlookAddin.InspectorContext (potential exploit document CVE-2016-0042 / MS16-014)',
+    'D50FED35-0A08-4B17-B3E0-A8DD0EDE375D': 'UmOutlookAddin.PlayOnPhoneDlg (potential exploit document CVE-2016-0042 / MS16-014)',
+    'CCD068CD-1260-4AEA-B040-A87974EB3AEF': 'UmOutlookAddin.RoomsCTP (potential exploit document CVE-2016-0042 / MS16-014)',
+    '41B9BE05-B3AF-460C-BF0B-2CDD44A093B1': 'Search.XmlContentFilter (potential exploit document CVE TODO)',
+    '3018609E-CDBC-47E8-A255-809D46BAA319': 'SSCE DropTable Listener Object (can be used to bypass ASLR after triggering an exploit)',
 }
 
