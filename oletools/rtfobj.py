@@ -277,24 +277,24 @@ DESTINATION_CONTROL_WORDS = frozenset((
     b"headerl", b"headerr", b"hl", b"hlfr", b"hlinkbase", b"hlloc", b"hlsrc", b"hsv", b"htmltag", b"info", b"keycode", b"keywords",
     b"latentstyles", b"lchars", b"levelnumbers", b"leveltext", b"lfolevel", b"linkval", b"list", b"listlevel", b"listname",
     b"listoverride", b"listoverridetable", b"listpicture", b"liststylename", b"listtable", b"listtext", b"lsdlockedexcept",
-    b"macc", b"maccPr", b"mailmerge", b"maln",b"malnScr", b"manager", b"margPr", b"mbar", b"mbarPr", b"mbaseJc", b"mbegChr",
-    b"mborderBox", b"mborderBoxPr", b"mbox", b"mboxPr", b"mchr", b"mcount", b"mctrlPr", b"md", b"mdeg", b"mdegHide", b"mden",
-    b"mdiff", b"mdPr", b"me", b"mendChr", b"meqArr", b"meqArrPr", b"mf", b"mfName", b"mfPr", b"mfunc", b"mfuncPr",b"mgroupChr",
-    b"mgroupChrPr",b"mgrow", b"mhideBot", b"mhideLeft", b"mhideRight", b"mhideTop", b"mhtmltag", b"mlim", b"mlimloc", b"mlimlow",
-    b"mlimlowPr", b"mlimupp", b"mlimuppPr", b"mm", b"mmaddfieldname", b"mmath", b"mmathPict", b"mmathPr",b"mmaxdist", b"mmc",
-    b"mmcJc", b"mmconnectstr", b"mmconnectstrdata", b"mmcPr", b"mmcs", b"mmdatasource", b"mmheadersource", b"mmmailsubject",
+    b"macc", b"maccpr", b"mailmerge", b"maln",b"malnscr", b"manager", b"margpr", b"mbar", b"mbarpr", b"mbasejc", b"mbegchr",
+    b"mborderbox", b"mborderboxpr", b"mbox", b"mboxpr", b"mchr", b"mcount", b"mctrlpr", b"md", b"mdeg", b"mdeghide", b"mden",
+    b"mdiff", b"mdpr", b"me", b"mendchr", b"meqarr", b"meqarrpr", b"mf", b"mfname", b"mfpr", b"mfunc", b"mfuncpr",b"mgroupchr",
+    b"mgroupchrpr",b"mgrow", b"mhidebot", b"mhideleft", b"mhideright", b"mhidetop", b"mhtmltag", b"mlim", b"mlimloc", b"mlimlow",
+    b"mlimlowpr", b"mlimupp", b"mlimupppr", b"mm", b"mmaddfieldname", b"mmath", b"mmathpict", b"mmathpr",b"mmaxdist", b"mmc",
+    b"mmcjc", b"mmconnectstr", b"mmconnectstrdata", b"mmcpr", b"mmcs", b"mmdatasource", b"mmheadersource", b"mmmailsubject",
     b"mmodso", b"mmodsofilter", b"mmodsofldmpdata", b"mmodsomappedname", b"mmodsoname", b"mmodsorecipdata", b"mmodsosort",
-    b"mmodsosrc", b"mmodsotable", b"mmodsoudl", b"mmodsoudldata", b"mmodsouniquetag", b"mmPr", b"mmquery", b"mmr", b"mnary",
-    b"mnaryPr", b"mnoBreak", b"mnum", b"mobjDist", b"moMath", b"moMathPara", b"moMathParaPr", b"mopEmu", b"mphant", b"mphantPr",
-    b"mplcHide", b"mpos", b"mr", b"mrad", b"mradPr", b"mrPr", b"msepChr", b"mshow", b"mshp", b"msPre", b"msPrePr", b"msSub",
-    b"msSubPr", b"msSubSup", b"msSubSupPr",  b"msSup", b"msSupPr", b"mstrikeBLTR", b"mstrikeH", b"mstrikeTLBR", b"mstrikeV",
-    b"msub", b"msubHide", b"msup", b"msupHide", b"mtransp", b"mtype", b"mvertJc", b"mvfmf", b"mvfml", b"mvtof", b"mvtol",
-    b"mzeroAsc", b"mzeroDesc", b"mzeroWid", b"nesttableprops", b"nexctfile", b"nonesttables", b"objalias", b"objclass",
+    b"mmodsosrc", b"mmodsotable", b"mmodsoudl", b"mmodsoudldata", b"mmodsouniquetag", b"mmpr", b"mmquery", b"mmr", b"mnary",
+    b"mnarypr", b"mnobreak", b"mnum", b"mobjdist", b"momath", b"momathpara", b"momathparapr", b"mopemu", b"mphant", b"mphantpr",
+    b"mplchide", b"mpos", b"mr", b"mrad", b"mradpr", b"mrpr", b"msepchr", b"mshow", b"mshp", b"mspre", b"msprepr", b"mssub",
+    b"mssubpr", b"mssubsup", b"mssubsuppr",  b"mssup", b"mssuppr", b"mstrikebltr", b"mstrikeh", b"mstriketlbr", b"mstrikev",
+    b"msub", b"msubhide", b"msup", b"msuphide", b"mtransp", b"mtype", b"mvertjc", b"mvfmf", b"mvfml", b"mvtof", b"mvtol",
+    b"mzeroasc", b"mzerodesc", b"mzerowid", b"nesttableprops", b"nexctfile", b"nonesttables", b"objalias", b"objclass",
     b"objdata", b"object", b"objname", b"objsect", b"objtime", b"oldcprops", b"oldpprops", b"oldsprops", b"oldtprops",
     b"oleclsid", b"operator", b"panose", b"password", b"passwordhash", b"pgp", b"pgptbl", b"picprop", b"pict", b"pn", b"pnseclvl",
     b"pntext", b"pntxta", b"pntxtb", b"printim",
-    # It seems \private should not be treated as a destination (issue #178)
-    # Same for \pxe (issue #196)
+    # it seems \private should not be treated as a destination (issue #178)
+    # same for \pxe (issue #196)
     # b"private", b"pxe",
     b"propname", b"protend", b"protstart", b"protusertbl",
     b"result", b"revtbl", b"revtim", b"rsidtbl", b"rtf", b"rxe", b"shp", b"shpgrp", b"shpinst", b"shppict", b"shprslt", b"shptxt",
@@ -302,7 +302,7 @@ DESTINATION_CONTROL_WORDS = frozenset((
     b"upr", b"userprops", b"wgrffmtfilter", b"windowcaption", b"writereservation", b"writereservhash", b"xe", b"xform",
     b"xmlattrname", b"xmlattrvalue", b"xmlclose", b"xmlname", b"xmlnstbl", b"xmlopen",
     # added for issue #292: https://github.com/decalage2/oletools/issues/292
-    b"margSz",
+    b"margsz",
     ))
 
 
@@ -535,7 +535,7 @@ class RtfParser(object):
         #log.debug('control word %r at index %Xh' % (matchobject.group(), self.index))
         # TODO: according to RTF specs v1.9.1, "Destination changes are legal only immediately after an opening brace ({)"
         # (not counting the special control symbol \*, of course)
-        if cword in DESTINATION_CONTROL_WORDS:
+        if cword.lower() in DESTINATION_CONTROL_WORDS:
             # log.debug('%r is a destination control word: starting a new destination' % cword)
             self._open_destination(matchobject, cword)
         # call the corresponding user method for additional processing:
