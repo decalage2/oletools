@@ -83,8 +83,9 @@ http://www.decalage.info/python/oletools
 # 2018-03-24 v0.53 PL: - fixed issue #292: \margSz is a destination
 # 2018-04-27       PL: - extract and display the CLSID of OLE objects
 # 2018-04-30       PL: - handle "\'" obfuscation trick - issue #281
+# 2018-05-10       PL: - fixed issues #303 #307: several destination cwords were incorrect
 
-__version__ = '0.53dev8'
+__version__ = '0.53dev9'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -267,21 +268,21 @@ re_executable_extensions = re.compile(
 
 # Destination Control Words, according to MS RTF Specifications v1.9.1:
 DESTINATION_CONTROL_WORDS = frozenset((
-    b"aftncn", b"aftnsep", b"aftnsepc", b"annotation", b"atnauthor", b"atndate", b"atnicn", b"atnid", b"atnparent", b"atnref",
-    b"atntime", b"atrfend", b"atrfstart", b"author", b"background", b"bkmkend", b"bkmkstart", b"blipuid", b"buptim", b"category",
+    b"aftncn", b"aftnsep", b"aftnsepc", b"annotation", b"atnauthor", b"atndate", b"atnid", b"atnparent", b"atnref",
+    b"atrfend", b"atrfstart", b"author", b"background", b"bkmkend", b"bkmkstart", b"blipuid", b"buptim", b"category",
     b"colorschememapping", b"colortbl", b"comment", b"company", b"creatim", b"datafield", b"datastore", b"defchp", b"defpap",
     b"do", b"doccomm", b"docvar", b"dptxbxtext", b"ebcend", b"ebcstart", b"factoidname", b"falt", b"fchars", b"ffdeftext",
     b"ffentrymcr", b"ffexitmcr", b"ffformat", b"ffhelptext", b"ffl", b"ffname",b"ffstattext", b"field", b"file", b"filetbl",
-    b"fldinst", b"fldrslt", b"fldtype", b"fname", b"fontemb", b"fontfile", b"fonttbl", b"footer", b"footerf", b"footerl",
+    b"fldinst", b"fldrslt", b"fldtype", b"fontemb", b"fonttbl", b"footer", b"footerf", b"footerl",
     b"footerr", b"footnote", b"formfield", b"ftncn", b"ftnsep", b"ftnsepc", b"g", b"generator", b"gridtbl", b"header", b"headerf",
-    b"headerl", b"headerr", b"hl", b"hlfr", b"hlinkbase", b"hlloc", b"hlsrc", b"hsv", b"htmltag", b"info", b"keycode", b"keywords",
+    b"headerl", b"headerr", b"hl", b"hlfr", b"hlinkbase", b"hlloc", b"hlsrc", b"hsv", b"info", b"keywords",
     b"latentstyles", b"lchars", b"levelnumbers", b"leveltext", b"lfolevel", b"linkval", b"list", b"listlevel", b"listname",
     b"listoverride", b"listoverridetable", b"listpicture", b"liststylename", b"listtable", b"listtext", b"lsdlockedexcept",
-    b"macc", b"maccPr", b"mailmerge", b"maln",b"malnScr", b"manager", b"margPr", b"mbar", b"mbarPr", b"mbaseJc", b"mbegChr",
+    b"macc", b"maccPr", b"mailmerge", b"malnScr", b"manager", b"margPr", b"mbar", b"mbarPr", b"mbaseJc", b"mbegChr",
     b"mborderBox", b"mborderBoxPr", b"mbox", b"mboxPr", b"mchr", b"mcount", b"mctrlPr", b"md", b"mdeg", b"mdegHide", b"mden",
     b"mdiff", b"mdPr", b"me", b"mendChr", b"meqArr", b"meqArrPr", b"mf", b"mfName", b"mfPr", b"mfunc", b"mfuncPr",b"mgroupChr",
-    b"mgroupChrPr",b"mgrow", b"mhideBot", b"mhideLeft", b"mhideRight", b"mhideTop", b"mhtmltag", b"mlim", b"mlimloc", b"mlimlow",
-    b"mlimlowPr", b"mlimupp", b"mlimuppPr", b"mm", b"mmaddfieldname", b"mmath", b"mmathPict", b"mmathPr",b"mmaxdist", b"mmc",
+    b"mgroupChrPr",b"mgrow", b"mhideBot", b"mhideLeft", b"mhideRight", b"mhideTop", b"mlim", b"mlimLoc", b"mlimLow",
+    b"mlimLowPr", b"mlimUpp", b"mlimUppPr", b"mm", b"mmaddfieldname", b"mmathPict", b"mmaxDist", b"mmc",
     b"mmcJc", b"mmconnectstr", b"mmconnectstrdata", b"mmcPr", b"mmcs", b"mmdatasource", b"mmheadersource", b"mmmailsubject",
     b"mmodso", b"mmodsofilter", b"mmodsofldmpdata", b"mmodsomappedname", b"mmodsoname", b"mmodsorecipdata", b"mmodsosort",
     b"mmodsosrc", b"mmodsotable", b"mmodsoudl", b"mmodsoudldata", b"mmodsouniquetag", b"mmPr", b"mmquery", b"mmr", b"mnary",
@@ -289,20 +290,25 @@ DESTINATION_CONTROL_WORDS = frozenset((
     b"mplcHide", b"mpos", b"mr", b"mrad", b"mradPr", b"mrPr", b"msepChr", b"mshow", b"mshp", b"msPre", b"msPrePr", b"msSub",
     b"msSubPr", b"msSubSup", b"msSubSupPr",  b"msSup", b"msSupPr", b"mstrikeBLTR", b"mstrikeH", b"mstrikeTLBR", b"mstrikeV",
     b"msub", b"msubHide", b"msup", b"msupHide", b"mtransp", b"mtype", b"mvertJc", b"mvfmf", b"mvfml", b"mvtof", b"mvtol",
-    b"mzeroAsc", b"mzeroDesc", b"mzeroWid", b"nesttableprops", b"nexctfile", b"nonesttables", b"objalias", b"objclass",
-    b"objdata", b"object", b"objname", b"objsect", b"objtime", b"oldcprops", b"oldpprops", b"oldsprops", b"oldtprops",
+    b"mzeroAsc", b"mzeroDesc", b"mzeroWid", b"nesttableprops", b"nonesttables", b"objalias", b"objclass",
+    b"objdata", b"object", b"objname", b"objsect", b"oldcprops", b"oldpprops", b"oldsprops", b"oldtprops",
     b"oleclsid", b"operator", b"panose", b"password", b"passwordhash", b"pgp", b"pgptbl", b"picprop", b"pict", b"pn", b"pnseclvl",
     b"pntext", b"pntxta", b"pntxtb", b"printim",
-    # It seems \private should not be treated as a destination (issue #178)
-    # Same for \pxe (issue #196)
-    # b"private", b"pxe",
     b"propname", b"protend", b"protstart", b"protusertbl",
-    b"result", b"revtbl", b"revtim", b"rsidtbl", b"rtf", b"rxe", b"shp", b"shpgrp", b"shpinst", b"shppict", b"shprslt", b"shptxt",
+    b"result", b"revtbl", b"revtim", b"rtf", b"rxe", b"shp", b"shpgrp", b"shpinst", b"shppict", b"shprslt", b"shptxt",
     b"sn", b"sp", b"staticval", b"stylesheet", b"subject", b"sv", b"svb", b"tc", b"template", b"themedata", b"title", b"txe", b"ud",
     b"upr", b"userprops", b"wgrffmtfilter", b"windowcaption", b"writereservation", b"writereservhash", b"xe", b"xform",
     b"xmlattrname", b"xmlattrvalue", b"xmlclose", b"xmlname", b"xmlnstbl", b"xmlopen",
     # added for issue #292: https://github.com/decalage2/oletools/issues/292
     b"margSz",
+
+    # It seems \private should not be treated as a destination (issue #178)
+    # Same for \pxe (issue #196)
+    # b"private", b"pxe",
+    # from issue #303: These destination control words can be treated as a "value" type.
+    # They don't consume data so they won't change the state of the parser.
+    # b"atnicn", b"atntime", b"fname", b"fontfile", b"htmltag", b"keycode", b"maln",
+    # b"mhtmltag", b"mmath", b"mmathPr", b"nextfile", b"objtime", b"rsidtbl",
     ))
 
 
