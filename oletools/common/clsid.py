@@ -59,7 +59,7 @@ KNOWN_CLSIDS = {
 
 
 
-    '00000300-0000-0000-C000-000000000046': 'StdOleLink (embedded OLE object - Known Related to CVE-2017-0199, CVE-2017-8570 or CVE-2017-8759)',
+    '00000300-0000-0000-C000-000000000046': 'StdOleLink (embedded OLE object - Known Related to CVE-2017-0199, CVE-2017-8570, CVE-2017-8759 or CVE-2018-8174)',
     '00000303-0000-0000-C000-000000000046': 'File Moniker (may trigger CVE-2017-0199 or CVE-2017-8570)',
     '00000304-0000-0000-C000-000000000046': 'Item Moniker',
     '00000305-0000-0000-C000-000000000046': 'Anti Moniker',
@@ -123,7 +123,7 @@ KNOWN_CLSIDS = {
     '799ED9EA-FB5E-11D1-B7D6-00C04FC2AAE2': 'Microsoft.VbaAddin (Known Related to CVE-2016-0042)',
     '79EAC9D0-BAF9-11CE-8C82-00AA004BA90B': 'StdHlink',
     '79EAC9D1-BAF9-11CE-8C82-00AA004BA90B': 'StdHlinkBrowseContext',
-    '79EAC9E0-BAF9-11CE-8C82-00AA004BA90B': 'URL Moniker (may trigger CVE-2017-0199 or CVE-2017-8570)',
+    '79EAC9E0-BAF9-11CE-8C82-00AA004BA90B': 'URL Moniker (may trigger CVE-2017-0199, CVE-2017-8570, or CVE-2018-8174)',
     '79EAC9E2-BAF9-11CE-8C82-00AA004BA90B': '(http:) Asychronous Pluggable Protocol Handler',
     '79EAC9E3-BAF9-11CE-8C82-00AA004BA90B': '(ftp:) Asychronous Pluggable Protocol Handler',
     '79EAC9E5-BAF9-11CE-8C82-00AA004BA90B': '(https:) Asychronous Pluggable Protocol Handler',
