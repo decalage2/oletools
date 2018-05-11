@@ -92,8 +92,9 @@ from oletools import rtfobj
 # 2018-01-05       CH: - add CSV
 # 2018-01-11       PL: - fixed issue #242 (apply unquote to fldSimple tags)
 # 2018-01-10       CH: - add single-xml files (Word 2003/2007+ / Excel 2003)
+# 2018-03-21       CH: - added detection for various CSV formulas (issue #259)
 
-__version__ = '0.52'
+__version__ = '0.53dev10'
 
 # -----------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these
