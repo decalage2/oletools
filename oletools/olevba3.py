@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 """
-olevba.py
+olevba3.py
 
 olevba is a script to parse OLE and OpenXML files such as MS Office documents
 (e.g. Word, Excel), to extract VBA Macro code in clear text, deobfuscate
 and analyze malicious macros.
 
+olevba3 is the version of olevba that runs on Python 3.x.
+
 Supported formats:
 - Word 97-2003 (.doc, .dot), Word 2007+ (.docm, .dotm)
 - Excel 97-2003 (.xls), Excel 2007+ (.xlsm, .xlsb)
 - PowerPoint 97-2003 (.ppt), PowerPoint 2007+ (.pptm, .ppsm)
+- Word/PowerPoint 2007+ XML (aka Flat OPC)
 - Word 2003 XML (.xml)
 - Word/Excel Single File Web Page / MHTML (.mht)
 - Publisher (.pub)
@@ -198,8 +201,10 @@ from __future__ import print_function
 # 2017-06-15       PL: - deobfuscation line by line to handle large files
 # 2017-07-11 v0.52 PL: - raise exception instead of sys.exit (issue #180)
 # 2018-03-19       PL: - removed pyparsing from the thirdparty subfolder
+# 2018-05-13 v0.53 PL: - added support for Word/PowerPoint 2007+ XML (FlatOPC)
+#                        (issue #283)
 
-__version__ = '0.52.3'
+__version__ = '0.53dev10'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -493,6 +498,7 @@ MSG_OLEVBA_ISSUES = 'Please report this issue on %s' % URL_OLEVBA_ISSUES
 # Container types:
 TYPE_OLE = 'OLE'
 TYPE_OpenXML = 'OpenXML'
+TYPE_FlatOPC_XML = 'FlatOPC_XML'
 TYPE_Word2003_XML = 'Word2003_XML'
 TYPE_MHTML = 'MHTML'
 TYPE_TEXT = 'Text'
@@ -502,6 +508,7 @@ TYPE_PPT = 'PPT'
 TYPE2TAG = {
     TYPE_OLE: 'OLE:',
     TYPE_OpenXML: 'OpX:',
+    TYPE_FlatOPC_XML: 'FlX:',
     TYPE_Word2003_XML: 'XML:',
     TYPE_MHTML: 'MHT:',
     TYPE_TEXT: 'TXT:',
@@ -521,6 +528,18 @@ NS_W = '{http://schemas.microsoft.com/office/word/2003/wordml}'
 # the tag <w:binData w:name="editdata.mso"> contains the VBA macro code:
 TAG_BINDATA = NS_W + 'binData'
 ATTR_NAME = NS_W + 'name'
+
+# Namespaces and tags for Word/PowerPoint 2007+ XML parsing:
+# root: <pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage">
+NS_XMLPACKAGE = '{http://schemas.microsoft.com/office/2006/xmlPackage}'
+TAG_PACKAGE = NS_XMLPACKAGE + 'package'
+# the tag <pkg:part> includes <pkg:binaryData> that contains the VBA macro code in Base64:
+# <pkg:part pkg:name="/word/vbaProject.bin" pkg:contentType="application/vnd.ms-office.vbaProject"><pkg:binaryData>
+TAG_PKGPART = NS_XMLPACKAGE + 'part'
+ATTR_PKG_NAME = NS_XMLPACKAGE + 'name'
+ATTR_PKG_CONTENTTYPE = NS_XMLPACKAGE + 'contentType'
+CTYPE_VBAPROJECT = "application/vnd.ms-office.vbaProject"
+TAG_PKGBINDATA = NS_XMLPACKAGE + 'binaryData'
 
 # Keywords to detect auto-executable macros
 AUTOEXEC_KEYWORDS = {
@@ -2350,6 +2369,9 @@ class VBA_Parser(object):
             # check if it is a Word 2003 XML file (WordProcessingML): must contain the namespace
             if b'http://schemas.microsoft.com/office/word/2003/wordml' in data:
                 self.open_word2003xml(data)
+            # check if it is a Word/PowerPoint 2007+ XML file (Flat OPC): must contain the namespace
+            if b'http://schemas.microsoft.com/office/2006/xmlPackage' in data:
+                self.open_flatopc(data)
             # store a lowercase version for the next tests:
             data_lowercase = data.lower()
             # check if it is a MHT file (MIME HTML, Word or Excel saved as "Single File Web Page"):
@@ -2487,6 +2509,51 @@ class VBA_Parser(object):
                     log.info('%s is not a valid MSO file' % fname)
             # set type only if parsing succeeds
             self.type = TYPE_Word2003_XML
+        except OlevbaBaseException as exc:
+            if self.relaxed:
+                log.info('Failed XML parsing for file %r (%s)' % (self.filename, exc))
+                log.debug('Trace:', exc_info=True)
+            else:
+                raise
+        except Exception as exc:
+            # TODO: differentiate exceptions for each parsing stage
+            # (but ET is different libs, no good exception description in API)
+            # found: XMLSyntaxError
+            log.info('Failed XML parsing for file %r (%s)' % (self.filename, exc))
+            log.debug('Trace:', exc_info=True)
+
+    def open_flatopc(self, data):
+        """
+        Open a Word or PowerPoint 2007+ XML file, aka "Flat OPC"
+        :param data: file contents in a string or bytes
+        :return: nothing
+        """
+        log.info('Opening Flat OPC Word/PowerPoint XML file %s' % self.filename)
+        try:
+            # parse the XML content
+            # TODO: handle XML parsing exceptions
+            et = ET.fromstring(data)
+            # TODO: check root node namespace and tag
+            # find all the pkg:part elements:
+            for pkgpart in et.iter(TAG_PKGPART):
+                fname = pkgpart.get(ATTR_PKG_NAME, 'unknown')
+                content_type = pkgpart.get(ATTR_PKG_CONTENTTYPE, 'unknown')
+                if content_type == CTYPE_VBAPROJECT:
+                    for bindata in pkgpart.iterfind(TAG_PKGBINDATA):
+                        try:
+                            ole_data = binascii.a2b_base64(bindata.text)
+                            self.ole_subfiles.append(
+                                VBA_Parser(filename=fname, data=ole_data,
+                                           relaxed=self.relaxed))
+                        except OlevbaBaseException as exc:
+                            if self.relaxed:
+                                log.info('Error parsing subfile {0}: {1}'
+                                         .format(fname, exc))
+                                log.debug('Trace:', exc_info=True)
+                            else:
+                                raise SubstreamOpenError(self.filename, fname, exc)
+            # set type only if parsing succeeds
+            self.type = TYPE_FlatOPC_XML
         except OlevbaBaseException as exc:
             if self.relaxed:
                 log.info('Failed XML parsing for file %r (%s)' % (self.filename, exc))
@@ -3399,7 +3466,7 @@ def main(cmd_line_args=None):
                    url='http://decalage.info/python/oletools',
                    type='MetaInformation', _json_is_first=True)
     else:
-        print('olevba %s - http://decalage.info/python/oletools' % __version__)
+        print('olevba3 %s - http://decalage.info/python/oletools' % __version__)
 
     logging.basicConfig(level=options.loglevel, format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
