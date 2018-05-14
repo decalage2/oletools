@@ -84,6 +84,7 @@ including [Viper](http://viper.li/), [REMnux](https://remnux.org/),
 [pcodedmp](https://github.com/bontchev/pcodedmp),
 [dridex.malwareconfig.com](https://dridex.malwareconfig.com),
 [Snake](https://github.com/countercept/snake),
+[DARKSURGEON](https://github.com/cryps1s/DARKSURGEON),
 and probably [VirusTotal](https://www.virustotal.com).
 (Please [contact me]((http://decalage.info/contact)) if you have or know
 a project using oletools)
