@@ -84,8 +84,9 @@ http://www.decalage.info/python/oletools
 # 2018-04-27       PL: - extract and display the CLSID of OLE objects
 # 2018-04-30       PL: - handle "\'" obfuscation trick - issue #281
 # 2018-05-10       PL: - fixed issues #303 #307: several destination cwords were incorrect
+# 2018-05-17       PL: - fixed issue #273: bytes constants instead of str
 
-__version__ = '0.53dev9'
+__version__ = '0.53dev11'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -701,7 +702,7 @@ class RtfObjParser(RtfParser):
                 log.debug('*** Not an OLE 1.0 Object')
 
     def bin(self, bindata):
-        if self.current_destination.cword == 'objdata':
+        if self.current_destination.cword == b'objdata':
             # TODO: keep track of this, because it is unusual and indicates potential obfuscation
             # trick: hexlify binary data, add it to hex data
             self.current_destination.data += binascii.hexlify(bindata)
@@ -723,7 +724,7 @@ class RtfObjParser(RtfParser):
             # print(hexdigits)
             # move the index two bytes forward
             self.index += 2
-            if self.current_destination.cword == 'objdata':
+            if self.current_destination.cword == b'objdata':
                 # Here's the tricky part: there is a bug in the MS Word RTF parser at least
                 # until Word 2016, that removes the last hex digit before the \'hh control
                 # symbol, ONLY IF the number of hex digits read so far is odd.
@@ -888,7 +889,7 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                     ole_color = 'red'
             # Detect OLE2Link exploit
             # http://www.kb.cert.org/vuls/id/921560
-            if rtfobj.class_name == 'OLE2Link':
+            if rtfobj.class_name == b'OLE2Link':
                 ole_color = 'red'
                 ole_column += '\nPossibly an exploit for the OLE2Link vulnerability (VU#921560, CVE-2017-0199)'
         else:
