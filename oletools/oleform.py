@@ -201,7 +201,7 @@ def consume_OleSiteConcreteControl(stream):
         name = stream.read(name_len)
         tag = stream.read(tag_len)
         return {'name': name, 'tag': tag, 'id': id, 'tabindex': tabindex,
-               'ClsidCacheIndex': ClsidCacheIndex}
+               'ClsidCacheIndex': ClsidCacheIndex, 'value': None}
 
 def consume_FormControl(stream):
     # FormControl: [MS-OFORMS] 2.2.10.1
@@ -294,10 +294,9 @@ def extract_OleFormVariables(ole_file, stream_dir):
     data = ExtendedStream.open(ole_file, '/'.join(stream_dir + ['o']))
     for var in variables:
         if var['ClsidCacheIndex'] != 23:
-            #raise OleFormParsingError('Unsupported stored type: {0}'.format(str(var['ClsidCacheIndex'])))
             # TODO: use logging instead of print
             print('ERROR: Unsupported stored type in user form: {0}'.format(str(var['ClsidCacheIndex'])))
-            var['value'] = None
+            break
         else:
             var['value'] = consume_MorphDataControl(data)
     return variables
