@@ -52,6 +52,52 @@ class MorphDataPropMask(Mask):
               'fBorderColor', 'fSpecialEffect', 'fMouseIcon', 'fPicture', 'fAccelerator',
               'UnusedBits2', 'Reserved', 'fGroupName']
 
+class ImagePropMask(Mask):
+    """ImagePropMask: [MS-OFORMS] 2.2.3.2"""
+    _size = 15
+    _names = ['UnusedBits1_1', 'UnusedBits1_2', 'fAutoSize', 'fBorderColor', 'fBackColor',
+              'fBorderStyle', 'fMousePointer', 'fPictureSizeMode', 'fSpecialEffect', 'fSize',
+              'fPicture', 'fPictureAlignment', 'fPictureTiling', 'fVariousPropertyBits',
+              'fMouseIcon']
+
+class CommandButtonPropMask(Mask):
+    """CommandButtonPropMask: [MS-OFORMS] 2.2.1.2"""
+    _size = 11
+    _names = ['fForeColor', 'fBackColor', 'fVariousPropertyBits', 'fCaption', 'fPicturePosition',
+              'fSize', 'fMousePointer', 'fPicture', 'fAccelerator', 'fTakeFocusOnClick',
+              'fMouseIcon']
+
+class SpinButtonPropMask(Mask):
+    """SpinButtonPropMask: [MS-OFORMS] 2.2.8.2"""
+    _size = 15
+    _names = ['fForeColor', 'fBackColor', 'fVariousPropertyBits', 'fSize', 'UnusedBits1',
+              'fMin', 'fMax', 'fPosition', 'fPrevEnabled', 'fNextEnabled', 'fSmallChange',
+              'fOrientation', 'fDelay', 'fMouseIcon', 'fMousePointer']
+
+class TabStripPropMask(Mask):
+    """TabStripPropMask: [MS-OFORMS] 2.2.9.2"""
+    _size = 25
+    _names = ['fListIndex', 'fBackColor', 'fForeColor', 'Unused1', 'fSize', 'fItems',
+              'fMousePointer', 'Unused2', 'fTabOrientation', 'fTabStyle', 'fMultiRow',
+              'fTabFixedWidth', 'fTabFixedHeight', 'fTooltips', 'Unused3', 'fTipStrings',
+              'Unused4', 'fNames', 'fVariousPropertyBits', 'fNewVersion', 'fTabsAllocated',
+              'fTags', 'fTabData', 'fAccelerator', 'fMouseIcon']
+
+class LabelPropMask(Mask):
+    """LabelPropMask: [MS-OFORMS] 2.2.4.2"""
+    _size = 13
+    _names = ['fForeColor', 'fBackColor', 'fVariousPropertyBits', 'fCaption',
+              'fPicturePosition', 'fSize', 'fMousePointer', 'fBorderColor', 'fBorderStyle',
+              'fSpecialEffect', 'fPicture', 'fAccelerator', 'fMouseIcon']
+
+class ScrollBarPropMask(Mask):
+    """ScrollBarPropMask: [MS-OFORMS] 2.2.7.2"""
+    _size = 17
+    _names = ['fForeColor', 'fBackColor', 'fVariousPropertyBits', 'fSize', 'fMousePointer',
+              'fMin', 'fMax', 'fPosition', 'UnusedBits1', 'fPrevEnabled', 'fNextEnabled',
+              'fSmallChange', 'fLargeChange', 'fOrientation', 'fProportionalThumb',
+              'fDelay', 'fMouseIcon']
+
 class ExtendedStream(object):
     def __init__(self, stream, path):
         self._pos = 0
@@ -287,16 +333,125 @@ def consume_MorphDataControl(stream):
     consume_TextProps(stream)
     return value
 
+def consume_ImageControl(stream):
+    # ImageControl: [MS-OFORMS] 2.2.3.1
+    stream.check_values('ImageControl (versions)', '<BB', 2, (0, 2))
+    cbImage = stream.unpack('<H', 2)
+    with stream.will_jump_to(cbImage):
+        propmask = ImagePropMask(stream.unpack('<L', 4))
+        # Skip the DataBlock and the ExtraDataBlock
+    # ImageStreamData: [MS-OFORMS] 2.2.3.5
+    if propmask.fPicture:
+        consume_GuidAndPicture(stream)
+    if propmask.fMouseIcon:
+        consume_GuidAndPicture(stream)
+
+def consume_CommandButtonControl(stream):
+    # CommandButtonControl: [MS-OFORMS] 2.2.1.1
+    stream.check_values('CommandButtonControl (versions)', '<BB', 2, (0, 2))
+    cbCommandButton = stream.unpack('<H', 2)
+    with stream.will_jump_to(cbCommandButton):
+        propmask = CommandButtonPropMask(stream.unpack('<L', 4))
+        # Skip the DataBlock and the ExtraDataBlock
+    # ImageStreamData: [MS-OFORMS] 2.2.1.5
+    if propmask.fPicture:
+        consume_GuidAndPicture(stream)
+    if propmask.fMouseIcon:
+        consume_GuidAndPicture(stream)
+    consume_TextProps(stream)
+
+def consume_SpinButtonControl(stream):
+    # SpinButtonControl: [MS-OFORMS] 2.2.8.1
+    stream.check_values('SpinButtonControl (versions)', '<BB', 2, (0, 2))
+    cbSpinButton = stream.unpack('<H', 2)
+    with stream.will_jump_to(cbSpinButton):
+         propmask = SpinButtonPropMask(stream.unpack('<L', 4))
+        # Skip the DataBlock and the ExtraDataBlock
+    # SpinButtonStreamData: [MS-OFORMS] 2.2.8.5
+    if propmask.fMouseIcon:
+        consume_GuidAndPicture(stream)
+
+def consume_TabStripControl(stream):
+    # TabStripControl: [MS-OFORMS] 2.2.9.1
+    stream.check_values('TabStripControl (versions)', '<BB', 2, (0, 2))
+    cbTabStrip = stream.unpack('<H', 2)
+    with stream.will_jump_to(cbTabStrip):
+        propmask = TabStripPropMask(stream.unpack('<L', 4))
+        # TabStripDataBlock: [MS-OFORMS] 2.2.9.3
+        # All are 4B (or 4B + pad = 4B), except MousePointer, which is 1B + pad = 4b
+        for prop in ['fListIndex', 'fBackColor', 'fForeColor', 'fSize', 'fTabOrientation'
+                     'fTabStyle', 'fTabFixedWidth', 'fTabFixedHeight', 'fTipStrings',
+                     'fNames', 'fVariousPropertyBits', 'fTabsAllocated', 'fTags']:
+            if propmask[prop]:
+                stream.read(4)
+        tabData = 0
+        if propmask['fTabData']:
+            tabData = stream.unpack('<L', 4)
+        # Skip the ExtraDataBlock
+    # TabStripStreamData: [MS-OFORMS] 2.2.9.5
+    if propmask.fMouseIcon:
+        consume_GuidAndPicture(stream)
+    # TextProps
+    consume_TextProps(stream)
+    # TabStripTabFlagData: [MS-OFORMS] 2.2.9.6
+    for i in range(tabData):
+         stream.read(4)
+
+def consume_LabelControl(stream):
+    # LabelControl: [MS-OFORMS] 2.2.4.1
+    stream.check_values('LabelControl (versions)', '<BB', 2, (0, 2))
+    cbLabel = stream.unpack('<H', 2)
+    with stream.will_jump_to(cbLabel):
+        propmask = LabelPropMask(stream.unpack('<L', 4))
+        # Skip the DataBlock and the ExtraDataBlock
+    # LabelStreamData: [MS-OFORMS] 2.2.4.5
+    if propmask.fPicture:
+        consume_GuidAndPicture(stream)
+    if propmask.fMouseIcon:
+        consume_GuidAndPicture(stream)
+    # TextProps
+    consume_TextProps(stream)
+
+def consume_ScrollBarControl(stream):
+    # ScrollBarControl: [MS-OFORMS] 2.2.7.1
+    stream.check_values('LabelControl (versions)', '<BB', 2, (0, 2))
+    cbScrollBar = stream.unpack('<H', 2)
+    with stream.will_jump_to(cbScrollBar):
+        propmask = ScrollBarPropMask(stream.unpack('<L', 4))
+        # Skip the DataBlock and the ExtraDataBlock
+    # ScrollBarStreamData: [MS-OFORMS] 2.2.7.5
+    if propmask.fMouseIcon:
+        consume_GuidAndPicture(stream)
+
 def extract_OleFormVariables(ole_file, stream_dir):
     control = ExtendedStream.open(ole_file, '/'.join(stream_dir + ['f']))
     variables = list(consume_FormControl(control))
     # print('/'.join(stream_dir + ['o']))
     data = ExtendedStream.open(ole_file, '/'.join(stream_dir + ['o']))
     for var in variables:
-        if var['ClsidCacheIndex'] != 23:
+        # See FormEmbeddedActiveXControlCached for type definition: [MS-OFORMS] 2.4.5
+        if var['ClsidCacheIndex'] == 7:
+            raise OleFormParsingError('Malformed document: Forms should be stored in the f stream')
+        elif var['ClsidCacheIndex'] == 12:
+            consume_ImageControl(data)
+        elif var['ClsidCacheIndex'] == 14:
+            raise OleFormParsingError('Malformed document: Frames should be stored in the f stream')
+        elif var['ClsidCacheIndex'] in [15, 23, 24, 25, 26, 27, 28]:
+            var['value'] = consume_MorphDataControl(data)
+        elif var['ClsidCacheIndex'] == 16:
+            consume_SpinButtonControl(data)
+        elif var['ClsidCacheIndex'] == 17:
+            consume_CommandButtonControl(data)
+        elif var['ClsidCacheIndex'] == 18:
+            consume_TabStripControl(data)
+        elif var['ClsidCacheIndex'] == 21:
+            consume_LabelControl(data)
+        elif var['ClsidCacheIndex'] == 47:
+            consume_ScrollBarControl(data)
+        elif var['ClsidCacheIndex'] == 57:
+            raise OleFormParsingError('Malformed document: MultiPages should be stored in a x stream')
+        else:
             # TODO: use logging instead of print
             print('ERROR: Unsupported stored type in user form: {0}'.format(str(var['ClsidCacheIndex'])))
             break
-        else:
-            var['value'] = consume_MorphDataControl(data)
     return variables
