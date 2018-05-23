@@ -415,7 +415,21 @@ def consume_LabelControl(stream):
     cbLabel = stream.unpack('<H', 2)
     with stream.will_jump_to(cbLabel):
         propmask = LabelPropMask(stream.unpack('<L', 4))
-        # Skip the DataBlock and the ExtraDataBlock
+        # LabelDataBlock: [MS-OFORMS] 2.2.4.3
+        with stream.padded_struct():
+            propmask.consume(stream, [('fForeColor', 4), ('fBackColor', 4),
+                                      ('fVariousPropertyBits', 4)])
+            if propmask.fCaption:
+                caption_size = consume_CountOfBytesWithCompressionFlag(stream)
+            else:
+                caption_size = 0
+            propmask.consume(stream, [('fPicturePosition', 4), ('fMousePointer', 1),
+                                      ('fBorderColor', 4), ('fBorderStyle', 2),
+                                      ('fSpecialEffect', 2), ('fPicture', 2),
+                                      ('fAccelerator', 2), ('fMouseIcon', 2)])
+        # LabelExtraDataBlock: [MS-OFORMS] 2.2.4.4
+        caption = stream.read(caption_size)
+        stream.read(8)
     # LabelStreamData: [MS-OFORMS] 2.2.4.5
     if propmask.fPicture:
         consume_GuidAndPicture(stream)
@@ -423,6 +437,7 @@ def consume_LabelControl(stream):
         consume_GuidAndPicture(stream)
     # TextProps
     consume_TextProps(stream)
+    return caption
 
 def consume_ScrollBarControl(stream):
     # ScrollBarControl: [MS-OFORMS] 2.2.7.1
