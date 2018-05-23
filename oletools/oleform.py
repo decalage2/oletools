@@ -24,6 +24,11 @@ class Mask(object):
     def __getitem__(self, key):
         return self._val[self._names.index(key)]
 
+    def consume(self, stream, props):
+        for (name, size) in props:
+            if self[name]:
+                stream.read(size)
+
 class FormPropMask(Mask):
     """FormPropMask: [MS-OFORMS] 2.2.10.2"""
     _size = 28
@@ -253,19 +258,14 @@ def consume_OleSiteConcreteControl(stream):
                 tag_len = consume_CountOfBytesWithCompressionFlag(stream)
             if propmask.fID:
                 id = stream.unpack('<L', 4)
-            for prop in ['fHelpContextID', 'fBitFlags', 'fObjectStreamSize']:
-                if propmask[prop]:
-                    stream.read(4)
+            propmask.consume(stream, [('fHelpContextID', 4), ('fBitFlags', 4), ('fObjectStreamSize', 4)])
             tabindex = ClsidCacheIndex = 0
             if propmask.fTabIndex:
                 tabindex = stream.unpack('<H', 2)
             if propmask.fClsidCacheIndex:
                 ClsidCacheIndex = stream.unpack('<H', 2)
-            if propmask.fGroupID:
-                stream.read(2)
-            for prop in ['fControlTipText', 'fRuntimeLicKey', 'fControlSource', 'fRowSource']:
-                if propmask[prop]:
-                    stream.read(4)
+            propmask.consume(stream, [('fGroupID', 2), ('fControlTipText', 4), ('fRuntimeLicKey', 4),
+                                      ('fControlSource', 4), ('fRowSource', 4)])
         # SiteExtraDataBlock: [MS-OFORMS] 2.2.10.12.4
         name = stream.read(name_len)
         tag = stream.read(tag_len)
@@ -279,9 +279,7 @@ def consume_FormControl(stream):
     with stream.will_jump_to(cbform):
         propmask = FormPropMask(stream.unpack('<L', 4))
         # FormDataBlock: [MS-OFORMS] 2.2.10.3
-        for prop in ['fBackColor', 'fForeColor', 'fNextAvailableID']:
-            if propmask[prop]:
-                stream.read(4)
+        propmask.consume(stream, [('fBackColor', 4), ('fForeColor', 4), ('fNextAvailableID', 4)])
         if propmask.fBooleanProperties:
             BooleanProperties = stream.unpack('<L', 4)
             FORM_FLAG_DONTSAVECLASSTABLE = (BooleanProperties & (1<<15)) >> 15
@@ -317,37 +315,24 @@ def consume_MorphDataControl(stream):
         propmask = MorphDataPropMask(stream.unpack('<Q', 8))
         # MorphDataDataBlock: [MS-OFORMS] 2.2.5.3
         with stream.padded_struct():
-            for prop in ['fVariousPropertyBits', 'fBackColor', 'fForeColor', 'fMaxLength']:
-                if propmask[prop]:
-                    stream.read(4)
-            for prop in ['fBorderStyle', 'fScrollBars', 'fDisplayStyle', 'fMousePointer']:
-                if propmask[prop]:
-                    stream.read(1)
-            if propmask['fPasswordChar']:
-                stream.read(2)
-            if propmask['fListWidth']:
-                stream.read(4)
-            for prop in ['fBoundColumn', 'fTextColumn', 'fColumnCount', 'fListRows']:
-                if propmask[prop]:
-                    stream.read(2)
-            if propmask.fcColumnInfo:
-                stream.read(2)
-            for prop in ['fMatchEntry', 'fListStyle', 'fShowDropButtonWhen',
-                         'fDropButtonStyle', 'fMultiSelect']:
-                if propmask[prop]:
-                    stream.read(1)
+            propmask.consume(stream, [('fVariousPropertyBits', 4), ('fBackColor', 4),
+                                      ('fForeColor', 4), ('fMaxLength', 4),
+                                      ('fBorderStyle', 1), ('fScrollBars', 1),
+                                      ('fDisplayStyle', 1), ('fMousePointer', 1),
+                                      ('fPasswordChar', 2), ('fListWidth', 4),
+                                      ('fBoundColumn', 2), ('fTextColumn', 2),
+                                      ('fColumnCount', 2), ('fListRows', 2),
+                                      ('fcColumnInfo', 2), ('fMatchEntry', 1),
+                                      ('fListStyle', 1), ('fShowDropButtonWhen', 1),
+                                      ('fDropButtonStyle', 1), ('fMultiSelect', 1)])
             if propmask.fValue:
                 value_size = consume_CountOfBytesWithCompressionFlag(stream)
             else:
                 value_size = 0
-            for prop in ['fCaption', 'fPicturePosition', 'fBorderColor', 'fSpecialEffect']:
-                if propmask[prop]:
-                    stream.read(4)
-            for prop in ['fMouseIcon', 'fPicture', 'fAccelerator']:
-                if propmask[prop]:
-                    stream.read(2)
-            if propmask['fGroupName']:
-                stream.read(4)
+            propmask.consume(stream, [('fCaption', 4), ('fPicturePosition', 4),
+                                      ('fBorderColor', 4), ('fSpecialEffect', 4),
+                                      ('fMouseIcon', 2), ('fPicture', 2),
+                                      ('fAccelerator', 2), ('fGroupName', 4)])
         # MorphDataExtraDataBlock: [MS-OFORMS] 2.2.5.4
         stream.read(8)
         value = stream.read(value_size)
@@ -404,12 +389,13 @@ def consume_TabStripControl(stream):
     with stream.will_jump_to(cbTabStrip):
         propmask = TabStripPropMask(stream.unpack('<L', 4))
         # TabStripDataBlock: [MS-OFORMS] 2.2.9.3
-        # All are 4B (or 4B + pad = 4B), except MousePointer, which is 1B + pad = 4b
-        for prop in ['fListIndex', 'fBackColor', 'fForeColor', 'fSize', 'fTabOrientation'
-                     'fTabStyle', 'fTabFixedWidth', 'fTabFixedHeight', 'fTipStrings',
-                     'fNames', 'fVariousPropertyBits', 'fTabsAllocated', 'fTags']:
-            if propmask[prop]:
-                stream.read(4)
+        propmask.consume(stream, [('fListIndex', 4), ('fBackColor', 4),
+                                  ('fForeColor', 4), ('fSize', 4),
+                                  ('fMousePointer', 1), ('fTabOrientation', 4),
+                                  ('fTabStyle', 4), ('fTabFixedWidth', 4),
+                                  ('fTabFixedHeight', 4), ('fTipStrings', 4),
+                                  ('fNames', 4), ('fVariousPropertyBits', 4),
+                                  ('fTabsAllocated', 4), ('fTags', 4)])
         tabData = 0
         if propmask['fTabData']:
             tabData = stream.unpack('<L', 4)
