@@ -194,8 +194,6 @@ def consume_GuidAndPicture(stream):
 def consume_CountOfBytesWithCompressionFlag(stream):
     # CountOfBytesWithCompressionFlag or CountOfCharsWithCompressionFlag: [MS-OFORMS] 2.4.14.2 or 2.4.14.3
     count = stream.unpack('<L', 4)
-    if not count & 0x80000000 and count != 0:
-        stream.aise_error('Uncompress string length', 4)
     return count & 0x7FFFFFFF
 
 def consume_SiteClassInfo(stream):
