@@ -443,11 +443,11 @@ def extract_OleFormVariables(ole_file, stream_dir):
     for var in variables:
         # See FormEmbeddedActiveXControlCached for type definition: [MS-OFORMS] 2.4.5
         if var['ClsidCacheIndex'] == 7:
-            raise OleFormParsingError('Malformed document: Forms should be stored in the f stream')
+            consume_FormControl(data)
         elif var['ClsidCacheIndex'] == 12:
             consume_ImageControl(data)
         elif var['ClsidCacheIndex'] == 14:
-            raise OleFormParsingError('Malformed document: Frames should be stored in the f stream')
+            consume_FormControl(data)
         elif var['ClsidCacheIndex'] in [15, 23, 24, 25, 26, 27, 28]:
             var['value'] = consume_MorphDataControl(data)
         elif var['ClsidCacheIndex'] == 16:
@@ -461,7 +461,7 @@ def extract_OleFormVariables(ole_file, stream_dir):
         elif var['ClsidCacheIndex'] == 47:
             consume_ScrollBarControl(data)
         elif var['ClsidCacheIndex'] == 57:
-            raise OleFormParsingError('Malformed document: MultiPages should be stored in a x stream')
+            consume_FormControl(data)
         else:
             # TODO: use logging instead of print
             print('ERROR: Unsupported stored type in user form: {0}'.format(str(var['ClsidCacheIndex'])))
