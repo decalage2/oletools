@@ -277,11 +277,12 @@ def consume_FormControl(stream):
             consume_SiteClassInfo(stream)
     (CountOfSites, CountOfBytes) = stream.unpacks('<LL', 8)
     remaining_SiteDepthsAndTypes = CountOfSites
-    with stream.will_pad():
-        while remaining_SiteDepthsAndTypes > 0:
-            remaining_SiteDepthsAndTypes -= consume_FormObjectDepthTypeCount(stream)
-    for i in range(CountOfSites):
-        yield consume_OleSiteConcreteControl(stream)
+    with stream.will_jump_to(CountOfBytes):
+        with stream.will_pad():
+            while remaining_SiteDepthsAndTypes > 0:
+                remaining_SiteDepthsAndTypes -= consume_FormObjectDepthTypeCount(stream)
+        for i in range(CountOfSites):
+            yield consume_OleSiteConcreteControl(stream)
 
 def consume_MorphDataControl(stream):
     # MorphDataControl: [MS-OFORMS] 2.2.5.1
