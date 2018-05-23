@@ -104,6 +104,8 @@ class ExtendedStream(object):
         self._jumps = []
         self._stream = stream
         self._path = path
+        self._padding = False
+        self._pad_start = 0
 
     @classmethod
     def open(cls, ole_file, path):
@@ -114,31 +116,55 @@ class ExtendedStream(object):
         # print('declared size: %d' % ole_file.get_size(path))
         return cls(stream, path)
 
-    def read(self, size):
+    def _read(self, size):
         self._pos += size
         return self._stream.read(size)
 
+    def _pad(self, start, size=4):
+        offset = (self._pos - start) % size
+        if offset:
+            self._read(size - offset)
+
+    def read(self, size):
+        if self._padding:
+            self._pad(self._pad_start, size)
+        return self._read(size)
+
     def will_jump_to(self, size):
-        self._next_jump = (True, size)
+        self._next_jump = ('jump', (self._pos, size))
         return self
 
-    def will_pad(self, pad=4):
-        self._next_jump = (False, pad)
+    def will_pad(self):
+        self._next_jump = ('pad', self._pos)
+        return self
+
+    def padded_struct(self):
+        self._next_jump = ('padded', (self._padding, self._pad_start))
+        self._padding = True
+        self._pad_start = self._pos
         return self
 
     def __enter__(self):
-        (jump_type, size) = self._next_jump
-        self._jumps.append((self._pos, jump_type, size))
+        assert(self._next_jump)
+        self._jumps.append(self._next_jump)
+        self._next_jump = None
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is None:
-            (start, jump_type, size) = self._jumps.pop()
-            if jump_type:
-                self.read(size - (self._pos - start))
-            else:
-                align = (self._pos - start) % size
-                if align:
-                    self.read(size - align)
+            (jump_type, data) = self._jumps.pop()
+            if jump_type == 'jump':
+                (start, size) = data
+                consummed = self._pos - start
+                if consummed > size:
+                    self.raise_error('Bad jump: too much read ({0} > {1})'.format(consummed, size))
+                self.read(size - consummed)
+            elif jump_type == 'pad':
+                self._pad(data)
+            elif jump_type == 'padded':
+                (prev_padding, prev_pad_start) = data
+                self._pad(self._pad_start)
+                self._padding = prev_padding
+                self._pad_start = prev_pad_start
 
     def unpacks(self, format, size):
         return struct.unpack(format, self.read(size))
@@ -219,28 +245,27 @@ def consume_OleSiteConcreteControl(stream):
     with stream.will_jump_to(cbSite):
         propmask = SitePropMask(stream.unpack('<L', 4))
         # SiteDataBlock: [MS-OFORMS] 2.2.10.12.3
-        name_len = tag_len = id = 0
-        if propmask.fName:
-            name_len = consume_CountOfBytesWithCompressionFlag(stream)
-        if propmask.fTag:
-            tag_len = consume_CountOfBytesWithCompressionFlag(stream)
-        if propmask.fID:
-            id = stream.unpack('<L', 4)
-        for prop in ['fHelpContextID', 'fBitFlags', 'fObjectStreamSize']:
-            if propmask[prop]:
-                stream.read(4)
-        tabindex = ClsidCacheIndex = 0
-        with stream.will_pad():
+        with stream.padded_struct():
+            name_len = tag_len = id = 0
+            if propmask.fName:
+                name_len = consume_CountOfBytesWithCompressionFlag(stream)
+            if propmask.fTag:
+                tag_len = consume_CountOfBytesWithCompressionFlag(stream)
+            if propmask.fID:
+                id = stream.unpack('<L', 4)
+            for prop in ['fHelpContextID', 'fBitFlags', 'fObjectStreamSize']:
+                if propmask[prop]:
+                    stream.read(4)
+            tabindex = ClsidCacheIndex = 0
             if propmask.fTabIndex:
                 tabindex = stream.unpack('<H', 2)
             if propmask.fClsidCacheIndex:
                 ClsidCacheIndex = stream.unpack('<H', 2)
             if propmask.fGroupID:
                 stream.read(2)
-        # For the next 4 entries, the documentation adds padding, but it should already be aligned??
-        for prop in ['fControlTipText', 'fRuntimeLicKey', 'fControlSource', 'fRowSource']:
-            if propmask[prop]:
-                stream.read(4)
+            for prop in ['fControlTipText', 'fRuntimeLicKey', 'fControlSource', 'fRowSource']:
+                if propmask[prop]:
+                    stream.read(4)
         # SiteExtraDataBlock: [MS-OFORMS] 2.2.10.12.4
         name = stream.read(name_len)
         tag = stream.read(tag_len)
@@ -291,35 +316,37 @@ def consume_MorphDataControl(stream):
     with stream.will_jump_to(cbMorphData):
         propmask = MorphDataPropMask(stream.unpack('<Q', 8))
         # MorphDataDataBlock: [MS-OFORMS] 2.2.5.3
-        for prop in ['fVariousPropertyBits', 'fBackColor', 'fForeColor', 'fMaxLength']:
-            if propmask[prop]:
-                stream.read(4)
-        with stream.will_pad():
+        with stream.padded_struct():
+            for prop in ['fVariousPropertyBits', 'fBackColor', 'fForeColor', 'fMaxLength']:
+                if propmask[prop]:
+                    stream.read(4)
             for prop in ['fBorderStyle', 'fScrollBars', 'fDisplayStyle', 'fMousePointer']:
                 if propmask[prop]:
                     stream.read(1)
-        # PasswordChar, BoundColumn, TextColumn, ColumnCount, and ListRows are 2B + pad = 4B
-        # ListWidth is 4B + pad = 4B
-        for prop in ['fPasswordChar', 'fListWidth', 'fBoundColumn', 'fTextColumn', 'fColumnCount',
-                     'fListRows']:
-            if propmask[prop]:
+            if propmask['fPasswordChar']:
+                stream.read(2)
+            if propmask['fListWidth']:
                 stream.read(4)
-        with stream.will_pad():
+            for prop in ['fBoundColumn', 'fTextColumn', 'fColumnCount', 'fListRows']:
+                if propmask[prop]:
+                    stream.read(2)
             if propmask.fcColumnInfo:
                 stream.read(2)
-            for prop in ['fMatchEntry', 'fListStyle', 'fShowDropButtonWhen', 'fDropButtonStyle',
-                         'fMultiSelect']:
+            for prop in ['fMatchEntry', 'fListStyle', 'fShowDropButtonWhen',
+                         'fDropButtonStyle', 'fMultiSelect']:
                 if propmask[prop]:
                     stream.read(1)
-        if propmask.fValue:
-            value_size = consume_CountOfBytesWithCompressionFlag(stream)
-        else:
-            value_size = 0
-        # Caption, PicturePosition, BorderColor, SpecialEffect, GroupName  are 4B + pad = 4B
-        # MouseIcon, Picture, Accelerator are 2B + pad = 4B
-        for prop in ['fCaption', 'fPicturePosition', 'fBorderColor', 'fSpecialEffect',
-                     'fMouseIcon', 'fPicture', 'fAccelerator', 'fGroupName']:
-            if propmask[prop]:
+            if propmask.fValue:
+                value_size = consume_CountOfBytesWithCompressionFlag(stream)
+            else:
+                value_size = 0
+            for prop in ['fCaption', 'fPicturePosition', 'fBorderColor', 'fSpecialEffect']:
+                if propmask[prop]:
+                    stream.read(4)
+            for prop in ['fMouseIcon', 'fPicture', 'fAccelerator']:
+                if propmask[prop]:
+                    stream.read(2)
+            if propmask['fGroupName']:
                 stream.read(4)
         # MorphDataExtraDataBlock: [MS-OFORMS] 2.2.5.4
         stream.read(8)
