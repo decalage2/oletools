@@ -69,14 +69,6 @@ class LogHelper:
         self._json_formatter = JsonFormatter()
         logging.setLoggerClass(OletoolsLogger)
 
-    def get_or_create_logger(self, name=DEFAULT_LOGGER_NAME, level=logging.WARNING):
-        """
-        Get a logger or create one if it doesn't exist.
-        To keep the same behavior as `logging.getLogger`, we add a StreamHandler
-        that logs by default to stderr
-        """
-        return self._get_or_create_logger(name, level, logging.StreamHandler())
-
     def get_or_create_silent_logger(self, name=DEFAULT_LOGGER_NAME, level=logging.CRITICAL + 1):
         """
         Get a logger or create one if it doesn't exist, setting a NullHandler
@@ -105,8 +97,7 @@ class LogHelper:
         # and set their formatters to our custom Json formatter
         # also set their levels so they respect what the main module wants logged
         for name in self._all_names:
-            logger = self.get_or_create_logger(name)
-            logger.setLevel(log_level)
+            logger = self.get_or_create_silent_logger(name)
 
             if self._use_json:
                 self._make_json(logger)
