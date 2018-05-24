@@ -6,9 +6,7 @@ class JsonFormatter(logging.Formatter):
     """
     Format every message to be logged as a JSON object
     """
-    def __init__(self, fmt=None, datefmt=None):
-        super(JsonFormatter, self).__init__(fmt, datefmt)
-        self._is_first_line = True
+    _is_first_line = True
 
     def format(self, record):
         """
