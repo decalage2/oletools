@@ -43,7 +43,6 @@ General logging helpers
 
 from __future__ import print_function
 from ._json_formatter import JsonFormatter
-from ._null_handler import NullHandler
 from ._logger_class import OletoolsLogger
 from . import _root_logger_wrapper
 import logging
@@ -81,21 +80,13 @@ class LogHelper:
     def get_or_create_silent_logger(self, name=DEFAULT_LOGGER_NAME, level=logging.CRITICAL + 1):
         """
         Get a logger or create one if it doesn't exist, setting a NullHandler
-        (to avoid printing to the console) as the handler if that's the case.
+        as the handler (to avoid printing to the console).
         By default we also use a higher logging level so every message will
         be ignored.
         This is useful when we don't want to print anything when the logger
         is not configured by the main application.
-
-        Python 2.7 has logging.NullHandler, but this is necessary for 2.6:
-        git pus https://docs.python.org/2.6/library/logging.html#configuring-logging-for-a-library
         """
-        if sys.version_info >= (2, 6):
-            handler = logging.NullHandler
-        else:
-            handler = NullHandler
-
-        return self._get_or_create_logger(name, level, handler())
+        return self._get_or_create_logger(name, level, logging.NullHandler())
 
     def enable_logging(self, use_json, level, log_format=DEFAULT_MESSAGE_FORMAT, stream=None):
         """ called from main after parsing arguments """
