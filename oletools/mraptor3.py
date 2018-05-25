@@ -9,6 +9,7 @@ Supported formats:
 - Word 97-2003 (.doc, .dot), Word 2007+ (.docm, .dotm)
 - Excel 97-2003 (.xls), Excel 2007+ (.xlsm, .xlsb)
 - PowerPoint 97-2003 (.ppt), PowerPoint 2007+ (.pptm, .ppsm)
+- Word/PowerPoint 2007+ XML (aka Flat OPC)
 - Word 2003 XML (.xml)
 - Word/Excel Single File Web Page / MHTML (.mht)
 - Publisher (.pub)
@@ -22,7 +23,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE ==================================================================
 
-# MacroRaptor is copyright (c) 2016-2017 Philippe Lagadec (http://www.decalage.info)
+# MacroRaptor is copyright (c) 2016-2018 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -55,8 +56,9 @@ http://www.decalage.info/python/oletools
 # 2016-08-26       PL: - changed imports for Python 3
 # 2017-04-26 v0.51 PL: - fixed absolute imports (issue #141)
 # 2017-06-29       PL: - synced with mraptor.py 0.51
+# 2018-05-25 v0.53 PL: - added Word/PowerPoint 2007+ XML (aka Flat OPC) issue #283
 
-__version__ = '0.51'
+__version__ = '0.53dev12'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -83,6 +85,7 @@ from oletools.thirdparty.tablestream import tablestream
 
 # import the python 3 version of olevba
 from oletools import olevba3 as olevba
+from oletools.olevba3 import TYPE2TAG
 
 # === LOGGING =================================================================
 
@@ -130,15 +133,6 @@ RE_DECLARE_LIB = r'(?:\bDeclare\b[^\n]+\bLib\b)'
 
 re_execute = re.compile(r'(?i)\b(?:Shell|CreateObject|GetObject|SendKeys|'
     + r'MacScript|FollowHyperlink|CreateThread|ShellExecute)\b|' + RE_DECLARE_LIB)
-
-# short tag to display file types in triage mode:
-TYPE2TAG = {
-    olevba.TYPE_OLE: 'OLE',
-    olevba.TYPE_OpenXML: 'OpX',
-    olevba.TYPE_Word2003_XML: 'XML',
-    olevba.TYPE_MHTML: 'MHT',
-    olevba.TYPE_TEXT: 'TXT',
-}
 
 
 # === CLASSES =================================================================
