@@ -50,7 +50,7 @@ import os
 import re
 import sys
 import io
-from zipfile import is_zipfile, ZipFile
+from zipfile import is_zipfile
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
@@ -70,7 +70,7 @@ except ImportError:
 from oletools.thirdparty import xglob
 from oletools.ppt_record_parser import (is_ppt, PptFile,
                                         PptRecordExOleVbaActiveXAtom)
-from oletools.ooxml import XmlParser, ZipSubFile
+from oletools.ooxml import XmlParser
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:
@@ -615,7 +615,7 @@ class FakeFile(io.RawIOBase):
         return self.pos
 
 
-def find_ole(filename, data):
+def find_ole(filename, data, xml_parser=None):
     """ try to open somehow as zip/ole/rtf/... ; yield None if fail
 
     If data is given, filename is (mostly) ignored.
@@ -647,34 +647,40 @@ def find_ole(filename, data):
             log.info('is ole file: ' + filename)
             ole = olefile.OleFileIO(arg_for_ole)
             yield ole
-        elif is_zipfile(arg_for_zip):
+        elif xml_parser is not None or is_zipfile(arg_for_zip):
+            # keep compatibility with 3rd-party code that calls this function
+            # directly without providing an XmlParser instance
+            if xml_parser is None:
+                xml_parser = XmlParser(arg_for_zip)
+                # force iteration so XmlParser.iter_non_xml() returns data
+                [x for x in xml_parser.iter_xml()]
+
             log.info('is zip file: ' + filename)
-            zipper = ZipFile(arg_for_zip, 'r')
-            for subfile in zipper.namelist():
-                head = b''
+            # we looped through the XML files before, now we can
+            # iterate the non-XML files looking for ole objects
+            for subfile, _, file_handle in xml_parser.iter_non_xml():
                 try:
-                    with zipper.open(subfile) as file_handle:
-                        head = file_handle.read(len(olefile.MAGIC))
+                    head = file_handle.read(len(olefile.MAGIC))
                 except RuntimeError:
                     log.error('zip is encrypted: ' + filename)
                     yield None
                     continue
 
                 if head == olefile.MAGIC:
+                    file_handle.seek(0)
                     log.info('  unzipping ole: ' + subfile)
-                    with ZipSubFile(zipper, subfile) as file_handle:
-                        try:
-                            ole = olefile.OleFileIO(file_handle)
-                            yield ole
-                        except IOError:
-                            log.warning('Error reading data from {0}/{1} or '
-                                        'interpreting it as OLE object'
-                                        .format(filename, subfile))
-                            log.debug('', exc_info=True)
-                        finally:
-                            if ole is not None:
-                                ole.close()
-                                ole = None
+                    try:
+                        ole = olefile.OleFileIO(file_handle)
+                        yield ole
+                    except IOError:
+                        log.warning('Error reading data from {0}/{1} or '
+                                    'interpreting it as OLE object'
+                                    .format(filename, subfile))
+                        log.debug('', exc_info=True)
+                    finally:
+                        if ole is not None:
+                            ole.close()
+                            ole = None
                 else:
                     log.debug('unzip skip: ' + subfile)
         else:
@@ -738,18 +744,19 @@ def process_file(filename, data, output_dir=None):
     err_dumping = False
     did_dump = False
 
+    xml_parser = None
     if is_zipfile(filename):
-        log.info('file is a OOXML file, looking for relationships with external files')
+        log.info('file is a OOXML file, looking for relationships with external links')
         xml_parser = XmlParser(filename)
         for relationship, target in find_external_relationships(xml_parser):
             did_dump = True
-            print("Found relationship '%s' with external file %s" % (relationship, target))
+            print("Found relationship '%s' with external link %s" % (relationship, target))
 
 
     # look for ole files inside file (e.g. unzip docx)
     # have to finish work on every ole stream inside iteration, since handles
     # are closed in find_ole
-    for ole in find_ole(filename, data):
+    for ole in find_ole(filename, data, xml_parser):
         if ole is None:    # no ole file found
             continue
 
