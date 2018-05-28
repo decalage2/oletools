@@ -641,7 +641,7 @@ def test():
     for subfile, elem, depth in parser.iter_xml():
         if depth < 4:
             print(u'{0} {1}{2}'.format(subfile, '  ' * depth, debug_str(elem)))
-    for index, (subfile, content_type) in enumerate(parser.iter_non_xml()):
+    for index, (subfile, content_type, _) in enumerate(parser.iter_non_xml()):
         print(u'Non-XML subfile: {0} of type {1}'
               .format(subfile, content_type or u'unknown'))
         if index > 100:
