@@ -70,7 +70,7 @@ except ImportError:
 from oletools.thirdparty import xglob
 from oletools.ppt_record_parser import (is_ppt, PptFile,
                                         PptRecordExOleVbaActiveXAtom)
-from oletools.ooxml import ZipSubFile
+from oletools.ooxml import XmlParser, ZipSubFile
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:
@@ -178,6 +178,7 @@ else:
     NULL_CHAR = 0     # pylint: disable=redefined-variable-type
     xrange = range    # pylint: disable=redefined-builtin, invalid-name
 
+OOXML_RELATIONSHIP_TAG = '{http://schemas.openxmlformats.org/package/2006/relationships}Relationship'
 
 # === GLOBAL VARIABLES ========================================================
 
@@ -203,6 +204,24 @@ RETURN_ERR_ARGS = 2    # reserve for OptionParser.parse_args
 RETURN_ERR_STREAM = 4  # error opening/parsing a stream
 RETURN_ERR_DUMP = 8    # error dumping data from stream to file
 
+# Not sure if they can all be "External", but just in case
+BLACKLISTED_RELATIONSHIP_TYPES = [
+    'attachedTemplate',
+    'externalLink',
+    'externalLinkPath',
+    'externalReference'
+    'frame'
+    'hyperlink',
+    'officeDocument',
+    'oleObject',
+    'package',
+    'slideUpdateUrl',
+    'slideMaster',
+    'slide',
+    'slideUpdateInfo',
+    'subDocument',
+    'worksheet'
+]
 
 # === FUNCTIONS ===============================================================
 
@@ -671,6 +690,22 @@ def find_ole(filename, data):
             ole.close()
 
 
+def find_external_relationships(xml_parser):
+    """ iterate XML files looking for relationships to external objects
+    """
+    for _, elem, _ in xml_parser.iter_xml(None, False, OOXML_RELATIONSHIP_TAG):
+        try:
+            if elem.attrib['TargetMode'] == 'External':
+                relationship_type = elem.attrib['Type'].rsplit('/', 1)[1]
+
+                if relationship_type in BLACKLISTED_RELATIONSHIP_TYPES:
+                    yield relationship_type, elem.attrib['Target']
+        except (AttributeError, KeyError):
+            # ignore missing attributes - Word won't detect
+            # external links anyway
+            pass
+
+
 def process_file(filename, data, output_dir=None):
     """ find embedded objects in given file
 
@@ -702,6 +737,14 @@ def process_file(filename, data, output_dir=None):
     err_stream = False
     err_dumping = False
     did_dump = False
+
+    if is_zipfile(filename):
+        log.info('file is a OOXML file, looking for relationships with external files')
+        xml_parser = XmlParser(filename)
+        for relationship, target in find_external_relationships(xml_parser):
+            did_dump = True
+            print("Found relationship '%s' with external file %s" % (relationship, target))
+
 
     # look for ole files inside file (e.g. unzip docx)
     # have to finish work on every ole stream inside iteration, since handles
