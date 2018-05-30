@@ -43,7 +43,7 @@ http://www.decalage.info/python/oletools
 # 2018-04-18       PL: - added known-bad CLSIDs from Cuckoo sandbox (issue #290)
 # 2018-05-08       PL: - added more CLSIDs (issues #299, #304), merged and sorted
 
-__version__ = '0.53dev9'
+__version__ = '0.53'
 
 
 # REFERENCES:
@@ -89,6 +89,7 @@ KNOWN_CLSIDS = {
     '0003000C-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
     '0003000D-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
     '0003000E-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
+    '0004A6B0-0000-0000-C000-000000000046': 'Microsoft Equation 2.0 (Known Related to CVE-2017-11882 or CVE-2018-0802)', # TODO: to be confirmed
     '048EB43E-2059-422F-95E0-557DA96038AF': 'Microsoft Powerpoint.Slide.12',
     '05741520-C4EB-440A-AC3F-9643BBC9F847': 'otkloadr.WRLoader (can be used to bypass ASLR after triggering an exploit)',
     '06290BD2-48AA-11D2-8432-006008C3FBFC': 'Factory bindable using IPersistMoniker (scripletfile)',
