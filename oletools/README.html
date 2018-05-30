@@ -19,29 +19,30 @@
 <h1 id="python-oletools">python-oletools</h1>
 <p><a href="https://pypi.python.org/pypi/oletools"><img src="https://img.shields.io/pypi/v/oletools.svg" alt="PyPI" /></a> <a href="https://travis-ci.org/decalage2/oletools"><img src="https://travis-ci.org/decalage2/oletools.svg?branch=master" alt="Build Status" /></a></p>
 <p><a href="http://www.decalage.info/python/oletools">oletools</a> is a package of python tools to analyze <a href="http://en.wikipedia.org/wiki/Compound_File_Binary_Format">Microsoft OLE2 files</a> (also called Structured Storage, Compound File Binary Format or Compound Document File Format), such as Microsoft Office documents or Outlook messages, mainly for malware analysis, forensics and debugging. It is based on the <a href="http://www.decalage.info/olefile">olefile</a> parser. See <a href="http://www.decalage.info/python/oletools" class="uri">http://www.decalage.info/python/oletools</a> for more info.</p>
-<p><strong>Quick links:</strong> <a href="http://www.decalage.info/python/oletools">Home page</a> - <a href="https://github.com/decalage2/oletools/wiki/Install">Download/Install</a> - <a href="https://github.com/decalage2/oletools/wiki">Documentation</a> - <a href="https://github.com/decalage2/oletools/issues">Report Issues/Suggestions/Questions</a> - <a href="http://decalage.info/contact">Contact the Author</a> - <a href="https://github.com/decalage2/oletools">Repository</a> - <a href="https://twitter.com/decalage2">Updates on Twitter</a></p>
+<p><strong>Quick links:</strong> <a href="http://www.decalage.info/python/oletools">Home page</a> - <a href="https://github.com/decalage2/oletools/wiki/Install">Download/Install</a> - <a href="https://github.com/decalage2/oletools/wiki">Documentation</a> - <a href="https://github.com/decalage2/oletools/issues">Report Issues/Suggestions/Questions</a> - <a href="http://decalage.info/contact">Contact the Author</a> - <a href="https://github.com/decalage2/oletools">Repository</a> - <a href="https://twitter.com/decalage2">Updates on Twitter</a> <a href="https://github.com/decalage2/oletools/blob/master/cheatsheet/oletools_cheatsheet.pdf">Cheatsheet</a></p>
 <p>Note: python-oletools is not related to OLETools published by BeCubed Software.</p>
 <h2 id="news">News</h2>
 <ul>
-<li><strong>2018-02-18 v0.52</strong>:
+<li><strong>2018-05-30 v0.53</strong>:
+<ul>
+<li>olevba and mraptor can now parse Word/PowerPoint 2007+ pure XML files (aka Flat OPC format)</li>
+<li>improved support for VBA forms in olevba (oleform)</li>
+<li>rtfobj now displays the CLSID of OLE objects, which is the best way to identify them. Known-bad CLSIDs such as MS Equation Editor are highlighted in red.</li>
+<li>Updated rtfobj to handle obfuscated RTF samples.</li>
+<li>rtfobj now handles the &quot;\'&quot; obfuscation trick seen in recent samples such as https://twitter.com/buffaloverflow/status/989798880295444480, by emulating the MS Word bug described in https://securelist.com/disappearing-bytes/84017/</li>
+<li>msodde: improved detection of DDE formulas in CSV files</li>
+<li>oledir now displays the tree of storage/streams, along with CLSIDs and their meaning.</li>
+<li>common.clsid contains the list of known CLSIDs, and their links to CVE vulnerabilities when relevant.</li>
+<li>oleid now detects encrypted OpenXML files</li>
+<li>fixed bugs in oleobj, rtfobj, oleid, olevba</li>
+</ul></li>
+<li>2018-02-18 v0.52:
 <ul>
 <li>New tool <a href="https://github.com/decalage2/oletools/wiki/msodde">msodde</a> to detect and extract DDE links from MS Office files, RTF and CSV;</li>
 <li>Fixed bugs in olevba, rtfobj and olefile, to better handle malformed/obfuscated files;</li>
 <li>Performance improvements in olevba and rtfobj;</li>
 <li>VBA form parsing in olevba;</li>
 <li>Office 2007+ support in oleobj.</li>
-</ul></li>
-<li>2017-06-29 v0.51:
-<ul>
-<li>added the <a href="https://github.com/decalage2/oletools/blob/master/cheatsheet/oletools_cheatsheet.pdf">oletools cheatsheet</a></li>
-<li>improved <a href="https://github.com/decalage2/oletools/wiki/rtfobj">rtfobj</a> to handle malformed RTF files, detect vulnerability CVE-2017-0199</li>
-<li>olevba: improved deobfuscation and Mac files support</li>
-<li><a href="https://github.com/decalage2/oletools/wiki/mraptor">mraptor</a>: added more ActiveX macro triggers</li>
-<li>added <a href="https://github.com/decalage2/oletools/blob/master/oletools/DocVarDump.vba">DocVarDump.vba</a> to dump document variables using Word</li>
-<li>olemap: can now detect and extract <a href="http://decalage.info/en/ole_extradata">extra data at end of file</a>, improved display</li>
-<li>oledir, olemeta, oletimes: added support for zip files and wildcards</li>
-<li>many <a href="https://github.com/decalage2/oletools/milestone/3?closed=1">bugfixes</a> in all the tools</li>
-<li>improved Python 2+3 support</li>
 </ul></li>
 </ul>
 <p>See the <a href="https://github.com/decalage2/oletools/wiki/Changelog">full changelog</a> for more information.</p>
@@ -65,7 +66,7 @@
 <li><a href="https://github.com/decalage2/oletools/wiki/olemap">olemap</a>: to display a map of all the sectors in an OLE file.</li>
 </ul>
 <h2 id="projects-using-oletools">Projects using oletools:</h2>
-<p>oletools are used by a number of projects and online malware analysis services, including <a href="http://viper.li/">Viper</a>, <a href="https://remnux.org/">REMnux</a>, <a href="https://certsocietegenerale.github.io/fame/">FAME</a>, <a href="https://www.hybrid-analysis.com/">Hybrid-analysis.com</a>, <a href="https://www.document-analyzer.net/">Joe Sandbox</a>, <a href="https://sandbox.deepviz.com/">Deepviz</a>, <a href="https://github.com/lmco/laikaboss">Laika BOSS</a>, <a href="https://github.com/cuckoosandbox/cuckoo">Cuckoo Sandbox</a>, <a href="https://sandbox.anlyz.io/">Anlyz.io</a>, <a href="https://github.com/decalage2/ViperMonkey">ViperMonkey</a>, <a href="https://github.com/bontchev/pcodedmp">pcodedmp</a>, <a href="https://dridex.malwareconfig.com">dridex.malwareconfig.com</a>, and probably <a href="https://www.virustotal.com">VirusTotal</a>. (Please <a href="(http://decalage.info/contact)">contact me</a> if you have or know a project using oletools)</p>
+<p>oletools are used by a number of projects and online malware analysis services, including <a href="http://viper.li/">Viper</a>, <a href="https://remnux.org/">REMnux</a>, <a href="https://certsocietegenerale.github.io/fame/">FAME</a>, <a href="https://www.hybrid-analysis.com/">Hybrid-analysis.com</a>, <a href="https://www.document-analyzer.net/">Joe Sandbox</a>, <a href="https://sandbox.deepviz.com/">Deepviz</a>, <a href="https://github.com/lmco/laikaboss">Laika BOSS</a>, <a href="https://github.com/cuckoosandbox/cuckoo">Cuckoo Sandbox</a>, <a href="https://sandbox.anlyz.io/">Anlyz.io</a>, <a href="https://github.com/decalage2/ViperMonkey">ViperMonkey</a>, <a href="https://github.com/bontchev/pcodedmp">pcodedmp</a>, <a href="https://dridex.malwareconfig.com">dridex.malwareconfig.com</a>, <a href="https://github.com/countercept/snake">Snake</a>, <a href="https://github.com/cryps1s/DARKSURGEON">DARKSURGEON</a>, and probably <a href="https://www.virustotal.com">VirusTotal</a>. (Please <a href="(http://decalage.info/contact)">contact me</a> if you have or know a project using oletools)</p>
 <h2 id="download-and-install">Download and Install:</h2>
 <p>The recommended way to download and install/update the <strong>latest stable release</strong> of oletools is to use <a href="https://pip.pypa.io/en/stable/installing/">pip</a>:</p>
 <ul>

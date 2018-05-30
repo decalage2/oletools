@@ -1,4 +1,4 @@
-python-oletools v0.52 documentation
+python-oletools v0.53 documentation
 ===================================
 
 This is the home page of the documentation for python-oletools. The latest version can be found 
