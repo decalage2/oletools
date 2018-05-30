@@ -939,8 +939,8 @@ def main(cmd_line_args=None):
         global NO_QUOTES
         NO_QUOTES = True
 
-    logger.log_at_current_level(BANNER)
-    logger.log_at_current_level('Opening file: %s' % args.filepath)
+    logger.print_str(BANNER)
+    logger.print_str('Opening file: %s' % args.filepath)
 
     text = ''
     return_code = 1
@@ -950,8 +950,8 @@ def main(cmd_line_args=None):
     except Exception as exc:
         logger.exception(exc.message)
 
-    logger.log_at_current_level('DDE Links:')
-    logger.log_at_current_level(text)
+    logger.print_str('DDE Links:')
+    logger.print_str(text)
 
     log_helper.end_logging()
 
