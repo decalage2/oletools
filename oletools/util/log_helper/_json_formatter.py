@@ -10,18 +10,15 @@ class JsonFormatter(logging.Formatter):
 
     def format(self, record):
         """
-        We accept messages that are either dictionaries or not.
-        When we have dictionaries we can just serialize it as JSON right away.
+        Since we don't buffer messages, we always prepend messages with a comma to make
+        the output JSON-compatible. The only exception is when printing the first line,
+        so we need to keep track of it.
         """
-        trailing_comma = ','
+        json_dict = dict(msg=record.msg, level=record.levelname)
+        formatted_message = '    ' + json.dumps(json_dict)
 
         if self._is_first_line:
-            trailing_comma = ''
             self._is_first_line = False
+            return formatted_message
 
-        json_dict = record.msg \
-            if isinstance(record.msg, dict) \
-            else dict(msg=record.msg)
-        json_dict['level'] = record.levelname
-
-        return trailing_comma + '    ' + json.dumps(json_dict)
+        return ', ' + formatted_message

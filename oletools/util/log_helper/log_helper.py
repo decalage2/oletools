@@ -41,9 +41,8 @@ General logging helpers
 # TODO:
 
 
-from __future__ import print_function
 from ._json_formatter import JsonFormatter
-from ._logger_class import OletoolsLogger
+from ._logger_adapter import OletoolsLoggerAdapter
 from . import _root_logger_wrapper
 import logging
 import sys
@@ -66,8 +65,6 @@ class LogHelper:
         self._all_names = set()  # set so we do not have duplicates
         self._use_json = False
         self._is_enabled = False
-        self._json_formatter = JsonFormatter()
-        logging.setLoggerClass(OletoolsLogger)
 
     def get_or_create_silent_logger(self, name=DEFAULT_LOGGER_NAME, level=logging.CRITICAL + 1):
         """
@@ -75,13 +72,23 @@ class LogHelper:
         as the handler (to avoid printing to the console).
         By default we also use a higher logging level so every message will
         be ignored.
-        This is useful when we don't want to print anything when the logger
-        is not configured by the main application.
+        This will prevent oletools from logging unnecessarily when being imported
+        from external tools.
         """
         return self._get_or_create_logger(name, level, logging.NullHandler())
 
     def enable_logging(self, use_json, level, log_format=DEFAULT_MESSAGE_FORMAT, stream=None):
-        """ called from main after parsing arguments """
+        """
+        This function initializes the root logger and enables logging.
+        We set the level of the root logger to the one passed by calling logging.basicConfig.
+        We also set the level of every logger we created to 0 (logging.NOTSET), meaning that
+        the level of the root logger will be used to tell if messages should be logged.
+        Additionally, since our loggers use the NullHandler, they won't log anything themselves,
+        but due to having propagation enabled they will pass messages to the root logger,
+        which in turn will log to the stream set in this function.
+        Since the root logger is the one doing the work, when using JSON we set its formatter
+        so that every message logged is JSON-compatible.
+        """
         if self._is_enabled:
             raise ValueError('re-enabling logging. Not sure whether that is ok...')
 
@@ -90,26 +97,23 @@ class LogHelper:
         self._is_enabled = True
 
         self._use_json = use_json
-
-        sys.excepthook = self._log_except_hook
+        sys.excepthook = self._get_except_hook(sys.excepthook)
 
         # since there could be loggers already created we go through all of them
-        # and set their formatters to our custom Json formatter
-        # also set their levels so they respect what the main module wants logged
+        # and set their levels to 0 so they will use the root logger's level
         for name in self._all_names:
             logger = self.get_or_create_silent_logger(name)
+            self._set_logger_level(logger, logging.NOTSET)
 
-            if self._use_json:
-                self._make_json(logger)
-
-        # print the start of the logging message list
+        # add a JSON formatter to the root logger, which will be used by every logger
         if self._use_json:
+            _root_logger_wrapper.set_formatter(JsonFormatter())
             print('[')
 
     def end_logging(self):
         """
-        Must be called at the end of the main function
-        if the caller wants json-compatible ouptut
+        Must be called at the end of the main function if the caller wants
+        json-compatible output
         """
         if not self._is_enabled:
             return
@@ -124,60 +128,60 @@ class LogHelper:
             print(']')
         self._use_json = False
 
-    def _log_except_hook(self, exctype, value, traceback):
+    def _get_except_hook(self, old_hook):
         """
-        Global hook for exceptions so we can always end logging
+        Global hook for exceptions so we can always end logging.
+        We wrap any hook currently set to avoid overwriting global hooks set by oletools.
+        Note that this is only called by enable_logging, which in turn is called by
+        the main() function in oletools' scripts. When scripts are being imported this
+        code won't execute and won't affect global hooks.
         """
-        self.end_logging()
-        sys.__excepthook__(exctype, value, traceback)
+        def hook(exctype, value, traceback):
+            self.end_logging()
+            old_hook(exctype, value, traceback)
+
+        return hook
 
     def _get_or_create_logger(self, name, level, handler=None):
         """
-        If a logger doesn't exist, we create it and set the handler,
-        if it given. This avoids messing with existing loggers.
-        If we are using json then we also skip adding a handler,
-        since it would be removed afterwards
+        Get or create a new logger. This newly created logger will have the
+        handler and level that was passed, but if it already exists it's not changed.
+        We also wrap the logger in an adapter so we can easily extend its functionality.
         """
 
         # logging.getLogger creates a logger if it doesn't exist,
         # so we need to check before calling it
-        if handler and not self._use_json and not self._log_exists(name):
+        if handler and not self._log_exists(name):
             logger = logging.getLogger(name)
             logger.addHandler(handler)
+            self._set_logger_level(logger, level)
         else:
             logger = logging.getLogger(name)
 
-        self._set_logger_level(logger, level)
+        # Keep track of every logger we created so we can easily change
+        # their levels whenever needed
         self._all_names.add(name)
 
-        if self._use_json:
-            self._make_json(logger)
+        adapted_logger = OletoolsLoggerAdapter(logger, None)
+        adapted_logger.set_json_enabled_function(lambda: self._use_json)
 
-        return logger
-
-    def _make_json(self, logger):
-        """
-        Replace handlers of every logger by a handler that uses the JSON formatter
-        """
-        for handler in logger.handlers:
-            logger.removeHandler(handler)
-        new_handler = logging.StreamHandler(sys.stdout)
-        new_handler.setFormatter(self._json_formatter)
-        logger.addHandler(new_handler)
-
-        # Don't let it propagate to parent loggers, otherwise we might get
-        # duplicated messages from the root logger
-        logger.propagate = False
+        return adapted_logger
 
     @staticmethod
     def _set_logger_level(logger, level):
         """
-        If the logging is already initialized, we use the same level that
-        was set to the root logger. This prevents imported modules' loggers
-        from messing with the main module logging.
+        If the logging is already initialized, we set the level of our logger
+        to 0, meaning that it will reuse the level of the root logger.
+        That means that if the root logger level changes, we will keep using
+        its level and not logging unnecessarily.
         """
+
+        # if this log was wrapped, unwrap it to set the level
+        if isinstance(logger, OletoolsLoggerAdapter):
+            logger = logger.logger
+
         if _root_logger_wrapper.is_logging_initialized():
-            logger.setLevel(_root_logger_wrapper.get_root_logger_level())
+            logger.setLevel(logging.NOTSET)
         else:
             logger.setLevel(level)
 
