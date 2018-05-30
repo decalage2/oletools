@@ -18,28 +18,30 @@ See [http://www.decalage.info/python/oletools](http://www.decalage.info/python/o
 [Contact the Author](http://decalage.info/contact) - 
 [Repository](https://github.com/decalage2/oletools) -
 [Updates on Twitter](https://twitter.com/decalage2)
+[Cheatsheet](https://github.com/decalage2/oletools/blob/master/cheatsheet/oletools_cheatsheet.pdf)
 
 Note: python-oletools is not related to OLETools published by BeCubed Software.
 
 News
 ----
 
-- **2018-02-18 v0.52**:
+- **2018-05-30 v0.53**:
+    - olevba and mraptor can now parse Word/PowerPoint 2007+ pure XML files (aka Flat OPC format)
+    - improved support for VBA forms in olevba (oleform)
+    - rtfobj now displays the CLSID of OLE objects, which is the best way to identify them. Known-bad CLSIDs such as MS Equation Editor are highlighted in red.
+    - Updated rtfobj to handle obfuscated RTF samples.
+    - rtfobj now handles the "\\'" obfuscation trick seen in recent samples such as https://twitter.com/buffaloverflow/status/989798880295444480, by emulating the MS Word bug described in https://securelist.com/disappearing-bytes/84017/
+    - msodde: improved detection of DDE formulas in CSV files
+    - oledir now displays the tree of storage/streams, along with CLSIDs and their meaning.
+    - common.clsid contains the list of known CLSIDs, and their links to CVE vulnerabilities when relevant.
+    - oleid now detects encrypted OpenXML files
+    - fixed bugs in oleobj, rtfobj, oleid, olevba
+- 2018-02-18 v0.52:
     - New tool [msodde](https://github.com/decalage2/oletools/wiki/msodde) to detect and extract DDE links from MS Office files, RTF and CSV;
     - Fixed bugs in olevba, rtfobj and olefile, to better handle malformed/obfuscated files;
     - Performance improvements in olevba and rtfobj;
     - VBA form parsing in olevba;
     - Office 2007+ support in oleobj.
-- 2017-06-29 v0.51:
-    - added the [oletools cheatsheet](https://github.com/decalage2/oletools/blob/master/cheatsheet/oletools_cheatsheet.pdf)
-    - improved [rtfobj](https://github.com/decalage2/oletools/wiki/rtfobj) to handle malformed RTF files, detect vulnerability CVE-2017-0199
-    - olevba: improved deobfuscation and Mac files support
-    - [mraptor](https://github.com/decalage2/oletools/wiki/mraptor): added more ActiveX macro triggers
-    - added [DocVarDump.vba](https://github.com/decalage2/oletools/blob/master/oletools/DocVarDump.vba) to dump document variables using Word
-    - olemap: can now detect and extract [extra data at end of file](http://decalage.info/en/ole_extradata), improved display
-    - oledir, olemeta, oletimes: added support for zip files and wildcards
-    - many [bugfixes](https://github.com/decalage2/oletools/milestone/3?closed=1) in all the tools
-    - improved Python 2+3 support
 
 See the [full changelog](https://github.com/decalage2/oletools/wiki/Changelog) for more information.
 
