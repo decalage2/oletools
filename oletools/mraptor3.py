@@ -58,7 +58,7 @@ http://www.decalage.info/python/oletools
 # 2017-06-29       PL: - synced with mraptor.py 0.51
 # 2018-05-25 v0.53 PL: - added Word/PowerPoint 2007+ XML (aka Flat OPC) issue #283
 
-__version__ = '0.53dev12'
+__version__ = '0.53'
 
 #------------------------------------------------------------------------------
 # TODO:

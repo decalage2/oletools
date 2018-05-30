@@ -94,7 +94,7 @@ from oletools import rtfobj
 # 2018-01-10       CH: - add single-xml files (Word 2003/2007+ / Excel 2003)
 # 2018-03-21       CH: - added detection for various CSV formulas (issue #259)
 
-__version__ = '0.53dev10'
+__version__ = '0.53'
 
 # -----------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these
