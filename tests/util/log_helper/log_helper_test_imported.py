@@ -12,7 +12,7 @@ WARNING_MESSAGE = 'imported: warning log'
 ERROR_MESSAGE = 'imported: error log'
 CRITICAL_MESSAGE = 'imported: critical log'
 
-logger = log_helper.get_or_create_logger('test_imported', logging.ERROR)
+logger = log_helper.get_or_create_silent_logger('test_imported', logging.ERROR)
 
 
 def log():
