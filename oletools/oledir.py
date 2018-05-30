@@ -51,7 +51,7 @@ from __future__ import print_function
 # 2018-04-11 v0.53 PL: - added table displaying storage tree and CLSIDs
 # 2018-04-13       PL: - moved KNOWN_CLSIDS to common.clsid
 
-__version__ = '0.53dev3'
+__version__ = '0.53'
 
 #------------------------------------------------------------------------------
 # TODO:

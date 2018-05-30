@@ -86,7 +86,7 @@ http://www.decalage.info/python/oletools
 # 2018-05-10       PL: - fixed issues #303 #307: several destination cwords were incorrect
 # 2018-05-17       PL: - fixed issue #273: bytes constants instead of str
 
-__version__ = '0.53dev11'
+__version__ = '0.53'
 
 # ------------------------------------------------------------------------------
 # TODO:

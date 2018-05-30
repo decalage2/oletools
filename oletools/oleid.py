@@ -56,7 +56,7 @@ from __future__ import print_function
 # 2017-04-26       PL: - fixed absolute imports (issue #141)
 # 2017-09-01       SA: - detect OpenXML encryption
 
-__version__ = '0.53dev6'
+__version__ = '0.53'
 
 
 #------------------------------------------------------------------------------

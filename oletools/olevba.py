@@ -207,7 +207,7 @@ from __future__ import print_function
 # 2018-04-15 v0.53 PL: - added support for Word/PowerPoint 2007+ XML (FlatOPC)
 #                        (issue #283)
 
-__version__ = '0.53dev4'
+__version__ = '0.53'
 
 #------------------------------------------------------------------------------
 # TODO:
