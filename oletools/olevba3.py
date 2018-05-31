@@ -204,7 +204,7 @@ from __future__ import print_function
 # 2018-05-13 v0.53 PL: - added support for Word/PowerPoint 2007+ XML (FlatOPC)
 #                        (issue #283)
 
-__version__ = '0.53'
+__version__ = '0.53.1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -3594,7 +3594,7 @@ def main(cmd_line_args=None):
                     vba_parser.close()
 
         if options.output_mode == 'triage':
-            print('\n(Flags: OpX=OpenXML, XML=Word2003XML, MHT=MHTML, TXT=Text, M=Macros, ' \
+            print('\n(Flags: OpX=OpenXML, XML=Word2003XML, FlX=FlatOPC XML, MHT=MHTML, TXT=Text, M=Macros, ' \
                   'A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex strings, ' \
                   'B=Base64 strings, D=Dridex strings, V=VBA strings, ?=Unknown)\n')
 
