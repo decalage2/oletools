@@ -578,7 +578,7 @@ class RtfParser(object):
             # it should be treated as a null length:
             binlen=0
         # ignore optional space after \bin
-        if self.data[self.index] == ' ':
+        if self.data[self.index] == ord(' '):
             log.debug('\\bin: ignoring whitespace before data')
             self.index += 1
         log.debug('\\bin: reading %d bytes of binary data' % binlen)
