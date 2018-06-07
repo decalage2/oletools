@@ -264,13 +264,24 @@ def consume_OleSiteConcreteControl(stream):
                 tabindex = stream.unpack('<H', 2)
             if propmask.fClsidCacheIndex:
                 ClsidCacheIndex = stream.unpack('<H', 2)
-            propmask.consume(stream, [('fGroupID', 2), ('fControlTipText', 4), ('fRuntimeLicKey', 4),
-                                      ('fControlSource', 4), ('fRowSource', 4)])
+            if propmask.fGroupID:
+                stream.read(2)
+            # Get the size of the ControlTipText, if needed.
+            control_tip_text_len = 0
+            if propmask.fControlTipText:
+                control_tip_text_len = consume_CountOfBytesWithCompressionFlag(stream)
+            propmask.consume(stream, [('fRuntimeLicKey', 4), ('fControlSource', 4), ('fRowSource', 4)])
         # SiteExtraDataBlock: [MS-OFORMS] 2.2.10.12.4
         name = stream.read(name_len)
         tag = stream.read(tag_len)
+        # Skip SitePosition.
+        stream.read(8)
+        control_tip_text = stream.read(control_tip_text_len)
+        if (len(control_tip_text) == 0):
+            control_tip_text = None
         return {'name': name, 'tag': tag, 'id': id, 'tabindex': tabindex,
-               'ClsidCacheIndex': ClsidCacheIndex, 'value': None}
+                'ClsidCacheIndex': ClsidCacheIndex, 'value': None, 'caption': None,
+                'control_tip_text':control_tip_text}
 
 def consume_FormControl(stream):
     # FormControl: [MS-OFORMS] 2.2.10.1
@@ -472,7 +483,7 @@ def extract_OleFormVariables(ole_file, stream_dir):
         elif var['ClsidCacheIndex'] == 18:
             consume_TabStripControl(data)
         elif var['ClsidCacheIndex'] == 21:
-            consume_LabelControl(data)
+            var['caption'] = consume_LabelControl(data)
         elif var['ClsidCacheIndex'] == 47:
             consume_ScrollBarControl(data)
         elif var['ClsidCacheIndex'] == 57:
