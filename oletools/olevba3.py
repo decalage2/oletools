@@ -906,7 +906,7 @@ def vba_chr_tostr(t):
         if i>=0 and i<=255:
             return VbaExpressionString(chr(i))
         else:
-            return VbaExpressionString(unichr(i).encode('utf-8', 'backslashreplace'))
+            return VbaExpressionString(chr(i).encode('utf-8', 'backslashreplace'))
     except ValueError:
         log.exception('ERROR: incorrect parameter value for chr(): %r' % i)
         return VbaExpressionString('Chr(%r)' % i)
