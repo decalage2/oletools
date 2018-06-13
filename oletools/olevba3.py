@@ -204,7 +204,8 @@ from __future__ import print_function
 # 2018-03-19       PL: - removed pyparsing from the thirdparty subfolder
 # 2018-05-13 v0.53 PL: - added support for Word/PowerPoint 2007+ XML (FlatOPC)
 #                        (issue #283)
-# 2018-06-12 v0.53.1 MHW: - fixed #322: import reduce from functools
+# 2018-06-11 v0.53.1 MHW: - fixed #320: chr instead of unichr on python 3
+# 2018-06-12         MHW: - fixed #322: import reduce from functools
 
 __version__ = '0.53.1'
 
