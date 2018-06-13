@@ -85,8 +85,9 @@ http://www.decalage.info/python/oletools
 # 2018-04-30       PL: - handle "\'" obfuscation trick - issue #281
 # 2018-05-10       PL: - fixed issues #303 #307: several destination cwords were incorrect
 # 2018-05-17       PL: - fixed issue #273: bytes constants instead of str
+# 2018-05-31 v0.53.1 PP: - fixed issue #316: whitespace after \bin on Python 3
 
-__version__ = '0.53'
+__version__ = '0.53.1'
 
 # ------------------------------------------------------------------------------
 # TODO:
