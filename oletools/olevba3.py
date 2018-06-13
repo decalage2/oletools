@@ -77,7 +77,6 @@ https://github.com/unixfreak0037/officeparser
 # SOFTWARE.
 
 from __future__ import print_function
-from functools import reduce
 
 
 #------------------------------------------------------------------------------
@@ -205,6 +204,7 @@ from functools import reduce
 # 2018-03-19       PL: - removed pyparsing from the thirdparty subfolder
 # 2018-05-13 v0.53 PL: - added support for Word/PowerPoint 2007+ XML (FlatOPC)
 #                        (issue #283)
+# 2018-06-12 v0.53.1 MHW: - fixed #322: import reduce from functools
 
 __version__ = '0.53.1'
 
@@ -256,6 +256,7 @@ import zlib
 import email  # for MHTML parsing
 import string # for printable
 import json   # for json output mode (argument --json)
+from functools import reduce
 
 # import lxml or ElementTree for XML parsing:
 try:
