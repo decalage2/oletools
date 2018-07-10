@@ -2821,7 +2821,7 @@ class VBA_Parser(object):
                         log.debug('%r...[much more data]...%r' % (data[:100], data[-50:]))
                     else:
                         log.debug(repr(data))
-                    if 'Attribut' in data:
+                    if 'Attribut\x00' in data:
                         log.debug('Found VBA compressed code')
                         self.contains_macros = True
                 except IOError as exc:
