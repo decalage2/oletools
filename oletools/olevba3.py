@@ -2839,7 +2839,7 @@ class VBA_Parser(object):
                         log.debug('%r...[much more data]...%r' % (data[:100], data[-50:]))
                     else:
                         log.debug(repr(data))
-                    if 'Attribut' in data.decode('utf-8', 'ignore'):
+                    if 'Attribut\x00' in data.decode('utf-8', 'ignore'):
                         log.debug('Found VBA compressed code')
                         self.contains_macros = True
                 except IOError as exc:
