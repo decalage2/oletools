@@ -405,7 +405,7 @@ if __name__ == "__main__":
     daemon.start()
 
     # Using python-daemon - Does not work as-is, need to create the PID file
-    # See https://pypi.python.org/pypi/python-daemon/
+    # See https://pypi.org/project/python-daemon/
     # See PEP-3143: https://www.python.org/dev/peps/pep-3143/
     # import daemon
     # import lockfile
