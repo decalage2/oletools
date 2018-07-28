@@ -1,6 +1,6 @@
 python-oletools
 ===============
-[![PyPI](https://img.shields.io/pypi/v/oletools.svg)](https://pypi.python.org/pypi/oletools)
+[![PyPI](https://img.shields.io/pypi/v/oletools.svg)](https://pypi.org/project/oletools/)
 [![Build Status](https://travis-ci.org/decalage2/oletools.svg?branch=master)](https://travis-ci.org/decalage2/oletools)
 
 [oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze
