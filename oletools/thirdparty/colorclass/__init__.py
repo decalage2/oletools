@@ -5,7 +5,7 @@ Supported natively on Linux and Mac OSX (Just Works), and on Windows it works th
 Gives you expected and sane results from methods like len() and .capitalize().
 
 https://github.com/Robpol86/colorclass
-https://pypi.python.org/pypi/colorclass
+https://pypi.org/project/colorclass/
 """
 
 from colorclass.codes import list_tags  # noqa

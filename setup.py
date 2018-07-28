@@ -52,7 +52,7 @@ url          = "http://www.decalage.info/python/oletools"
 license      = "BSD"
 download_url = "https://github.com/decalage2/oletools/releases"
 
-# see https://pypi.python.org/pypi?%3Aaction=list_classifiers
+# see https://pypi.org/pypi?%3Aaction=list_classifiers
 classifiers=[
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
