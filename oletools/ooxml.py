@@ -598,11 +598,11 @@ class XmlParser(object):
             logging.warning('Did not iterate through complete file. '
                             'Should run iter_xml() without args, first.')
         if not self.subfiles_no_xml:
-            raise StopIteration()
+            return
 
         # case of single xml files (office 2003+)
         if self.is_single_xml():
-            raise StopIteration()   # "return"
+            return
 
         content_types, content_defaults = self.get_content_types()
 
