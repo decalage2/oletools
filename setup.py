@@ -43,7 +43,7 @@ import os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.53.1'
+version      = '0.54dev1'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       = "Philippe Lagadec"
@@ -287,6 +287,7 @@ entry_points = {
         'rtfobj=oletools.rtfobj:main',
         'oleobj=oletools.oleobj:main',
         'msodde=oletools.msodde:main',
+        'olefile=olefile.olefile:main',
     ],
 }
 
@@ -320,7 +321,10 @@ def main():
         entry_points=entry_points,
         test_suite="tests",
         # scripts=scripts,
-        install_requires=["pyparsing"],
+        install_requires=[
+            "pyparsing>=2.2.0",
+            "olefile>=0.45",
+        ],
     )
 
 
