@@ -1,0 +1,2 @@
+pyparsing>=2.2.0
+olefile>=0.45
