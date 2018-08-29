@@ -49,7 +49,7 @@ class TestCSV(unittest.TestCase):
 
                             sample = \
                                 prefix.format(quote=quote, delim=delim) + \
-                                quote + sample_core + quote + \
+                                quote + sample_core + quote + delim + \
                                 suffix.format(quote=quote, delim=delim)
                             output = self.write_and_run(sample)
                             n_links = len(self.get_dde_from_output(output))
