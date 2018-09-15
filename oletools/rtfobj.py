@@ -86,8 +86,10 @@ http://www.decalage.info/python/oletools
 # 2018-05-10       PL: - fixed issues #303 #307: several destination cwords were incorrect
 # 2018-05-17       PL: - fixed issue #273: bytes constants instead of str
 # 2018-05-31 v0.53.1 PP: - fixed issue #316: whitespace after \bin on Python 3
+# 2018-06-22 v0.53.2 PL: - fixed issue #327: added "\pnaiu" & "\pnaiud"
+# 2018-09-11 v0.54 PL: - olefile is now a dependency
 
-__version__ = '0.53.1'
+__version__ = '0.54dev1'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -120,7 +122,7 @@ if not _parent_dir in sys.path:
 from oletools.thirdparty.xglob import xglob
 from oletools.thirdparty.tablestream import tablestream
 from oletools import oleobj
-from oletools.thirdparty.olefile import olefile
+import olefile
 from oletools.common import clsid
 
 # === LOGGING =================================================================
@@ -303,6 +305,8 @@ DESTINATION_CONTROL_WORDS = frozenset((
     b"xmlattrname", b"xmlattrvalue", b"xmlclose", b"xmlname", b"xmlnstbl", b"xmlopen",
     # added for issue #292: https://github.com/decalage2/oletools/issues/292
     b"margSz",
+    # added for issue #327:
+    b"pnaiu", b"pnaiud",
 
     # It seems \private should not be treated as a destination (issue #178)
     # Same for \pxe (issue #196)

@@ -50,8 +50,9 @@ from __future__ import print_function
 #                      - added support for zip files and wildcards
 # 2018-04-11 v0.53 PL: - added table displaying storage tree and CLSIDs
 # 2018-04-13       PL: - moved KNOWN_CLSIDS to common.clsid
+# 2018-08-28 v0.54 PL: - olefile is now a dependency
 
-__version__ = '0.53'
+__version__ = '0.54dev1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -87,7 +88,7 @@ import colorclass
 if os.name == 'nt':
     colorclass.Windows.enable(auto_colors=True)
 
-from oletools.thirdparty import olefile
+import olefile
 from oletools.thirdparty.tablestream import tablestream
 from oletools.thirdparty.xglob import xglob
 from oletools.common.clsid import KNOWN_CLSIDS
@@ -236,6 +237,35 @@ def main():
             # t.add_row((id, status, entry_type, name, left, right, child, hex(d.isectStart), d.size))
             table.write_row((id, status, entry_type, name, left, right, child, '%X' % d.isectStart, d.size),
                 colors=(None, status_color, etype_color, None, None, None, None, None, None))
+
+        table = tablestream.TableStream(column_width=[4, 28, 6, 38],
+            header_row=('id', 'Name', 'Size', 'CLSID'),
+            style=tablestream.TableStyleSlim)
+        rootname = ole.get_rootentry_name()
+        entry_id = 0
+        clsid = ole.root.clsid
+        clsid_text, clsid_color = clsid_display(clsid)
+        table.write_row((entry_id, rootname, '-', clsid_text),
+                        colors=(None, 'cyan', None, clsid_color))
+        for entry in sorted(ole.listdir(storages=True)):
+            name = entry[-1]
+            # handle non-printable chars using repr(), remove quotes:
+            name = repr(name)[1:-1]
+            name_color = None
+            if ole.get_type(entry) in (olefile.STGTY_STORAGE, olefile.STGTY_ROOT):
+                name_color = 'cyan'
+            indented_name = '  '*(len(entry)-1) + name
+            entry_id = ole._find(entry)
+            try:
+                size = ole.get_size(entry)
+            except:
+                size = '-'
+            clsid = ole.getclsid(entry)
+            clsid_text, clsid_color = clsid_display(clsid)
+            table.write_row((entry_id, indented_name, size, clsid_text),
+                            colors=(None, name_color, None, clsid_color))
+
+
         ole.close()
         # print t
 

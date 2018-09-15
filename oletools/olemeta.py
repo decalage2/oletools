@@ -15,7 +15,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# olemeta is copyright (c) 2013-2017, Philippe Lagadec (http://www.decalage.info)
+# olemeta is copyright (c) 2013-2018, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -49,8 +49,9 @@ http://www.decalage.info/python/oletools
 # 2016-10-28       PL: - removed the UTF8 codec for console display
 # 2017-04-26 v0.51 PL: - fixed absolute imports (issue #141)
 # 2017-05-04       PL: - added optparse and xglob (issue #141)
+# 2018-09-11 v0.54 PL: - olefile is now a dependency
 
-__version__ = '0.51'
+__version__ = '0.54dev1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -75,7 +76,7 @@ _parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
 if not _parent_dir in sys.path:
     sys.path.insert(0, _parent_dir)
 
-from oletools.thirdparty import olefile
+import olefile
 from oletools.thirdparty import xglob
 from oletools.thirdparty.tablestream import tablestream
 

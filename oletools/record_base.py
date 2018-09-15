@@ -36,6 +36,9 @@ from __future__ import print_function
 # -----------------------------------------------------------------------------
 # CHANGELOG:
 # 2017-11-30 v0.01 CH: - first version based on xls_parser
+# 2018-09-11 v0.54 PL: - olefile is now a dependency
+
+__version__ = '0.54dev1'
 
 # -----------------------------------------------------------------------------
 # TODO:
@@ -57,17 +60,7 @@ import os.path
 from io import SEEK_CUR
 import logging
 
-try:
-    from oletools.thirdparty import olefile
-except ImportError:
-    # little hack to allow absolute imports even if oletools is not installed.
-    # Copied from olevba.py
-    PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__))))
-    if PARENT_DIR not in sys.path:
-        sys.path.insert(0, PARENT_DIR)
-    del PARENT_DIR
-    from oletools.thirdparty import olefile
+import olefile
 
 
 ###############################################################################

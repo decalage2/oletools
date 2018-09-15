@@ -58,16 +58,7 @@ import logging
 import re
 import csv
 
-# little hack to allow absolute imports even if oletools is not installed
-# Copied from olevba.py
-try:
-    from oletools.thirdparty import olefile
-except ImportError:
-    PARENT_DIR = dirname(dirname(abspath(__file__)))
-    if PARENT_DIR not in sys.path:
-        sys.path.insert(0, PARENT_DIR)
-    del PARENT_DIR
-    from oletools.thirdparty import olefile
+import olefile
 
 from oletools import ooxml
 from oletools import xls_parser
@@ -93,8 +84,9 @@ from oletools import rtfobj
 # 2018-01-11       PL: - fixed issue #242 (apply unquote to fldSimple tags)
 # 2018-01-10       CH: - add single-xml files (Word 2003/2007+ / Excel 2003)
 # 2018-03-21       CH: - added detection for various CSV formulas (issue #259)
+# 2018-09-11 v0.54 PL: - olefile is now a dependency
 
-__version__ = '0.53'
+__version__ = '0.54dev1'
 
 # -----------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these
