@@ -722,7 +722,7 @@ class RtfObjParser(RtfParser):
     def control_symbol(self, matchobject):
         # log.debug('control symbol %r at index %Xh' % (matchobject.group(), self.index))
         symbol = matchobject.group()[1:2]
-        if symbol == "'":
+        if symbol == b"'":
             # read the two hex digits following "\'" - which can be any characters, not just hex digits
             # (because within an objdata destination, they are simply ignored)
             hexdigits = self.data[self.index+2:self.index+4]
