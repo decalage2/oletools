@@ -13,7 +13,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE ==================================================================
 
-# olemap is copyright (c) 2015-2017 Philippe Lagadec (http://www.decalage.info)
+# olemap is copyright (c) 2015-2018 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -51,9 +51,9 @@ http://www.decalage.info/python/oletools
 # 2017-03-22       PL: - added extra data detection, completed header display
 # 2017-03-23       PL: - only display the header by default
 #                      - added option --exdata to display extra data in hex
+# 2018-08-28 v0.54 PL: - olefile is now a dependency
 
-
-__version__ = '0.51'
+__version__ = '0.54dev1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -74,7 +74,7 @@ _parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
 if not _parent_dir in sys.path:
     sys.path.insert(0, _parent_dir)
 
-from oletools.thirdparty.olefile import olefile
+import olefile
 from oletools.thirdparty.tablestream import tablestream
 from oletools.thirdparty.xglob import xglob
 from oletools.ezhexviewer import hexdump3

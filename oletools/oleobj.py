@@ -52,13 +52,15 @@ import sys
 import io
 from zipfile import is_zipfile, ZipFile
 
+import olefile
+
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
 # In that case, relative imports are NOT usable.
 # And to enable Python 2+3 compatibility, we need to use absolute imports,
 # so we add the oletools parent folder to sys.path (absolute+normalized path):
 try:
-    from oletools.thirdparty import olefile
+    from oletools.thirdparty import xglob
 except ImportError:
     import os.path
     PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
@@ -66,8 +68,8 @@ except ImportError:
     if PARENT_DIR not in sys.path:
         sys.path.insert(0, PARENT_DIR)
     del PARENT_DIR
-    from oletools.thirdparty import olefile
-from oletools.thirdparty import xglob
+    from oletools.thirdparty import xglob
+
 from oletools.ppt_record_parser import (is_ppt, PptFile,
                                         PptRecordExOleVbaActiveXAtom)
 from oletools.ooxml import ZipSubFile
@@ -84,8 +86,9 @@ from oletools.ooxml import ZipSubFile
 # 2018-01-18 v0.52 CH: - added support for zipped-xml-based types (docx, pptx,
 #                        xlsx), and ppt
 # 2018-03-27       PL: - fixed issue #274 in read_length_prefixed_string
+# 2018-09-11 v0.54 PL: - olefile is now a dependency
 
-__version__ = '0.52.4'
+__version__ = '0.54dev1'
 
 # -----------------------------------------------------------------------------
 # TODO:

@@ -114,8 +114,6 @@ class ExtendedStream(object):
 
     @classmethod
     def open(cls, ole_file, path):
-        # import oletools.thirdparty.olefile as olefile
-        # olefile.enable_logging()
         stream = ole_file.openstream(path)
         # print('Opening OLE stream %r - size: %d' % (path, stream.size))
         # print('declared size: %d' % ole_file.get_size(path))

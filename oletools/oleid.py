@@ -55,8 +55,9 @@ from __future__ import print_function
 # 2016-12-12 v0.51 PL: - fixed relative imports for Python 3 (issue #115)
 # 2017-04-26       PL: - fixed absolute imports (issue #141)
 # 2017-09-01       SA: - detect OpenXML encryption
+# 2018-09-11 v0.54 PL: - olefile is now a dependency
 
-__version__ = '0.53'
+__version__ = '0.54dev1'
 
 
 #------------------------------------------------------------------------------
@@ -91,7 +92,7 @@ _parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
 if not _parent_dir in sys.path:
     sys.path.insert(0, _parent_dir)
 
-from oletools.thirdparty import olefile
+import olefile
 from oletools.thirdparty.prettytable import prettytable
 
 

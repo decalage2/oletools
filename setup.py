@@ -79,7 +79,6 @@ packages=[
     "oletools",
     "oletools.common",
     'oletools.thirdparty',
-    'oletools.thirdparty.olefile',
     'oletools.thirdparty.easygui',
     'oletools.thirdparty.xxxswf',
     'oletools.thirdparty.prettytable',
@@ -163,10 +162,6 @@ package_data={
         + rglob('oletools/doc', 'doc', '*.md')
         + rglob('oletools/doc', 'doc', '*.png'),
 
-    'oletools.thirdparty.olefile': [
-        'README.txt',
-        'LICENSE.txt',
-        ],
     'oletools.thirdparty.xglob': [
         'LICENSE.txt',
         ],
@@ -323,7 +318,7 @@ def main():
         # scripts=scripts,
         install_requires=[
             "pyparsing>=2.2.0",
-            "olefile>=0.45",
+            "olefile>=0.46",
         ],
     )
 

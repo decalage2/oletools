@@ -5,7 +5,7 @@ Read storages, (sub-)streams, records from xls file
 #
 # === LICENSE ==================================================================
 
-# xls_parser is copyright (c) 2014-2017 Philippe Lagadec (http://www.decalage.info)
+# xls_parser is copyright (c) 2014-2018 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
