@@ -24,6 +24,8 @@ to install this package.
 # 2017-01-18 v0.51 PL: - added package zipfile27 (issue #121)
 # 2017-10-18 v0.52 PL: - added msodde
 # 2018-03-19 v0.52.3      PL: - added install_requires, removed thirdparty.pyparsing
+# 2018-09-11 v0.54 PL: - olefile is now a dependency
+# 2018-09-15       PL: - easygui is now a dependency
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -79,7 +81,6 @@ packages=[
     "oletools",
     "oletools.common",
     'oletools.thirdparty',
-    'oletools.thirdparty.easygui',
     'oletools.thirdparty.xxxswf',
     'oletools.thirdparty.prettytable',
     'oletools.thirdparty.xglob',
@@ -163,9 +164,6 @@ package_data={
         + rglob('oletools/doc', 'doc', '*.png'),
 
     'oletools.thirdparty.xglob': [
-        'LICENSE.txt',
-        ],
-    'oletools.thirdparty.easygui': [
         'LICENSE.txt',
         ],
     'oletools.thirdparty.xxxswf': [
@@ -319,6 +317,7 @@ def main():
         install_requires=[
             "pyparsing>=2.2.0",
             "olefile>=0.46",
+            "easygui",
         ],
     )
 

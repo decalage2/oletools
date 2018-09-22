@@ -69,7 +69,7 @@ _parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
 if not _parent_dir in sys.path:
     sys.path.insert(0, _parent_dir)
 
-from oletools.thirdparty.easygui import easygui
+import easygui
 import olefile
 from oletools import ezhexviewer
 
