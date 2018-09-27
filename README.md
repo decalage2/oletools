@@ -88,6 +88,7 @@ including [Viper](http://viper.li/), [REMnux](https://remnux.org/),
 [dridex.malwareconfig.com](https://dridex.malwareconfig.com),
 [Snake](https://github.com/countercept/snake),
 [DARKSURGEON](https://github.com/cryps1s/DARKSURGEON),
+[CAPE](https://github.com/ctxis/CAPE),
 [Vba2Graph](https://github.com/MalwareCantFly/Vba2Graph),
 [Strelka](https://github.com/target/strelka),
 and probably [VirusTotal](https://www.virustotal.com).
