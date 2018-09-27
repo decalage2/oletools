@@ -89,6 +89,7 @@ including [Viper](http://viper.li/), [REMnux](https://remnux.org/),
 [Snake](https://github.com/countercept/snake),
 [DARKSURGEON](https://github.com/cryps1s/DARKSURGEON),
 [Vba2Graph](https://github.com/MalwareCantFly/Vba2Graph),
+[Strelka](https://github.com/target/strelka),
 and probably [VirusTotal](https://www.virustotal.com).
 (Please [contact me]((http://decalage.info/contact)) if you have or know
 a project using oletools)
