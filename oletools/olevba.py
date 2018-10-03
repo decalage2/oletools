@@ -246,7 +246,10 @@ import sys
 import os
 import logging
 import struct
-import cStringIO
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from io import StringIO
 import math
 import zipfile
 import re
@@ -1352,7 +1355,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             else:
                 raise UnexpectedDataError(dir_path, name, expected, value)
 
-    dir_stream = cStringIO.StringIO(decompress_stream(dir_compressed))
+    dir_stream = StringIO(decompress_stream(dir_compressed))
 
     # PROJECTSYSKIND Record
     projectsyskind_id = struct.unpack("<H", dir_stream.read(2))[0]
@@ -2309,7 +2312,7 @@ class VBA_Parser(object):
             _file = filename
         else:
             # file already read in memory, make it a file-like object for zipfile:
-            _file = cStringIO.StringIO(data)
+            _file = StringIO(data)
         #self.file = _file
         self.ole_file = None
         self.ole_subfiles = []
