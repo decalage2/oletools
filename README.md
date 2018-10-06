@@ -88,8 +88,15 @@ including [Viper](http://viper.li/), [REMnux](https://remnux.org/),
 [dridex.malwareconfig.com](https://dridex.malwareconfig.com),
 [Snake](https://github.com/countercept/snake),
 [DARKSURGEON](https://github.com/cryps1s/DARKSURGEON),
+[CAPE](https://github.com/ctxis/CAPE),
+[AssemblyLine](https://www.cse-cst.gc.ca/en/assemblyline),
+[malshare.io](https://malshare.io),
+[Malware Repository Framework (MRF)](https://www.adlice.com/download/mrf/),
+[malware-repo](https://github.com/Tigzy/malware-repo),
 [Vba2Graph](https://github.com/MalwareCantFly/Vba2Graph),
-and probably [VirusTotal](https://www.virustotal.com).
+[Strelka](https://github.com/target/strelka),
+and probably [VirusTotal](https://www.virustotal.com). 
+And quite a few [other projects on GitHub](https://github.com/search?q=oletools&type=Repositories).
 (Please [contact me]((http://decalage.info/contact)) if you have or know
 a project using oletools)
 
