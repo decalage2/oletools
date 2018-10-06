@@ -51,6 +51,7 @@ from __future__ import print_function
 # 2018-04-11 v0.53 PL: - added table displaying storage tree and CLSIDs
 # 2018-04-13       PL: - moved KNOWN_CLSIDS to common.clsid
 # 2018-08-28 v0.54 PL: - olefile is now a dependency
+# 2018-10-06           - colorclass is now a dependency
 
 __version__ = '0.54dev1'
 
@@ -62,6 +63,13 @@ __version__ = '0.54dev1'
 # === IMPORTS ================================================================
 
 import sys, os, optparse
+
+import olefile
+import colorclass
+
+# On Windows, colorclass needs to be enabled:
+if os.name == 'nt':
+    colorclass.Windows.enable(auto_colors=True)
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
@@ -75,20 +83,6 @@ _parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
 if not _parent_dir in sys.path:
     sys.path.insert(0, _parent_dir)
 
-# we also need the thirdparty dir for colorclass
-# TODO: remove colorclass from thirdparty, make it a dependency
-_thirdparty_dir = os.path.normpath(os.path.join(_thismodule_dir, 'thirdparty'))
-# print('_thirdparty_dir = %r' % _thirdparty_dir)
-if not _thirdparty_dir in sys.path:
-    sys.path.insert(0, _thirdparty_dir)
-
-import colorclass
-
-# On Windows, colorclass needs to be enabled:
-if os.name == 'nt':
-    colorclass.Windows.enable(auto_colors=True)
-
-import olefile
 from oletools.thirdparty.tablestream import tablestream
 from oletools.thirdparty.xglob import xglob
 from oletools.common.clsid import KNOWN_CLSIDS
