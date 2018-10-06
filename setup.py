@@ -26,6 +26,7 @@ to install this package.
 # 2018-03-19 v0.52.3      PL: - added install_requires, removed thirdparty.pyparsing
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
 # 2018-09-15       PL: - easygui is now a dependency
+# 2018-09-22       PL: - colorclass is now a dependency
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -85,7 +86,6 @@ packages=[
     'oletools.thirdparty.prettytable',
     'oletools.thirdparty.xglob',
     'oletools.thirdparty.DridexUrlDecoder',
-    'oletools.thirdparty.colorclass',
     'oletools.thirdparty.tablestream',
     'oletools.thirdparty.zipfile27',
 ]
@@ -173,9 +173,6 @@ package_data={
         'CHANGELOG', 'COPYING', 'README'
         ],
     'oletools.thirdparty.DridexUrlDecoder': [
-        'LICENSE.txt',
-        ],
-    'oletools.thirdparty.colorclass': [
         'LICENSE.txt',
         ],
     'oletools.thirdparty.zipfile27': [
@@ -318,6 +315,7 @@ def main():
             "pyparsing>=2.2.0",
             "olefile>=0.46",
             "easygui",
+            'colorclass',
         ],
     )
 
