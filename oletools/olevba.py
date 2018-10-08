@@ -207,8 +207,9 @@ from __future__ import print_function
 # 2018-04-15 v0.53 PL: - added support for Word/PowerPoint 2007+ XML (FlatOPC)
 #                        (issue #283)
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
+# 2018-10-08       PL: - replace backspace before printing to console (issue #358)
 
-__version__ = '0.54dev1'
+__version__ = '0.54dev2'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -699,6 +700,8 @@ SUSPICIOUS_KEYWORDS = {
          'DisableUnsafeLocationsInPV', 'blockcontentexecutionfrominternet'),
     'May attempt to modify the VBA code (self-modification)':
         ('VBProject', 'VBComponents', 'CodeModule', 'AddFromString'),
+    'May use special characters such as backspace to obfuscate code when printed on the console':
+        ('\b',),
 }
 
 # Regular Expression for a URL:
@@ -3222,6 +3225,11 @@ class VBA_Parser_CLI(VBA_Parser):
                         if vba_code_filtered.strip() == '':
                             print('(empty macro)')
                         else:
+                            # check if the VBA code contains special characters such as backspace (issue #358)
+                            if b'\x08' in vba_code_filtered:
+                                log.warning('The VBA code contains special characters such as backspace, that may be used for obfuscation.')
+                                # replace backspace by "\x08" for display
+                                vba_code_filtered = vba_code_filtered.replace(b'\x08', b'\\x08')
                             print(vba_code_filtered)
                 for (subfilename, stream_path, form_string) in self.extract_form_strings():
                     print('-' * 79)
