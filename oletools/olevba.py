@@ -279,6 +279,12 @@ except ImportError:
                                + "see http://codespeak.net/lxml " \
                                + "or http://effbot.org/zone/element-index.htm")
 
+import colorclass
+
+# On Windows, colorclass needs to be enabled:
+if os.name == 'nt':
+    colorclass.Windows.enable(auto_colors=True)
+
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
@@ -3236,8 +3242,13 @@ class VBA_Parser_CLI(VBA_Parser):
                             # check if the VBA code contains special characters such as backspace (issue #358)
                             if b'\x08' in vba_code_filtered:
                                 log.warning('The VBA code contains special characters such as backspace, that may be used for obfuscation.')
+                                if sys.stdout.isatty():
+                                    # if the standard output is the console, we'll display colors
+                                    backspace = colorclass.Color(b'{autored}\\x08{/red}')
+                                else:
+                                    backspace = b'\\x08'
                                 # replace backspace by "\x08" for display
-                                vba_code_filtered = vba_code_filtered.replace(b'\x08', b'\\x08')
+                                vba_code_filtered = vba_code_filtered.replace(b'\x08', backspace)
                             print(vba_code_filtered)
                 for (subfilename, stream_path, form_string) in self.extract_form_strings():
                     print('-' * 79)
