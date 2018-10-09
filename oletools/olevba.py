@@ -700,6 +700,10 @@ SUSPICIOUS_KEYWORDS = {
          'DisableUnsafeLocationsInPV', 'blockcontentexecutionfrominternet'),
     'May attempt to modify the VBA code (self-modification)':
         ('VBProject', 'VBComponents', 'CodeModule', 'AddFromString'),
+}
+
+# Suspicious Keywords to be searched for directly as strings, without regex
+SUSPICIOUS_KEYWORDS_NOREGEX = {
     'May use special characters such as backspace to obfuscate code when printed on the console':
         ('\b',),
 }
@@ -1891,6 +1895,10 @@ def detect_suspicious(vba_code, obfuscation=None):
                 #if keyword.lower() in vba_code:
                 found_keyword = match.group()
                 results.append((found_keyword, description + obf_text))
+    for description, keywords in SUSPICIOUS_KEYWORDS_NOREGEX.items():
+        for keyword in keywords:
+            if keyword.lower() in vba_code:
+                results.append((keyword, description + obf_text))
     return results
 
 
