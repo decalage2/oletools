@@ -9,8 +9,8 @@ import unittest
 import sys
 import json
 import subprocess
-from tests.util.log_helper import log_helper_test_main
-from tests.util.log_helper import log_helper_test_imported
+from tests.common.log_helper import log_helper_test_main
+from tests.common.log_helper import log_helper_test_imported
 from os.path import dirname, join, relpath, abspath
 
 # this is the common base of "tests" and "oletools" dirs

@@ -3,7 +3,7 @@ Dummy file that logs messages, meant to be imported
 by the main test file
 """
 
-from oletools.util.log_helper import log_helper
+from oletools.common.log_helper import log_helper
 import logging
 
 DEBUG_MESSAGE = 'imported: debug log'

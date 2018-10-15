@@ -1,8 +1,8 @@
 """ Test log_helpers """
 
 import sys
-from tests.util.log_helper import log_helper_test_imported
-from oletools.util.log_helper import log_helper
+from tests.common.log_helper import log_helper_test_imported
+from oletools.common.log_helper import log_helper
 
 DEBUG_MESSAGE = 'main: debug log'
 INFO_MESSAGE = 'main: info log'
