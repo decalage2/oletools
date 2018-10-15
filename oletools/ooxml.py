@@ -14,7 +14,7 @@ TODO: may have to tell apart single xml types: office2003 looks much different
 """
 
 import sys
-from oletools.util.log_helper import log_helper
+from oletools.common.log_helper import log_helper
 from zipfile import ZipFile, BadZipfile, is_zipfile
 from os.path import splitext
 import io

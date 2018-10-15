@@ -61,7 +61,7 @@ import olefile
 from oletools import ooxml
 from oletools import xls_parser
 from oletools import rtfobj
-from oletools.util.log_helper import log_helper
+from oletools.common.log_helper import log_helper
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:
