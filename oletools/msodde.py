@@ -53,8 +53,6 @@ import argparse
 import os
 from os.path import abspath, dirname
 import sys
-import json
-import logging
 import re
 import csv
 
@@ -63,6 +61,7 @@ import olefile
 from oletools import ooxml
 from oletools import xls_parser
 from oletools import rtfobj
+from oletools.common.log_helper import log_helper
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:
@@ -212,63 +211,12 @@ THIS IS WORK IN PROGRESS - Check updates regularly!
 Please report any issue at https://github.com/decalage2/oletools/issues
 """ % __version__
 
-BANNER_JSON = dict(type='meta', version=__version__, name='msodde',
-                   link='http://decalage.info/python/oletools',
-                   message='THIS IS WORK IN PROGRESS - Check updates regularly! '
-                           'Please report any issue at '
-                           'https://github.com/decalage2/oletools/issues')
-
 # === LOGGING =================================================================
 
 DEFAULT_LOG_LEVEL = "warning"  # Default log level
-LOG_LEVELS = {
-    'debug': logging.DEBUG,
-    'info': logging.INFO,
-    'warning': logging.WARNING,
-    'error': logging.ERROR,
-    'critical': logging.CRITICAL
-}
-
-
-class NullHandler(logging.Handler):
-    """
-    Log Handler without output, to avoid printing messages if logging is not
-    configured by the main application.
-    Python 2.7 has logging.NullHandler, but this is necessary for 2.6:
-    see https://docs.python.org/2.6/library/logging.html#configuring-logging-for-a-library
-    """
-    def emit(self, record):
-        pass
-
-
-def get_logger(name, level=logging.CRITICAL+1):
-    """
-    Create a suitable logger object for this module.
-    The goal is not to change settings of the root logger, to avoid getting
-    other modules' logs on the screen.
-    If a logger exists with same name, reuse it. (Else it would have duplicate
-    handlers and messages would be doubled.)
-    The level is set to CRITICAL+1 by default, to avoid any logging.
-    """
-    # First, test if there is already a logger with the same name, else it
-    # will generate duplicate messages (due to duplicate handlers):
-    if name in logging.Logger.manager.loggerDict:
-        # NOTE: another less intrusive but more "hackish" solution would be to
-        # use getLogger then test if its effective level is not default.
-        logger = logging.getLogger(name)
-        # make sure level is OK:
-        logger.setLevel(level)
-        return logger
-    # get a new logger:
-    logger = logging.getLogger(name)
-    # only add a NullHandler for this logger, it is up to the application
-    # to configure its own logging:
-    logger.addHandler(NullHandler())
-    logger.setLevel(level)
-    return logger
 
 # a global logger object used for debugging:
-log = get_logger('msodde')
+logger = log_helper.get_or_create_silent_logger('msodde')
 
 
 # === UNICODE IN PY2 =========================================================
@@ -312,7 +260,7 @@ def ensure_stdout_handles_unicode():
         encoding = 'utf8'
 
     # logging is probably not initialized yet, but just in case
-    log.debug('wrapping sys.stdout with encoder using {0}'.format(encoding))
+    logger.debug('wrapping sys.stdout with encoder using {0}'.format(encoding))
 
     wrapper = codecs.getwriter(encoding)
     sys.stdout = wrapper(sys.stdout)
@@ -396,7 +344,7 @@ def process_doc_field(data):
     """ check if field instructions start with DDE
 
     expects unicode input, returns unicode output (empty if not dde) """
-    log.debug('processing field \'{0}\''.format(data))
+    logger.debug('processing field \'{0}\''.format(data))
 
     if data.lstrip().lower().startswith(u'dde'):
         return data
@@ -434,7 +382,7 @@ def process_doc_stream(stream):
 
         if char == OLE_FIELD_START:
             if have_start and max_size_exceeded:
-                log.debug('big field was not a field after all')
+                logger.debug('big field was not a field after all')
             have_start = True
             have_sep = False
             max_size_exceeded = False
@@ -446,7 +394,7 @@ def process_doc_stream(stream):
         # now we are after start char but not at end yet
         if char == OLE_FIELD_SEP:
             if have_sep:
-                log.debug('unexpected field: has multiple separators!')
+                logger.debug('unexpected field: has multiple separators!')
             have_sep = True
         elif char == OLE_FIELD_END:
             # have complete field now, process it
@@ -464,7 +412,7 @@ def process_doc_stream(stream):
             if max_size_exceeded:
                 pass
             elif len(field_contents) > OLE_FIELD_MAX_SIZE:
-                log.debug('field exceeds max size of {0}. Ignore rest'
+                logger.debug('field exceeds max size of {0}. Ignore rest'
                           .format(OLE_FIELD_MAX_SIZE))
                 max_size_exceeded = True
 
@@ -482,9 +430,9 @@ def process_doc_stream(stream):
                 field_contents += u'?'
 
     if max_size_exceeded:
-        log.debug('big field was not a field after all')
+        logger.debug('big field was not a field after all')
 
-    log.debug('Checked {0} characters, found {1} fields'
+    logger.debug('Checked {0} characters, found {1} fields'
               .format(idx, len(result_parts)))
 
     return result_parts
@@ -498,7 +446,7 @@ def process_doc(filepath):
     empty if none were found. dde-links will still begin with the dde[auto] key
     word (possibly after some whitespace)
     """
-    log.debug('process_doc')
+    logger.debug('process_doc')
     ole = olefile.OleFileIO(filepath, path_encoding=None)
 
     links = []
@@ -508,7 +456,7 @@ def process_doc(filepath):
             # this direntry is not part of the tree --> unused or orphan
             direntry = ole._load_direntry(sid)
         is_stream = direntry.entry_type == olefile.STGTY_STREAM
-        log.debug('direntry {:2d} {}: {}'
+        logger.debug('direntry {:2d} {}: {}'
                   .format(sid, '[orphan]' if is_orphan else direntry.name,
                           'is stream of size {}'.format(direntry.size)
                           if is_stream else
@@ -593,7 +541,7 @@ def process_docx(filepath, field_filter_mode=None):
                 ddetext += unquote(elem.text)
 
     # apply field command filter
-    log.debug('filtering with mode "{0}"'.format(field_filter_mode))
+    logger.debug('filtering with mode "{0}"'.format(field_filter_mode))
     if field_filter_mode in (FIELD_FILTER_ALL, None):
         clean_fields = all_fields
     elif field_filter_mode == FIELD_FILTER_DDE:
@@ -652,7 +600,7 @@ def field_is_blacklisted(contents):
         index = FIELD_BLACKLIST_CMDS.index(words[0].lower())
     except ValueError:    # first word is no blacklisted command
         return False
-    log.debug('trying to match "{0}" to blacklist command {1}'
+    logger.debug('trying to match "{0}" to blacklist command {1}'
               .format(contents, FIELD_BLACKLIST[index]))
     _, nargs_required, nargs_optional, sw_with_arg, sw_solo, sw_format \
         = FIELD_BLACKLIST[index]
@@ -664,11 +612,11 @@ def field_is_blacklisted(contents):
             break
         nargs += 1
     if nargs < nargs_required:
-        log.debug('too few args: found {0}, but need at least {1} in "{2}"'
+        logger.debug('too few args: found {0}, but need at least {1} in "{2}"'
                   .format(nargs, nargs_required, contents))
         return False
     elif nargs > nargs_required + nargs_optional:
-        log.debug('too many args: found {0}, but need at most {1}+{2} in "{3}"'
+        logger.debug('too many args: found {0}, but need at most {1}+{2} in "{3}"'
                   .format(nargs, nargs_required, nargs_optional, contents))
         return False
 
@@ -678,14 +626,14 @@ def field_is_blacklisted(contents):
     for word in words[1+nargs:]:
         if expect_arg:            # this is an argument for the last switch
             if arg_choices and (word not in arg_choices):
-                log.debug('Found invalid switch argument "{0}" in "{1}"'
+                logger.debug('Found invalid switch argument "{0}" in "{1}"'
                           .format(word, contents))
                 return False
             expect_arg = False
             arg_choices = []   # in general, do not enforce choices
             continue           # "no further questions, your honor"
         elif not FIELD_SWITCH_REGEX.match(word):
-            log.debug('expected switch, found "{0}" in "{1}"'
+            logger.debug('expected switch, found "{0}" in "{1}"'
                       .format(word, contents))
             return False
         # we want a switch and we got a valid one
@@ -707,7 +655,7 @@ def field_is_blacklisted(contents):
             if 'numeric' in sw_format:
                 arg_choices = []  # too many choices to list them here
         else:
-            log.debug('unexpected switch {0} in "{1}"'
+            logger.debug('unexpected switch {0} in "{1}"'
                       .format(switch, contents))
             return False
 
@@ -733,11 +681,11 @@ def process_xlsx(filepath):
     # binary parts, e.g. contained in .xlsb
     for subfile, content_type, handle in parser.iter_non_xml():
         try:
-            logging.info('Parsing non-xml subfile {0} with content type {1}'
+            logger.info('Parsing non-xml subfile {0} with content type {1}'
                          .format(subfile, content_type))
             for record in xls_parser.parse_xlsb_part(handle, content_type,
                                                      subfile):
-                logging.debug('{0}: {1}'.format(subfile, record))
+                logger.debug('{0}: {1}'.format(subfile, record))
                 if isinstance(record, xls_parser.XlsbBeginSupBook) and \
                         record.link_type == \
                         xls_parser.XlsbBeginSupBook.LINK_TYPE_DDE:
@@ -747,14 +695,14 @@ def process_xlsx(filepath):
             if content_type.startswith('application/vnd.ms-excel.') or \
                content_type.startswith('application/vnd.ms-office.'):  # pylint: disable=bad-indentation
                 # should really be able to parse these either as xml or records
-                log_func = logging.warning
+                log_func = logger.warning
             elif content_type.startswith('image/') or content_type == \
                     'application/vnd.openxmlformats-officedocument.' + \
                     'spreadsheetml.printerSettings':
                 # understandable that these are not record-base
-                log_func = logging.debug
+                log_func = logger.debug
             else:   # default
-                log_func = logging.info
+                log_func = logger.info
             log_func('Failed to parse {0} of content type {1}'
                      .format(subfile, content_type))
             # in any case: continue with next
@@ -774,15 +722,15 @@ class RtfFieldParser(rtfobj.RtfParser):
 
     def open_destination(self, destination):
         if destination.cword == b'fldinst':
-            log.debug('*** Start field data at index %Xh' % destination.start)
+            logger.debug('*** Start field data at index %Xh' % destination.start)
 
     def close_destination(self, destination):
         if destination.cword == b'fldinst':
-            log.debug('*** Close field data at index %Xh' % self.index)
-            log.debug('Field text: %r' % destination.data)
+            logger.debug('*** Close field data at index %Xh' % self.index)
+            logger.debug('Field text: %r' % destination.data)
             # remove extra spaces and newline chars:
             field_clean = destination.data.translate(None, b'\r\n').strip()
-            log.debug('Cleaned Field text: %r' % field_clean)
+            logger.debug('Cleaned Field text: %r' % field_clean)
             self.fields.append(field_clean)
 
     def control_symbol(self, matchobject):
@@ -804,7 +752,7 @@ def process_rtf(file_handle, field_filter_mode=None):
     rtfparser.parse()
     all_fields = [field.decode('ascii') for field in rtfparser.fields]
     # apply field command filter
-    log.debug('found {1} fields, filtering with mode "{0}"'
+    logger.debug('found {1} fields, filtering with mode "{0}"'
               .format(field_filter_mode, len(all_fields)))
     if field_filter_mode in (FIELD_FILTER_ALL, None):
         clean_fields = all_fields
@@ -853,7 +801,7 @@ def process_csv(filepath):
 
         if is_small and not results:
             # easy to mis-sniff small files. Try different delimiters
-            log.debug('small file, no results; try all delimiters')
+            logger.debug('small file, no results; try all delimiters')
             file_handle.seek(0)
             other_delim = CSV_DELIMITERS.replace(dialect.delimiter, '')
             for delim in other_delim:
@@ -861,12 +809,12 @@ def process_csv(filepath):
                     file_handle.seek(0)
                     results, _ = process_csv_dialect(file_handle, delim)
                 except csv.Error:   # e.g. sniffing fails
-                    log.debug('failed to csv-parse with delimiter {0!r}'
+                    logger.debug('failed to csv-parse with delimiter {0!r}'
                               .format(delim))
 
         if is_small and not results:
             # try whole file as single cell, since sniffing fails in this case
-            log.debug('last attempt: take whole file as single unquoted cell')
+            logger.debug('last attempt: take whole file as single unquoted cell')
             file_handle.seek(0)
             match = CSV_DDE_FORMAT.match(file_handle.read(CSV_SMALL_THRESH))
             if match:
@@ -882,7 +830,7 @@ def process_csv_dialect(file_handle, delimiters):
     dialect = csv.Sniffer().sniff(file_handle.read(CSV_SMALL_THRESH),
                                   delimiters=delimiters)
     dialect.strict = False     # microsoft is never strict
-    log.debug('sniffed csv dialect with delimiter {0!r} '
+    logger.debug('sniffed csv dialect with delimiter {0!r} '
               'and quote char {1!r}'
               .format(dialect.delimiter, dialect.quotechar))
 
@@ -924,7 +872,7 @@ def process_excel_xml(filepath):
                 break
         if formula is None:
             continue
-        log.debug('found cell with formula {0}'.format(formula))
+        logger.debug('found cell with formula {0}'.format(formula))
         match = re.match(XML_DDE_FORMAT, formula)
         if match:
             dde_links.append(u' '.join(match.groups()[:2]))
@@ -934,40 +882,40 @@ def process_excel_xml(filepath):
 def process_file(filepath, field_filter_mode=None):
     """ decides which of the process_* functions to call """
     if olefile.isOleFile(filepath):
-        log.debug('Is OLE. Checking streams to see whether this is xls')
+        logger.debug('Is OLE. Checking streams to see whether this is xls')
         if xls_parser.is_xls(filepath):
-            log.debug('Process file as excel 2003 (xls)')
+            logger.debug('Process file as excel 2003 (xls)')
             return process_xls(filepath)
         else:
-            log.debug('Process file as word 2003 (doc)')
+            logger.debug('Process file as word 2003 (doc)')
             return process_doc(filepath)
 
     with open(filepath, 'rb') as file_handle:
         if file_handle.read(4) == RTF_START:
-            log.debug('Process file as rtf')
+            logger.debug('Process file as rtf')
             return process_rtf(file_handle, field_filter_mode)
 
     try:
         doctype = ooxml.get_type(filepath)
-        log.debug('Detected file type: {0}'.format(doctype))
+        logger.debug('Detected file type: {0}'.format(doctype))
     except Exception as exc:
-        log.debug('Exception trying to xml-parse file: {0}'.format(exc))
+        logger.debug('Exception trying to xml-parse file: {0}'.format(exc))
         doctype = None
 
     if doctype == ooxml.DOCTYPE_EXCEL:
-        log.debug('Process file as excel 2007+ (xlsx)')
+        logger.debug('Process file as excel 2007+ (xlsx)')
         return process_xlsx(filepath)
     elif doctype in (ooxml.DOCTYPE_EXCEL_XML, ooxml.DOCTYPE_EXCEL_XML2003):
-        log.debug('Process file as xml from excel 2003/2007+')
+        logger.debug('Process file as xml from excel 2003/2007+')
         return process_excel_xml(filepath)
     elif doctype in (ooxml.DOCTYPE_WORD_XML, ooxml.DOCTYPE_WORD_XML2003):
-        log.debug('Process file as xml from word 2003/2007+')
+        logger.debug('Process file as xml from word 2003/2007+')
         return process_docx(filepath)
     elif doctype is None:
-        log.debug('Process file as csv')
+        logger.debug('Process file as csv')
         return process_csv(filepath)
     else:  # could be docx; if not: this is the old default code path
-        log.debug('Process file as word 2007+ (docx)')
+        logger.debug('Process file as word 2007+ (docx)')
         return process_docx(filepath, field_filter_mode)
 
 
@@ -985,27 +933,14 @@ def main(cmd_line_args=None):
     # Setup logging to the console:
     # here we use stdout instead of stderr by default, so that the output
     # can be redirected properly.
-    logging.basicConfig(level=LOG_LEVELS[args.loglevel], stream=sys.stdout,
-                        format='%(levelname)-8s %(message)s')
-    # enable logging in the modules:
-    log.setLevel(logging.NOTSET)
-
-    if args.json and args.loglevel.lower() == 'debug':
-        log.warning('Debug log output will not be json-compatible!')
+    log_helper.enable_logging(args.json, args.loglevel, stream=sys.stdout)
 
     if args.nounquote:
         global NO_QUOTES
         NO_QUOTES = True
 
-    if args.json:
-        jout = []
-        jout.append(BANNER_JSON)
-    else:
-        # print banner with version
-        print(BANNER)
-
-    if not args.json:
-        print('Opening file: %s' % args.filepath)
+    logger.print_str(BANNER)
+    logger.print_str('Opening file: %s' % args.filepath)
 
     text = ''
     return_code = 1
@@ -1013,22 +948,12 @@ def main(cmd_line_args=None):
         text = process_file(args.filepath, args.field_filter_mode)
         return_code = 0
     except Exception as exc:
-        if args.json:
-            jout.append(dict(type='error', error=type(exc).__name__,
-                             message=str(exc)))
-        else:
-            raise  # re-raise last known exception, keeping trace intact
+        logger.exception(exc.message)
 
-    if args.json:
-        for line in text.splitlines():
-            if line.strip():
-                jout.append(dict(type='dde-link', link=line.strip()))
-        json.dump(jout, sys.stdout, check_circular=False, indent=4)
-        print()   # add a newline after closing "]"
-        return return_code  # required if we catch an exception in json-mode
-    else:
-        print ('DDE Links:')
-        print(text)
+    logger.print_str('DDE Links:')
+    logger.print_str(text)
+
+    log_helper.end_logging()
 
     return return_code
 

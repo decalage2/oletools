@@ -1,5 +1,3 @@
-from .output_capture import OutputCapture
-
 from os.path import dirname, join
 
 # Directory with test data, independent of current working directory

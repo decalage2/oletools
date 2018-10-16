@@ -14,7 +14,7 @@ TODO: may have to tell apart single xml types: office2003 looks much different
 """
 
 import sys
-import logging
+from oletools.common.log_helper import log_helper
 from zipfile import ZipFile, BadZipfile, is_zipfile
 from os.path import splitext
 import io
@@ -27,6 +27,7 @@ try:
 except ImportError:
     import xml.etree.cElementTree as ET
 
+logger = log_helper.get_or_create_silent_logger('ooxml')
 
 #: subfiles that have to be part of every ooxml file
 FILE_CONTENT_TYPES = '[Content_Types].xml'
@@ -142,7 +143,7 @@ def get_type(filename):
     is_xls = False
     is_ppt = False
     for _, elem, _ in parser.iter_xml(FILE_CONTENT_TYPES):
-        logging.debug(u'  ' + debug_str(elem))
+        logger.debug(u'  ' + debug_str(elem))
         try:
             content_type = elem.attrib['ContentType']
         except KeyError:         # ContentType not an attr
@@ -160,7 +161,7 @@ def get_type(filename):
     if not is_doc and not is_xls and not is_ppt:
         return DOCTYPE_NONE
     else:
-        logging.warning('Encountered contradictory content types')
+        logger.warning('Encountered contradictory content types')
         return DOCTYPE_MIXED
 
 
@@ -220,7 +221,7 @@ class ZipSubFile(object):
         self.name = filename
         if size is None:
             self.size = container.getinfo(filename).file_size
-            logging.debug('zip stream has size {0}'.format(self.size))
+            logger.debug('zip stream has size {0}'.format(self.size))
         else:
             self.size = size
         if 'w' in mode.lower():
@@ -484,10 +485,10 @@ class XmlParser(object):
             want_tags = []
         elif isstr(tags):
             want_tags = [tags, ]
-            logging.debug('looking for tags: {0}'.format(tags))
+            logger.debug('looking for tags: {0}'.format(tags))
         else:
             want_tags = tags
-            logging.debug('looking for tags: {0}'.format(tags))
+            logger.debug('looking for tags: {0}'.format(tags))
 
         for subfile, handle in self.iter_files(subfiles):
             events = ('start', 'end')
@@ -499,7 +500,7 @@ class XmlParser(object):
                         continue
                     if event == 'start':
                         if elem.tag in want_tags:
-                            logging.debug('remember start of tag {0} at {1}'
+                            logger.debug('remember start of tag {0} at {1}'
                                           .format(elem.tag, depth))
                             inside_tags.append((elem.tag, depth))
                         depth += 1
@@ -515,18 +516,18 @@ class XmlParser(object):
                             if inside_tags[-1] == curr_tag:
                                 inside_tags.pop()
                             else:
-                                logging.error('found end for wanted tag {0} '
+                                logger.error('found end for wanted tag {0} '
                                               'but last start tag {1} does not'
                                               ' match'.format(curr_tag,
                                                               inside_tags[-1]))
                                 # try to recover: close all deeper tags
                                 while inside_tags and \
                                         inside_tags[-1][1] >= depth:
-                                    logging.debug('recover: pop {0}'
+                                    logger.debug('recover: pop {0}'
                                                   .format(inside_tags[-1]))
                                     inside_tags.pop()
                         except IndexError:    # no inside_tag[-1]
-                            logging.error('found end of {0} at depth {1} but '
+                            logger.error('found end of {0} at depth {1} but '
                                           'no start event')
                     # yield element
                     if is_wanted or not want_tags:
@@ -543,12 +544,12 @@ class XmlParser(object):
                 if subfile is None:    # this is no zip subfile but single xml
                     raise BadOOXML(self.filename, 'is neither zip nor xml')
                 elif subfile.endswith('.xml'):
-                    logger = logging.warning
+                    log = logger.warning
                 else:
-                    logger = logging.debug
-                logger('  xml-parsing for {0} failed ({1}). '
-                       .format(subfile, err) +
-                       'Run iter_non_xml to investigate.')
+                    log = logger.debug
+                log('  xml-parsing for {0} failed ({1}). '
+                    .format(subfile, err) +
+                    'Run iter_non_xml to investigate.')
             assert(depth == 0)
 
     def get_content_types(self):
@@ -571,14 +572,14 @@ class XmlParser(object):
                 if extension.startswith('.'):
                     extension = extension[1:]
                 defaults.append((extension, elem.attrib['ContentType']))
-                logging.debug('found content type for extension {0[0]}: {0[1]}'
+                logger.debug('found content type for extension {0[0]}: {0[1]}'
                               .format(defaults[-1]))
             elif elem.tag.endswith('Override'):
                 subfile = elem.attrib['PartName']
                 if subfile.startswith('/'):
                     subfile = subfile[1:]
                 files.append((subfile, elem.attrib['ContentType']))
-                logging.debug('found content type for subfile {0[0]}: {0[1]}'
+                logger.debug('found content type for subfile {0[0]}: {0[1]}'
                               .format(files[-1]))
         return dict(files), dict(defaults)
 
@@ -595,7 +596,7 @@ class XmlParser(object):
         To handle binary parts of an xlsb file, use xls_parser.parse_xlsb_part
         """
         if not self.did_iter_all:
-            logging.warning('Did not iterate through complete file. '
+            logger.warning('Did not iterate through complete file. '
                             'Should run iter_xml() without args, first.')
         if not self.subfiles_no_xml:
             return
@@ -628,7 +629,7 @@ def test():
 
     see module doc for more info
     """
-    logging.basicConfig(level=logging.DEBUG)
+    log_helper.enable_logging(False, logger.DEBUG)
     if len(sys.argv) != 2:
         print(u'To test this code, give me a single file as arg')
         return 2
@@ -647,6 +648,9 @@ def test():
         if index > 100:
             print(u'...')
             break
+
+    log_helper.end_logging()
+
     return 0
 
 
