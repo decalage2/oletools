@@ -241,6 +241,7 @@ class OleID(object):
             self.suminfo_data = self.ole.getproperties("\x05SummaryInformation")
             # check application name:
             appname.value = self.suminfo_data.get(0x12, 'unknown')
+        return suminfo, appname
 
     def get_indicator(self, indicator_id):
         """Helper function: returns an indicator if present (or None)"""
@@ -266,6 +267,7 @@ class OleID(object):
         # check if this is an OpenXML encrypted file
         elif self.ole.exists('EncryptionInfo'):
             encrypted.value = True
+        return encrypted
 
     def check_word(self):
         """
@@ -307,6 +309,7 @@ class OleID(object):
             # check for VBA macros:
             if self.ole.exists('Macros'):
                 macros.value = True
+        return word, macros
 
     def check_excel(self):
         """
@@ -332,6 +335,7 @@ class OleID(object):
                 else:
                     self.indicators.append('vba_macros', True,
                                            name='VBA Macros')
+        return excel
 
     def check_powerpoint(self):
         """Check whether this file is a powerpoint presentation"""
@@ -342,6 +346,7 @@ class OleID(object):
         self.indicators.append(ppt)
         if self.ole.exists('PowerPoint Document'):
             ppt.value = True
+        return ppt
 
     def check_visio(self):
         """Check whether this file is a visio drawing"""
@@ -352,6 +357,7 @@ class OleID(object):
         self.indicators.append(visio)
         if self.ole.exists('VisioDocument'):
             visio.value = True
+        return visio
 
     def check_object_pool(self):
         """Check whether this file could contain embedded objects/files"""
@@ -362,7 +368,7 @@ class OleID(object):
         self.indicators.append(objpool)
         if self.ole.exists('ObjectPool'):
             objpool.value = True
-
+        return objpool
 
     def check_flash(self):
         """Check whether this file contains flash objects"""
@@ -378,6 +384,7 @@ class OleID(object):
             # just add to the count of Flash objects:
             flash.value += len(found)
             #print stream, found
+        return flash
 
 
 #=== MAIN =================================================================
