@@ -9,8 +9,6 @@ For example it can detect VBA macros, embedded Flash objects, fragmentation.
 The results is displayed as ascii table (but could be returned or printed in
 other formats like CSV, XML or JSON in future).
 
-Usage: oleid.py <file>
-
 oleid project website: http://www.decalage.info/python/oleid
 
 oleid is part of the python-oletools package:
@@ -81,7 +79,7 @@ __version__ = '0.54dev1'
 
 #=== IMPORTS =================================================================
 
-import optparse, sys, re, zlib, struct
+import argparse, sys, re, zlib, struct
 from os.path import dirname, abspath
 
 # little hack to allow absolute imports even if oletools is not installed
@@ -398,22 +396,21 @@ def main():
           'https://github.com/decalage2/oletools/issues')
     print('')
 
-    usage = 'usage: %prog [options] <file>'
-    parser = optparse.OptionParser(usage=__doc__ + '\n' + usage)
-    # parser.add_option('-o', '--ole', action='store_true', dest='ole',
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('input', type=str, nargs='*', metavar='FILE',
+                        help='Name of files to process')
+    # parser.add_argument('-o', '--ole', action='store_true', dest='ole',
     #                   help='Parse an OLE file (e.g. Word, Excel) to look for '
     #                        'SWF in each stream')
 
-    (options, args) = parser.parse_args()
-    if options:
-        raise RuntimeError('no options supported so far')
+    args = parser.parse_args()
 
     # Print help if no argurments are passed
-    if len(args) == 0:
+    if len(args.input) == 0:
         parser.print_help()
         return
 
-    for filename in args:
+    for filename in args.input:
         print('Filename:', filename)
         oleid = OleID(filename)
         indicators = oleid.check()
