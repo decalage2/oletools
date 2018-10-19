@@ -44,6 +44,7 @@ __version__ = '0.54dev1'
 # TODO:
 # - read DocumentSummaryInformation first to get more info about streams
 #   (maybe content type or so; identify streams that are never record-based)
+#   Or use oleid to avoid same functionality in several files
 # - think about integrating this with olefile itself
 
 # -----------------------------------------------------------------------------
@@ -234,6 +235,8 @@ class OleSummaryInformationStream(OleRecordStream):
 
     Do nothing so far. OleFileIO reads quite some info from this. For more info
     see [MS-OSHARED] 2.3.3 and [MS-OLEPS] 2.21 and references therein.
+
+    See also: info read in oleid.py.
     """
     def iter_records(self, fill_data=False):
         """ yields nothing, stops at once """
