@@ -58,6 +58,7 @@ from __future__ import print_function
 # 2017-04-26       PL: - fixed absolute imports (issue #141)
 # 2017-09-01       SA: - detect OpenXML encryption
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
+# 2018-10-19       CH: - accept olefile as well as filename
 
 __version__ = '0.54dev1'
 
@@ -179,8 +180,7 @@ class OleID(object):
     of the `check_` functions to just get a specific piece of info.
     """
 
-    def __init__(self, filename):
-        self.filename = filename
+    def __init__(self, input_file):
         """
         Create an OleID object
 
@@ -192,6 +192,12 @@ class OleID(object):
         :py:class:`olefile.OleFileIO` as argument to avoid re-opening (e.g. if
         called from other oletools).
         """
+        if isinstance(input_file, olefile.OleFileIO):
+            self.ole = input_file
+            self.filename = None
+        else:
+            self.filename = input_file
+            self.ole = None
         self.indicators = []
         self.suminfo_data = None
 
@@ -200,11 +206,14 @@ class OleID(object):
         # check if it is actually an OLE file:
         oleformat = Indicator('ole_format', True, name='OLE format')
         self.indicators.append(oleformat)
-        if not olefile.isOleFile(self.filename):
+        if self.ole:
+            oleformat.value = True
+        elif not olefile.isOleFile(self.filename):
             oleformat.value = False
             return self.indicators
-        # parse file:
-        self.ole = olefile.OleFileIO(self.filename)
+        else:
+            # parse file:
+            self.ole = olefile.OleFileIO(self.filename)
         # checks:
         self.check_properties()
         self.check_encrypted()
