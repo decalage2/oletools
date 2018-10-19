@@ -147,6 +147,8 @@ def is_ppt(filename):
 
     Param filename can be anything that OleFileIO constructor accepts: name of
     file or file data or data stream.
+
+    see also: oleid.OleID.check_powerpoint
     """
     have_current_user = False
     have_user_edit = False

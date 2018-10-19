@@ -313,7 +313,11 @@ class OleID(object):
         """
         Check whether this file is an excel workbook.
 
-        If  this finds macros, will add/correct macro indicator.
+        If this finds macros, will add/correct macro indicator.
+
+        see also: :py:func:`xls_parser.is_xls`
+
+        :returns: :py:class:`Indicator` for excel
         """
         excel = Indicator(
             'excel', False, name='Excel Workbook',
@@ -336,7 +340,14 @@ class OleID(object):
         return excel
 
     def check_powerpoint(self):
-        """Check whether this file is a powerpoint presentation"""
+        """
+        Check whether this file is a powerpoint presentation
+
+        see also: :py:func:`ppt_record_parser.is_ppt`
+
+        :returns: :py:class:`Indicator` for whether this is a powerpoint
+                  presentation or not
+        """
         ppt = Indicator(
             'ppt', False, name='PowerPoint Presentation',
             description='Contains a PowerPoint Document stream, very likely to '

@@ -86,7 +86,8 @@ def is_xls(filename):
     returns True if given file is an ole file and contains a Workbook stream
 
     todo: could further check that workbook stream starts with a globals
-    substream
+    substream.
+    See also: oleid.OleID.check_excel
     """
     try:
         for stream in XlsFile(filename).iter_streams():
