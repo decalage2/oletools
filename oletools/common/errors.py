@@ -7,6 +7,7 @@ Errors used in several tools to avoid duplication
 class FileIsEncryptedError(ValueError):
     """Exception thrown if file is encrypted and cannot deal with it."""
     # see also: same class in olevba[3] and record_base
-    def __init__(self, filename):
+    def __init__(self, filename=None):
         super(FileIsEncryptedError, self).__init__(
-            'Office file {} is encrypted, not yet supported'.format(filename))
+            'Office file {}is encrypted, not yet supported'
+            .format('' if filename is None else filename + ' '))
