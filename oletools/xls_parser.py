@@ -94,7 +94,8 @@ def is_xls(filename):
             if isinstance(stream, WorkbookStream):
                 return True
     except Exception:
-        return False
+        pass
+    return False
 
 
 def read_unicode(data, start_idx, n_chars):
