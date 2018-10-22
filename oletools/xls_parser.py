@@ -131,6 +131,8 @@ class XlsFile(record_base.OleRecordFile):
     @classmethod
     def stream_class_for_name(cls, stream_name):
         """ helper for iter_streams """
+        if stream_name == 'Workbook':
+            return WorkbookStream
         return XlsStream
 
 
