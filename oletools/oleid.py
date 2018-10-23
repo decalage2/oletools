@@ -200,7 +200,11 @@ class OleID(object):
         self.suminfo_data = None
 
     def check(self):
-        """Open file and run all checks on it"""
+        """
+        Open file and run all checks on it.
+
+        :returns: list of all :py:class:`Indicator`s created
+        """
         # check if it is actually an OLE file:
         oleformat = Indicator('ole_format', True, name='OLE format')
         self.indicators.append(oleformat)
@@ -225,7 +229,12 @@ class OleID(object):
         return self.indicators
 
     def check_properties(self):
-        """Read summary information required for other check_* functions"""
+        """
+        Read summary information required for other check_* functions
+
+        :returns: 2 :py:class:`Indicator`s (for presence of summary info and
+                    application name)
+        """
         suminfo = Indicator('has_suminfo', False,
                             name='Has SummaryInformation stream')
         self.indicators.append(suminfo)
@@ -253,7 +262,13 @@ class OleID(object):
             return None
 
     def check_encrypted(self):
-        """Check whether this file is encrypted. Might call check_properties."""
+        """
+        Check whether this file is encrypted.
+
+        Might call check_properties.
+
+        :returns: :py:class:`Indicator` for encryption
+        """
         # we keep the pointer to the indicator, can be modified by other checks:
         encrypted = Indicator('encrypted', False, name='Encrypted')
         self.indicators.append(encrypted)
@@ -277,6 +292,8 @@ class OleID(object):
 
         If this finds evidence of encryption, will correct/add encryption
         indicator.
+
+        :returns: 2 :py:class:`Indicator`s (for word and vba_macro)
         """
         word = Indicator(
             'word', False, name='Word Document',
@@ -381,7 +398,13 @@ class OleID(object):
         return visio
 
     def check_object_pool(self):
-        """Check whether this file could contain embedded objects/files"""
+        """
+        Check whether this file contains an ObjectPool stream.
+
+        Such a stream would be a strong indicator for embedded objects or files.
+
+        :returns: :py:class:`Indicator` for ObjectPool stream
+        """
         objpool = Indicator(
             'ObjectPool', False, name='ObjectPool',
             description='Contains an ObjectPool stream, very likely to contain '
@@ -394,7 +417,11 @@ class OleID(object):
         return objpool
 
     def check_flash(self):
-        """Check whether this file contains flash objects"""
+        """
+        Check whether this file contains flash objects
+
+        :returns: :py:class:`Indicator` for count of flash objects
+        """
         flash = Indicator(
             'flash', 0, _type=int, name='Flash objects',
             description='Number of embedded Flash objects (SWF files) detected '
