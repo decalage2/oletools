@@ -244,7 +244,7 @@ class OleID(object):
         if not self.ole:
             return suminfo, appname
         self.suminfo_data = {}
-        # check stream SummaryInformation
+        # check stream SummaryInformation (not present e.g. in encrypted ppt)
         if self.ole.exists("\x05SummaryInformation"):
             suminfo.value = True
             self.suminfo_data = self.ole.getproperties("\x05SummaryInformation")
@@ -283,6 +283,10 @@ class OleID(object):
                 encrypted.value = True
         # check if this is an OpenXML encrypted file
         elif self.ole.exists('EncryptionInfo'):
+            encrypted.value = True
+        # or an encrypted ppt file
+        if self.ole.exists('EncryptedSummary') and \
+                not self.ole.exists('SummaryInformation'):
             encrypted.value = True
         return encrypted
 
