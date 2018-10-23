@@ -232,6 +232,8 @@ class OleID(object):
         appname = Indicator('appname', 'unknown', _type=str,
                             name='Application name')
         self.indicators.append(appname)
+        if not self.ole:
+            return suminfo, appname
         self.suminfo_data = {}
         # check stream SummaryInformation
         if self.ole.exists("\x05SummaryInformation"):
@@ -255,6 +257,8 @@ class OleID(object):
         # we keep the pointer to the indicator, can be modified by other checks:
         encrypted = Indicator('encrypted', False, name='Encrypted')
         self.indicators.append(encrypted)
+        if not self.ole:
+            return encrypted
         # check if bit 1 of security field = 1:
         # (this field may be missing for Powerpoint2000, for example)
         if self.suminfo_data is None:
@@ -281,6 +285,8 @@ class OleID(object):
         self.indicators.append(word)
         macros = Indicator('vba_macros', False, name='VBA Macros')
         self.indicators.append(macros)
+        if not self.ole:
+            return word, macros
         if self.ole.exists('WordDocument'):
             word.value = True
             # check for Word-specific encryption flag:
@@ -324,6 +330,8 @@ class OleID(object):
             description='Contains a Workbook or Book stream, very likely to be '
                         'a Microsoft Excel Workbook.')
         self.indicators.append(excel)
+        if not self.ole:
+            return excel
         #self.macros = Indicator('vba_macros', False, name='VBA Macros')
         #self.indicators.append(self.macros)
         if self.ole.exists('Workbook') or self.ole.exists('Book'):
@@ -353,6 +361,8 @@ class OleID(object):
             description='Contains a PowerPoint Document stream, very likely to '
                         'be a Microsoft PowerPoint Presentation.')
         self.indicators.append(ppt)
+        if not self.ole:
+            return ppt
         if self.ole.exists('PowerPoint Document'):
             ppt.value = True
         return ppt
@@ -364,6 +374,8 @@ class OleID(object):
             description='Contains a VisioDocument stream, very likely to be a '
                         'Microsoft Visio Drawing.')
         self.indicators.append(visio)
+        if not self.ole:
+            return visio
         if self.ole.exists('VisioDocument'):
             visio.value = True
         return visio
@@ -375,6 +387,8 @@ class OleID(object):
             description='Contains an ObjectPool stream, very likely to contain '
                         'embedded OLE objects or files.')
         self.indicators.append(objpool)
+        if not self.ole:
+            return objpool
         if self.ole.exists('ObjectPool'):
             objpool.value = True
         return objpool
@@ -387,6 +401,8 @@ class OleID(object):
                         'in OLE streams. Not 100% accurate, there may be false '
                         'positives.')
         self.indicators.append(flash)
+        if not self.ole:
+            return flash
         for stream in self.ole.listdir():
             data = self.ole.openstream(stream).read()
             found = detect_flash(data)
