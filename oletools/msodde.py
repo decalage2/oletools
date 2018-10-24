@@ -11,6 +11,7 @@ Supported formats:
 - RTF
 - CSV (exported from / imported into Excel)
 - XML (exported from Word 2003, Word 2007+, Excel 2003, (Excel 2007+?)
+- raises an error if run with files encrypted using MS Crypto API RC4
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -86,6 +87,7 @@ from oletools.common.errors import FileIsEncryptedError
 # 2018-01-10       CH: - add single-xml files (Word 2003/2007+ / Excel 2003)
 # 2018-03-21       CH: - added detection for various CSV formulas (issue #259)
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
+# 2018-10-25       CH: - detect encryption and raise error if detected
 
 __version__ = '0.54dev1'
 
