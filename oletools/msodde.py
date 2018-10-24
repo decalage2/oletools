@@ -706,8 +706,8 @@ def process_xlsx(filepath):
                 log_func = logger.debug
             else:   # default
                 log_func = logger.info
-            log_func('Failed to parse {0} of content type {1}'
-                     .format(subfile, content_type))
+            log_func('Failed to parse {0} of content type {1} ("{2}")'
+                     .format(subfile, content_type, str(exc)))
             # in any case: continue with next
 
     return u'\n'.join(dde_links)
