@@ -63,6 +63,7 @@ except ImportError:
         sys.path.insert(0, PARENT_DIR)
     del PARENT_DIR
     from oletools import record_base
+from oletools.common.errors import FileIsEncryptedError
 
 
 # types of relevant records (there are much more than listed here)
@@ -154,8 +155,10 @@ def is_ppt(filename):
     have_user_edit = False
     have_persist_dir = False
     have_document_container = False
+    ppt_file = None
     try:
-        for stream in PptFile(filename).iter_streams():
+        ppt_file = PptFile(filename)
+        for stream in ppt_file.iter_streams():
             if stream.name == 'Current User':
                 for record in stream.iter_records():
                     if isinstance(record, PptRecordCurrentUser):
@@ -178,6 +181,11 @@ def is_ppt(filename):
                         return True
             else:   # ignore other streams/storages since they are optional
                 continue
+    except FileIsEncryptedError:
+        assert ppt_file is not None, \
+            'Encryption error should not be raised from just opening OLE file.'
+        # just rely on stream names, copied from oleid
+        return ppt_file.exists('PowerPoint Document')
     except Exception:
         pass
     return False
