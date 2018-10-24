@@ -16,6 +16,7 @@ Supported formats:
 - Word 2003 XML (.xml)
 - Word/Excel Single File Web Page / MHTML (.mht)
 - Publisher (.pub)
+- raises an error if run with files encrypted using MS Crypto API RC4
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -207,6 +208,7 @@ from __future__ import print_function
 # 2018-06-11 v0.53.1 MHW: - fixed #320: chr instead of unichr on python 3
 # 2018-06-12         MHW: - fixed #322: import reduce from functools
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
+# 2018-10-25       CH: - detect encryption and raise error if detected
 
 __version__ = '0.54dev1'
 
