@@ -56,7 +56,8 @@ from __future__ import print_function
 # 2017-04-26       PL: - fixed absolute imports (issue #141)
 # 2017-09-01       SA: - detect OpenXML encryption
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
-# 2018-10-19       CH: - accept olefile as well as filename
+# 2018-10-19       CH: - accept olefile as well as filename, return Indicators,
+#                        improve encryption detection for ppt
 
 __version__ = '0.54dev1'
 
@@ -182,13 +183,16 @@ class OleID(object):
         """
         Create an OleID object
 
-        This does not run any checks yet.
+        This does not run any checks yet nor open the file.
 
         Can either give just a filename (as str), so OleID will check whether
         that is a valid OLE file and create a :py:class:`olefile.OleFileIO`
         object for it. Or you can give an already opened
         :py:class:`olefile.OleFileIO` as argument to avoid re-opening (e.g. if
         called from other oletools).
+
+        If filename is given, only :py:meth:`OleID.check` opens the file. Other
+        functions will return None
         """
         if isinstance(input_file, olefile.OleFileIO):
             self.ole = input_file
@@ -233,7 +237,7 @@ class OleID(object):
         Read summary information required for other check_* functions
 
         :returns: 2 :py:class:`Indicator`s (for presence of summary info and
-                    application name)
+                    application name) or None if file was not opened
         """
         suminfo = Indicator('has_suminfo', False,
                             name='Has SummaryInformation stream')
@@ -242,7 +246,7 @@ class OleID(object):
                             name='Application name')
         self.indicators.append(appname)
         if not self.ole:
-            return suminfo, appname
+            return None, None
         self.suminfo_data = {}
         # check stream SummaryInformation (not present e.g. in encrypted ppt)
         if self.ole.exists("\x05SummaryInformation"):
@@ -267,13 +271,14 @@ class OleID(object):
 
         Might call check_properties.
 
-        :returns: :py:class:`Indicator` for encryption
+        :returns: :py:class:`Indicator` for encryption or None if file was not
+                  opened
         """
         # we keep the pointer to the indicator, can be modified by other checks:
         encrypted = Indicator('encrypted', False, name='Encrypted')
         self.indicators.append(encrypted)
         if not self.ole:
-            return encrypted
+            return None
         # check if bit 1 of security field = 1:
         # (this field may be missing for Powerpoint2000, for example)
         if self.suminfo_data is None:
@@ -297,7 +302,8 @@ class OleID(object):
         If this finds evidence of encryption, will correct/add encryption
         indicator.
 
-        :returns: 2 :py:class:`Indicator`s (for word and vba_macro)
+        :returns: 2 :py:class:`Indicator`s (for word and vba_macro) or None if
+                  file was not opened
         """
         word = Indicator(
             'word', False, name='Word Document',
@@ -307,7 +313,7 @@ class OleID(object):
         macros = Indicator('vba_macros', False, name='VBA Macros')
         self.indicators.append(macros)
         if not self.ole:
-            return word, macros
+            return None, None
         if self.ole.exists('WordDocument'):
             word.value = True
             # check for Word-specific encryption flag:
@@ -344,7 +350,8 @@ class OleID(object):
 
         see also: :py:func:`xls_parser.is_xls`
 
-        :returns: :py:class:`Indicator` for excel
+        :returns: :py:class:`Indicator` for excel or (None, None) if file was
+                  not opened
         """
         excel = Indicator(
             'excel', False, name='Excel Workbook',
@@ -352,7 +359,7 @@ class OleID(object):
                         'a Microsoft Excel Workbook.')
         self.indicators.append(excel)
         if not self.ole:
-            return excel
+            return None
         #self.macros = Indicator('vba_macros', False, name='VBA Macros')
         #self.indicators.append(self.macros)
         if self.ole.exists('Workbook') or self.ole.exists('Book'):
@@ -375,7 +382,7 @@ class OleID(object):
         see also: :py:func:`ppt_record_parser.is_ppt`
 
         :returns: :py:class:`Indicator` for whether this is a powerpoint
-                  presentation or not
+                  presentation or not or None if file was not opened
         """
         ppt = Indicator(
             'ppt', False, name='PowerPoint Presentation',
@@ -383,7 +390,7 @@ class OleID(object):
                         'be a Microsoft PowerPoint Presentation.')
         self.indicators.append(ppt)
         if not self.ole:
-            return ppt
+            return None
         if self.ole.exists('PowerPoint Document'):
             ppt.value = True
         return ppt
@@ -396,7 +403,7 @@ class OleID(object):
                         'Microsoft Visio Drawing.')
         self.indicators.append(visio)
         if not self.ole:
-            return visio
+            return None
         if self.ole.exists('VisioDocument'):
             visio.value = True
         return visio
@@ -407,7 +414,8 @@ class OleID(object):
 
         Such a stream would be a strong indicator for embedded objects or files.
 
-        :returns: :py:class:`Indicator` for ObjectPool stream
+        :returns: :py:class:`Indicator` for ObjectPool stream or None if file
+                  was not opened
         """
         objpool = Indicator(
             'ObjectPool', False, name='ObjectPool',
@@ -415,7 +423,7 @@ class OleID(object):
                         'embedded OLE objects or files.')
         self.indicators.append(objpool)
         if not self.ole:
-            return objpool
+            return None
         if self.ole.exists('ObjectPool'):
             objpool.value = True
         return objpool
@@ -424,7 +432,8 @@ class OleID(object):
         """
         Check whether this file contains flash objects
 
-        :returns: :py:class:`Indicator` for count of flash objects
+        :returns: :py:class:`Indicator` for count of flash objects or None if
+                  file was not opened
         """
         flash = Indicator(
             'flash', 0, _type=int, name='Flash objects',
@@ -433,7 +442,7 @@ class OleID(object):
                         'positives.')
         self.indicators.append(flash)
         if not self.ole:
-            return flash
+            return None
         for stream in self.ole.listdir():
             data = self.ole.openstream(stream).read()
             found = detect_flash(data)
