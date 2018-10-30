@@ -59,7 +59,7 @@ from __future__ import print_function
 # 2018-10-19       CH: - accept olefile as well as filename, return Indicators,
 #                        improve encryption detection for ppt
 
-__version__ = '0.54dev1'
+__version__ = '0.54dev4'
 
 
 #------------------------------------------------------------------------------
