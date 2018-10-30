@@ -87,8 +87,9 @@ from oletools.ooxml import XmlParser
 #                        xlsx), and ppt
 # 2018-03-27       PL: - fixed issue #274 in read_length_prefixed_string
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
+# 2018-10-30       SA: - added detection of external links (PR #317)
 
-__version__ = '0.54dev1'
+__version__ = '0.54dev4'
 
 # -----------------------------------------------------------------------------
 # TODO:
