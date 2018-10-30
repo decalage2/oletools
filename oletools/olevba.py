@@ -211,7 +211,7 @@ from __future__ import print_function
 # 2018-10-08       PL: - replace backspace before printing to console (issue #358)
 # 2018-10-25       CH: - detect encryption and raise error if detected
 
-__version__ = '0.54dev2'
+__version__ = '0.54dev4'
 
 #------------------------------------------------------------------------------
 # TODO:

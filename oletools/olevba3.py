@@ -210,7 +210,7 @@ from __future__ import print_function
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
 # 2018-10-25       CH: - detect encryption and raise error if detected
 
-__version__ = '0.54dev1'
+__version__ = '0.54dev4'
 
 #------------------------------------------------------------------------------
 # TODO:
