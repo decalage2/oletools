@@ -44,6 +44,7 @@ __version__ = '0.54dev1'
 # TODO:
 # - read DocumentSummaryInformation first to get more info about streams
 #   (maybe content type or so; identify streams that are never record-based)
+#   Or use oleid to avoid same functionality in several files
 # - think about integrating this with olefile itself
 
 # -----------------------------------------------------------------------------
@@ -61,6 +62,18 @@ from io import SEEK_CUR
 import logging
 
 import olefile
+
+try:
+    from oletools.common.errors import FileIsEncryptedError
+except ImportError:
+    # little hack to allow absolute imports even if oletools is not installed.
+    PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))))
+    if PARENT_DIR not in sys.path:
+        sys.path.insert(0, PARENT_DIR)
+    del PARENT_DIR
+    from oletools.common.errors import FileIsEncryptedError
+from oletools import oleid
 
 
 ###############################################################################
@@ -111,6 +124,12 @@ class OleRecordFile(olefile.OleFileIO):
     Subclass of OleFileIO!
     """
 
+    def open(self, filename, *args, **kwargs):
+        """Call OleFileIO.open, raise error if is encrypted."""
+        #super(OleRecordFile, self).open(filename, *args, **kwargs)
+        OleFileIO.open(self, filename, *args, **kwargs)
+        self.is_encrypted = oleid.OleID(self).check_encrypted().value
+
     @classmethod
     def stream_class_for_name(cls, stream_name):
         """ helper for iter_streams, must be overwritten in subclasses
@@ -142,7 +161,8 @@ class OleRecordFile(olefile.OleFileIO):
                 stream = clz(self._open(direntry.isectStart, direntry.size),
                              direntry.size,
                              None if is_orphan else direntry.name,
-                             direntry.entry_type)
+                             direntry.entry_type,
+                             self.is_encrypted)
                 yield stream
                 stream.close()
 
@@ -155,13 +175,14 @@ class OleRecordStream(object):
     abstract base class
     """
 
-    def __init__(self, stream, size, name, stream_type):
+    def __init__(self, stream, size, name, stream_type, is_encrypted=False):
         self.stream = stream
         self.size = size
         self.name = name
         if stream_type not in ENTRY_TYPE2STR:
             raise ValueError('Unknown stream type: {0}'.format(stream_type))
         self.stream_type = stream_type
+        self.is_encrypted = is_encrypted
 
     def read_record_head(self):
         """ read first few bytes of record to determine size and type
@@ -190,6 +211,9 @@ class OleRecordStream(object):
 
         Stream must be positioned at start of records (e.g. start of stream).
         """
+        if self.is_encrypted:
+            raise FileIsEncryptedError()
+
         while True:
             # unpacking as in olevba._extract_vba
             pos = self.stream.tell()
@@ -234,6 +258,8 @@ class OleSummaryInformationStream(OleRecordStream):
 
     Do nothing so far. OleFileIO reads quite some info from this. For more info
     see [MS-OSHARED] 2.3.3 and [MS-OLEPS] 2.21 and references therein.
+
+    See also: info read in oleid.py.
     """
     def iter_records(self, fill_data=False):
         """ yields nothing, stops at once """
