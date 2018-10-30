@@ -1,0 +1,84 @@
+"""Commonly used small stuff"""
+
+from __future__ import print_function
+import sys
+import codecs
+import os
+from locale import getpreferredencoding
+
+PY3 = sys.version_info.major >= 3
+
+#: encoding to use for redirection if no good encoding can be found
+FALLBACK_ENCODING_REDIRECT = 'utf8'
+#: print (pure-ascii) debug output to stdout
+DEBUG = False
+
+# the encoding specified in system environment
+try:
+    PREFERRED_ENCODING = getpreferredencoding(False)
+except Exception as exc:
+    if DEBUG:
+        print('Exception getting preferred encoding: {}'.format(exc))
+    PREFERRED_ENCODING = None
+
+
+def ensure_stdout_handles_unicode():
+    """
+    Ensure that print()ing unicode does not lead to errors.
+
+    When print()ing unicode, python relies on the environment (e.g. in linux on
+    the setting of the LANG environment variable) to tell it how to encode
+    unicode. That works nicely for modern-day shells where encoding is usually
+    UTF-8. But as soon as LANG is unset or just "C", or output is redirected or
+    piped, the encoding falls back to 'ASCII', which cannot handle unicode
+    characters.
+
+    Based on solutions suggested on stackoverflow (c.f.
+    https://stackoverflow.com/q/27347772/4405656 ), wrap stdout in an encoder
+    that solves that problem.
+
+    Unfortunately, stderr cannot be handled the same way ( see e.g. https://
+    pythonhosted.org/kitchen/unicode-frustrations.html#frustration-5-exceptions
+    ), so we still have to hope there is only ascii in error messages
+    """
+    # do not re-wrap
+    if isinstance(sys.stdout, codecs.StreamWriter):
+        if DEBUG:
+            print('sys.stdout wrapped already')
+        return
+
+    # get output stream object
+    if PY3:
+        output_stream = sys.stdout.buffer
+    else:
+        output_stream = sys.stdout
+
+    # determine encoding of sys.stdout
+    try:
+        encoding = sys.stdout.encoding
+    except AttributeError:              # variable "encoding" might not exist
+        encoding = None
+    if DEBUG:
+        print('sys.stdout encoding is {}'.format(encoding))
+
+    if isinstance(encoding, str) and encoding.lower().startswith('utf'):
+        if DEBUG:
+            print('encoding is acceptable')
+        return     # everything alright, we are working in a good environment
+    elif os.isatty(output_stream.fileno()):   # e.g. C locale
+        # Do not output UTF8 since that might be mis-interpreted.
+        # Just replace chars that cannot be handled
+        if DEBUG:
+            print('sys.stdout is a tty, just replace errors')
+        sys.stdout = codecs.getwriter(encoding)(output_stream, errors='replace')
+    else:                                  # e.g. redirection, pipe in python2
+        new_encoding = PREFERRED_ENCODING
+        if DEBUG:
+            print('not a tty, try preferred encoding {}'.format(new_encoding))
+        if not isinstance(new_encoding, str) \
+                or not new_encoding.lower().startswith('utf'):
+            new_encoding = FALLBACK_ENCODING_REDIRECT
+            if DEBUG:
+                print('preferred encoding also unacceptable, fall back to {}'
+                      .format(new_encoding))
+        sys.stdout = codecs.getwriter(new_encoding)(output_stream)
