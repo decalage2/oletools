@@ -16,6 +16,7 @@ Supported formats:
 - Word 2003 XML (.xml)
 - Word/Excel Single File Web Page / MHTML (.mht)
 - Publisher (.pub)
+- raises an error if run with files encrypted using MS Crypto API RC4
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -207,6 +208,7 @@ from __future__ import print_function
 # 2018-06-11 v0.53.1 MHW: - fixed #320: chr instead of unichr on python 3
 # 2018-06-12         MHW: - fixed #322: import reduce from functools
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
+# 2018-10-25       CH: - detect encryption and raise error if detected
 
 __version__ = '0.54dev1'
 
@@ -247,7 +249,6 @@ import os
 import logging
 import struct
 from _io import StringIO,BytesIO
-from oletools import rtfobj
 import math
 import zipfile
 import re
@@ -298,6 +299,9 @@ from pyparsing import \
         alphanums, alphas, hexnums,nums, opAssoc, srange, \
         infixNotation, ParserElement
 import oletools.ppt_parser as ppt_parser
+from oletools import rtfobj
+from oletools import oleid
+from oletools.common.errors import FileIsEncryptedError
 
 # monkeypatch email to fix issue #32:
 # allow header lines without ":"
@@ -479,6 +483,7 @@ RETURN_OPEN_ERROR     = 5
 RETURN_PARSE_ERROR    = 6
 RETURN_SEVERAL_ERRS   = 7
 RETURN_UNEXPECTED     = 8
+RETURN_ENCRYPTED      = 9
 
 # MAC codepages (from http://stackoverflow.com/questions/1592925/decoding-mac-os-text-in-python)
 MAC_CODEPAGES = {
@@ -2360,6 +2365,12 @@ class VBA_Parser(object):
             # This looks like an OLE file
             self.open_ole(_file)
 
+            # check whether file is encrypted (need to do this before try ppt)
+            log.debug('Check encryption of ole file')
+            crypt_indicator = oleid.OleID(self.ole_file).check_encrypted()
+            if crypt_indicator.value:
+                raise FileIsEncryptedError(filename)
+
             # if this worked, try whether it is a ppt file (special ole file)
             self.open_ppt()
         if self.type is None and is_zipfile(_file):
@@ -3594,6 +3605,18 @@ def main(cmd_line_args=None):
                                   % (filename, exc.orig_exc))
                 return_code = RETURN_PARSE_ERROR if return_code == 0 \
                                                 else RETURN_SEVERAL_ERRS
+            except FileIsEncryptedError as exc:
+                if options.output_mode in ('triage', 'unspecified'):
+                    print('%-12s %s - File is encrypted' % ('!ERROR', filename))
+                elif options.output_mode == 'json':
+                    print_json(file=filename, type='error',
+                               error=type(exc).__name__, message=str(exc))
+                else:
+                    log.exception('File %s is encrypted!' % (filename))
+                return_code = RETURN_ENCRYPTED if return_code == 0 \
+                                                else RETURN_SEVERAL_ERRS
+            # Here we do not close the vba_parser, because process_file may need it below.
+
             finally:
                 if vba_parser is not None:
                     vba_parser.close()

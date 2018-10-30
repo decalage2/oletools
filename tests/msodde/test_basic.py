@@ -11,6 +11,7 @@ from __future__ import print_function
 import unittest
 from oletools import msodde
 from tests.test_utils import DATA_BASE_DIR as BASE_DIR
+import os
 from os.path import join
 from traceback import print_exc
 
@@ -54,6 +55,20 @@ class TestReturnCode(unittest.TestCase):
     def test_invalid_text(self):
         """ check that text file argument leads to non-zero exit status """
         self.do_test_validity(join(BASE_DIR, 'basic/text'), True)
+
+    def test_encrypted(self):
+        """
+        check that encrypted files lead to non-zero exit status
+
+        Currently, only the encryption applied by Office 2010 (CryptoApi RC4
+        Encryption) is tested.
+        """
+        CRYPT_DIR = join(BASE_DIR, 'encrypted')
+        ADD_ARGS = '', '-j', '-d', '-f', '-a'
+        for filename in os.listdir(CRYPT_DIR):
+            full_name = join(CRYPT_DIR, filename)
+            for args in ADD_ARGS:
+                self.do_test_validity(args + ' ' + full_name, True)
 
     def do_test_validity(self, args, expect_error=False):
         """ helper for test_valid_doc[x] """

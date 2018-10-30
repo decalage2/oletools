@@ -11,6 +11,7 @@ Supported formats:
 - RTF
 - CSV (exported from / imported into Excel)
 - XML (exported from Word 2003, Word 2007+, Excel 2003, (Excel 2007+?)
+- raises an error if run with files encrypted using MS Crypto API RC4
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -61,7 +62,9 @@ import olefile
 from oletools import ooxml
 from oletools import xls_parser
 from oletools import rtfobj
+from oletools import oleid
 from oletools.common.log_helper import log_helper
+from oletools.common.errors import FileIsEncryptedError
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:
@@ -84,6 +87,7 @@ from oletools.common.log_helper import log_helper
 # 2018-01-10       CH: - add single-xml files (Word 2003/2007+ / Excel 2003)
 # 2018-03-21       CH: - added detection for various CSV formulas (issue #259)
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
+# 2018-10-25       CH: - detect encryption and raise error if detected
 
 __version__ = '0.54dev1'
 
@@ -438,17 +442,18 @@ def process_doc_stream(stream):
     return result_parts
 
 
-def process_doc(filepath):
+def process_doc(ole):
     """
     find dde links in word ole (.doc/.dot) file
+
+    Checks whether files is ppt and returns empty immediately in that case
+    (ppt files cannot contain DDE-links to my knowledge)
 
     like process_xml, returns a concatenated unicode string of dde links or
     empty if none were found. dde-links will still begin with the dde[auto] key
     word (possibly after some whitespace)
     """
     logger.debug('process_doc')
-    ole = olefile.OleFileIO(filepath, path_encoding=None)
-
     links = []
     for sid, direntry in enumerate(ole.direntries):
         is_orphan = direntry is None
@@ -703,8 +708,8 @@ def process_xlsx(filepath):
                 log_func = logger.debug
             else:   # default
                 log_func = logger.info
-            log_func('Failed to parse {0} of content type {1}'
-                     .format(subfile, content_type))
+            log_func('Failed to parse {0} of content type {1} ("{2}")'
+                     .format(subfile, content_type, str(exc)))
             # in any case: continue with next
 
     return u'\n'.join(dde_links)
@@ -886,9 +891,20 @@ def process_file(filepath, field_filter_mode=None):
         if xls_parser.is_xls(filepath):
             logger.debug('Process file as excel 2003 (xls)')
             return process_xls(filepath)
+
+        # encrypted files also look like ole, even if office 2007+ (xml-based)
+        # so check for encryption, first
+        ole = olefile.OleFileIO(filepath, path_encoding=None)
+        oid = oleid.OleID(ole)
+        if oid.check_encrypted().value:
+            log.debug('is encrypted - raise error')
+            raise FileIsEncryptedError(filepath)
+        elif oid.check_powerpoint().value:
+            log.debug('is ppt - cannot have DDE')
+            return u''
         else:
             logger.debug('Process file as word 2003 (doc)')
-            return process_doc(filepath)
+            return process_doc(ole)
 
     with open(filepath, 'rb') as file_handle:
         if file_handle.read(4) == RTF_START:

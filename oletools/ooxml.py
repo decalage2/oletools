@@ -9,6 +9,8 @@ See also: Notes on Microsoft's implementation of ECMA-376: [MS-0E376]
 
 TODO: may have to tell apart single xml types: office2003 looks much different
       than 2006+ --> DOCTYPE_*_XML2003
+TODO: check what is duplicate here with oleid, maybe merge some day?
+TODO: "xml2003" == "flatopc"?
 
 .. codeauthor:: Intra2net AG <info@intra2net>
 """
