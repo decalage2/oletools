@@ -642,6 +642,8 @@ def test():
 
     see module doc for more info
     """
+    from oletools.common import ensure_stdout_handles_unicode
+    ensure_stdout_handles_unicode()
     log_helper.enable_logging(False, 'debug')
     if len(sys.argv) != 2:
         print(u'To test this code, give me a single file as arg')
