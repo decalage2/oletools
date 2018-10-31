@@ -772,7 +772,11 @@ def process_csv(filepath):
     """
 
     results = []
-    with open(filepath, 'r') as file_handle:
+    if sys.version_info.major <= 2:
+        open_arg = dict(mode='rb')
+    else:
+        open_arg = dict(newline='')
+    with open(filepath, **open_arg) as file_handle:
         results, dialect = process_csv_dialect(file_handle, CSV_DELIMITERS)
         is_small = file_handle.tell() < CSV_SMALL_THRESH
 
