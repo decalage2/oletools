@@ -73,6 +73,7 @@ except ImportError:
 from oletools.ppt_record_parser import (is_ppt, PptFile,
                                         PptRecordExOleVbaActiveXAtom)
 from oletools.ooxml import XmlParser
+from oletools.common import ensure_stdout_handles_unicode
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:
@@ -848,6 +849,7 @@ def main(cmd_line_args=None):
     provide other arguments.
     """
     # print banner with version
+    ensure_stdout_handles_unicode()
     print('oleobj %s - http://decalage.info/oletools' % __version__)
     print('THIS IS WORK IN PROGRESS - Check updates regularly!')
     print('Please report any issue at '
