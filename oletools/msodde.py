@@ -74,6 +74,7 @@ from oletools import xls_parser
 from oletools import rtfobj
 from oletools.ppt_record_parser import is_ppt
 from oletools import crypto
+from oletools.common import ensure_stdout_handles_unicode
 from oletools.common.log_helper import log_helper
 
 # -----------------------------------------------------------------------------
@@ -233,57 +234,6 @@ DEFAULT_LOG_LEVEL = "warning"  # Default log level
 
 # a global logger object used for debugging:
 logger = log_helper.get_or_create_silent_logger('msodde')
-
-
-# === UNICODE IN PY2 =========================================================
-
-def ensure_stdout_handles_unicode():
-    """ Ensure stdout can handle unicode by wrapping it if necessary
-
-    Required e.g. if output of this script is piped or redirected in a linux
-    shell, since then sys.stdout.encoding is ascii and cannot handle
-    print(unicode). In that case we need to find some compatible encoding and
-    wrap sys.stdout into a encoder following (many thanks!)
-    https://stackoverflow.com/a/1819009 or https://stackoverflow.com/a/20447935
-
-    Can be undone by setting sys.stdout = sys.__stdout__
-    """
-    import codecs
-    import locale
-
-    # do not re-wrap
-    if isinstance(sys.stdout, codecs.StreamWriter):
-        return
-
-    # try to find encoding for sys.stdout
-    encoding = None
-    try:
-        encoding = sys.stdout.encoding
-    except AttributeError:              # variable "encoding" might not exist
-        pass
-
-    if encoding not in (None, '', 'ascii'):
-        return   # no need to wrap
-
-    # try to find an encoding that can handle unicode
-    try:
-        encoding = locale.getpreferredencoding()
-    except Exception:
-        pass
-
-    # fallback if still no encoding available
-    if encoding in (None, '', 'ascii'):
-        encoding = 'utf8'
-
-    # logging is probably not initialized yet, but just in case
-    logger.debug('wrapping sys.stdout with encoder using {0}'.format(encoding))
-
-    wrapper = codecs.getwriter(encoding)
-    sys.stdout = wrapper(sys.stdout)
-
-
-if sys.version_info.major < 3:
-    ensure_stdout_handles_unicode()   # e.g. for print(text) in main()
 
 
 # === ARGUMENT PARSING =======================================================
@@ -1014,6 +964,8 @@ def main(cmd_line_args=None):
     in process_args. Per default (cmd_line_args=None), sys.argv is used. Option
     mainly added for unit-testing
     """
+    ensure_stdout_handles_unicode()
+
     args = process_args(cmd_line_args)
 
     # Setup logging to the console:
