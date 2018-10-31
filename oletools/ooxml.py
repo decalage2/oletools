@@ -16,11 +16,12 @@ TODO: "xml2003" == "flatopc"?
 """
 
 import sys
+from oletools.common.log_helper import log_helper
+from oletools.common import uopen
 from zipfile import ZipFile, BadZipfile, is_zipfile
 from os.path import splitext
 import io
 import re
-from oletools.common.log_helper import log_helper
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -127,7 +128,7 @@ def get_type(filename):
     parser = XmlParser(filename)
     if parser.is_single_xml():
         match = None
-        with open(filename, 'r') as handle:
+        with uopen(filename, 'r') as handle:
             match = re.search(OFFICE_XML_PROGID_REGEX, handle.read(1024))
         if not match:
             return DOCTYPE_NONE
@@ -416,7 +417,7 @@ class XmlParser(object):
 
         # find prog id in xml prolog
         match = None
-        with open(self.filename, 'r') as handle:
+        with uopen(self.filename, 'r') as handle:
             match = re.search(OFFICE_XML_PROGID_REGEX, handle.read(1024))
         if match:
             self._is_single_xml = True
@@ -424,10 +425,17 @@ class XmlParser(object):
         raise BadOOXML(self.filename, 'is no zip and has no prog_id')
 
     def iter_files(self, args=None):
-        """ Find files in zip or just give single xml file """
+        """
+        Find files in zip or just give single xml file
+
+        yields pairs (subfile-name, file-handle) where file-handle is an open
+        file-like object. (Do not care too much about encoding here, the xml
+        parser reads the encoding from the first lines in the file.)
+        """
         if self.is_single_xml():
             if args:
                 raise BadOOXML(self.filename, 'xml has no subfiles')
+            # do not use uopen, xml parser determines encoding on its own
             with open(self.filename, 'r') as handle:
                 yield None, handle   # the subfile=None is needed in iter_xml
             self.did_iter_all = True
