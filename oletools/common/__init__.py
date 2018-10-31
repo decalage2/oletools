@@ -8,8 +8,18 @@ from locale import getpreferredencoding
 
 PY3 = sys.version_info.major >= 3
 
+if PY3:
+    from builtins import open as builtin_open
+else:
+    from __builtin__ import open as builtin_open
+
+
 #: encoding to use for redirection if no good encoding can be found
 FALLBACK_ENCODING_REDIRECT = 'utf8'
+
+#: encoding to use for reading text from files if preferred encoding is non-unicode
+FALLBACK_ENCODING_OPEN = 'utf8'
+
 #: print (pure-ascii) debug output to stdout
 DEBUG = False
 
@@ -82,3 +92,54 @@ def ensure_stdout_handles_unicode():
                 print('preferred encoding also unacceptable, fall back to {}'
                       .format(new_encoding))
         sys.stdout = codecs.getwriter(new_encoding)(output_stream)
+
+
+def uopen(filename, mode, *args, **kwargs):
+    """
+    Replacement for builtin open() that reads unicode even in ASCII environment
+
+    In order to read unicode from text, python uses locale.getpreferredencoding
+    to translate bytes to str. If the environment only provides ASCII encoding,
+    this will fail since most office files contain unicode.
+
+    Therefore, guess a good encoding here if necessary and open file with that.
+
+    :returns: same type as the builtin :py:func:`open`
+    """
+    # do not interfere if not necessary:
+    if 'b' in mode:
+        if DEBUG:
+            print('Opening binary file, do not interfere')
+        return builtin_open(filename, mode, *args, **kwargs)
+    if 'encoding' in kwargs:
+        if DEBUG:
+            print('Opening file with encoding {!r}, do not interfere'
+                  .format(kwargs['encoding']))
+        return builtin_open(filename, mode, *args, **kwargs)
+    if len(args) > 3:    # "encoding" is the 4th arg
+        if DEBUG:
+            print('Opening file with encoding {!r}, do not interfere'
+                  .format(args[3]))
+        return builtin_open(filename, mode, *args, **kwargs)
+
+    # determine preferred encoding
+    encoding = PREFERRED_ENCODING
+    if DEBUG:
+        print('preferred encoding is {}'.format(encoding))
+
+    if isinstance(encoding, str) and encoding.lower().startswith('utf'):
+        if DEBUG:
+            print('encoding is acceptable, open {} regularly'.format(filename))
+        return builtin_open(filename, mode, *args, **kwargs)
+
+    # so we want to read text from a file but can probably only deal with ASCII
+    # --> use fallback
+    if DEBUG:
+        print('Opening {} with fallback encoding {}'
+              .format(filename, FALLBACK_ENCODING_OPEN))
+    if PY3:
+        return builtin_open(filename, mode, *args,
+                            encoding=FALLBACK_ENCODING_OPEN, **kwargs)
+    else:
+        handle = builtin_open(filename, mode, *args, **kwargs)
+        return codecs.EncodedFile(handle, FALLBACK_ENCODING_OPEN)
