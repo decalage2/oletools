@@ -769,8 +769,9 @@ def process_csv(filepath):
     chars the same way that excel does. Tested to some extend in unittests.
 
     This can only find DDE-links, no other "suspicious" constructs (yet).
-    """
 
+    Cannot deal with unicode files yet (need more than just use uopen()).
+    """
     results = []
     if sys.version_info.major <= 2:
         open_arg = dict(mode='rb')
@@ -807,7 +808,6 @@ def process_csv(filepath):
 
 def process_csv_dialect(file_handle, delimiters):
     """ helper for process_csv: process with a specific csv dialect """
-
     # determine dialect = delimiter chars, quote chars, ...
     dialect = csv.Sniffer().sniff(file_handle.read(CSV_SMALL_THRESH),
                                   delimiters=delimiters)
