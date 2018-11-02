@@ -94,7 +94,7 @@ def ensure_stdout_handles_unicode():
         sys.stdout = codecs.getwriter(new_encoding)(output_stream)
 
 
-def uopen(filename, mode, *args, **kwargs):
+def uopen(filename, mode='r', *args, **kwargs):
     """
     Replacement for builtin open() that reads unicode even in ASCII environment
 
