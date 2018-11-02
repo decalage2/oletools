@@ -436,7 +436,7 @@ class XmlParser(object):
             if args:
                 raise BadOOXML(self.filename, 'xml has no subfiles')
             # do not use uopen, xml parser determines encoding on its own
-            with open(self.filename, 'r') as handle:
+            with open(self.filename, 'rb') as handle:
                 yield None, handle   # the subfile=None is needed in iter_xml
             self.did_iter_all = True
         else:
