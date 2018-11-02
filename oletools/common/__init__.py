@@ -25,7 +25,7 @@ DEBUG = False
 
 # the encoding specified in system environment
 try:
-    PREFERRED_ENCODING = getpreferredencoding(False)
+    PREFERRED_ENCODING = getpreferredencoding()
 except Exception as exc:
     if DEBUG:
         print('Exception getting preferred encoding: {}'.format(exc))
