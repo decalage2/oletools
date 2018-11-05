@@ -79,7 +79,7 @@ if not _parent_dir in sys.path:
 import olefile
 from oletools.thirdparty import xglob
 from oletools.thirdparty.tablestream import tablestream
-from oletools.common import ensure_stdout_handles_unicode
+from oletools.common.io_encoding import ensure_stdout_handles_unicode
 
 
 #=== MAIN =================================================================

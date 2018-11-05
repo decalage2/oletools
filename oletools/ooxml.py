@@ -17,7 +17,7 @@ TODO: "xml2003" == "flatopc"?
 
 import sys
 from oletools.common.log_helper import log_helper
-from oletools.common import uopen
+from oletools.common.io_encoding import uopen
 from zipfile import ZipFile, BadZipfile, is_zipfile
 from os.path import splitext
 import io
@@ -650,7 +650,7 @@ def test():
 
     see module doc for more info
     """
-    from oletools.common import ensure_stdout_handles_unicode
+    from oletools.common.io_encoding import ensure_stdout_handles_unicode
     ensure_stdout_handles_unicode()
     log_helper.enable_logging(False, 'debug')
     if len(sys.argv) != 2:
