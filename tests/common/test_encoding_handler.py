@@ -131,7 +131,7 @@ class TestEncodingHandler(unittest.TestCase):
 
 def run_read(filename):
     """This is called from test_uopen* tests as script. Reads text, compares"""
-    from oletools.common import uopen
+    from oletools.common.io_encoding import uopen
     # open file
     with uopen(filename, 'rt') as reader:
         # a few tests
@@ -168,7 +168,7 @@ def run_read(filename):
 
 def run_print():
     """This is called from test_read* tests as script. Prints & logs unicode"""
-    from oletools.common import ensure_stdout_handles_unicode
+    from oletools.common.io_encoding import ensure_stdout_handles_unicode
     from oletools.common.log_helper import log_helper
     ensure_stdout_handles_unicode()
     print(u'Check: \u2713')    # print check mark

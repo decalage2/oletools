@@ -73,7 +73,7 @@ except ImportError:
 from oletools.ppt_record_parser import (is_ppt, PptFile,
                                         PptRecordExOleVbaActiveXAtom)
 from oletools.ooxml import XmlParser
-from oletools.common import ensure_stdout_handles_unicode
+from oletools.common.io_encoding import ensure_stdout_handles_unicode
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:

@@ -317,7 +317,7 @@ from oletools import ppt_parser
 from oletools import oleform
 from oletools import rtfobj
 from oletools import crypto
-from oletools.common import ensure_stdout_handles_unicode
+from oletools.common.io_encoding import ensure_stdout_handles_unicode
 from oletools.common import codepages
 
 # monkeypatch email to fix issue #32:
