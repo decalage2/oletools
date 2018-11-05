@@ -128,8 +128,8 @@ def ensure_stdout_handles_unicode():
     elif os.isatty(output_stream.fileno()):   # e.g. C locale
         # Do not output UTF8 since that might be mis-interpreted.
         # Just replace chars that cannot be handled
-        if DEBUG:
-            print('sys.stdout is a tty, just replace errors')
+        print('Encoding for stdout is only {}, will replace other chars to '
+              'avoid unicode error'.format(encoding), file=sys.stderr)
         sys.stdout = codecs.getwriter(encoding)(output_stream, errors='replace')
     else:                                  # e.g. redirection, pipe in python2
         new_encoding = PREFERRED_ENCODING
@@ -141,6 +141,8 @@ def ensure_stdout_handles_unicode():
             if DEBUG:
                 print('preferred encoding also unacceptable, fall back to {}'
                       .format(new_encoding))
+        print('Encoding for stdout is only {}, will auto-encode text with {} '
+              'before output'.format(encoding, new_encoding), file=sys.stderr)
         sys.stdout = codecs.getwriter(new_encoding)(output_stream)
 
 
