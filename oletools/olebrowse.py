@@ -41,8 +41,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # 2012-09-17 v0.01 PL: - first version
 # 2014-11-29 v0.02 PL: - use olefile instead of OleFileIO_PL
 # 2017-04-26 v0.51 PL: - fixed absolute imports (issue #141)
+# 2018-09-11 v0.54 PL: - olefile is now a dependency
 
-__version__ = '0.51'
+__version__ = '0.54dev1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -68,8 +69,8 @@ _parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
 if not _parent_dir in sys.path:
     sys.path.insert(0, _parent_dir)
 
-from oletools.thirdparty.easygui import easygui
-from oletools.thirdparty import olefile
+import easygui
+import olefile
 from oletools import ezhexviewer
 
 ABOUT = '~ About olebrowse'

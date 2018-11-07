@@ -14,6 +14,7 @@ Supported formats:
 - Word 2003 XML (.xml)
 - Word/Excel Single File Web Page / MHTML (.mht)
 - Publisher (.pub)
+- raises an error if run with files encrypted using MS Crypto API RC4
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -206,8 +207,11 @@ from __future__ import print_function
 # 2018-03-19       PL: - removed pyparsing from the thirdparty subfolder
 # 2018-04-15 v0.53 PL: - added support for Word/PowerPoint 2007+ XML (FlatOPC)
 #                        (issue #283)
+# 2018-09-11 v0.54 PL: - olefile is now a dependency
+# 2018-10-08       PL: - replace backspace before printing to console (issue #358)
+# 2018-10-25       CH: - detect encryption and raise error if detected
 
-__version__ = '0.53.1'
+__version__ = '0.54dev4'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -245,7 +249,10 @@ import sys
 import os
 import logging
 import struct
-import cStringIO
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from io import StringIO
 import math
 import zipfile
 import re
@@ -274,6 +281,12 @@ except ImportError:
                                + "see http://codespeak.net/lxml " \
                                + "or http://effbot.org/zone/element-index.htm")
 
+import colorclass
+
+# On Windows, colorclass needs to be enabled:
+if os.name == 'nt':
+    colorclass.Windows.enable(auto_colors=True)
+
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
@@ -287,7 +300,7 @@ _parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
 if not _parent_dir in sys.path:
     sys.path.insert(0, _parent_dir)
 
-from oletools.thirdparty import olefile
+import olefile
 from oletools.thirdparty.prettytable import prettytable
 from oletools.thirdparty.xglob import xglob, PathNotFoundException
 from pyparsing import \
@@ -298,6 +311,8 @@ from pyparsing import \
 from oletools import ppt_parser
 from oletools import oleform
 from oletools import rtfobj
+from oletools import oleid
+from oletools.common.errors import FileIsEncryptedError
 
 
 # monkeypatch email to fix issue #32:
@@ -461,6 +476,7 @@ RETURN_OPEN_ERROR     = 5
 RETURN_PARSE_ERROR    = 6
 RETURN_SEVERAL_ERRS   = 7
 RETURN_UNEXPECTED     = 8
+RETURN_ENCRYPTED      = 9
 
 # MAC codepages (from http://stackoverflow.com/questions/1592925/decoding-mac-os-text-in-python)
 MAC_CODEPAGES = {
@@ -695,6 +711,12 @@ SUSPICIOUS_KEYWORDS = {
          'DisableUnsafeLocationsInPV', 'blockcontentexecutionfrominternet'),
     'May attempt to modify the VBA code (self-modification)':
         ('VBProject', 'VBComponents', 'CodeModule', 'AddFromString'),
+}
+
+# Suspicious Keywords to be searched for directly as strings, without regex
+SUSPICIOUS_KEYWORDS_NOREGEX = {
+    'May use special characters such as backspace to obfuscate code when printed on the console':
+        ('\b',),
 }
 
 # Regular Expression for a URL:
@@ -1351,7 +1373,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             else:
                 raise UnexpectedDataError(dir_path, name, expected, value)
 
-    dir_stream = cStringIO.StringIO(decompress_stream(dir_compressed))
+    dir_stream = StringIO(decompress_stream(dir_compressed))
 
     # PROJECTSYSKIND Record
     projectsyskind_id = struct.unpack("<H", dir_stream.read(2))[0]
@@ -1884,6 +1906,10 @@ def detect_suspicious(vba_code, obfuscation=None):
                 #if keyword.lower() in vba_code:
                 found_keyword = match.group()
                 results.append((found_keyword, description + obf_text))
+    for description, keywords in SUSPICIOUS_KEYWORDS_NOREGEX.items():
+        for keyword in keywords:
+            if keyword.lower() in vba_code:
+                results.append((keyword, description + obf_text))
     return results
 
 
@@ -2308,7 +2334,7 @@ class VBA_Parser(object):
             _file = filename
         else:
             # file already read in memory, make it a file-like object for zipfile:
-            _file = cStringIO.StringIO(data)
+            _file = StringIO(data)
         #self.file = _file
         self.ole_file = None
         self.ole_subfiles = []
@@ -2345,6 +2371,12 @@ class VBA_Parser(object):
         if olefile.isOleFile(_file):
             # This looks like an OLE file
             self.open_ole(_file)
+
+            # check whether file is encrypted (need to do this before try ppt)
+            log.debug('Check encryption of ole file')
+            crypt_indicator = oleid.OleID(self.ole_file).check_encrypted()
+            if crypt_indicator.value:
+                raise FileIsEncryptedError(filename)
 
             # if this worked, try whether it is a ppt file (special ole file)
             self.open_ppt()
@@ -2821,7 +2853,7 @@ class VBA_Parser(object):
                         log.debug('%r...[much more data]...%r' % (data[:100], data[-50:]))
                     else:
                         log.debug(repr(data))
-                    if 'Attribut' in data:
+                    if 'Attribut\x00' in data:
                         log.debug('Found VBA compressed code')
                         self.contains_macros = True
                 except IOError as exc:
@@ -3218,6 +3250,16 @@ class VBA_Parser_CLI(VBA_Parser):
                         if vba_code_filtered.strip() == '':
                             print('(empty macro)')
                         else:
+                            # check if the VBA code contains special characters such as backspace (issue #358)
+                            if b'\x08' in vba_code_filtered:
+                                log.warning('The VBA code contains special characters such as backspace, that may be used for obfuscation.')
+                                if sys.stdout.isatty():
+                                    # if the standard output is the console, we'll display colors
+                                    backspace = colorclass.Color(b'{autored}\\x08{/red}')
+                                else:
+                                    backspace = b'\\x08'
+                                # replace backspace by "\x08" for display
+                                vba_code_filtered = vba_code_filtered.replace(b'\x08', backspace)
                             print(vba_code_filtered)
                 for (subfilename, stream_path, form_string) in self.extract_form_strings():
                     print('-' * 79)
@@ -3602,6 +3644,16 @@ def main(cmd_line_args=None):
                     log.exception('Error processing file %s (%s)!'
                                   % (filename, exc.orig_exc))
                 return_code = RETURN_PARSE_ERROR if return_code == 0 \
+                                                else RETURN_SEVERAL_ERRS
+            except FileIsEncryptedError as exc:
+                if options.output_mode in ('triage', 'unspecified'):
+                    print('%-12s %s - File is encrypted' % ('!ERROR', filename))
+                elif options.output_mode == 'json':
+                    print_json(file=filename, type='error',
+                               error=type(exc).__name__, message=str(exc))
+                else:
+                    log.exception('File %s is encrypted!' % (filename))
+                return_code = RETURN_ENCRYPTED if return_code == 0 \
                                                 else RETURN_SEVERAL_ERRS
             # Here we do not close the vba_parser, because process_file may need it below.
 

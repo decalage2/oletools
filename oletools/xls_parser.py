@@ -5,7 +5,7 @@ Read storages, (sub-)streams, records from xls file
 #
 # === LICENSE ==================================================================
 
-# xls_parser is copyright (c) 2014-2017 Philippe Lagadec (http://www.decalage.info)
+# xls_parser is copyright (c) 2014-2018 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -86,14 +86,16 @@ def is_xls(filename):
     returns True if given file is an ole file and contains a Workbook stream
 
     todo: could further check that workbook stream starts with a globals
-    substream
+    substream.
+    See also: oleid.OleID.check_excel
     """
     try:
         for stream in XlsFile(filename).iter_streams():
             if isinstance(stream, WorkbookStream):
                 return True
     except Exception:
-        return False
+        pass
+    return False
 
 
 def read_unicode(data, start_idx, n_chars):
@@ -130,6 +132,8 @@ class XlsFile(record_base.OleRecordFile):
     @classmethod
     def stream_class_for_name(cls, stream_name):
         """ helper for iter_streams """
+        if stream_name == 'Workbook':
+            return WorkbookStream
         return XlsStream
 
 

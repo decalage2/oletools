@@ -9,7 +9,7 @@ import os
 from os.path import join
 
 from oletools import msodde
-from tests.test_utils import OutputCapture, DATA_BASE_DIR
+from tests.test_utils import DATA_BASE_DIR
 
 
 class TestCSV(unittest.TestCase):
@@ -49,7 +49,7 @@ class TestCSV(unittest.TestCase):
 
                             sample = \
                                 prefix.format(quote=quote, delim=delim) + \
-                                quote + sample_core + quote + \
+                                quote + sample_core + quote + delim + \
                                 suffix.format(quote=quote, delim=delim)
                             output = self.write_and_run(sample)
                             n_links = len(self.get_dde_from_output(output))
@@ -69,11 +69,8 @@ class TestCSV(unittest.TestCase):
     def test_file(self):
         """ test simple small example file """
         filename = join(DATA_BASE_DIR, 'msodde', 'dde-in-csv.csv')
-        with OutputCapture() as capturer:
-            capturer.reload_module(msodde)    # re-create logger
-            ret_code = msodde.main([filename, ])
-        self.assertEqual(ret_code, 0)
-        links = self.get_dde_from_output(capturer)
+        output = msodde.process_file(filename, msodde.FIELD_FILTER_BLACKLIST)
+        links = self.get_dde_from_output(output)
         self.assertEqual(len(links), 1)
         self.assertEqual(links[0],
                          r"cmd '/k \..\..\..\Windows\System32\calc.exe'")
@@ -91,12 +88,10 @@ class TestCSV(unittest.TestCase):
             if self.DO_DEBUG:
                 args += ['-l', 'debug']
 
-            with OutputCapture() as capturer:
-                capturer.reload_module(msodde)    # re-create logger
-                ret_code = msodde.main(args)
-            self.assertEqual(ret_code, 0, 'checking sample resulted in '
-                                          'error:\n' + sample_text)
-            return capturer
+            processed_args = msodde.process_args(args)
+
+            return msodde.process_file(
+                processed_args.filepath, processed_args.field_filter_mode)
 
         except Exception:
             raise
@@ -111,25 +106,11 @@ class TestCSV(unittest.TestCase):
                     os.remove(filename)
                 filename = None   # just in case
 
-    def get_dde_from_output(self, capturer):
+    @staticmethod
+    def get_dde_from_output(output):
         """ helper to read dde links from captured output
-
-        duplicate in tests/msodde/test_basic
         """
-        have_start_line = False
-        result = []
-        for line in capturer:
-            if self.DO_DEBUG:
-                print('captured: ' + line)
-            if not line.strip():
-                continue   # skip empty lines
-            if have_start_line:
-                result.append(line)
-            elif line == 'DDE Links:':
-                have_start_line = True
-
-        self.assertTrue(have_start_line)  # ensure output was complete
-        return result
+        return [o for o in output.splitlines()]
 
     def test_regex(self):
         """ check that regex captures other ways to include dde commands

@@ -24,6 +24,10 @@ to install this package.
 # 2017-01-18 v0.51 PL: - added package zipfile27 (issue #121)
 # 2017-10-18 v0.52 PL: - added msodde
 # 2018-03-19 v0.52.3      PL: - added install_requires, removed thirdparty.pyparsing
+# 2018-09-11 v0.54 PL: - olefile is now a dependency
+# 2018-09-15       PL: - easygui is now a dependency
+# 2018-09-22       PL: - colorclass is now a dependency
+# 2018-10-27       PL: - fixed issue #359 (bug when importing log_helper)
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -43,7 +47,7 @@ import os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.53'
+version      = '0.54dev4'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       = "Philippe Lagadec"
@@ -52,7 +56,7 @@ url          = "http://www.decalage.info/python/oletools"
 license      = "BSD"
 download_url = "https://github.com/decalage2/oletools/releases"
 
-# see https://pypi.python.org/pypi?%3Aaction=list_classifiers
+# see https://pypi.org/pypi?%3Aaction=list_classifiers
 classifiers=[
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -78,14 +82,12 @@ classifiers=[
 packages=[
     "oletools",
     "oletools.common",
+    "oletools.common.log_helper",
     'oletools.thirdparty',
-    'oletools.thirdparty.olefile',
-    'oletools.thirdparty.easygui',
     'oletools.thirdparty.xxxswf',
     'oletools.thirdparty.prettytable',
     'oletools.thirdparty.xglob',
     'oletools.thirdparty.DridexUrlDecoder',
-    'oletools.thirdparty.colorclass',
     'oletools.thirdparty.tablestream',
     'oletools.thirdparty.zipfile27',
 ]
@@ -163,14 +165,7 @@ package_data={
         + rglob('oletools/doc', 'doc', '*.md')
         + rglob('oletools/doc', 'doc', '*.png'),
 
-    'oletools.thirdparty.olefile': [
-        'README.txt',
-        'LICENSE.txt',
-        ],
     'oletools.thirdparty.xglob': [
-        'LICENSE.txt',
-        ],
-    'oletools.thirdparty.easygui': [
         'LICENSE.txt',
         ],
     'oletools.thirdparty.xxxswf': [
@@ -180,9 +175,6 @@ package_data={
         'CHANGELOG', 'COPYING', 'README'
         ],
     'oletools.thirdparty.DridexUrlDecoder': [
-        'LICENSE.txt',
-        ],
-    'oletools.thirdparty.colorclass': [
         'LICENSE.txt',
         ],
     'oletools.thirdparty.zipfile27': [
@@ -287,6 +279,7 @@ entry_points = {
         'rtfobj=oletools.rtfobj:main',
         'oleobj=oletools.oleobj:main',
         'msodde=oletools.msodde:main',
+        'olefile=olefile.olefile:main',
     ],
 }
 
@@ -320,7 +313,12 @@ def main():
         entry_points=entry_points,
         test_suite="tests",
         # scripts=scripts,
-        install_requires=["pyparsing"],
+        install_requires=[
+            "pyparsing>=2.2.0",
+            "olefile>=0.46",
+            "easygui",
+            'colorclass',
+        ],
     )
 
 

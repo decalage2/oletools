@@ -43,7 +43,7 @@ http://www.decalage.info/python/oletools
 # 2018-04-18       PL: - added known-bad CLSIDs from Cuckoo sandbox (issue #290)
 # 2018-05-08       PL: - added more CLSIDs (issues #299, #304), merged and sorted
 
-__version__ = '0.53'
+__version__ = '0.54dev3'
 
 
 # REFERENCES:
@@ -80,12 +80,14 @@ KNOWN_CLSIDS = {
     '00020900-0000-0000-C000-000000000046': 'Microsoft Word 6.0-7.0 Document (Word.Document.6)',
     '00020906-0000-0000-C000-000000000046': 'Microsoft Word 97-2003 Document (Word.Document.8)',
     '00020C01-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
+    '00021401-0000-0000-C000-000000000046': 'Windows LNK Shortcut file', # ref: https://github.com/libyal/liblnk/blob/master/documentation/Windows%20Shortcut%20File%20(LNK)%20format.asciidoc
     '00021700-0000-0000-C000-000000000046': 'Microsoft Equation 2.0 (Known Related to CVE-2017-11882 or CVE-2018-0802)',
     '00022601-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
     '00022602-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
     '00022603-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
     '0002CE02-0000-0000-C000-000000000046': 'Microsoft Equation 3.0 (Known Related to CVE-2017-11882 or CVE-2018-0802)',
     '0002CE03-0000-0000-C000-000000000046': 'MathType Equation Object',
+    '0003000B-0000-0000-C000-000000000046': 'Microsoft Equation (Known Related to CVE-2017-11882 or CVE-2018-0802)',
     '0003000C-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
     '0003000D-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
     '0003000E-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
