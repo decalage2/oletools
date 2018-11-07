@@ -5,7 +5,7 @@ import unittest
 import os
 from os.path import join, splitext
 from tests.test_utils import DATA_BASE_DIR
-from oletools.thirdparty.olefile import isOleFile
+from olefile import isOleFile
 from oletools import ooxml
 import logging
 

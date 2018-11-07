@@ -240,6 +240,6 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 .. |PyPI| image:: https://img.shields.io/pypi/v/oletools.svg
-   :target: https://pypi.python.org/pypi/oletools
+   :target: https://pypi.org/project/oletools/
 .. |Build Status| image:: https://travis-ci.org/decalage2/oletools.svg?branch=master
    :target: https://travis-ci.org/decalage2/oletools

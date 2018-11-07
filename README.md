@@ -1,7 +1,8 @@
 python-oletools
 ===============
-[![PyPI](https://img.shields.io/pypi/v/oletools.svg)](https://pypi.python.org/pypi/oletools)
+[![PyPI](https://img.shields.io/pypi/v/oletools.svg)](https://pypi.org/project/oletools/)
 [![Build Status](https://travis-ci.org/decalage2/oletools.svg?branch=master)](https://travis-ci.org/decalage2/oletools)
+[![Say Thanks!](https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg)](https://saythanks.io/to/decalage2)
 
 [oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze
 [Microsoft OLE2 files](http://en.wikipedia.org/wiki/Compound_File_Binary_Format) 
@@ -87,7 +88,15 @@ including [Viper](http://viper.li/), [REMnux](https://remnux.org/),
 [dridex.malwareconfig.com](https://dridex.malwareconfig.com),
 [Snake](https://github.com/countercept/snake),
 [DARKSURGEON](https://github.com/cryps1s/DARKSURGEON),
-and probably [VirusTotal](https://www.virustotal.com).
+[CAPE](https://github.com/ctxis/CAPE),
+[AssemblyLine](https://www.cse-cst.gc.ca/en/assemblyline),
+[malshare.io](https://malshare.io),
+[Malware Repository Framework (MRF)](https://www.adlice.com/download/mrf/),
+[malware-repo](https://github.com/Tigzy/malware-repo),
+[Vba2Graph](https://github.com/MalwareCantFly/Vba2Graph),
+[Strelka](https://github.com/target/strelka),
+and probably [VirusTotal](https://www.virustotal.com). 
+And quite a few [other projects on GitHub](https://github.com/search?q=oletools&type=Repositories).
 (Please [contact me]((http://decalage.info/contact)) if you have or know
 a project using oletools)
 

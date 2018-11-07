@@ -85,8 +85,11 @@ http://www.decalage.info/python/oletools
 # 2018-04-30       PL: - handle "\'" obfuscation trick - issue #281
 # 2018-05-10       PL: - fixed issues #303 #307: several destination cwords were incorrect
 # 2018-05-17       PL: - fixed issue #273: bytes constants instead of str
+# 2018-05-31 v0.53.1 PP: - fixed issue #316: whitespace after \bin on Python 3
+# 2018-06-22 v0.53.2 PL: - fixed issue #327: added "\pnaiu" & "\pnaiud"
+# 2018-09-11 v0.54 PL: - olefile is now a dependency
 
-__version__ = '0.53'
+__version__ = '0.54dev1'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -119,7 +122,7 @@ if not _parent_dir in sys.path:
 from oletools.thirdparty.xglob import xglob
 from oletools.thirdparty.tablestream import tablestream
 from oletools import oleobj
-from oletools.thirdparty.olefile import olefile
+import olefile
 from oletools.common import clsid
 
 # === LOGGING =================================================================
@@ -302,6 +305,8 @@ DESTINATION_CONTROL_WORDS = frozenset((
     b"xmlattrname", b"xmlattrvalue", b"xmlclose", b"xmlname", b"xmlnstbl", b"xmlopen",
     # added for issue #292: https://github.com/decalage2/oletools/issues/292
     b"margSz",
+    # added for issue #327:
+    b"pnaiu", b"pnaiud",
 
     # It seems \private should not be treated as a destination (issue #178)
     # Same for \pxe (issue #196)
@@ -578,7 +583,7 @@ class RtfParser(object):
             # it should be treated as a null length:
             binlen=0
         # ignore optional space after \bin
-        if self.data[self.index] == ' ':
+        if ord(self.data[self.index:self.index + 1]) == ord(' '):
             log.debug('\\bin: ignoring whitespace before data')
             self.index += 1
         log.debug('\\bin: reading %d bytes of binary data' % binlen)
@@ -717,7 +722,7 @@ class RtfObjParser(RtfParser):
     def control_symbol(self, matchobject):
         # log.debug('control symbol %r at index %Xh' % (matchobject.group(), self.index))
         symbol = matchobject.group()[1:2]
-        if symbol == "'":
+        if symbol == b"'":
             # read the two hex digits following "\'" - which can be any characters, not just hex digits
             # (because within an objdata destination, they are simply ignored)
             hexdigits = self.data[self.index+2:self.index+4]
