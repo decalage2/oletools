@@ -271,9 +271,11 @@ def consume_OleSiteConcreteControl(stream):
             propmask.consume(stream, [('fRuntimeLicKey', 4), ('fControlSource', 4), ('fRowSource', 4)])
         # SiteExtraDataBlock: [MS-OFORMS] 2.2.10.12.4
         name = stream.read(name_len)
+        # Consume 2 null bytes between name and tag.
+        stream.read(2)
         tag = stream.read(tag_len)
         # Skip SitePosition.
-        stream.read(8)
+        stream.read(6)
         control_tip_text = stream.read(control_tip_text_len)
         if (len(control_tip_text) == 0):
             control_tip_text = None
