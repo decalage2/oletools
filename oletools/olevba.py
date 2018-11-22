@@ -2926,12 +2926,12 @@ class VBA_Parser(object):
                         compressed_code = data[start:]
                         try:
                             vba_code = decompress_stream(compressed_code)
-                            yield (self.filename, d.name, d.name, vba_code)
-                        except Exception as exc:
+                        except ValueError as exc:   # maybe not compressed?
                             # display the exception with full stack trace for debugging
                             log.debug('Error processing stream %r in file %r (%s)' % (d.name, self.filename, exc))
                             log.debug('Traceback:', exc_info=True)
-                            # do not raise the error, as it is unlikely to be a compressed macro stream
+                            log.debug('try uncompressed')
+                        yield (self.filename, d.name, d.name, vba_code)
 
     def extract_all_macros(self):
         """
@@ -3106,8 +3106,17 @@ class VBA_Parser(object):
                 form_data = ole.openstream(o_stream).read()
                 # Extract printable strings from the form object stream "o":
                 for m in re_printable_string.finditer(form_data):
-                    log.debug('Printable string found in form: %r' % m.group())
-                    yield (self.filename, '/'.join(o_stream), m.group())
+                    prntble_str = m.group()
+                    if len(prntble_str) > 200:
+                        log.debug('Printable string of len {} found in form: '
+                                  '"{} ...(skipping {} characters here)... {}"'
+                                  .format(len(prntble_str), prntble_str[:100],
+                                          len(prntble_str)-150,
+                                          prntble_str[-50:]))
+                    else:
+                        log.debug('Printable string found in form: %r'
+                                  % prntble_str)
+                    yield (self.filename, '/'.join(o_stream), prntble_str)
 
     def extract_form_strings_extended(self):
         if self.ole_file is None:
