@@ -210,8 +210,9 @@ from __future__ import print_function
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
 # 2018-10-08       PL: - replace backspace before printing to console (issue #358)
 # 2018-10-25       CH: - detect encryption and raise error if detected
+# 2018-12-03       PL: - uses tablestream (+colors) instead of prettytable
 
-__version__ = '0.54dev4'
+__version__ = '0.54dev5'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -301,7 +302,7 @@ if not _parent_dir in sys.path:
     sys.path.insert(0, _parent_dir)
 
 import olefile
-from oletools.thirdparty.prettytable import prettytable
+from oletools.thirdparty.tablestream import tablestream
 from oletools.thirdparty.xglob import xglob, PathNotFoundException
 from pyparsing import \
         CaselessKeyword, CaselessLiteral, Combine, Forward, Literal, \
@@ -3171,19 +3172,22 @@ class VBA_Parser_CLI(VBA_Parser):
             sys.stdout.flush()
         results = self.analyze_macros(show_decoded_strings, deobfuscate)
         if results:
-            t = prettytable.PrettyTable(('Type', 'Keyword', 'Description'))
-            t.align = 'l'
-            t.max_width['Type'] = 10
-            t.max_width['Keyword'] = 20
-            t.max_width['Description'] = 39
+            t = tablestream.TableStream(column_width=(10, 20, 45),
+                                        header_row=('Type', 'Keyword', 'Description'))
+            COLOR_TYPE = {
+                'AutoExec': 'yellow',
+                'Suspicious': 'red',
+                'IOC': 'cyan',
+            }
             for kw_type, keyword, description in results:
                 # handle non printable strings:
                 if not is_printable(keyword):
                     keyword = repr(keyword)
                 if not is_printable(description):
                     description = repr(description)
-                t.add_row((kw_type, keyword, description))
-            print(t)
+                color_type = COLOR_TYPE.get(kw_type, None)
+                t.write_row((kw_type, keyword, description), colors=(color_type, None, None))
+            t.close()
         else:
             print('No suspicious keyword or IOC found.')
 
