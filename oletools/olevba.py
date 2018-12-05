@@ -3402,35 +3402,11 @@ class VBA_Parser_CLI(VBA_Parser):
 
             line = '%-12s %s' % (flags, self.filename)
             print(line)
-
-            # old table display:
-            # macros = autoexec = suspicious = iocs = hexstrings = 'no'
-            # if nb_macros: macros = 'YES:%d' % nb_macros
-            # if nb_autoexec: autoexec = 'YES:%d' % nb_autoexec
-            # if nb_suspicious: suspicious = 'YES:%d' % nb_suspicious
-            # if nb_iocs: iocs = 'YES:%d' % nb_iocs
-            # if nb_hexstrings: hexstrings = 'YES:%d' % nb_hexstrings
-            # # 2nd line = info
-            # print '%-8s %-7s %-7s %-7s %-7s %-7s' % (self.type, macros, autoexec, suspicious, iocs, hexstrings)
         except Exception as exc:
             # display the exception with full stack trace for debugging only
             log.debug('Error processing file %s (%s)' % (self.filename, exc),
                       exc_info=True)
             raise ProcessingError(self.filename, exc)
-
-
-        # t = prettytable.PrettyTable(('filename', 'type', 'macros', 'autoexec', 'suspicious', 'ioc', 'hexstrings'),
-        #     header=False, border=False)
-        # t.align = 'l'
-        # t.max_width['filename'] = 30
-        # t.max_width['type'] = 10
-        # t.max_width['macros'] = 6
-        # t.max_width['autoexec'] = 6
-        # t.max_width['suspicious'] = 6
-        # t.max_width['ioc'] = 6
-        # t.max_width['hexstrings'] = 6
-        # t.add_row((filename, ftype, macros, autoexec, suspicious, iocs, hexstrings))
-        # print t
 
 
 #=== MAIN =====================================================================
@@ -3526,10 +3502,6 @@ def main(cmd_line_args=None):
     logging.basicConfig(level=options.loglevel, format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
     enable_logging()
-
-    # Old display with number of items detected:
-    # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('Type', 'Macros', 'AutoEx', 'Susp.', 'IOCs', 'HexStr')
-    # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('-'*8, '-'*7, '-'*7, '-'*7, '-'*7, '-'*7)
 
     # with the option --reveal, make sure --deobf is also enabled:
     if options.show_deobfuscated_code and not options.deobfuscate:
