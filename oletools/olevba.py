@@ -211,8 +211,9 @@ from __future__ import print_function
 # 2018-10-08       PL: - replace backspace before printing to console (issue #358)
 # 2018-10-25       CH: - detect encryption and raise error if detected
 # 2018-12-03       PL: - uses tablestream (+colors) instead of prettytable
+# 2018-12-06       PL: - colorize the suspicious keywords found in VBA code
 
-__version__ = '0.54dev5'
+__version__ = '0.54dev6'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -2954,6 +2955,8 @@ class VBA_Parser(object):
         """
         runs extract_macros and analyze the source code of all VBA macros
         found in the file.
+        All results are stored in self.analysis_results.
+        If called more than once, simply returns the previous results.
         """
         if self.detect_vba_macros():
             # if the analysis was already done, avoid doing it twice:
@@ -3157,11 +3160,11 @@ class VBA_Parser_CLI(VBA_Parser):
         super(VBA_Parser_CLI, self).__init__(*args, **kwargs)
 
 
-    def print_analysis(self, show_decoded_strings=False, deobfuscate=False):
+    def run_analysis(self, show_decoded_strings=False, deobfuscate=False):
         """
-        Analyze the provided VBA code, and print the results in a table
+        Analyze the provided VBA code, without printing the results (yet)
+        All results are stored in self.analysis_results.
 
-        :param vba_code: str, VBA source code to be analyzed
         :param show_decoded_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
         :param deobfuscate: bool, if True attempt to deobfuscate VBA expressions (slow)
         :return: None
@@ -3170,7 +3173,18 @@ class VBA_Parser_CLI(VBA_Parser):
         if sys.stdout.isatty():
             print('Analysis...\r', end='')
             sys.stdout.flush()
-        results = self.analyze_macros(show_decoded_strings, deobfuscate)
+        self.analyze_macros(show_decoded_strings, deobfuscate)
+
+
+    def print_analysis(self, show_decoded_strings=False, deobfuscate=False):
+        """
+        print the analysis results in a table
+
+        :param show_decoded_strings: bool, if True hex-encoded strings will be displayed with their decoded content.
+        :param deobfuscate: bool, if True attempt to deobfuscate VBA expressions (slow)
+        :return: None
+        """
+        results = self.analysis_results
         if results:
             t = tablestream.TableStream(column_width=(10, 20, 45),
                                         header_row=('Type', 'Keyword', 'Description'))
@@ -3208,6 +3222,25 @@ class VBA_Parser_CLI(VBA_Parser):
         return [dict(type=kw_type, keyword=keyword, description=description)
                 for kw_type, keyword, description in self.analyze_macros(show_decoded_strings, deobfuscate)]
 
+    def colorize_keywords(self, vba_code):
+        """
+        Colorize keywords found during the VBA code analysis
+        :param vba_code: str, VBA code to be colorized
+        :return: str, VBA code including color tags for Colorclass
+        """
+        results = self.analysis_results
+        if results:
+            COLOR_TYPE = {
+                'AutoExec': 'yellow',
+                'Suspicious': 'red',
+                'IOC': 'cyan',
+            }
+            for kw_type, keyword, description in results:
+                color_type = COLOR_TYPE.get(kw_type, None)
+                if color_type:
+                    vba_code = vba_code.replace(keyword, '{auto%s}%s{/%s}' % (color_type, keyword, color_type))
+        return vba_code
+
     def process_file(self, show_decoded_strings=False,
                      display_code=True, hide_attributes=True,
                      vba_code_only=False, show_deobfuscated_code=False,
@@ -3238,6 +3271,8 @@ class VBA_Parser_CLI(VBA_Parser):
             #TODO: handle olefile errors, when an OLE file is malformed
             print('Type: %s'% self.type)
             if self.detect_vba_macros():
+                # run analysis before displaying VBA code, in order to colorize found keywords
+                self.run_analysis(show_decoded_strings=show_decoded_strings, deobfuscate=deobfuscate)
                 #print 'Contains VBA Macros:'
                 for (subfilename, stream_path, vba_filename, vba_code) in self.extract_all_macros():
                     if hide_attributes:
@@ -3264,6 +3299,7 @@ class VBA_Parser_CLI(VBA_Parser):
                                     backspace = b'\\x08'
                                 # replace backspace by "\x08" for display
                                 vba_code_filtered = vba_code_filtered.replace(b'\x08', backspace)
+                            vba_code_filtered = colorclass.Color(self.colorize_keywords(vba_code_filtered))
                             print(vba_code_filtered)
                 for (subfilename, stream_path, form_string) in self.extract_form_strings():
                     print('-' * 79)
