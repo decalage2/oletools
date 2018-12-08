@@ -79,7 +79,6 @@ https://github.com/unixfreak0037/officeparser
 
 from __future__ import print_function
 
-
 #------------------------------------------------------------------------------
 # CHANGELOG:
 # 2014-08-05 v0.01 PL: - first version based on officeparser code
@@ -248,7 +247,7 @@ import sys
 import os
 import logging
 import struct
-from _io import StringIO,BytesIO
+from io import BytesIO
 import math
 import zipfile
 import re
@@ -259,7 +258,6 @@ import zlib
 import email  # for MHTML parsing
 import string # for printable
 import json   # for json output mode (argument --json)
-from functools import reduce
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -277,6 +275,13 @@ except ImportError:
             raise ImportError("lxml or ElementTree are not installed, " \
                                + "see http://codespeak.net/lxml " \
                                + "or http://effbot.org/zone/element-index.htm")
+
+import colorclass
+
+# On Windows, colorclass needs to be enabled:
+if os.name == 'nt':
+    colorclass.Windows.enable(auto_colors=True)
+
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
@@ -324,6 +329,7 @@ else:
     from zipfile import is_zipfile
     # xrange is now called range:
     xrange = range
+    from functools import reduce
 
 
 # === PYTHON 3.0 - 3.4 SUPPORT ======================================================
