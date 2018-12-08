@@ -251,10 +251,7 @@ import sys
 import os
 import logging
 import struct
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from io import StringIO
+from io import BytesIO
 import math
 import zipfile
 import re
@@ -315,7 +312,6 @@ from oletools import oleform
 from oletools import rtfobj
 from oletools import oleid
 from oletools.common.errors import FileIsEncryptedError
-
 
 # monkeypatch email to fix issue #32:
 # allow header lines without ":"
@@ -1375,7 +1371,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             else:
                 raise UnexpectedDataError(dir_path, name, expected, value)
 
-    dir_stream = StringIO(decompress_stream(dir_compressed))
+    dir_stream = BytesIO(decompress_stream(dir_compressed))
 
     # PROJECTSYSKIND Record
     projectsyskind_id = struct.unpack("<H", dir_stream.read(2))[0]
@@ -2336,7 +2332,7 @@ class VBA_Parser(object):
             _file = filename
         else:
             # file already read in memory, make it a file-like object for zipfile:
-            _file = StringIO(data)
+            _file = BytesIO(data)
         #self.file = _file
         self.ole_file = None
         self.ole_subfiles = []
