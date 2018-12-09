@@ -201,6 +201,8 @@ from __future__ import print_function
 # 2017-06-08       PL: - fixed issue #122 Chr() with negative numbers
 # 2017-06-15       PL: - deobfuscation line by line to handle large files
 # 2017-07-11 v0.52 PL: - raise exception instead of sys.exit (issue #180)
+# 2017-11-24       PL: - added keywords to detect self-modifying macros and
+#                        attempts to disable macro security (issue #221)
 # 2018-03-19       PL: - removed pyparsing from the thirdparty subfolder
 # 2018-05-13 v0.53 PL: - added support for Word/PowerPoint 2007+ XML (FlatOPC)
 #                        (issue #283)
@@ -329,6 +331,8 @@ else:
     from zipfile import is_zipfile
     # xrange is now called range:
     xrange = range
+    # unichr does not exist anymore, only chr:
+    unichr = chr
     from functools import reduce
 
 
@@ -717,6 +721,19 @@ SUSPICIOUS_KEYWORDS = {
     'May detect WinJail Sandbox':
     # ref: http://www.cplusplus.com/forum/windows/96874/
         ('Afx:400000:0',),
+    'May attempt to disable VBA macro security and Protected View':
+    # ref: http://blog.trendmicro.com/trendlabs-security-intelligence/qkg-filecoder-self-replicating-document-encrypting-ransomware/
+    # ref: https://thehackernews.com/2017/11/ms-office-macro-malware.html
+        ('AccessVBOM', 'VBAWarnings', 'ProtectedView', 'DisableAttachementsInPV', 'DisableInternetFilesInPV',
+         'DisableUnsafeLocationsInPV', 'blockcontentexecutionfrominternet'),
+    'May attempt to modify the VBA code (self-modification)':
+        ('VBProject', 'VBComponents', 'CodeModule', 'AddFromString'),
+}
+
+# Suspicious Keywords to be searched for directly as strings, without regex
+SUSPICIOUS_KEYWORDS_NOREGEX = {
+    'May use special characters such as backspace to obfuscate code when printed on the console':
+        ('\b',),
 }
 
 # Regular Expression for a URL:
@@ -777,6 +794,7 @@ re_dridex_string = re.compile(r'"[0-9A-Za-z]{20,}"')
 re_nothex_check = re.compile(r'[G-Zg-z]')
 
 # regex to extract printable strings (at least 5 chars) from VBA Forms:
+# (must be bytes for Python 3)
 re_printable_string = re.compile(b'[\\t\\r\\n\\x20-\\xFF]{5,}')
 
 
@@ -918,11 +936,14 @@ vba_chr = Suppress(
 def vba_chr_tostr(t):
     try:
         i = t[0]
-        # normal, non-unicode character:
         if i>=0 and i<=255:
+            # normal, non-unicode character:
+            # TODO: check if it needs to be converted to bytes for Python 3
             return VbaExpressionString(chr(i))
         else:
-            return VbaExpressionString(chr(i).encode('utf-8', 'backslashreplace'))
+            # unicode character
+            # Note: this distinction is only needed for Python 2
+            return VbaExpressionString(unichr(i).encode('utf-8', 'backslashreplace'))
     except ValueError:
         log.exception('ERROR: incorrect parameter value for chr(): %r' % i)
         return VbaExpressionString('Chr(%r)' % i)

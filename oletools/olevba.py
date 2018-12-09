@@ -334,6 +334,28 @@ else:
     from zipfile import is_zipfile
     # xrange is now called range:
     xrange = range
+    # unichr does not exist anymore, only chr:
+    unichr = chr
+    from functools import reduce
+
+
+# === PYTHON 3.0 - 3.4 SUPPORT ======================================================
+
+# From https://gist.github.com/ynkdir/867347/c5e188a4886bc2dd71876c7e069a7b00b6c16c61
+
+if sys.version_info >= (3, 0) and sys.version_info < (3, 5):
+    import codecs
+
+    _backslashreplace_errors = codecs.lookup_error("backslashreplace")
+
+    def backslashreplace_errors(exc):
+        if isinstance(exc, UnicodeDecodeError):
+            u = "".join("\\x{0:02x}".format(c) for c in exc.object[exc.start:exc.end])
+            return (u, exc.end)
+        return _backslashreplace_errors(exc)
+
+    codecs.register_error("backslashreplace", backslashreplace_errors)
+
 
 # === LOGGING =================================================================
 
@@ -775,7 +797,8 @@ re_dridex_string = re.compile(r'"[0-9A-Za-z]{20,}"')
 re_nothex_check = re.compile(r'[G-Zg-z]')
 
 # regex to extract printable strings (at least 5 chars) from VBA Forms:
-re_printable_string = re.compile(r'[\t\r\n\x20-\xFF]{5,}')
+# (must be bytes for Python 3)
+re_printable_string = re.compile(b'[\\t\\r\\n\\x20-\\xFF]{5,}')
 
 
 # === PARTIAL VBA GRAMMAR ====================================================
@@ -916,10 +939,13 @@ vba_chr = Suppress(
 def vba_chr_tostr(t):
     try:
         i = t[0]
-        # normal, non-unicode character:
         if i>=0 and i<=255:
+            # normal, non-unicode character:
+            # TODO: check if it needs to be converted to bytes for Python 3
             return VbaExpressionString(chr(i))
         else:
+            # unicode character
+            # Note: this distinction is only needed for Python 2
             return VbaExpressionString(unichr(i).encode('utf-8', 'backslashreplace'))
     except ValueError:
         log.exception('ERROR: incorrect parameter value for chr(): %r' % i)
