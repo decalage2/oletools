@@ -1,2 +1,14 @@
+include install.bat
+include INSTALL.txt
+include README.md
+include requirements.txt
+include oletools/README.rst
+include oletools/README.html
+include oletools/LICENSE.txt
+include oletools/DocVarDump.vba
+recursive-include oletools/thirdparty *.*
+recursive-include cheatsheet *.*
+global-exclude *.pyc
+
 recursive-include tests *.py
 graft tests/test-data
