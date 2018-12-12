@@ -3330,7 +3330,12 @@ class VBA_Parser_CLI(VBA_Parser):
                                     backspace = b'\\x08'
                                 # replace backspace by "\x08" for display
                                 vba_code_filtered = vba_code_filtered.replace(b'\x08', backspace)
-                            vba_code_filtered = colorclass.Color(self.colorize_keywords(vba_code_filtered))
+                            try:
+                                # Colorize the interesting keywords in the output:
+                                vba_code_filtered = colorclass.Color(self.colorize_keywords(vba_code_filtered))
+                            except UnicodeError:
+                                # TODO better handling of Unicode
+                                log.error('Unicode conversion to be fixed before colorizing the output')
                             print(vba_code_filtered)
                 for (subfilename, stream_path, form_string) in self.extract_form_strings():
                     print('-' * 79)
