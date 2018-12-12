@@ -3541,7 +3541,10 @@ def parse_args(cmd_line_args=None):
 
     # Print help if no arguments are passed
     if len(args) == 0:
-        print('olevba %s - http://decalage.info/python/oletools' % __version__)
+        # print banner with version
+        python_version = '%d.%d.%d' % sys.version_info[0:3]
+        print('olevba %s on Python %s - http://decalage.info/python/oletools' %
+              (__version__, python_version))
         print(__doc__)
         parser.print_help()
         sys.exit(RETURN_WRONG_ARGS)
@@ -3569,7 +3572,10 @@ def main(cmd_line_args=None):
                    url='http://decalage.info/python/oletools',
                    type='MetaInformation', _json_is_first=True)
     else:
-        print('olevba %s - http://decalage.info/python/oletools' % __version__)
+        # print banner with version
+        python_version = '%d.%d.%d' % sys.version_info[0:3]
+        print('olevba %s on Python %s - http://decalage.info/python/oletools' %
+              (__version__, python_version))
 
     logging.basicConfig(level=options.loglevel, format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
