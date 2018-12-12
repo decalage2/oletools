@@ -1232,6 +1232,9 @@ def decompress_stream(compressed_container):
     # DecompressedChunkStart: The location of the first byte of the DecompressedChunk (section 2.4.1.1.3) within the
     #                         DecompressedBuffer (section 2.4.1.1.2).
 
+    # Check the input is a bytearray:
+    if not isinstance(compressed_container, bytearray):
+        raise TypeError('decompress_stream requires a bytearray as input')
     decompressed_container = bytearray()  # result
     compressed_current = 0
 
@@ -1294,7 +1297,7 @@ def decompress_stream(compressed_container):
                 # copy tokens (reference to a previous literal token)
                 flag_byte = compressed_container[compressed_current]
                 compressed_current += 1
-                for bit_index in range(0, 8):
+                for bit_index in xrange(0, 8):
                     # log.debug('bit_index=%d / compressed_current=%d / compressed_end=%d' % (bit_index, compressed_current, compressed_end))
                     if compressed_current >= compressed_end:
                         break
@@ -1319,7 +1322,7 @@ def decompress_stream(compressed_container):
                         offset = (temp1 >> temp2) + 1
                         #log.debug('offset=%d length=%d' % (offset, length))
                         copy_source = len(decompressed_container) - offset
-                        for index in range(copy_source, copy_source + length):
+                        for index in xrange(copy_source, copy_source + length):
                             decompressed_container.extend([decompressed_container[index]])
                         compressed_current += 2
     return bytes(decompressed_container)
@@ -1394,7 +1397,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             else:
                 raise UnexpectedDataError(dir_path, name, expected, value)
 
-    dir_stream = BytesIO(decompress_stream(dir_compressed))
+    dir_stream = BytesIO(decompress_stream(bytearray(dir_compressed)))
 
     # PROJECTSYSKIND Record
     projectsyskind_id = struct.unpack("<H", dir_stream.read(2))[0]
@@ -1541,7 +1544,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             # So let's ignore it, otherwise it crashes on some files (issue #132)
             # PR #135 by @c1fe:
             # contrary to the specification I think that the unicode name
-            # is optional. if reference_reserved is not 0x003E I think it 
+            # is optional. if reference_reserved is not 0x003E I think it
             # is actually the start of another REFERENCE record
             # at least when projectsyskind_syskind == 0x02 (Macintosh)
             if reference_reserved == 0x003E:
@@ -1671,7 +1674,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
     uni_out = lambda unicode_text: unicode_text.encode('utf-8', 'replace')
 
     log.debug("parsing {0} modules".format(projectmodules_count))
-    for projectmodule_index in range(0, projectmodules_count):
+    for projectmodule_index in xrange(0, projectmodules_count):
         try:
             modulename_id = struct.unpack("<H", dir_stream.read(2))[0]
             check_value('MODULENAME_Id', 0x0019, modulename_id)
@@ -1810,7 +1813,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             log.debug("offset of code_data = {0}".format(moduleoffset_textoffset))
             code_data = code_data[moduleoffset_textoffset:]
             if len(code_data) > 0:
-                code_data = decompress_stream(code_data)
+                code_data = decompress_stream(bytearray(code_data))
                 # case-insensitive search in the code_modules dict to find the file extension:
                 filext = code_modules.get(modulename_modulename.lower(), 'bin')
                 filename = '{0}.{1}'.format(modulename_modulename, filext)
@@ -2950,7 +2953,7 @@ class VBA_Parser(object):
                         log.debug('Found VBA compressed code at index %X' % start)
                         compressed_code = data[start:]
                         try:
-                            vba_code = decompress_stream(compressed_code)
+                            vba_code = decompress_stream(bytearray(compressed_code))
                             yield (self.filename, d.name, d.name, vba_code)
                         except Exception as exc:
                             # display the exception with full stack trace for debugging
@@ -2978,6 +2981,8 @@ class VBA_Parser(object):
         """
         runs extract_macros and analyze the source code of all VBA macros
         found in the file.
+        All results are stored in self.analysis_results.
+        If called more than once, simply returns the previous results.
         """
         if self.detect_vba_macros():
             # if the analysis was already done, avoid doing it twice:
@@ -3390,35 +3395,11 @@ class VBA_Parser_CLI(VBA_Parser):
 
             line = '%-12s %s' % (flags, self.filename)
             print(line)
-
-            # old table display:
-            # macros = autoexec = suspicious = iocs = hexstrings = 'no'
-            # if nb_macros: macros = 'YES:%d' % nb_macros
-            # if nb_autoexec: autoexec = 'YES:%d' % nb_autoexec
-            # if nb_suspicious: suspicious = 'YES:%d' % nb_suspicious
-            # if nb_iocs: iocs = 'YES:%d' % nb_iocs
-            # if nb_hexstrings: hexstrings = 'YES:%d' % nb_hexstrings
-            # # 2nd line = info
-            # print '%-8s %-7s %-7s %-7s %-7s %-7s' % (self.type, macros, autoexec, suspicious, iocs, hexstrings)
         except Exception as exc:
             # display the exception with full stack trace for debugging only
             log.debug('Error processing file %s (%s)' % (self.filename, exc),
                       exc_info=True)
             raise ProcessingError(self.filename, exc)
-
-
-        # t = prettytable.PrettyTable(('filename', 'type', 'macros', 'autoexec', 'suspicious', 'ioc', 'hexstrings'),
-        #     header=False, border=False)
-        # t.align = 'l'
-        # t.max_width['filename'] = 30
-        # t.max_width['type'] = 10
-        # t.max_width['macros'] = 6
-        # t.max_width['autoexec'] = 6
-        # t.max_width['suspicious'] = 6
-        # t.max_width['ioc'] = 6
-        # t.max_width['hexstrings'] = 6
-        # t.add_row((filename, ftype, macros, autoexec, suspicious, iocs, hexstrings))
-        # print t
 
 
 #=== MAIN =====================================================================
@@ -3514,10 +3495,6 @@ def main(cmd_line_args=None):
     logging.basicConfig(level=options.loglevel, format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
     enable_logging()
-
-    # Old display with number of items detected:
-    # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('Type', 'Macros', 'AutoEx', 'Susp.', 'IOCs', 'HexStr')
-    # print '%-8s %-7s %-7s %-7s %-7s %-7s' % ('-'*8, '-'*7, '-'*7, '-'*7, '-'*7, '-'*7)
 
     # with the option --reveal, make sure --deobf is also enabled:
     if options.show_deobfuscated_code and not options.deobfuscate:

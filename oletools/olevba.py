@@ -322,6 +322,9 @@ email.feedparser.headerRE = re.compile(r'^(From |[\041-\071\073-\176]{1,}:?|[\t 
 
 if sys.version_info[0] <= 2:
     # Python 2.x
+    # to use ord on bytes/bytearray items the same way in Python 2+3
+    # on Python 2, just use the normal ord() because items are bytes
+    byte_ord = ord
     if sys.version_info[1] <= 6:
         # Python 2.6
         # use is_zipfile backported from Python 2.7:
@@ -331,6 +334,9 @@ if sys.version_info[0] <= 2:
         from zipfile import is_zipfile
 else:
     # Python 3.x+
+    # to use ord on bytes/bytearray items the same way in Python 2+3
+    # on Python 3, items are int, so just return the item
+    byte_ord = lambda x: x
     from zipfile import is_zipfile
     # xrange is now called range:
     xrange = range
@@ -1235,10 +1241,13 @@ def decompress_stream(compressed_container):
     # DecompressedChunkStart: The location of the first byte of the DecompressedChunk (section 2.4.1.1.3) within the
     #                         DecompressedBuffer (section 2.4.1.1.2).
 
-    decompressed_container = ''  # result
+    # Check the input is a bytearray:
+    if not isinstance(compressed_container, bytearray):
+        raise TypeError('decompress_stream requires a bytearray as input')
+    decompressed_container = bytearray()  # result
     compressed_current = 0
 
-    sig_byte = ord(compressed_container[compressed_current])
+    sig_byte = compressed_container[compressed_current]
     if sig_byte != 0x01:
         raise ValueError('invalid signature byte {0:02X}'.format(sig_byte))
 
@@ -1284,7 +1293,7 @@ def decompress_stream(compressed_container):
             # MS-OVBA 2.4.1.3.3 Decompressing a RawChunk
             # uncompressed chunk: read the next 4096 bytes as-is
             #TODO: check if there are at least 4096 bytes left
-            decompressed_container += compressed_container[compressed_current:compressed_current + 4096]
+            decompressed_container.extend([compressed_container[compressed_current:compressed_current + 4096]])
             compressed_current += 4096
         else:
             # MS-OVBA 2.4.1.3.2 Decompressing a CompressedChunk
@@ -1295,7 +1304,7 @@ def decompress_stream(compressed_container):
                 # log.debug('compressed_current = %d / compressed_end = %d' % (compressed_current, compressed_end))
                 # FlagByte: 8 bits indicating if the following 8 tokens are either literal (1 byte of plain text) or
                 # copy tokens (reference to a previous literal token)
-                flag_byte = ord(compressed_container[compressed_current])
+                flag_byte = compressed_container[compressed_current]
                 compressed_current += 1
                 for bit_index in xrange(0, 8):
                     # log.debug('bit_index=%d / compressed_current=%d / compressed_end=%d' % (bit_index, compressed_current, compressed_end))
@@ -1307,7 +1316,7 @@ def decompress_stream(compressed_container):
                     #log.debug('bit_index=%d: flag_bit=%d' % (bit_index, flag_bit))
                     if flag_bit == 0:  # LiteralToken
                         # copy one byte directly to output
-                        decompressed_container += compressed_container[compressed_current]
+                        decompressed_container.extend([compressed_container[compressed_current]])
                         compressed_current += 1
                     else:  # CopyToken
                         # MS-OVBA 2.4.1.3.19.2 Unpack CopyToken
@@ -1323,9 +1332,9 @@ def decompress_stream(compressed_container):
                         #log.debug('offset=%d length=%d' % (offset, length))
                         copy_source = len(decompressed_container) - offset
                         for index in xrange(copy_source, copy_source + length):
-                            decompressed_container += decompressed_container[index]
+                            decompressed_container.extend([decompressed_container[index]])
                         compressed_current += 2
-    return decompressed_container
+    return bytes(decompressed_container)
 
 
 def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
@@ -1366,6 +1375,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
     code_modules = {}
 
     for line in project:
+        log.debug('PROJECT: %r' % line)
         line = line.strip()
         if '=' in line:
             # split line at the 1st equal sign:
@@ -1397,7 +1407,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             else:
                 raise UnexpectedDataError(dir_path, name, expected, value)
 
-    dir_stream = BytesIO(decompress_stream(dir_compressed))
+    dir_stream = BytesIO(decompress_stream(bytearray(dir_compressed)))
 
     # PROJECTSYSKIND Record
     projectsyskind_id = struct.unpack("<H", dir_stream.read(2))[0]
@@ -1813,7 +1823,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             log.debug("offset of code_data = {0}".format(moduleoffset_textoffset))
             code_data = code_data[moduleoffset_textoffset:]
             if len(code_data) > 0:
-                code_data = decompress_stream(code_data)
+                code_data = decompress_stream(bytearray(code_data))
                 # case-insensitive search in the code_modules dict to find the file extension:
                 filext = code_modules.get(modulename_modulename.lower(), 'bin')
                 filename = '{0}.{1}'.format(modulename_modulename, filext)
@@ -2120,7 +2130,6 @@ def print_json(json_dict=None, _json_is_first=False, _json_is_last=False,
     :param bool _json_is_last: set to True only for very last entry to complete
                                the top-level json-list
     """
-
     if json_dict and json_parts:
         raise ValueError('Invalid json argument: want either single dict or '
                          'key=value parts but got both)')
@@ -2949,7 +2958,7 @@ class VBA_Parser(object):
                         log.debug('Found VBA compressed code at index %X' % start)
                         compressed_code = data[start:]
                         try:
-                            vba_code = decompress_stream(compressed_code)
+                            vba_code = decompress_stream(bytearray(compressed_code))
                             yield (self.filename, d.name, d.name, vba_code)
                         except Exception as exc:
                             # display the exception with full stack trace for debugging
