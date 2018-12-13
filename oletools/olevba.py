@@ -262,6 +262,7 @@ import zlib
 import email  # for MHTML parsing
 import string # for printable
 import json   # for json output mode (argument --json)
+import codecs
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -1337,6 +1338,525 @@ def decompress_stream(compressed_container):
     return bytes(decompressed_container)
 
 
+class VBA_Project(object):
+    """
+    Class to parse a VBA project from an OLE file, and to store all the corresponding
+    metadata and VBA modules.
+    """
+
+    def __init__(self, ole, vba_root, project_path, dir_path, relaxed=False):
+        """
+        Extract VBA macros from an OleFileIO object.
+
+        :param vba_root: path to the VBA root storage, containing the VBA storage and the PROJECT stream
+        :param vba_project: path to the PROJECT stream
+        :param relaxed: If True, only create info/debug log entry if data is not as expected
+                        (e.g. opening substream fails); if False, raise an error in this case
+        """
+        self.ole = ole
+        self.vba_root = vba_root
+        self. project_path = project_path
+        self.dir_path = dir_path
+        self.relaxed = relaxed
+        log.debug('Parsing the dir stream from %r' % dir_path)
+        # read data from dir stream (compressed)
+        dir_compressed = ole.openstream(dir_path).read()
+        # decompress it:
+        dir_stream = BytesIO(decompress_stream(bytearray(dir_compressed)))
+        # store reference for later use:
+        self.dir_stream = dir_stream
+
+        # reference: MS-VBAL 2.3.4.2 dir Stream: Version Independent Project Information
+
+        # PROJECTSYSKIND Record
+        # Specifies the platform for which the VBA project is created.
+        projectsyskind_id = struct.unpack("<H", dir_stream.read(2))[0]
+        self.check_value('PROJECTSYSKIND_Id', 0x0001, projectsyskind_id)
+        projectsyskind_size = struct.unpack("<L", dir_stream.read(4))[0]
+        self.check_value('PROJECTSYSKIND_Size', 0x0004, projectsyskind_size)
+        self.syskind = struct.unpack("<L", dir_stream.read(4))[0]
+        SYSKIND_NAME = {
+            0x00: "16-bit Windows",
+            0x01: "32-bit Windows",
+            0x02: "Macintosh",
+            0x03: "64-bit Windows"
+        }
+        self.syskind_name = SYSKIND_NAME.get(self.syskind, 'Unknown')
+        log.debug("PROJECTSYSKIND_SysKind: %d - %s" % (self.syskind, self.syskind_name))
+        if self.syskind not in SYSKIND_NAME:
+            log.error("invalid PROJECTSYSKIND_SysKind {0:04X}".format(self.syskind))
+
+        # PROJECTLCID Record
+        # Specifies the VBA project's LCID.
+        projectlcid_id = struct.unpack("<H", dir_stream.read(2))[0]
+        self.check_value('PROJECTLCID_Id', 0x0002, projectlcid_id)
+        projectlcid_size = struct.unpack("<L", dir_stream.read(4))[0]
+        self.check_value('PROJECTLCID_Size', 0x0004, projectlcid_size)
+        # Lcid (4 bytes): An unsigned integer that specifies the LCID value for the VBA project. MUST be 0x00000409.
+        self.lcid = struct.unpack("<L", dir_stream.read(4))[0]
+        self.check_value('PROJECTLCID_Lcid', 0x409, self.lcid)
+
+        # PROJECTLCIDINVOKE Record
+        # Specifies an LCID value used for Invoke calls on an Automation server as specified in [MS-OAUT] section 3.1.4.4.
+        projectlcidinvoke_id = struct.unpack("<H", dir_stream.read(2))[0]
+        self.check_value('PROJECTLCIDINVOKE_Id', 0x0014, projectlcidinvoke_id)
+        projectlcidinvoke_size = struct.unpack("<L", dir_stream.read(4))[0]
+        self.check_value('PROJECTLCIDINVOKE_Size', 0x0004, projectlcidinvoke_size)
+        # LcidInvoke (4 bytes): An unsigned integer that specifies the LCID value used for Invoke calls. MUST be 0x00000409.
+        self.lcidinvoke = struct.unpack("<L", dir_stream.read(4))[0]
+        self.check_value('PROJECTLCIDINVOKE_LcidInvoke', 0x409, self.lcidinvoke)
+
+        # PROJECTCODEPAGE Record
+        # Specifies the VBA project's code page.
+        projectcodepage_id = struct.unpack("<H", dir_stream.read(2))[0]
+        self.check_value('PROJECTCODEPAGE_Id', 0x0003, projectcodepage_id)
+        projectcodepage_size = struct.unpack("<L", dir_stream.read(4))[0]
+        self.check_value('PROJECTCODEPAGE_Size', 0x0002, projectcodepage_size)
+        self.codepage = struct.unpack("<H", dir_stream.read(2))[0]
+        log.debug('Project Code Page: %r' % self.codepage)
+        if self.codepage in MAC_CODEPAGES:
+            self.codec = MAC_CODEPAGES[self.codepage]
+        else:
+            self.codec = 'cp%d' % self.codepage
+        # TODO: check if valid code page or raise a clear exception, and use UTF-8 as default?
+        try:
+            codecs.lookup(self.codec)
+        except LookupError:
+            log.error('Codec not found for code page %d, using UTF-8 as fallback.' % self.codepage)
+            self.codec = 'utf8'
+        log.debug('Python codec corresponding to code page %d: %s' % (self.codepage, self.codec))
+
+
+        # PROJECTNAME Record
+        # Specifies a unique VBA identifier as the name of the VBA project.
+        projectname_id = struct.unpack("<H", dir_stream.read(2))[0]
+        self.check_value('PROJECTNAME_Id', 0x0004, projectname_id)
+        sizeof_projectname = struct.unpack("<L", dir_stream.read(4))[0]
+        log.debug('Project name size: %d bytes' % sizeof_projectname)
+        if sizeof_projectname < 1 or sizeof_projectname > 128:
+            # TODO: raise an actual error? What is MS Office's behaviour?
+            log.error("PROJECTNAME_SizeOfProjectName value not in range [1-128]: {0}".format(sizeof_projectname))
+        projectname_bytes = dir_stream.read(sizeof_projectname)
+        self.projectname = self.decode_bytes(projectname_bytes)
+
+
+        # PROJECTDOCSTRING Record
+        # Specifies the description for the VBA project.
+        projectdocstring_id = struct.unpack("<H", dir_stream.read(2))[0]
+        self.check_value('PROJECTDOCSTRING_Id', 0x0005, projectdocstring_id)
+        projectdocstring_sizeof_docstring = struct.unpack("<L", dir_stream.read(4))[0]
+        if projectdocstring_sizeof_docstring > 2000:
+            log.error(
+                "PROJECTDOCSTRING_SizeOfDocString value not in range: {0}".format(projectdocstring_sizeof_docstring))
+        # DocString (variable): An array of SizeOfDocString bytes that specifies the description for the VBA project.
+        # MUST contain MBCS characters encoded using the code page specified in PROJECTCODEPAGE (section 2.3.4.2.1.4).
+        # MUST NOT contain null characters.
+        docstring_bytes = dir_stream.read(projectdocstring_sizeof_docstring)
+        self.docstring = self.decode_bytes(docstring_bytes)
+        projectdocstring_reserved = struct.unpack("<H", dir_stream.read(2))[0]
+        self.check_value('PROJECTDOCSTRING_Reserved', 0x0040, projectdocstring_reserved)
+        projectdocstring_sizeof_docstring_unicode = struct.unpack("<L", dir_stream.read(4))[0]
+        if projectdocstring_sizeof_docstring_unicode % 2 != 0:
+            log.error("PROJECTDOCSTRING_SizeOfDocStringUnicode is not even")
+        # DocStringUnicode (variable): An array of SizeOfDocStringUnicode bytes that specifies the description for the
+        # VBA project. MUST contain UTF-16 characters. MUST NOT contain null characters.
+        # MUST contain the UTF-16 encoding of DocString.
+        docstring_unicode_bytes = dir_stream.read(projectdocstring_sizeof_docstring_unicode)
+        self.docstring_unicode = docstring_unicode_bytes.decode('utf16', errors='replace')
+
+        # PROJECTHELPFILEPATH Record - MS-OVBA 2.3.4.2.1.7
+        projecthelpfilepath_id = struct.unpack("<H", dir_stream.read(2))[0]
+        self.check_value('PROJECTHELPFILEPATH_Id', 0x0006, projecthelpfilepath_id)
+        projecthelpfilepath_sizeof_helpfile1 = struct.unpack("<L", dir_stream.read(4))[0]
+        if projecthelpfilepath_sizeof_helpfile1 > 260:
+            log.error(
+                "PROJECTHELPFILEPATH_SizeOfHelpFile1 value not in range: {0}".format(projecthelpfilepath_sizeof_helpfile1))
+        projecthelpfilepath_helpfile1 = dir_stream.read(projecthelpfilepath_sizeof_helpfile1)
+        projecthelpfilepath_reserved = struct.unpack("<H", dir_stream.read(2))[0]
+        self.check_value('PROJECTHELPFILEPATH_Reserved', 0x003D, projecthelpfilepath_reserved)
+        projecthelpfilepath_sizeof_helpfile2 = struct.unpack("<L", dir_stream.read(4))[0]
+        if projecthelpfilepath_sizeof_helpfile2 != projecthelpfilepath_sizeof_helpfile1:
+            log.error("PROJECTHELPFILEPATH_SizeOfHelpFile1 does not equal PROJECTHELPFILEPATH_SizeOfHelpFile2")
+        projecthelpfilepath_helpfile2 = dir_stream.read(projecthelpfilepath_sizeof_helpfile2)
+        if projecthelpfilepath_helpfile2 != projecthelpfilepath_helpfile1:
+            log.error("PROJECTHELPFILEPATH_HelpFile1 does not equal PROJECTHELPFILEPATH_HelpFile2")
+
+        # PROJECTHELPCONTEXT Record
+        projecthelpcontext_id = struct.unpack("<H", dir_stream.read(2))[0]
+        self.check_value('PROJECTHELPCONTEXT_Id', 0x0007, projecthelpcontext_id)
+        projecthelpcontext_size = struct.unpack("<L", dir_stream.read(4))[0]
+        self.check_value('PROJECTHELPCONTEXT_Size', 0x0004, projecthelpcontext_size)
+        projecthelpcontext_helpcontext = struct.unpack("<L", dir_stream.read(4))[0]
+        unused = projecthelpcontext_helpcontext
+
+        # PROJECTLIBFLAGS Record
+        projectlibflags_id = struct.unpack("<H", dir_stream.read(2))[0]
+        self.check_value('PROJECTLIBFLAGS_Id', 0x0008, projectlibflags_id)
+        projectlibflags_size = struct.unpack("<L", dir_stream.read(4))[0]
+        self.check_value('PROJECTLIBFLAGS_Size', 0x0004, projectlibflags_size)
+        projectlibflags_projectlibflags = struct.unpack("<L", dir_stream.read(4))[0]
+        self.check_value('PROJECTLIBFLAGS_ProjectLibFlags', 0x0000, projectlibflags_projectlibflags)
+
+        # PROJECTVERSION Record
+        projectversion_id = struct.unpack("<H", dir_stream.read(2))[0]
+        self.check_value('PROJECTVERSION_Id', 0x0009, projectversion_id)
+        projectversion_reserved = struct.unpack("<L", dir_stream.read(4))[0]
+        self.check_value('PROJECTVERSION_Reserved', 0x0004, projectversion_reserved)
+        projectversion_versionmajor = struct.unpack("<L", dir_stream.read(4))[0]
+        projectversion_versionminor = struct.unpack("<H", dir_stream.read(2))[0]
+        unused = projectversion_versionmajor
+        unused = projectversion_versionminor
+
+        # PROJECTCONSTANTS Record
+        projectconstants_id = struct.unpack("<H", dir_stream.read(2))[0]
+        self.check_value('PROJECTCONSTANTS_Id', 0x000C, projectconstants_id)
+        projectconstants_sizeof_constants = struct.unpack("<L", dir_stream.read(4))[0]
+        if projectconstants_sizeof_constants > 1015:
+            log.error(
+                "PROJECTCONSTANTS_SizeOfConstants value not in range: {0}".format(projectconstants_sizeof_constants))
+        projectconstants_constants = dir_stream.read(projectconstants_sizeof_constants)
+        projectconstants_reserved = struct.unpack("<H", dir_stream.read(2))[0]
+        self.check_value('PROJECTCONSTANTS_Reserved', 0x003C, projectconstants_reserved)
+        projectconstants_sizeof_constants_unicode = struct.unpack("<L", dir_stream.read(4))[0]
+        if projectconstants_sizeof_constants_unicode % 2 != 0:
+            log.error("PROJECTCONSTANTS_SizeOfConstantsUnicode is not even")
+        projectconstants_constants_unicode = dir_stream.read(projectconstants_sizeof_constants_unicode)
+        unused = projectconstants_constants
+        unused = projectconstants_constants_unicode
+
+        # array of REFERENCE records
+        check = None
+        while True:
+            check = struct.unpack("<H", dir_stream.read(2))[0]
+            log.debug("reference type = {0:04X}".format(check))
+            if check == 0x000F:
+                break
+
+            if check == 0x0016:
+                # REFERENCENAME
+                reference_id = check
+                reference_sizeof_name = struct.unpack("<L", dir_stream.read(4))[0]
+                reference_name = dir_stream.read(reference_sizeof_name)
+                reference_reserved = struct.unpack("<H", dir_stream.read(2))[0]
+                # According to [MS-OVBA] 2.3.4.2.2.2 REFERENCENAME Record:
+                # "Reserved (2 bytes): MUST be 0x003E. MUST be ignored."
+                # So let's ignore it, otherwise it crashes on some files (issue #132)
+                # PR #135 by @c1fe:
+                # contrary to the specification I think that the unicode name
+                # is optional. if reference_reserved is not 0x003E I think it
+                # is actually the start of another REFERENCE record
+                # at least when projectsyskind_syskind == 0x02 (Macintosh)
+                if reference_reserved == 0x003E:
+                    #if reference_reserved not in (0x003E, 0x000D):
+                    #    raise UnexpectedDataError(dir_path, 'REFERENCE_Reserved',
+                    #                              0x0003E, reference_reserved)
+                    reference_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
+                    reference_name_unicode = dir_stream.read(reference_sizeof_name_unicode)
+                    unused = reference_id
+                    unused = reference_name
+                    unused = reference_name_unicode
+                    continue
+                else:
+                    check = reference_reserved
+                    log.debug("reference type = {0:04X}".format(check))
+
+            if check == 0x0033:
+                # REFERENCEORIGINAL (followed by REFERENCECONTROL)
+                referenceoriginal_id = check
+                referenceoriginal_sizeof_libidoriginal = struct.unpack("<L", dir_stream.read(4))[0]
+                referenceoriginal_libidoriginal = dir_stream.read(referenceoriginal_sizeof_libidoriginal)
+                unused = referenceoriginal_id
+                unused = referenceoriginal_libidoriginal
+                continue
+
+            if check == 0x002F:
+                # REFERENCECONTROL
+                referencecontrol_id = check
+                referencecontrol_sizetwiddled = struct.unpack("<L", dir_stream.read(4))[0]  # ignore
+                referencecontrol_sizeof_libidtwiddled = struct.unpack("<L", dir_stream.read(4))[0]
+                referencecontrol_libidtwiddled = dir_stream.read(referencecontrol_sizeof_libidtwiddled)
+                referencecontrol_reserved1 = struct.unpack("<L", dir_stream.read(4))[0]  # ignore
+                self.check_value('REFERENCECONTROL_Reserved1', 0x0000, referencecontrol_reserved1)
+                referencecontrol_reserved2 = struct.unpack("<H", dir_stream.read(2))[0]  # ignore
+                self.check_value('REFERENCECONTROL_Reserved2', 0x0000, referencecontrol_reserved2)
+                unused = referencecontrol_id
+                unused = referencecontrol_sizetwiddled
+                unused = referencecontrol_libidtwiddled
+                # optional field
+                check2 = struct.unpack("<H", dir_stream.read(2))[0]
+                if check2 == 0x0016:
+                    referencecontrol_namerecordextended_id = check
+                    referencecontrol_namerecordextended_sizeof_name = struct.unpack("<L", dir_stream.read(4))[0]
+                    referencecontrol_namerecordextended_name = dir_stream.read(
+                        referencecontrol_namerecordextended_sizeof_name)
+                    referencecontrol_namerecordextended_reserved = struct.unpack("<H", dir_stream.read(2))[0]
+                    if referencecontrol_namerecordextended_reserved == 0x003E:
+                        referencecontrol_namerecordextended_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
+                        referencecontrol_namerecordextended_name_unicode = dir_stream.read(
+                            referencecontrol_namerecordextended_sizeof_name_unicode)
+                        referencecontrol_reserved3 = struct.unpack("<H", dir_stream.read(2))[0]
+                        unused = referencecontrol_namerecordextended_id
+                        unused = referencecontrol_namerecordextended_name
+                        unused = referencecontrol_namerecordextended_name_unicode
+                    else:
+                        referencecontrol_reserved3 = referencecontrol_namerecordextended_reserved
+                else:
+                    referencecontrol_reserved3 = check2
+
+                self.check_value('REFERENCECONTROL_Reserved3', 0x0030, referencecontrol_reserved3)
+                referencecontrol_sizeextended = struct.unpack("<L", dir_stream.read(4))[0]
+                referencecontrol_sizeof_libidextended = struct.unpack("<L", dir_stream.read(4))[0]
+                referencecontrol_libidextended = dir_stream.read(referencecontrol_sizeof_libidextended)
+                referencecontrol_reserved4 = struct.unpack("<L", dir_stream.read(4))[0]
+                referencecontrol_reserved5 = struct.unpack("<H", dir_stream.read(2))[0]
+                referencecontrol_originaltypelib = dir_stream.read(16)
+                referencecontrol_cookie = struct.unpack("<L", dir_stream.read(4))[0]
+                unused = referencecontrol_sizeextended
+                unused = referencecontrol_libidextended
+                unused = referencecontrol_reserved4
+                unused = referencecontrol_reserved5
+                unused = referencecontrol_originaltypelib
+                unused = referencecontrol_cookie
+                continue
+
+            if check == 0x000D:
+                # REFERENCEREGISTERED
+                referenceregistered_id = check
+                referenceregistered_size = struct.unpack("<L", dir_stream.read(4))[0]
+                referenceregistered_sizeof_libid = struct.unpack("<L", dir_stream.read(4))[0]
+                referenceregistered_libid = dir_stream.read(referenceregistered_sizeof_libid)
+                referenceregistered_reserved1 = struct.unpack("<L", dir_stream.read(4))[0]
+                self.check_value('REFERENCEREGISTERED_Reserved1', 0x0000, referenceregistered_reserved1)
+                referenceregistered_reserved2 = struct.unpack("<H", dir_stream.read(2))[0]
+                self.check_value('REFERENCEREGISTERED_Reserved2', 0x0000, referenceregistered_reserved2)
+                unused = referenceregistered_id
+                unused = referenceregistered_size
+                unused = referenceregistered_libid
+                continue
+
+            if check == 0x000E:
+                # REFERENCEPROJECT
+                referenceproject_id = check
+                referenceproject_size = struct.unpack("<L", dir_stream.read(4))[0]
+                referenceproject_sizeof_libidabsolute = struct.unpack("<L", dir_stream.read(4))[0]
+                referenceproject_libidabsolute = dir_stream.read(referenceproject_sizeof_libidabsolute)
+                referenceproject_sizeof_libidrelative = struct.unpack("<L", dir_stream.read(4))[0]
+                referenceproject_libidrelative = dir_stream.read(referenceproject_sizeof_libidrelative)
+                referenceproject_majorversion = struct.unpack("<L", dir_stream.read(4))[0]
+                referenceproject_minorversion = struct.unpack("<H", dir_stream.read(2))[0]
+                unused = referenceproject_id
+                unused = referenceproject_size
+                unused = referenceproject_libidabsolute
+                unused = referenceproject_libidrelative
+                unused = referenceproject_majorversion
+                unused = referenceproject_minorversion
+                continue
+
+            log.error('invalid or unknown check Id {0:04X}'.format(check))
+            # raise an exception instead of stopping abruptly (issue #180)
+            raise UnexpectedDataError(dir_path, 'reference type', (0x0F, 0x16, 0x33, 0x2F, 0x0D, 0x0E), check)
+            #sys.exit(0)
+
+    def check_value(self, name, expected, value):
+        if expected != value:
+            if self.relaxed:
+                log.error("invalid value for {0} expected {1:04X} got {2:04X}"
+                          .format(name, expected, value))
+            else:
+                raise UnexpectedDataError(self.dir_path, name, expected, value)
+
+
+    def parse_modules(self):
+        dir_stream = self.dir_stream
+        # projectmodules_id has already been read by the previous loop = 0x000F
+        # projectmodules_id = check  #struct.unpack("<H", dir_stream.read(2))[0]
+        # self.check_value('PROJECTMODULES_Id', 0x000F, projectmodules_id)
+        projectmodules_size = struct.unpack("<L", dir_stream.read(4))[0]
+        self.check_value('PROJECTMODULES_Size', 0x0002, projectmodules_size)
+        projectmodules_count = struct.unpack("<H", dir_stream.read(2))[0]
+        projectmodules_projectcookierecord_id = struct.unpack("<H", dir_stream.read(2))[0]
+        self.check_value('PROJECTMODULES_ProjectCookieRecord_Id', 0x0013, projectmodules_projectcookierecord_id)
+        projectmodules_projectcookierecord_size = struct.unpack("<L", dir_stream.read(4))[0]
+        self.check_value('PROJECTMODULES_ProjectCookieRecord_Size', 0x0002, projectmodules_projectcookierecord_size)
+        projectmodules_projectcookierecord_cookie = struct.unpack("<H", dir_stream.read(2))[0]
+        unused = projectmodules_projectcookierecord_cookie
+
+        # short function to simplify unicode text output
+        uni_out = lambda unicode_text: unicode_text.encode('utf-8', 'replace')
+
+        log.debug("parsing {0} modules".format(projectmodules_count))
+        for projectmodule_index in xrange(0, projectmodules_count):
+            try:
+                modulename_id = struct.unpack("<H", dir_stream.read(2))[0]
+                self.check_value('MODULENAME_Id', 0x0019, modulename_id)
+                modulename_sizeof_modulename = struct.unpack("<L", dir_stream.read(4))[0]
+                modulename_modulename = dir_stream.read(modulename_sizeof_modulename)
+                # TODO: preset variables to avoid "referenced before assignment" errors
+                modulename_unicode_modulename_unicode = ''
+                # account for optional sections
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+                if section_id == 0x0047:
+                    modulename_unicode_id = section_id
+                    modulename_unicode_sizeof_modulename_unicode = struct.unpack("<L", dir_stream.read(4))[0]
+                    modulename_unicode_modulename_unicode = dir_stream.read(
+                        modulename_unicode_sizeof_modulename_unicode).decode('UTF-16LE', 'replace')
+                        # just guessing that this is the same encoding as used in OleFileIO
+                    unused = modulename_unicode_id
+                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
+                if section_id == 0x001A:
+                    modulestreamname_id = section_id
+                    modulestreamname_sizeof_streamname = struct.unpack("<L", dir_stream.read(4))[0]
+                    modulestreamname_streamname = dir_stream.read(modulestreamname_sizeof_streamname)
+                    modulestreamname_reserved = struct.unpack("<H", dir_stream.read(2))[0]
+                    self.check_value('MODULESTREAMNAME_Reserved', 0x0032, modulestreamname_reserved)
+                    modulestreamname_sizeof_streamname_unicode = struct.unpack("<L", dir_stream.read(4))[0]
+                    modulestreamname_streamname_unicode = dir_stream.read(
+                        modulestreamname_sizeof_streamname_unicode).decode('UTF-16LE', 'replace')
+                        # just guessing that this is the same encoding as used in OleFileIO
+                    unused = modulestreamname_id
+                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
+                if section_id == 0x001C:
+                    moduledocstring_id = section_id
+                    self.check_value('MODULEDOCSTRING_Id', 0x001C, moduledocstring_id)
+                    moduledocstring_sizeof_docstring = struct.unpack("<L", dir_stream.read(4))[0]
+                    moduledocstring_docstring = dir_stream.read(moduledocstring_sizeof_docstring)
+                    moduledocstring_reserved = struct.unpack("<H", dir_stream.read(2))[0]
+                    self.check_value('MODULEDOCSTRING_Reserved', 0x0048, moduledocstring_reserved)
+                    moduledocstring_sizeof_docstring_unicode = struct.unpack("<L", dir_stream.read(4))[0]
+                    moduledocstring_docstring_unicode = dir_stream.read(moduledocstring_sizeof_docstring_unicode)
+                    unused = moduledocstring_docstring
+                    unused = moduledocstring_docstring_unicode
+                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
+                if section_id == 0x0031:
+                    moduleoffset_id = section_id
+                    self.check_value('MODULEOFFSET_Id', 0x0031, moduleoffset_id)
+                    moduleoffset_size = struct.unpack("<L", dir_stream.read(4))[0]
+                    self.check_value('MODULEOFFSET_Size', 0x0004, moduleoffset_size)
+                    moduleoffset_textoffset = struct.unpack("<L", dir_stream.read(4))[0]
+                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
+                if section_id == 0x001E:
+                    modulehelpcontext_id = section_id
+                    self.check_value('MODULEHELPCONTEXT_Id', 0x001E, modulehelpcontext_id)
+                    modulehelpcontext_size = struct.unpack("<L", dir_stream.read(4))[0]
+                    self.check_value('MODULEHELPCONTEXT_Size', 0x0004, modulehelpcontext_size)
+                    modulehelpcontext_helpcontext = struct.unpack("<L", dir_stream.read(4))[0]
+                    unused = modulehelpcontext_helpcontext
+                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
+                if section_id == 0x002C:
+                    modulecookie_id = section_id
+                    self.check_value('MODULECOOKIE_Id', 0x002C, modulecookie_id)
+                    modulecookie_size = struct.unpack("<L", dir_stream.read(4))[0]
+                    self.check_value('MODULECOOKIE_Size', 0x0002, modulecookie_size)
+                    modulecookie_cookie = struct.unpack("<H", dir_stream.read(2))[0]
+                    unused = modulecookie_cookie
+                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
+                if section_id == 0x0021 or section_id == 0x0022:
+                    moduletype_id = section_id
+                    moduletype_reserved = struct.unpack("<L", dir_stream.read(4))[0]
+                    unused = moduletype_id
+                    unused = moduletype_reserved
+                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
+                if section_id == 0x0025:
+                    modulereadonly_id = section_id
+                    self.check_value('MODULEREADONLY_Id', 0x0025, modulereadonly_id)
+                    modulereadonly_reserved = struct.unpack("<L", dir_stream.read(4))[0]
+                    self.check_value('MODULEREADONLY_Reserved', 0x0000, modulereadonly_reserved)
+                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
+                if section_id == 0x0028:
+                    moduleprivate_id = section_id
+                    self.check_value('MODULEPRIVATE_Id', 0x0028, moduleprivate_id)
+                    moduleprivate_reserved = struct.unpack("<L", dir_stream.read(4))[0]
+                    self.check_value('MODULEPRIVATE_Reserved', 0x0000, moduleprivate_reserved)
+                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
+                if section_id == 0x002B:  # TERMINATOR
+                    module_reserved = struct.unpack("<L", dir_stream.read(4))[0]
+                    self.check_value('MODULE_Reserved', 0x0000, module_reserved)
+                    section_id = None
+                if section_id != None:
+                    log.warning('unknown or invalid module section id {0:04X}'.format(section_id))
+
+                # TODO: handle case when modulestreamname_streamname is not provided
+                log.debug("ModuleName = {0}".format(modulename_modulename))
+                log.debug("ModuleNameUnicode = {0}".format(uni_out(modulename_unicode_modulename_unicode)))
+                log.debug("StreamName = {0}".format(modulestreamname_streamname))
+                try:
+                    streamname_unicode = self.decode_bytes(modulestreamname_streamname)
+                except UnicodeError as ue:
+                    log.debug('failed to decode stream name {0!r} with codec {1}'
+                              .format(uni_out(streamname_unicode), self.codec))
+                    streamname_unicode = modulestreamname_streamname.decode(self.codec, errors='replace')
+                log.debug("StreamName.decode('%s') = %s" % (self.codec, uni_out(streamname_unicode)))
+                log.debug("StreamNameUnicode = {0}".format(uni_out(modulestreamname_streamname_unicode)))
+                log.debug("TextOffset = {0}".format(moduleoffset_textoffset))
+
+                code_data = None
+                try_names = streamname_unicode, \
+                            modulename_unicode_modulename_unicode, \
+                            modulestreamname_streamname_unicode
+                for stream_name in try_names:
+                    # TODO: if olefile._find were less private, could replace this
+                    #        try-except with calls to it
+                    try:
+                        code_path = self.vba_root + u'VBA/' + stream_name
+                        log.debug('opening VBA code stream %s' % uni_out(code_path))
+                        code_data = self.ole.openstream(code_path).read()
+                        break
+                    except IOError as ioe:
+                        log.debug('failed to open stream VBA/%r (%r), try other name'
+                                  % (uni_out(stream_name), ioe))
+
+                if code_data is None:
+                    log.info("Could not open stream %d of %d ('VBA/' + one of %r)!"
+                             % (projectmodule_index, projectmodules_count,
+                                     '/'.join("'" + uni_out(stream_name) + "'"
+                                              for stream_name in try_names)))
+                    if self.relaxed:
+                        continue   # ... with next submodule
+                    else:
+                        raise SubstreamOpenError('[BASE]', 'VBA/' +
+                                    uni_out(modulename_unicode_modulename_unicode))
+
+                log.debug("length of code_data = {0}".format(len(code_data)))
+                log.debug("offset of code_data = {0}".format(moduleoffset_textoffset))
+                code_data = code_data[moduleoffset_textoffset:]
+                if len(code_data) > 0:
+                    code_data = decompress_stream(bytearray(code_data))
+                    # case-insensitive search in the code_modules dict to find the file extension:
+                    # filext = code_modules.get(modulename_modulename.lower(), 'bin')
+                    filext = 'vba'
+                    filename = '{0}.{1}'.format(modulename_modulename, filext)
+                    #TODO: also yield the codepage so that callers can decode it properly
+                    yield (code_path, filename, code_data)
+                    # print '-'*79
+                    # print filename
+                    # print ''
+                    # print code_data
+                    # print ''
+                    log.debug('extracted file {0}'.format(filename))
+                else:
+                    log.warning("module stream {0} has code data length 0".format(modulestreamname_streamname))
+            except (UnexpectedDataError, SubstreamOpenError):
+                raise
+            except Exception as exc:
+                log.info('Error parsing module {0} of {1} in _extract_vba:'
+                         .format(projectmodule_index, projectmodules_count),
+                         exc_info=True)
+                if not self.relaxed:
+                    raise
+        _ = unused   # make pylint happy: now variable "unused" is being used ;-)
+        return
+
+    def decode_bytes(self, bytes_string, errors='replace'):
+        """
+        Decode a bytes string to a unicode string, using the project code page
+        :param bytes_string: bytes, bytes string to be decoded
+        :param errors: str, mode to handle unicode conversion errors
+        :return: str/unicode, decoded string
+        """
+        return bytes_string.decode(self.codec, errors=errors)
+
+
+
 def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
     """
     Extract VBA macros from an OleFileIO object.
@@ -1348,9 +1868,14 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
                     (e.g. opening substream fails); if False, raise an error in this case
     This is a generator, yielding (stream path, VBA filename, VBA source code) for each VBA code stream
     """
-    # Open the PROJECT stream:
-    project = ole.openstream(project_path)
     log.debug('relaxed is %s' % relaxed)
+
+    project = VBA_Project(ole, vba_root, project_path, dir_path, relaxed=False)
+
+    # Open the PROJECT stream:
+    # reference: [MS-OVBA] 2.3.1 PROJECT Stream
+    # TODO: in fact the PROJECT stream is encoded using the code page specified in the dir stream, should be read afterwards
+    project_stream = ole.openstream(project_path)
 
     # sample content of the PROJECT stream:
 
@@ -1374,7 +1899,8 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
 
     code_modules = {}
 
-    for line in project:
+    for line in project_stream:
+        line = project.decode_bytes(line)
         log.debug('PROJECT: %r' % line)
         line = line.strip()
         if '=' in line:
@@ -1396,457 +1922,8 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
             elif name == 'BaseClass':
                 code_modules[value] = FORM_EXTENSION
 
-    # read data from dir stream (compressed)
-    dir_compressed = ole.openstream(dir_path).read()
-
-    def check_value(name, expected, value):
-        if expected != value:
-            if relaxed:
-                log.error("invalid value for {0} expected {1:04X} got {2:04X}"
-                          .format(name, expected, value))
-            else:
-                raise UnexpectedDataError(dir_path, name, expected, value)
-
-    dir_stream = BytesIO(decompress_stream(bytearray(dir_compressed)))
-
-    # PROJECTSYSKIND Record
-    projectsyskind_id = struct.unpack("<H", dir_stream.read(2))[0]
-    check_value('PROJECTSYSKIND_Id', 0x0001, projectsyskind_id)
-    projectsyskind_size = struct.unpack("<L", dir_stream.read(4))[0]
-    check_value('PROJECTSYSKIND_Size', 0x0004, projectsyskind_size)
-    projectsyskind_syskind = struct.unpack("<L", dir_stream.read(4))[0]
-    if projectsyskind_syskind == 0x00:
-        log.debug("16-bit Windows")
-    elif projectsyskind_syskind == 0x01:
-        log.debug("32-bit Windows")
-    elif projectsyskind_syskind == 0x02:
-        log.debug("Macintosh")
-    elif projectsyskind_syskind == 0x03:
-        log.debug("64-bit Windows")
-    else:
-        log.error("invalid PROJECTSYSKIND_SysKind {0:04X}".format(projectsyskind_syskind))
-
-    # PROJECTLCID Record
-    projectlcid_id = struct.unpack("<H", dir_stream.read(2))[0]
-    check_value('PROJECTLCID_Id', 0x0002, projectlcid_id)
-    projectlcid_size = struct.unpack("<L", dir_stream.read(4))[0]
-    check_value('PROJECTLCID_Size', 0x0004, projectlcid_size)
-    projectlcid_lcid = struct.unpack("<L", dir_stream.read(4))[0]
-    check_value('PROJECTLCID_Lcid', 0x409, projectlcid_lcid)
-
-    # PROJECTLCIDINVOKE Record
-    projectlcidinvoke_id = struct.unpack("<H", dir_stream.read(2))[0]
-    check_value('PROJECTLCIDINVOKE_Id', 0x0014, projectlcidinvoke_id)
-    projectlcidinvoke_size = struct.unpack("<L", dir_stream.read(4))[0]
-    check_value('PROJECTLCIDINVOKE_Size', 0x0004, projectlcidinvoke_size)
-    projectlcidinvoke_lcidinvoke = struct.unpack("<L", dir_stream.read(4))[0]
-    check_value('PROJECTLCIDINVOKE_LcidInvoke', 0x409, projectlcidinvoke_lcidinvoke)
-
-    # PROJECTCODEPAGE Record
-    projectcodepage_id = struct.unpack("<H", dir_stream.read(2))[0]
-    check_value('PROJECTCODEPAGE_Id', 0x0003, projectcodepage_id)
-    projectcodepage_size = struct.unpack("<L", dir_stream.read(4))[0]
-    check_value('PROJECTCODEPAGE_Size', 0x0002, projectcodepage_size)
-    projectcodepage_codepage = struct.unpack("<H", dir_stream.read(2))[0]
-
-    # PROJECTNAME Record
-    projectname_id = struct.unpack("<H", dir_stream.read(2))[0]
-    check_value('PROJECTNAME_Id', 0x0004, projectname_id)
-    projectname_sizeof_projectname = struct.unpack("<L", dir_stream.read(4))[0]
-    if projectname_sizeof_projectname < 1 or projectname_sizeof_projectname > 128:
-        log.error("PROJECTNAME_SizeOfProjectName value not in range: {0}".format(projectname_sizeof_projectname))
-    projectname_projectname = dir_stream.read(projectname_sizeof_projectname)
-    unused = projectname_projectname
-
-    # PROJECTDOCSTRING Record
-    projectdocstring_id = struct.unpack("<H", dir_stream.read(2))[0]
-    check_value('PROJECTDOCSTRING_Id', 0x0005, projectdocstring_id)
-    projectdocstring_sizeof_docstring = struct.unpack("<L", dir_stream.read(4))[0]
-    if projectdocstring_sizeof_docstring > 2000:
-        log.error(
-            "PROJECTDOCSTRING_SizeOfDocString value not in range: {0}".format(projectdocstring_sizeof_docstring))
-    projectdocstring_docstring = dir_stream.read(projectdocstring_sizeof_docstring)
-    projectdocstring_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-    check_value('PROJECTDOCSTRING_Reserved', 0x0040, projectdocstring_reserved)
-    projectdocstring_sizeof_docstring_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-    if projectdocstring_sizeof_docstring_unicode % 2 != 0:
-        log.error("PROJECTDOCSTRING_SizeOfDocStringUnicode is not even")
-    projectdocstring_docstring_unicode = dir_stream.read(projectdocstring_sizeof_docstring_unicode)
-    unused = projectdocstring_docstring
-    unused = projectdocstring_docstring_unicode
-
-    # PROJECTHELPFILEPATH Record - MS-OVBA 2.3.4.2.1.7
-    projecthelpfilepath_id = struct.unpack("<H", dir_stream.read(2))[0]
-    check_value('PROJECTHELPFILEPATH_Id', 0x0006, projecthelpfilepath_id)
-    projecthelpfilepath_sizeof_helpfile1 = struct.unpack("<L", dir_stream.read(4))[0]
-    if projecthelpfilepath_sizeof_helpfile1 > 260:
-        log.error(
-            "PROJECTHELPFILEPATH_SizeOfHelpFile1 value not in range: {0}".format(projecthelpfilepath_sizeof_helpfile1))
-    projecthelpfilepath_helpfile1 = dir_stream.read(projecthelpfilepath_sizeof_helpfile1)
-    projecthelpfilepath_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-    check_value('PROJECTHELPFILEPATH_Reserved', 0x003D, projecthelpfilepath_reserved)
-    projecthelpfilepath_sizeof_helpfile2 = struct.unpack("<L", dir_stream.read(4))[0]
-    if projecthelpfilepath_sizeof_helpfile2 != projecthelpfilepath_sizeof_helpfile1:
-        log.error("PROJECTHELPFILEPATH_SizeOfHelpFile1 does not equal PROJECTHELPFILEPATH_SizeOfHelpFile2")
-    projecthelpfilepath_helpfile2 = dir_stream.read(projecthelpfilepath_sizeof_helpfile2)
-    if projecthelpfilepath_helpfile2 != projecthelpfilepath_helpfile1:
-        log.error("PROJECTHELPFILEPATH_HelpFile1 does not equal PROJECTHELPFILEPATH_HelpFile2")
-
-    # PROJECTHELPCONTEXT Record
-    projecthelpcontext_id = struct.unpack("<H", dir_stream.read(2))[0]
-    check_value('PROJECTHELPCONTEXT_Id', 0x0007, projecthelpcontext_id)
-    projecthelpcontext_size = struct.unpack("<L", dir_stream.read(4))[0]
-    check_value('PROJECTHELPCONTEXT_Size', 0x0004, projecthelpcontext_size)
-    projecthelpcontext_helpcontext = struct.unpack("<L", dir_stream.read(4))[0]
-    unused = projecthelpcontext_helpcontext
-
-    # PROJECTLIBFLAGS Record
-    projectlibflags_id = struct.unpack("<H", dir_stream.read(2))[0]
-    check_value('PROJECTLIBFLAGS_Id', 0x0008, projectlibflags_id)
-    projectlibflags_size = struct.unpack("<L", dir_stream.read(4))[0]
-    check_value('PROJECTLIBFLAGS_Size', 0x0004, projectlibflags_size)
-    projectlibflags_projectlibflags = struct.unpack("<L", dir_stream.read(4))[0]
-    check_value('PROJECTLIBFLAGS_ProjectLibFlags', 0x0000, projectlibflags_projectlibflags)
-
-    # PROJECTVERSION Record
-    projectversion_id = struct.unpack("<H", dir_stream.read(2))[0]
-    check_value('PROJECTVERSION_Id', 0x0009, projectversion_id)
-    projectversion_reserved = struct.unpack("<L", dir_stream.read(4))[0]
-    check_value('PROJECTVERSION_Reserved', 0x0004, projectversion_reserved)
-    projectversion_versionmajor = struct.unpack("<L", dir_stream.read(4))[0]
-    projectversion_versionminor = struct.unpack("<H", dir_stream.read(2))[0]
-    unused = projectversion_versionmajor
-    unused = projectversion_versionminor
-
-    # PROJECTCONSTANTS Record
-    projectconstants_id = struct.unpack("<H", dir_stream.read(2))[0]
-    check_value('PROJECTCONSTANTS_Id', 0x000C, projectconstants_id)
-    projectconstants_sizeof_constants = struct.unpack("<L", dir_stream.read(4))[0]
-    if projectconstants_sizeof_constants > 1015:
-        log.error(
-            "PROJECTCONSTANTS_SizeOfConstants value not in range: {0}".format(projectconstants_sizeof_constants))
-    projectconstants_constants = dir_stream.read(projectconstants_sizeof_constants)
-    projectconstants_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-    check_value('PROJECTCONSTANTS_Reserved', 0x003C, projectconstants_reserved)
-    projectconstants_sizeof_constants_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-    if projectconstants_sizeof_constants_unicode % 2 != 0:
-        log.error("PROJECTCONSTANTS_SizeOfConstantsUnicode is not even")
-    projectconstants_constants_unicode = dir_stream.read(projectconstants_sizeof_constants_unicode)
-    unused = projectconstants_constants
-    unused = projectconstants_constants_unicode
-
-    # array of REFERENCE records
-    check = None
-    while True:
-        check = struct.unpack("<H", dir_stream.read(2))[0]
-        log.debug("reference type = {0:04X}".format(check))
-        if check == 0x000F:
-            break
-
-        if check == 0x0016:
-            # REFERENCENAME
-            reference_id = check
-            reference_sizeof_name = struct.unpack("<L", dir_stream.read(4))[0]
-            reference_name = dir_stream.read(reference_sizeof_name)
-            reference_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-            # According to [MS-OVBA] 2.3.4.2.2.2 REFERENCENAME Record:
-            # "Reserved (2 bytes): MUST be 0x003E. MUST be ignored."
-            # So let's ignore it, otherwise it crashes on some files (issue #132)
-            # PR #135 by @c1fe:
-            # contrary to the specification I think that the unicode name
-            # is optional. if reference_reserved is not 0x003E I think it
-            # is actually the start of another REFERENCE record
-            # at least when projectsyskind_syskind == 0x02 (Macintosh)
-            if reference_reserved == 0x003E:
-                #if reference_reserved not in (0x003E, 0x000D):
-                #    raise UnexpectedDataError(dir_path, 'REFERENCE_Reserved',
-                #                              0x0003E, reference_reserved)
-                reference_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-                reference_name_unicode = dir_stream.read(reference_sizeof_name_unicode)
-                unused = reference_id
-                unused = reference_name
-                unused = reference_name_unicode
-                continue
-            else:
-                check = reference_reserved
-                log.debug("reference type = {0:04X}".format(check))
-
-        if check == 0x0033:
-            # REFERENCEORIGINAL (followed by REFERENCECONTROL)
-            referenceoriginal_id = check
-            referenceoriginal_sizeof_libidoriginal = struct.unpack("<L", dir_stream.read(4))[0]
-            referenceoriginal_libidoriginal = dir_stream.read(referenceoriginal_sizeof_libidoriginal)
-            unused = referenceoriginal_id
-            unused = referenceoriginal_libidoriginal
-            continue
-
-        if check == 0x002F:
-            # REFERENCECONTROL
-            referencecontrol_id = check
-            referencecontrol_sizetwiddled = struct.unpack("<L", dir_stream.read(4))[0]  # ignore
-            referencecontrol_sizeof_libidtwiddled = struct.unpack("<L", dir_stream.read(4))[0]
-            referencecontrol_libidtwiddled = dir_stream.read(referencecontrol_sizeof_libidtwiddled)
-            referencecontrol_reserved1 = struct.unpack("<L", dir_stream.read(4))[0]  # ignore
-            check_value('REFERENCECONTROL_Reserved1', 0x0000, referencecontrol_reserved1)
-            referencecontrol_reserved2 = struct.unpack("<H", dir_stream.read(2))[0]  # ignore
-            check_value('REFERENCECONTROL_Reserved2', 0x0000, referencecontrol_reserved2)
-            unused = referencecontrol_id
-            unused = referencecontrol_sizetwiddled
-            unused = referencecontrol_libidtwiddled
-            # optional field
-            check2 = struct.unpack("<H", dir_stream.read(2))[0]
-            if check2 == 0x0016:
-                referencecontrol_namerecordextended_id = check
-                referencecontrol_namerecordextended_sizeof_name = struct.unpack("<L", dir_stream.read(4))[0]
-                referencecontrol_namerecordextended_name = dir_stream.read(
-                    referencecontrol_namerecordextended_sizeof_name)
-                referencecontrol_namerecordextended_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-                if referencecontrol_namerecordextended_reserved == 0x003E:
-                    referencecontrol_namerecordextended_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-                    referencecontrol_namerecordextended_name_unicode = dir_stream.read(
-                        referencecontrol_namerecordextended_sizeof_name_unicode)
-                    referencecontrol_reserved3 = struct.unpack("<H", dir_stream.read(2))[0]
-                    unused = referencecontrol_namerecordextended_id
-                    unused = referencecontrol_namerecordextended_name
-                    unused = referencecontrol_namerecordextended_name_unicode
-                else:
-                    referencecontrol_reserved3 = referencecontrol_namerecordextended_reserved
-            else:
-                referencecontrol_reserved3 = check2
-
-            check_value('REFERENCECONTROL_Reserved3', 0x0030, referencecontrol_reserved3)
-            referencecontrol_sizeextended = struct.unpack("<L", dir_stream.read(4))[0]
-            referencecontrol_sizeof_libidextended = struct.unpack("<L", dir_stream.read(4))[0]
-            referencecontrol_libidextended = dir_stream.read(referencecontrol_sizeof_libidextended)
-            referencecontrol_reserved4 = struct.unpack("<L", dir_stream.read(4))[0]
-            referencecontrol_reserved5 = struct.unpack("<H", dir_stream.read(2))[0]
-            referencecontrol_originaltypelib = dir_stream.read(16)
-            referencecontrol_cookie = struct.unpack("<L", dir_stream.read(4))[0]
-            unused = referencecontrol_sizeextended
-            unused = referencecontrol_libidextended
-            unused = referencecontrol_reserved4
-            unused = referencecontrol_reserved5
-            unused = referencecontrol_originaltypelib
-            unused = referencecontrol_cookie
-            continue
-
-        if check == 0x000D:
-            # REFERENCEREGISTERED
-            referenceregistered_id = check
-            referenceregistered_size = struct.unpack("<L", dir_stream.read(4))[0]
-            referenceregistered_sizeof_libid = struct.unpack("<L", dir_stream.read(4))[0]
-            referenceregistered_libid = dir_stream.read(referenceregistered_sizeof_libid)
-            referenceregistered_reserved1 = struct.unpack("<L", dir_stream.read(4))[0]
-            check_value('REFERENCEREGISTERED_Reserved1', 0x0000, referenceregistered_reserved1)
-            referenceregistered_reserved2 = struct.unpack("<H", dir_stream.read(2))[0]
-            check_value('REFERENCEREGISTERED_Reserved2', 0x0000, referenceregistered_reserved2)
-            unused = referenceregistered_id
-            unused = referenceregistered_size
-            unused = referenceregistered_libid
-            continue
-
-        if check == 0x000E:
-            # REFERENCEPROJECT
-            referenceproject_id = check
-            referenceproject_size = struct.unpack("<L", dir_stream.read(4))[0]
-            referenceproject_sizeof_libidabsolute = struct.unpack("<L", dir_stream.read(4))[0]
-            referenceproject_libidabsolute = dir_stream.read(referenceproject_sizeof_libidabsolute)
-            referenceproject_sizeof_libidrelative = struct.unpack("<L", dir_stream.read(4))[0]
-            referenceproject_libidrelative = dir_stream.read(referenceproject_sizeof_libidrelative)
-            referenceproject_majorversion = struct.unpack("<L", dir_stream.read(4))[0]
-            referenceproject_minorversion = struct.unpack("<H", dir_stream.read(2))[0]
-            unused = referenceproject_id
-            unused = referenceproject_size
-            unused = referenceproject_libidabsolute
-            unused = referenceproject_libidrelative
-            unused = referenceproject_majorversion
-            unused = referenceproject_minorversion
-            continue
-
-        log.error('invalid or unknown check Id {0:04X}'.format(check))
-        # raise an exception instead of stopping abruptly (issue #180)
-        raise UnexpectedDataError(dir_path, 'reference type', (0x0F, 0x16, 0x33, 0x2F, 0x0D, 0x0E), check)
-        #sys.exit(0)
-
-    projectmodules_id = check  #struct.unpack("<H", dir_stream.read(2))[0]
-    check_value('PROJECTMODULES_Id', 0x000F, projectmodules_id)
-    projectmodules_size = struct.unpack("<L", dir_stream.read(4))[0]
-    check_value('PROJECTMODULES_Size', 0x0002, projectmodules_size)
-    projectmodules_count = struct.unpack("<H", dir_stream.read(2))[0]
-    projectmodules_projectcookierecord_id = struct.unpack("<H", dir_stream.read(2))[0]
-    check_value('PROJECTMODULES_ProjectCookieRecord_Id', 0x0013, projectmodules_projectcookierecord_id)
-    projectmodules_projectcookierecord_size = struct.unpack("<L", dir_stream.read(4))[0]
-    check_value('PROJECTMODULES_ProjectCookieRecord_Size', 0x0002, projectmodules_projectcookierecord_size)
-    projectmodules_projectcookierecord_cookie = struct.unpack("<H", dir_stream.read(2))[0]
-    unused = projectmodules_projectcookierecord_cookie
-
-    # short function to simplify unicode text output
-    uni_out = lambda unicode_text: unicode_text.encode('utf-8', 'replace')
-
-    log.debug("parsing {0} modules".format(projectmodules_count))
-    for projectmodule_index in xrange(0, projectmodules_count):
-        try:
-            modulename_id = struct.unpack("<H", dir_stream.read(2))[0]
-            check_value('MODULENAME_Id', 0x0019, modulename_id)
-            modulename_sizeof_modulename = struct.unpack("<L", dir_stream.read(4))[0]
-            modulename_modulename = dir_stream.read(modulename_sizeof_modulename)
-            # TODO: preset variables to avoid "referenced before assignment" errors
-            modulename_unicode_modulename_unicode = ''
-            # account for optional sections
-            section_id = struct.unpack("<H", dir_stream.read(2))[0]
-            if section_id == 0x0047:
-                modulename_unicode_id = section_id
-                modulename_unicode_sizeof_modulename_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-                modulename_unicode_modulename_unicode = dir_stream.read(
-                    modulename_unicode_sizeof_modulename_unicode).decode('UTF-16LE', 'replace')
-                    # just guessing that this is the same encoding as used in OleFileIO
-                unused = modulename_unicode_id
-                section_id = struct.unpack("<H", dir_stream.read(2))[0]
-            if section_id == 0x001A:
-                modulestreamname_id = section_id
-                modulestreamname_sizeof_streamname = struct.unpack("<L", dir_stream.read(4))[0]
-                modulestreamname_streamname = dir_stream.read(modulestreamname_sizeof_streamname)
-                modulestreamname_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-                check_value('MODULESTREAMNAME_Reserved', 0x0032, modulestreamname_reserved)
-                modulestreamname_sizeof_streamname_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-                modulestreamname_streamname_unicode = dir_stream.read(
-                    modulestreamname_sizeof_streamname_unicode).decode('UTF-16LE', 'replace')
-                    # just guessing that this is the same encoding as used in OleFileIO
-                unused = modulestreamname_id
-                section_id = struct.unpack("<H", dir_stream.read(2))[0]
-            if section_id == 0x001C:
-                moduledocstring_id = section_id
-                check_value('MODULEDOCSTRING_Id', 0x001C, moduledocstring_id)
-                moduledocstring_sizeof_docstring = struct.unpack("<L", dir_stream.read(4))[0]
-                moduledocstring_docstring = dir_stream.read(moduledocstring_sizeof_docstring)
-                moduledocstring_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-                check_value('MODULEDOCSTRING_Reserved', 0x0048, moduledocstring_reserved)
-                moduledocstring_sizeof_docstring_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-                moduledocstring_docstring_unicode = dir_stream.read(moduledocstring_sizeof_docstring_unicode)
-                unused = moduledocstring_docstring
-                unused = moduledocstring_docstring_unicode
-                section_id = struct.unpack("<H", dir_stream.read(2))[0]
-            if section_id == 0x0031:
-                moduleoffset_id = section_id
-                check_value('MODULEOFFSET_Id', 0x0031, moduleoffset_id)
-                moduleoffset_size = struct.unpack("<L", dir_stream.read(4))[0]
-                check_value('MODULEOFFSET_Size', 0x0004, moduleoffset_size)
-                moduleoffset_textoffset = struct.unpack("<L", dir_stream.read(4))[0]
-                section_id = struct.unpack("<H", dir_stream.read(2))[0]
-            if section_id == 0x001E:
-                modulehelpcontext_id = section_id
-                check_value('MODULEHELPCONTEXT_Id', 0x001E, modulehelpcontext_id)
-                modulehelpcontext_size = struct.unpack("<L", dir_stream.read(4))[0]
-                check_value('MODULEHELPCONTEXT_Size', 0x0004, modulehelpcontext_size)
-                modulehelpcontext_helpcontext = struct.unpack("<L", dir_stream.read(4))[0]
-                unused = modulehelpcontext_helpcontext
-                section_id = struct.unpack("<H", dir_stream.read(2))[0]
-            if section_id == 0x002C:
-                modulecookie_id = section_id
-                check_value('MODULECOOKIE_Id', 0x002C, modulecookie_id)
-                modulecookie_size = struct.unpack("<L", dir_stream.read(4))[0]
-                check_value('MODULECOOKIE_Size', 0x0002, modulecookie_size)
-                modulecookie_cookie = struct.unpack("<H", dir_stream.read(2))[0]
-                unused = modulecookie_cookie
-                section_id = struct.unpack("<H", dir_stream.read(2))[0]
-            if section_id == 0x0021 or section_id == 0x0022:
-                moduletype_id = section_id
-                moduletype_reserved = struct.unpack("<L", dir_stream.read(4))[0]
-                unused = moduletype_id
-                unused = moduletype_reserved
-                section_id = struct.unpack("<H", dir_stream.read(2))[0]
-            if section_id == 0x0025:
-                modulereadonly_id = section_id
-                check_value('MODULEREADONLY_Id', 0x0025, modulereadonly_id)
-                modulereadonly_reserved = struct.unpack("<L", dir_stream.read(4))[0]
-                check_value('MODULEREADONLY_Reserved', 0x0000, modulereadonly_reserved)
-                section_id = struct.unpack("<H", dir_stream.read(2))[0]
-            if section_id == 0x0028:
-                moduleprivate_id = section_id
-                check_value('MODULEPRIVATE_Id', 0x0028, moduleprivate_id)
-                moduleprivate_reserved = struct.unpack("<L", dir_stream.read(4))[0]
-                check_value('MODULEPRIVATE_Reserved', 0x0000, moduleprivate_reserved)
-                section_id = struct.unpack("<H", dir_stream.read(2))[0]
-            if section_id == 0x002B:  # TERMINATOR
-                module_reserved = struct.unpack("<L", dir_stream.read(4))[0]
-                check_value('MODULE_Reserved', 0x0000, module_reserved)
-                section_id = None
-            if section_id != None:
-                log.warning('unknown or invalid module section id {0:04X}'.format(section_id))
-
-            log.debug('Project CodePage = %d' % projectcodepage_codepage)
-            if projectcodepage_codepage in MAC_CODEPAGES:
-                vba_codec = MAC_CODEPAGES[projectcodepage_codepage]
-            else:
-                vba_codec = 'cp%d' % projectcodepage_codepage
-            log.debug("ModuleName = {0}".format(modulename_modulename))
-            log.debug("ModuleNameUnicode = {0}".format(uni_out(modulename_unicode_modulename_unicode)))
-            log.debug("StreamName = {0}".format(modulestreamname_streamname))
-            try:
-                streamname_unicode = modulestreamname_streamname.decode(vba_codec)
-            except UnicodeError as ue:
-                log.debug('failed to decode stream name {0!r} with codec {1}'
-                          .format(uni_out(streamname_unicode), vba_codec))
-                streamname_unicode = modulestreamname_streamname.decode(vba_codec, errors='replace')
-            log.debug("StreamName.decode('%s') = %s" % (vba_codec, uni_out(streamname_unicode)))
-            log.debug("StreamNameUnicode = {0}".format(uni_out(modulestreamname_streamname_unicode)))
-            log.debug("TextOffset = {0}".format(moduleoffset_textoffset))
-
-            code_data = None
-            try_names = streamname_unicode, \
-                        modulename_unicode_modulename_unicode, \
-                        modulestreamname_streamname_unicode
-            for stream_name in try_names:
-                # TODO: if olefile._find were less private, could replace this
-                #        try-except with calls to it
-                try:
-                    code_path = vba_root + u'VBA/' + stream_name
-                    log.debug('opening VBA code stream %s' % uni_out(code_path))
-                    code_data = ole.openstream(code_path).read()
-                    break
-                except IOError as ioe:
-                    log.debug('failed to open stream VBA/%r (%r), try other name'
-                              % (uni_out(stream_name), ioe))
-
-            if code_data is None:
-                log.info("Could not open stream %d of %d ('VBA/' + one of %r)!"
-                         % (projectmodule_index, projectmodules_count,
-                                 '/'.join("'" + uni_out(stream_name) + "'"
-                                          for stream_name in try_names)))
-                if relaxed:
-                    continue   # ... with next submodule
-                else:
-                    raise SubstreamOpenError('[BASE]', 'VBA/' +
-                                uni_out(modulename_unicode_modulename_unicode))
-
-            log.debug("length of code_data = {0}".format(len(code_data)))
-            log.debug("offset of code_data = {0}".format(moduleoffset_textoffset))
-            code_data = code_data[moduleoffset_textoffset:]
-            if len(code_data) > 0:
-                code_data = decompress_stream(bytearray(code_data))
-                # case-insensitive search in the code_modules dict to find the file extension:
-                filext = code_modules.get(modulename_modulename.lower(), 'bin')
-                filename = '{0}.{1}'.format(modulename_modulename, filext)
-                #TODO: also yield the codepage so that callers can decode it properly
-                yield (code_path, filename, code_data)
-                # print '-'*79
-                # print filename
-                # print ''
-                # print code_data
-                # print ''
-                log.debug('extracted file {0}'.format(filename))
-            else:
-                log.warning("module stream {0} has code data length 0".format(modulestreamname_streamname))
-        except (UnexpectedDataError, SubstreamOpenError):
-            raise
-        except Exception as exc:
-            log.info('Error parsing module {0} of {1} in _extract_vba:'
-                     .format(projectmodule_index, projectmodules_count),
-                     exc_info=True)
-            if not relaxed:
-                raise
-    _ = unused   # make pylint happy: now variable "unused" is being used ;-)
-    return
+    for code_path, filename, code_data in project.parse_modules():
+        yield (code_path, filename, code_data)
 
 
 def vba_collapse_long_lines(vba_code):
