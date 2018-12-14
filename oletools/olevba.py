@@ -313,6 +313,7 @@ from oletools import oleform
 from oletools import rtfobj
 from oletools import oleid
 from oletools.common.errors import FileIsEncryptedError
+from oletools.common import codepages
 
 # monkeypatch email to fix issue #32:
 # allow header lines without ":"
@@ -1413,17 +1414,9 @@ class VBA_Project(object):
         projectcodepage_size = struct.unpack("<L", dir_stream.read(4))[0]
         self.check_value('PROJECTCODEPAGE_Size', 0x0002, projectcodepage_size)
         self.codepage = struct.unpack("<H", dir_stream.read(2))[0]
-        log.debug('Project Code Page: %r' % self.codepage)
-        if self.codepage in MAC_CODEPAGES:
-            self.codec = MAC_CODEPAGES[self.codepage]
-        else:
-            self.codec = 'cp%d' % self.codepage
-        # TODO: check if valid code page or raise a clear exception, and use UTF-8 as default?
-        try:
-            codecs.lookup(self.codec)
-        except LookupError:
-            log.error('Codec not found for code page %d, using UTF-8 as fallback.' % self.codepage)
-            self.codec = 'utf8'
+        self.codepage_name = codepages.get_codepage_name(self.codepage)
+        log.debug('Project Code Page: %r - %s' % (self.codepage, self.codepage_name))
+        self.codec = codepages.codepage2codec(self.codepage)
         log.debug('Python codec corresponding to code page %d: %s' % (self.codepage, self.codec))
 
 
@@ -1525,6 +1518,7 @@ class VBA_Project(object):
         unused = projectconstants_constants_unicode
 
         # array of REFERENCE records
+        # Specifies a reference to an Automation type library or VBA project.
         check = None
         while True:
             check = struct.unpack("<H", dir_stream.read(2))[0]
@@ -1534,6 +1528,7 @@ class VBA_Project(object):
 
             if check == 0x0016:
                 # REFERENCENAME
+                # Specifies the name of a referenced VBA project or Automation type library.
                 reference_id = check
                 reference_sizeof_name = struct.unpack("<L", dir_stream.read(4))[0]
                 reference_name = dir_stream.read(reference_sizeof_name)
@@ -1562,6 +1557,8 @@ class VBA_Project(object):
 
             if check == 0x0033:
                 # REFERENCEORIGINAL (followed by REFERENCECONTROL)
+                # Specifies the identifier of the Automation type library the containing REFERENCECONTROL’s
+                # (section 2.3.4.2.2.3) twiddled type library was generated from.
                 referenceoriginal_id = check
                 referenceoriginal_sizeof_libidoriginal = struct.unpack("<L", dir_stream.read(4))[0]
                 referenceoriginal_libidoriginal = dir_stream.read(referenceoriginal_sizeof_libidoriginal)
@@ -1571,6 +1568,7 @@ class VBA_Project(object):
 
             if check == 0x002F:
                 # REFERENCECONTROL
+                # Specifies a reference to a twiddled type library and its extended type library.
                 referencecontrol_id = check
                 referencecontrol_sizetwiddled = struct.unpack("<L", dir_stream.read(4))[0]  # ignore
                 referencecontrol_sizeof_libidtwiddled = struct.unpack("<L", dir_stream.read(4))[0]
@@ -1621,6 +1619,7 @@ class VBA_Project(object):
 
             if check == 0x000D:
                 # REFERENCEREGISTERED
+                # Specifies a reference to an Automation type library.
                 referenceregistered_id = check
                 referenceregistered_size = struct.unpack("<L", dir_stream.read(4))[0]
                 referenceregistered_sizeof_libid = struct.unpack("<L", dir_stream.read(4))[0]
@@ -1636,6 +1635,7 @@ class VBA_Project(object):
 
             if check == 0x000E:
                 # REFERENCEPROJECT
+                # Specifies a reference to an external VBA project.
                 referenceproject_id = check
                 referenceproject_size = struct.unpack("<L", dir_stream.read(4))[0]
                 referenceproject_sizeof_libidabsolute = struct.unpack("<L", dir_stream.read(4))[0]
@@ -1673,7 +1673,7 @@ class VBA_Project(object):
         # self.check_value('PROJECTMODULES_Id', 0x000F, projectmodules_id)
         projectmodules_size = struct.unpack("<L", dir_stream.read(4))[0]
         self.check_value('PROJECTMODULES_Size', 0x0002, projectmodules_size)
-        projectmodules_count = struct.unpack("<H", dir_stream.read(2))[0]
+        self.modules_count = struct.unpack("<H", dir_stream.read(2))[0]
         projectmodules_projectcookierecord_id = struct.unpack("<H", dir_stream.read(2))[0]
         self.check_value('PROJECTMODULES_ProjectCookieRecord_Id', 0x0013, projectmodules_projectcookierecord_id)
         projectmodules_projectcookierecord_size = struct.unpack("<L", dir_stream.read(4))[0]
@@ -1684,8 +1684,8 @@ class VBA_Project(object):
         # short function to simplify unicode text output
         uni_out = lambda unicode_text: unicode_text.encode('utf-8', 'replace')
 
-        log.debug("parsing {0} modules".format(projectmodules_count))
-        for projectmodule_index in xrange(0, projectmodules_count):
+        log.debug("parsing {0} modules".format(self.modules_count))
+        for projectmodule_index in xrange(0, self.modules_count):
             try:
                 modulename_id = struct.unpack("<H", dir_stream.read(2))[0]
                 self.check_value('MODULENAME_Id', 0x0019, modulename_id)
@@ -1807,7 +1807,7 @@ class VBA_Project(object):
 
                 if code_data is None:
                     log.info("Could not open stream %d of %d ('VBA/' + one of %r)!"
-                             % (projectmodule_index, projectmodules_count,
+                             % (projectmodule_index, self.modules_count,
                                      '/'.join("'" + uni_out(stream_name) + "'"
                                               for stream_name in try_names)))
                     if self.relaxed:
@@ -1839,7 +1839,7 @@ class VBA_Project(object):
                 raise
             except Exception as exc:
                 log.info('Error parsing module {0} of {1} in _extract_vba:'
-                         .format(projectmodule_index, projectmodules_count),
+                         .format(projectmodule_index, self.modules_count),
                          exc_info=True)
                 if not self.relaxed:
                     raise
