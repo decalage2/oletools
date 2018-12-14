@@ -3,6 +3,7 @@ codepages.py
 
 codepages is a python module to map code pages (numbers) to Python codecs,
 in order to decode bytes to unicode.
+It also provides the name/description of code pages.
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -45,6 +46,8 @@ __version__ = '0.54dev6'
 
 # -----------------------------------------------------------------------------
 # TODO:
+# TODO: check also http://www.aivosto.com/articles/charsets-codepages.html
+# TODO: https://en.wikipedia.org/wiki/Code_page
 
 # -----------------------------------------------------------------------------
 # REFERENCES:
@@ -289,6 +292,16 @@ def codepage2codec(codepage):
         #log.error('Codec not found for code page %d, using UTF-8 as fallback.' % codepage)
         codec = 'utf8'
     return codec
+
+
+def get_codepage_name(codepage):
+    """
+    return the name of a codepage based on its number
+    :param codepage: int, codepage number
+    :return: str, codepage name
+    """
+    return CODEPAGE_NAME.get(codepage, 'Unknown code page')
+
 
 # === MAIN: TESTS ============================================================
 
