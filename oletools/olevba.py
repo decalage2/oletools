@@ -1557,7 +1557,7 @@ class VBA_Project(object):
 
             if check == 0x0033:
                 # REFERENCEORIGINAL (followed by REFERENCECONTROL)
-                # Specifies the identifier of the Automation type library the containing REFERENCECONTROL’s
+                # Specifies the identifier of the Automation type library the containing REFERENCECONTROL's
                 # (section 2.3.4.2.2.3) twiddled type library was generated from.
                 referenceoriginal_id = check
                 referenceoriginal_sizeof_libidoriginal = struct.unpack("<L", dir_stream.read(4))[0]
