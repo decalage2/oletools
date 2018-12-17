@@ -1339,6 +1339,201 @@ def decompress_stream(compressed_container):
     return bytes(decompressed_container)
 
 
+class VBA_Module(object):
+    """
+    Class to parse a VBA module from an OLE file, and to store all the corresponding
+    metadata and VBA source code.
+    """
+
+    def __init__(self, project, dir_stream, module_index):
+        """
+        Parse a VBA Module record from the dir stream of a VBA project.
+        Reference: MS-OVBA 2.3.4.2.3.2 MODULE Record
+
+        :param project: VBA_Project, corresponding VBA project
+        :param dir_stream: olefile.OleStream, file object containing the module record
+        :param module_index: int, index of the module in the VBA project list
+        """
+        # store a reference to the VBA project for later use:
+        self.project = project
+        self.name = None
+        self.name_unicode = None
+        self.streamname = None
+        self.streamname_unicode = None
+        self.docstring = None
+        self.docstring_unicode = None
+        self.textoffset = None
+        self.type = None
+        self.readonly = False
+        self.private = False
+        self.code_bytes = None
+        self.code = None
+        self.filename = None
+        self.code_path = None
+        try:
+            # 2.3.4.2.3.2.1 MODULENAME Record
+            # Specifies a VBA identifier as the name of the containing MODULE Record
+            _id = struct.unpack("<H", dir_stream.read(2))[0]
+            project.check_value('MODULENAME_Id', 0x0019, _id)
+            size = struct.unpack("<L", dir_stream.read(4))[0]
+            modulename_bytes = dir_stream.read(size)
+            # Module name always stored as Unicode:
+            self.name = project.decode_bytes(modulename_bytes)
+            # account for optional sections
+            # TODO: shouldn't this be a loop? (check MS-OVBA)
+            section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x0047:
+                # 2.3.4.2.3.2.2 MODULENAMEUNICODE Record
+                # Specifies a VBA identifier as the name of the containing MODULE Record (section 2.3.4.2.3.2).
+                # MUST contain the UTF-16 encoding of MODULENAME Record
+                size = struct.unpack("<L", dir_stream.read(4))[0]
+                self.name_unicode = dir_stream.read(size).decode('UTF-16LE', 'replace')
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x001A:
+                # 2.3.4.2.3.2.3 MODULESTREAMNAME Record
+                # Specifies the stream name of the ModuleStream (section 2.3.4.3) in the VBA Storage (section 2.3.4)
+                # corresponding to the containing MODULE Record
+                size = struct.unpack("<L", dir_stream.read(4))[0]
+                streamname_bytes = dir_stream.read(size)
+                # Store it as Unicode:
+                self.streamname = project.decode_bytes(streamname_bytes)
+                reserved = struct.unpack("<H", dir_stream.read(2))[0]
+                project.check_value('MODULESTREAMNAME_Reserved', 0x0032, reserved)
+                size = struct.unpack("<L", dir_stream.read(4))[0]
+                self.streamname_unicode = dir_stream.read(size).decode('UTF-16LE', 'replace')
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x001C:
+                # 2.3.4.2.3.2.4 MODULEDOCSTRING Record
+                # Specifies the description for the containing MODULE Record
+                size = struct.unpack("<L", dir_stream.read(4))[0]
+                docstring_bytes = dir_stream.read(size)
+                self.docstring = project.decode_bytes(docstring_bytes)
+                reserved = struct.unpack("<H", dir_stream.read(2))[0]
+                project.check_value('MODULEDOCSTRING_Reserved', 0x0048, reserved)
+                size = struct.unpack("<L", dir_stream.read(4))[0]
+                self.docstring_unicode = dir_stream.read(size)
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x0031:
+                # 2.3.4.2.3.2.5 MODULEOFFSET Record
+                # Specifies the location of the source code within the ModuleStream (section 2.3.4.3)
+                # that corresponds to the containing MODULE Record
+                size = struct.unpack("<L", dir_stream.read(4))[0]
+                project.check_value('MODULEOFFSET_Size', 0x0004, size)
+                self.textoffset = struct.unpack("<L", dir_stream.read(4))[0]
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x001E:
+                # 2.3.4.2.3.2.6 MODULEHELPCONTEXT Record
+                # Specifies the Help topic identifier for the containing MODULE Record
+                modulehelpcontext_size = struct.unpack("<L", dir_stream.read(4))[0]
+                project.check_value('MODULEHELPCONTEXT_Size', 0x0004, modulehelpcontext_size)
+                # HelpContext (4 bytes): An unsigned integer that specifies the Help topic identifier
+                # in the Help file specified by PROJECTHELPFILEPATH Record
+                helpcontext = struct.unpack("<L", dir_stream.read(4))[0]
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x002C:
+                # 2.3.4.2.3.2.7 MODULECOOKIE Record
+                # Specifies ignored data.
+                size = struct.unpack("<L", dir_stream.read(4))[0]
+                project.check_value('MODULECOOKIE_Size', 0x0002, size)
+                cookie = struct.unpack("<H", dir_stream.read(2))[0]
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x0021 or section_id == 0x0022:
+                # 2.3.4.2.3.2.8 MODULETYPE Record
+                # Specifies whether the containing MODULE Record (section 2.3.4.2.3.2) is a procedural module,
+                # document module, class module, or designer module.
+                # Id (2 bytes): An unsigned integer that specifies the identifier for this record.
+                # MUST be 0x0021 when the containing MODULE Record (section 2.3.4.2.3.2) is a procedural module.
+                # MUST be 0x0022 when the containing MODULE Record (section 2.3.4.2.3.2) is a document module,
+                # class module, or designer module.
+                self.type = section_id
+                reserved = struct.unpack("<L", dir_stream.read(4))[0]
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x0025:
+                # 2.3.4.2.3.2.9 MODULEREADONLY Record
+                # Specifies that the containing MODULE Record (section 2.3.4.2.3.2) is read-only.
+                self.readonly = True
+                reserved = struct.unpack("<L", dir_stream.read(4))[0]
+                project.check_value('MODULEREADONLY_Reserved', 0x0000, reserved)
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x0028:
+                # 2.3.4.2.3.2.10 MODULEPRIVATE Record
+                # Specifies that the containing MODULE Record (section 2.3.4.2.3.2) is only usable from within
+                # the current VBA project.
+                self.private = True
+                reserved = struct.unpack("<L", dir_stream.read(4))[0]
+                project.check_value('MODULEPRIVATE_Reserved', 0x0000, reserved)
+                section_id = struct.unpack("<H", dir_stream.read(2))[0]
+            if section_id == 0x002B:  # TERMINATOR
+                # Terminator (2 bytes): An unsigned integer that specifies the end of this record. MUST be 0x002B.
+                # Reserved (4 bytes): MUST be 0x00000000. MUST be ignored.
+                reserved = struct.unpack("<L", dir_stream.read(4))[0]
+                project.check_value('MODULE_Reserved', 0x0000, reserved)
+                section_id = None
+            if section_id != None:
+                log.warning('unknown or invalid module section id {0:04X}'.format(section_id))
+        
+            log.debug("Module Name = {0}".format(self.name))
+            log.debug("Module Name Unicode = {0}".format(self.name_unicode))
+            log.debug("Stream Name = {0}".format(self.streamname))
+            log.debug("Stream Name Unicode = {0}".format(self.streamname_unicode))
+            log.debug("TextOffset = {0}".format(self.textoffset))
+        
+            code_data = None
+            # let's try the different names we have, just in case some are missing:
+            try_names = (self.streamname, self.streamname_unicode, self.name, self.name_unicode)
+            for stream_name in try_names:
+                # TODO: if olefile._find were less private, could replace this
+                #        try-except with calls to it
+                if stream_name is not None:
+                    try:
+                        self.code_path = project.vba_root + u'VBA/' + stream_name
+                        log.debug('opening VBA code stream %s' % self.code_path)
+                        code_data = project.ole.openstream(self.code_path).read()
+                        break
+                    except IOError as ioe:
+                        log.debug('failed to open stream VBA/%r (%r), try other name'
+                                  % (stream_name, ioe))
+        
+            if code_data is None:
+                log.info("Could not open stream %d of %d ('VBA/' + one of %r)!"
+                         % (module_index, project.modules_count,
+                            '/'.join("'" + stream_name + "'"
+                                     for stream_name in try_names)))
+                if project.relaxed:
+                    return  # ... continue with next submodule
+                else:
+                    raise SubstreamOpenError('[BASE]', 'VBA/' + self.name)
+        
+            log.debug("length of code_data = {0}".format(len(code_data)))
+            log.debug("offset of code_data = {0}".format(self.textoffset))
+            code_data = code_data[self.textoffset:]
+            if len(code_data) > 0:
+                code_data = decompress_stream(bytearray(code_data))
+                self.code_bytes = code_data
+                self.code = project.decode_bytes(code_data)
+                # case-insensitive search in the code_modules dict to find the file extension:
+                # filext = code_modules.get(modulename_modulename.lower(), 'bin')
+                filext = 'vba'
+                self.filename = '{0}.{1}'.format(self.name, filext)
+                #yield (code_path, filename, code_data)
+                # print '-'*79
+                # print filename
+                # print ''
+                # print code_data
+                # print ''
+                log.debug('extracted file {0}'.format(self.filename))
+            else:
+                log.warning("module stream {0} has code data length 0".format(self.streamname))
+        except (UnexpectedDataError, SubstreamOpenError):
+            raise
+        except Exception as exc:
+            log.info('Error parsing module {0} of {1}:'
+                     .format(module_index, project.modules_count),
+                     exc_info=True)
+            if not project.relaxed:
+                raise
+
+
 class VBA_Project(object):
     """
     Class to parse a VBA project from an OLE file, and to store all the corresponding
@@ -1359,6 +1554,7 @@ class VBA_Project(object):
         self. project_path = project_path
         self.dir_path = dir_path
         self.relaxed = relaxed
+        self.modules = []
         log.debug('Parsing the dir stream from %r' % dir_path)
         # read data from dir stream (compressed)
         dir_compressed = ole.openstream(dir_path).read()
@@ -1674,175 +1870,18 @@ class VBA_Project(object):
         projectmodules_size = struct.unpack("<L", dir_stream.read(4))[0]
         self.check_value('PROJECTMODULES_Size', 0x0002, projectmodules_size)
         self.modules_count = struct.unpack("<H", dir_stream.read(2))[0]
-        projectmodules_projectcookierecord_id = struct.unpack("<H", dir_stream.read(2))[0]
-        self.check_value('PROJECTMODULES_ProjectCookieRecord_Id', 0x0013, projectmodules_projectcookierecord_id)
-        projectmodules_projectcookierecord_size = struct.unpack("<L", dir_stream.read(4))[0]
-        self.check_value('PROJECTMODULES_ProjectCookieRecord_Size', 0x0002, projectmodules_projectcookierecord_size)
-        projectmodules_projectcookierecord_cookie = struct.unpack("<H", dir_stream.read(2))[0]
-        unused = projectmodules_projectcookierecord_cookie
-
-        # short function to simplify unicode text output
-        uni_out = lambda unicode_text: unicode_text.encode('utf-8', 'replace')
+        _id = struct.unpack("<H", dir_stream.read(2))[0]
+        self.check_value('PROJECTMODULES_ProjectCookieRecord_Id', 0x0013, _id)
+        size = struct.unpack("<L", dir_stream.read(4))[0]
+        self.check_value('PROJECTMODULES_ProjectCookieRecord_Size', 0x0002, size)
+        projectcookierecord_cookie = struct.unpack("<H", dir_stream.read(2))[0]
+        unused = projectcookierecord_cookie
 
         log.debug("parsing {0} modules".format(self.modules_count))
-        for projectmodule_index in xrange(0, self.modules_count):
-            try:
-                modulename_id = struct.unpack("<H", dir_stream.read(2))[0]
-                self.check_value('MODULENAME_Id', 0x0019, modulename_id)
-                modulename_sizeof_modulename = struct.unpack("<L", dir_stream.read(4))[0]
-                modulename_modulename = dir_stream.read(modulename_sizeof_modulename)
-                # TODO: preset variables to avoid "referenced before assignment" errors
-                modulename_unicode_modulename_unicode = ''
-                # account for optional sections
-                section_id = struct.unpack("<H", dir_stream.read(2))[0]
-                if section_id == 0x0047:
-                    modulename_unicode_id = section_id
-                    modulename_unicode_sizeof_modulename_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-                    modulename_unicode_modulename_unicode = dir_stream.read(
-                        modulename_unicode_sizeof_modulename_unicode).decode('UTF-16LE', 'replace')
-                        # just guessing that this is the same encoding as used in OleFileIO
-                    unused = modulename_unicode_id
-                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
-                if section_id == 0x001A:
-                    modulestreamname_id = section_id
-                    modulestreamname_sizeof_streamname = struct.unpack("<L", dir_stream.read(4))[0]
-                    modulestreamname_streamname = dir_stream.read(modulestreamname_sizeof_streamname)
-                    modulestreamname_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-                    self.check_value('MODULESTREAMNAME_Reserved', 0x0032, modulestreamname_reserved)
-                    modulestreamname_sizeof_streamname_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-                    modulestreamname_streamname_unicode = dir_stream.read(
-                        modulestreamname_sizeof_streamname_unicode).decode('UTF-16LE', 'replace')
-                        # just guessing that this is the same encoding as used in OleFileIO
-                    unused = modulestreamname_id
-                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
-                if section_id == 0x001C:
-                    moduledocstring_id = section_id
-                    self.check_value('MODULEDOCSTRING_Id', 0x001C, moduledocstring_id)
-                    moduledocstring_sizeof_docstring = struct.unpack("<L", dir_stream.read(4))[0]
-                    moduledocstring_docstring = dir_stream.read(moduledocstring_sizeof_docstring)
-                    moduledocstring_reserved = struct.unpack("<H", dir_stream.read(2))[0]
-                    self.check_value('MODULEDOCSTRING_Reserved', 0x0048, moduledocstring_reserved)
-                    moduledocstring_sizeof_docstring_unicode = struct.unpack("<L", dir_stream.read(4))[0]
-                    moduledocstring_docstring_unicode = dir_stream.read(moduledocstring_sizeof_docstring_unicode)
-                    unused = moduledocstring_docstring
-                    unused = moduledocstring_docstring_unicode
-                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
-                if section_id == 0x0031:
-                    moduleoffset_id = section_id
-                    self.check_value('MODULEOFFSET_Id', 0x0031, moduleoffset_id)
-                    moduleoffset_size = struct.unpack("<L", dir_stream.read(4))[0]
-                    self.check_value('MODULEOFFSET_Size', 0x0004, moduleoffset_size)
-                    moduleoffset_textoffset = struct.unpack("<L", dir_stream.read(4))[0]
-                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
-                if section_id == 0x001E:
-                    modulehelpcontext_id = section_id
-                    self.check_value('MODULEHELPCONTEXT_Id', 0x001E, modulehelpcontext_id)
-                    modulehelpcontext_size = struct.unpack("<L", dir_stream.read(4))[0]
-                    self.check_value('MODULEHELPCONTEXT_Size', 0x0004, modulehelpcontext_size)
-                    modulehelpcontext_helpcontext = struct.unpack("<L", dir_stream.read(4))[0]
-                    unused = modulehelpcontext_helpcontext
-                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
-                if section_id == 0x002C:
-                    modulecookie_id = section_id
-                    self.check_value('MODULECOOKIE_Id', 0x002C, modulecookie_id)
-                    modulecookie_size = struct.unpack("<L", dir_stream.read(4))[0]
-                    self.check_value('MODULECOOKIE_Size', 0x0002, modulecookie_size)
-                    modulecookie_cookie = struct.unpack("<H", dir_stream.read(2))[0]
-                    unused = modulecookie_cookie
-                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
-                if section_id == 0x0021 or section_id == 0x0022:
-                    moduletype_id = section_id
-                    moduletype_reserved = struct.unpack("<L", dir_stream.read(4))[0]
-                    unused = moduletype_id
-                    unused = moduletype_reserved
-                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
-                if section_id == 0x0025:
-                    modulereadonly_id = section_id
-                    self.check_value('MODULEREADONLY_Id', 0x0025, modulereadonly_id)
-                    modulereadonly_reserved = struct.unpack("<L", dir_stream.read(4))[0]
-                    self.check_value('MODULEREADONLY_Reserved', 0x0000, modulereadonly_reserved)
-                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
-                if section_id == 0x0028:
-                    moduleprivate_id = section_id
-                    self.check_value('MODULEPRIVATE_Id', 0x0028, moduleprivate_id)
-                    moduleprivate_reserved = struct.unpack("<L", dir_stream.read(4))[0]
-                    self.check_value('MODULEPRIVATE_Reserved', 0x0000, moduleprivate_reserved)
-                    section_id = struct.unpack("<H", dir_stream.read(2))[0]
-                if section_id == 0x002B:  # TERMINATOR
-                    module_reserved = struct.unpack("<L", dir_stream.read(4))[0]
-                    self.check_value('MODULE_Reserved', 0x0000, module_reserved)
-                    section_id = None
-                if section_id != None:
-                    log.warning('unknown or invalid module section id {0:04X}'.format(section_id))
-
-                # TODO: handle case when modulestreamname_streamname is not provided
-                log.debug("ModuleName = {0}".format(modulename_modulename))
-                log.debug("ModuleNameUnicode = {0}".format(uni_out(modulename_unicode_modulename_unicode)))
-                log.debug("StreamName = {0}".format(modulestreamname_streamname))
-                try:
-                    streamname_unicode = self.decode_bytes(modulestreamname_streamname)
-                except UnicodeError as ue:
-                    log.debug('failed to decode stream name {0!r} with codec {1}'
-                              .format(uni_out(streamname_unicode), self.codec))
-                    streamname_unicode = modulestreamname_streamname.decode(self.codec, errors='replace')
-                log.debug("StreamName.decode('%s') = %s" % (self.codec, uni_out(streamname_unicode)))
-                log.debug("StreamNameUnicode = {0}".format(uni_out(modulestreamname_streamname_unicode)))
-                log.debug("TextOffset = {0}".format(moduleoffset_textoffset))
-
-                code_data = None
-                try_names = streamname_unicode, \
-                            modulename_unicode_modulename_unicode, \
-                            modulestreamname_streamname_unicode
-                for stream_name in try_names:
-                    # TODO: if olefile._find were less private, could replace this
-                    #        try-except with calls to it
-                    try:
-                        code_path = self.vba_root + u'VBA/' + stream_name
-                        log.debug('opening VBA code stream %s' % uni_out(code_path))
-                        code_data = self.ole.openstream(code_path).read()
-                        break
-                    except IOError as ioe:
-                        log.debug('failed to open stream VBA/%r (%r), try other name'
-                                  % (uni_out(stream_name), ioe))
-
-                if code_data is None:
-                    log.info("Could not open stream %d of %d ('VBA/' + one of %r)!"
-                             % (projectmodule_index, self.modules_count,
-                                     '/'.join("'" + uni_out(stream_name) + "'"
-                                              for stream_name in try_names)))
-                    if self.relaxed:
-                        continue   # ... with next submodule
-                    else:
-                        raise SubstreamOpenError('[BASE]', 'VBA/' +
-                                    uni_out(modulename_unicode_modulename_unicode))
-
-                log.debug("length of code_data = {0}".format(len(code_data)))
-                log.debug("offset of code_data = {0}".format(moduleoffset_textoffset))
-                code_data = code_data[moduleoffset_textoffset:]
-                if len(code_data) > 0:
-                    code_data = decompress_stream(bytearray(code_data))
-                    # case-insensitive search in the code_modules dict to find the file extension:
-                    # filext = code_modules.get(modulename_modulename.lower(), 'bin')
-                    filext = 'vba'
-                    filename = '{0}.{1}'.format(modulename_modulename, filext)
-                    #TODO: also yield the codepage so that callers can decode it properly
-                    yield (code_path, filename, code_data)
-                    # print '-'*79
-                    # print filename
-                    # print ''
-                    # print code_data
-                    # print ''
-                    log.debug('extracted file {0}'.format(filename))
-                else:
-                    log.warning("module stream {0} has code data length 0".format(modulestreamname_streamname))
-            except (UnexpectedDataError, SubstreamOpenError):
-                raise
-            except Exception as exc:
-                log.info('Error parsing module {0} of {1} in _extract_vba:'
-                         .format(projectmodule_index, self.modules_count),
-                         exc_info=True)
-                if not self.relaxed:
-                    raise
+        for module_index in xrange(0, self.modules_count):
+            module = VBA_Module(self, self.dir_stream, module_index=module_index)
+            self.modules.append(module)
+            yield (module.code_path, module.filename, module.code)
         _ = unused   # make pylint happy: now variable "unused" is being used ;-)
         return
 
@@ -1923,7 +1962,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
                 code_modules[value] = FORM_EXTENSION
 
     for code_path, filename, code_data in project.parse_modules():
-        yield (code_path, filename, code_data)
+        yield (code_path, filename, code_data.encode('utf8', 'replace'))
 
 
 def vba_collapse_long_lines(vba_code):
