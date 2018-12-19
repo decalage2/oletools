@@ -75,7 +75,10 @@ Projects using oletools:
 ------------------------
 
 oletools are used by a number of projects and online malware analysis services,
-including [Viper](http://viper.li/), [REMnux](https://remnux.org/),
+including
+[Viper](http://viper.li/),
+[REMnux](https://remnux.org/),
+[FLARE-VM](https://github.com/fireeye/flare-vm),
 [FAME](https://certsocietegenerale.github.io/fame/),
 [Hybrid-analysis.com](https://www.hybrid-analysis.com/),
 [Joe Sandbox](https://www.document-analyzer.net/),
@@ -95,6 +98,7 @@ including [Viper](http://viper.li/), [REMnux](https://remnux.org/),
 [malware-repo](https://github.com/Tigzy/malware-repo),
 [Vba2Graph](https://github.com/MalwareCantFly/Vba2Graph),
 [Strelka](https://github.com/target/strelka),
+[stoQ](https://stoq.punchcyber.com/),
 and probably [VirusTotal](https://www.virustotal.com). 
 And quite a few [other projects on GitHub](https://github.com/search?q=oletools&type=Repositories).
 (Please [contact me]((http://decalage.info/contact)) if you have or know
