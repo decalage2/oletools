@@ -3607,7 +3607,7 @@ def parse_args(cmd_line_args=None):
     parser.add_option("-r", action="store_true", dest="recursive",
                       help='find files recursively in subdirectories.')
     parser.add_option("-z", "--zip", dest='zip_password', type='str', default=None,
-                      help='if the file is a zip archive, open all files from it, using the provided password (requires Python 2.6+)')
+                      help='if the file is a zip archive, open all files from it, using the provided password.')
     parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
                       help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
     # output mode; could make this even simpler with add_option(type='choice') but that would make
