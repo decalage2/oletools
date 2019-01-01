@@ -28,7 +28,7 @@ https://github.com/unixfreak0037/officeparser
 
 # === LICENSE ==================================================================
 
-# olevba is copyright (c) 2014-2018 Philippe Lagadec (http://www.decalage.info)
+# olevba is copyright (c) 2014-2019 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -212,8 +212,9 @@ from __future__ import print_function
 # 2018-10-25       CH: - detect encryption and raise error if detected
 # 2018-12-03       PL: - uses tablestream (+colors) instead of prettytable
 # 2018-12-06       PL: - colorize the suspicious keywords found in VBA code
+# 2019-01-01       PL: - removed support for Python 2.6
 
-__version__ = '0.54dev6'
+__version__ = '0.54dev7'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -327,19 +328,11 @@ if sys.version_info[0] <= 2:
     # to use ord on bytes/bytearray items the same way in Python 2+3
     # on Python 2, just use the normal ord() because items are bytes
     byte_ord = ord
-    if sys.version_info[1] <= 6:
-        # Python 2.6
-        # use is_zipfile backported from Python 2.7:
-        from thirdparty.zipfile27 import is_zipfile
-    else:
-        # Python 2.7
-        from zipfile import is_zipfile
 else:
     # Python 3.x+
     # to use ord on bytes/bytearray items the same way in Python 2+3
     # on Python 3, items are int, so just return the item
     byte_ord = lambda x: x
-    from zipfile import is_zipfile
     # xrange is now called range:
     xrange = range
     # unichr does not exist anymore, only chr:
@@ -2533,7 +2526,7 @@ class VBA_Parser(object):
 
             # if this worked, try whether it is a ppt file (special ole file)
             self.open_ppt()
-        if self.type is None and is_zipfile(_file):
+        if self.type is None and zipfile.is_zipfile(_file):
             # Zip file, which may be an OpenXML document
             self.open_openxml(_file)
         if self.type is None:
