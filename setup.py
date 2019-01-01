@@ -47,7 +47,7 @@ import os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.54dev6'
+version      = '0.54dev7'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       = "Philippe Lagadec"
@@ -89,7 +89,6 @@ packages=[
     'oletools.thirdparty.xglob',
     'oletools.thirdparty.DridexUrlDecoder',
     'oletools.thirdparty.tablestream',
-    'oletools.thirdparty.zipfile27',
 ]
 ##setupdir = '.'
 ##package_dir={'': setupdir}
@@ -175,9 +174,6 @@ package_data={
         'CHANGELOG', 'COPYING', 'README'
         ],
     'oletools.thirdparty.DridexUrlDecoder': [
-        'LICENSE.txt',
-        ],
-    'oletools.thirdparty.zipfile27': [
         'LICENSE.txt',
         ],
     # 'oletools.thirdparty.tablestream': [
