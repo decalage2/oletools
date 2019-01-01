@@ -3006,7 +3006,7 @@ class VBA_Parser(object):
                         log.debug('%r...[much more data]...%r' % (data[:100], data[-50:]))
                     else:
                         log.debug(repr(data))
-                    if 'Attribut\x00' in data:
+                    if b'Attribut\x00' in data:
                         log.debug('Found VBA compressed code')
                         self.contains_macros = True
                 except IOError as exc:
@@ -3073,7 +3073,7 @@ class VBA_Parser(object):
                     # read data
                     log.debug('Reading data from stream %r' % d.name)
                     data = ole._open(d.isectStart, d.size).read()
-                    for match in re.finditer(r'\x00Attribut[^e]', data, flags=re.IGNORECASE):
+                    for match in re.finditer(b'\\x00Attribut[^e]', data, flags=re.IGNORECASE):
                         start = match.start() - 3
                         log.debug('Found VBA compressed code at index %X' % start)
                         compressed_code = data[start:]
