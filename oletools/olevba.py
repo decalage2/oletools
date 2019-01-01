@@ -360,16 +360,6 @@ if sys.version_info >= (3, 0) and sys.version_info < (3, 5):
 
 # === LOGGING =================================================================
 
-class NullHandler(logging.Handler):
-    """
-    Log Handler without output, to avoid printing messages if logging is not
-    configured by the main application.
-    Python 2.7 has logging.NullHandler, but this is necessary for 2.6:
-    see https://docs.python.org/2.6/library/logging.html#configuring-logging-for-a-library
-    """
-    def emit(self, record):
-        pass
-
 def get_logger(name, level=logging.CRITICAL+1):
     """
     Create a suitable logger object for this module.
@@ -392,7 +382,7 @@ def get_logger(name, level=logging.CRITICAL+1):
     logger = logging.getLogger(name)
     # only add a NullHandler for this logger, it is up to the application
     # to configure its own logging:
-    logger.addHandler(NullHandler())
+    logger.addHandler(logging.NullHandler())
     logger.setLevel(level)
     return logger
 
