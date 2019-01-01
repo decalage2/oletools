@@ -628,6 +628,7 @@ SUSPICIOUS_KEYWORDS = {
         ('CreateTextFile', 'ADODB.Stream', 'WriteText', 'SaveToFile'),
     #CreateTextFile: http://msdn.microsoft.com/en-us/library/office/gg264617%28v=office.15%29.aspx
     #ADODB.Stream sample: http://pastebin.com/Z4TMyuq6
+    # ShellExecute: https://twitter.com/StanHacked/status/1075088449768693762
     'May run an executable file or a system command':
         ('Shell', 'vbNormal', 'vbNormalFocus', 'vbHide', 'vbMinimizedFocus', 'vbMaximizedFocus', 'vbNormalNoFocus',
          'vbMinimizedNoFocus', 'WScript.Shell', 'Run', 'ShellExecute'),
@@ -1350,14 +1351,17 @@ class VBA_Module(object):
         Parse a VBA Module record from the dir stream of a VBA project.
         Reference: MS-OVBA 2.3.4.2.3.2 MODULE Record
 
-        :param project: VBA_Project, corresponding VBA project
-        :param dir_stream: olefile.OleStream, file object containing the module record
-        :param module_index: int, index of the module in the VBA project list
+        :param VBA_Project project: VBA_Project, corresponding VBA project
+        :param olefile.OleStream dir_stream: olefile.OleStream, file object containing the module record
+        :param int module_index: int, index of the module in the VBA project list
         """
-        # store a reference to the VBA project for later use:
+        #: store a reference to the VBA project for later use:
         self.project = project
+        #: VBA project name
         self.name = None
+        #: VBA project name (Unicode)
         self.name_unicode = None
+        #: Stream name containing the VBA project
         self.streamname = None
         self.streamname_unicode = None
         self.docstring = None
