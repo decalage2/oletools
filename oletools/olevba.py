@@ -7,14 +7,14 @@ olevba is a script to parse OLE and OpenXML files such as MS Office documents
 and analyze malicious macros.
 
 Supported formats:
-- Word 97-2003 (.doc, .dot), Word 2007+ (.docm, .dotm)
-- Excel 97-2003 (.xls), Excel 2007+ (.xlsm, .xlsb)
-- PowerPoint 97-2003 (.ppt), PowerPoint 2007+ (.pptm, .ppsm)
-- Word/PowerPoint 2007+ XML (aka Flat OPC)
-- Word 2003 XML (.xml)
-- Word/Excel Single File Web Page / MHTML (.mht)
-- Publisher (.pub)
-- raises an error if run with files encrypted using MS Crypto API RC4
+    - Word 97-2003 (.doc, .dot), Word 2007+ (.docm, .dotm)
+    - Excel 97-2003 (.xls), Excel 2007+ (.xlsm, .xlsb)
+    - PowerPoint 97-2003 (.ppt), PowerPoint 2007+ (.pptm, .ppsm)
+    - Word/PowerPoint 2007+ XML (aka Flat OPC)
+    - Word 2003 XML (.xml)
+    - Word/Excel Single File Web Page / MHTML (.mht)
+    - Publisher (.pub)
+    - raises an error if run with files encrypted using MS Crypto API RC4
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -328,6 +328,8 @@ if sys.version_info[0] <= 2:
     # to use ord on bytes/bytearray items the same way in Python 2+3
     # on Python 2, just use the normal ord() because items are bytes
     byte_ord = ord
+    #: Default string encoding for the olevba API
+    DEFAULT_API_ENCODING = 'utf8' # on Python 2: UTF-8 (bytes)
 else:
     # Python 3.x+
     # to use ord on bytes/bytearray items the same way in Python 2+3
@@ -338,6 +340,8 @@ else:
     # unichr does not exist anymore, only chr:
     unichr = chr
     from functools import reduce
+    #: Default string encoding for the olevba API
+    DEFAULT_API_ENCODING = None # on Python 3: None (unicode)
 
 
 # === PYTHON 3.0 - 3.4 SUPPORT ======================================================
@@ -1338,7 +1342,7 @@ class VBA_Module(object):
         :param olefile.OleStream dir_stream: olefile.OleStream, file object containing the module record
         :param int module_index: int, index of the module in the VBA project list
         """
-        #: store a reference to the VBA project for later use:
+        #: reference to the VBA project for later use
         self.project = project
         #: VBA project name
         self.name = None
@@ -2423,7 +2427,7 @@ def scan_vba(vba_code, include_decoded_strings, deobfuscate=False):
     :param include_decoded_strings: bool, if True all encoded strings will be included with their decoded content.
     :param deobfuscate: bool, if True attempt to deobfuscate VBA expressions (slow)
     :return: list of tuples (type, keyword, description)
-    (type = 'AutoExec', 'Suspicious', 'IOC', 'Hex String', 'Base64 String' or 'Dridex String')
+        with type = 'AutoExec', 'Suspicious', 'IOC', 'Hex String', 'Base64 String' or 'Dridex String'
     """
     return VBA_Scanner(vba_code).scan(include_decoded_strings, deobfuscate)
 
@@ -2433,38 +2437,32 @@ def scan_vba(vba_code, include_decoded_strings, deobfuscate=False):
 class VBA_Parser(object):
     """
     Class to parse MS Office files, to detect VBA macros and extract VBA source code
-    Supported file formats:
-    - Word 97-2003 (.doc, .dot)
-    - Word 2007+ (.docm, .dotm)
-    - Word 2003 XML (.xml)
-    - Word MHT - Single File Web Page / MHTML (.mht)
-    - Excel 97-2003 (.xls)
-    - Excel 2007+ (.xlsm, .xlsb)
-    - PowerPoint 97-2003 (.ppt)
-    - PowerPoint 2007+ (.pptm, .ppsm)
     """
 
-    def __init__(self, filename, data=None, container=None, relaxed=False):
+    def __init__(self, filename, data=None, container=None, relaxed=False, encoding=DEFAULT_API_ENCODING):
         """
         Constructor for VBA_Parser
 
-        :param filename: filename or path of file to parse, or file-like object
+        :param str filename: filename or path of file to parse, or file-like object
 
-        :param data: None or bytes str, if None the file will be read from disk (or from the file-like object).
-        If data is provided as a bytes string, it will be parsed as the content of the file in memory,
-        and not read from disk. Note: files must be read in binary mode, i.e. open(f, 'rb').
+        :param bytes data: None or bytes str, if None the file will be read from disk (or from the file-like object).
+            If data is provided as a bytes string, it will be parsed as the content of the file in memory,
+            and not read from disk. Note: files must be read in binary mode, i.e. open(f, 'rb').
 
-        :param container: str, path and filename of container if the file is within
-        a zip archive, None otherwise.
+        :param str container: str, path and filename of container if the file is within
+            a zip archive, None otherwise.
 
-        :param relaxed: if True, treat mal-formed documents and missing streams more like MS office:
-                        do nothing; if False (default), raise errors in these cases
+        :param bool relaxed: if True, treat mal-formed documents and missing streams more like MS office:
+            do nothing; if False (default), raise errors in these cases
 
-        raises a FileOpenError if all attemps to interpret the data header failed
+        :param str encoding: encoding for VBA source code and strings.
+            Default: UTF-8 bytes strings on Python 2, unicode strings on Python 3 (None)
+
+        raises a FileOpenError if all attempts to interpret the data header failed.
         """
-        #TODO: filename should only be a string, data should be used for the file-like object
-        #TODO: filename should be mandatory, optional data is a string or file-like object
-        #TODO: also support olefile and zipfile as input
+        # TODO: filename should only be a string, data should be used for the file-like object
+        # TODO: filename should be mandatory, optional data is a string or file-like object
+        # TODO: also support olefile and zipfile as input
         if data is None:
             # open file from disk:
             _file = filename
@@ -2495,6 +2493,8 @@ class VBA_Parser(object):
         self.nb_base64strings = 0
         self.nb_dridexstrings = 0
         self.nb_vbastrings = 0
+        #: Encoding for VBA source code and strings returned by all methods
+        self.encoding = encoding
 
         # if filename is None:
         #     if isinstance(_file, basestring):
@@ -3000,6 +3000,19 @@ class VBA_Parser(object):
                         raise SubstreamOpenError(self.filename, d.name, exc)
         return self.contains_macros
 
+    def encode_string(self, unicode_str):
+        """
+        Encode a unicode string to bytes or str, using the specified encoding
+        for the VBA_parser. By default, it will be bytes/UTF-8 on Python 2, and
+        a normal unicode string on Python 3.
+        :param str unicode_str: string to be encoded
+        :return: encoded string
+        """
+        if self.encoding is None:
+            return unicode_str
+        else:
+            return unicode_str.encode(self.encoding, errors='replace')
+
     def extract_macros(self):
         """
         Extract and decompress source code for each VBA macro found in the file
@@ -3062,6 +3075,7 @@ class VBA_Parser(object):
                         compressed_code = data[start:]
                         try:
                             vba_code = decompress_stream(bytearray(compressed_code))
+                            # TODO vba_code = self.encode_string(vba_code)
                             yield (self.filename, d.name, d.name, vba_code)
                         except Exception as exc:
                             # display the exception with full stack trace for debugging
