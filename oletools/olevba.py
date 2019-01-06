@@ -325,6 +325,7 @@ email.feedparser.headerRE = re.compile(r'^(From |[\041-\071\073-\176]{1,}:?|[\t 
 
 if sys.version_info[0] <= 2:
     # Python 2.x
+    PYTHON2 = True
     # to use ord on bytes/bytearray items the same way in Python 2+3
     # on Python 2, just use the normal ord() because items are bytes
     byte_ord = ord
@@ -332,6 +333,7 @@ if sys.version_info[0] <= 2:
     DEFAULT_API_ENCODING = 'utf8' # on Python 2: UTF-8 (bytes)
 else:
     # Python 3.x+
+    PYTHON2 = False
     # to use ord on bytes/bytearray items the same way in Python 2+3
     # on Python 3, items are int, so just return the item
     byte_ord = lambda x: x
@@ -1342,13 +1344,13 @@ class VBA_Module(object):
         :param olefile.OleStream dir_stream: olefile.OleStream, file object containing the module record
         :param int module_index: int, index of the module in the VBA project list
         """
-        #: reference to the VBA project for later use
+        #: reference to the VBA project for later use (VBA_Project)
         self.project = project
-        #: VBA project name
+        #: VBA project name (unicode str)
         self.name = None
-        #: VBA project name (Unicode)
+        #: VBA project name, unicode copy (unicode str)
         self.name_unicode = None
-        #: Stream name containing the VBA project
+        #: Stream name containing the VBA project (unicode str)
         self.streamname = None
         self.streamname_unicode = None
         self.docstring = None
@@ -1357,8 +1359,12 @@ class VBA_Module(object):
         self.type = None
         self.readonly = False
         self.private = False
-        self.code_bytes = None
+        #: VBA source code in bytes format, using the original code page from the VBA project
+        self.code_raw = None
+        #: VBA source code in unicode format (unicode for Python2, str for Python 3)
         self.code = None
+        #: VBA source code in native str format (str encoded with UTF-8 for Python 2, str for Python 3)
+        self.code_str = None
         self.filename = None
         self.code_path = None
         try:
@@ -1500,8 +1506,17 @@ class VBA_Module(object):
             code_data = code_data[self.textoffset:]
             if len(code_data) > 0:
                 code_data = decompress_stream(bytearray(code_data))
-                self.code_bytes = code_data
+                # store the raw code encoded as bytes with the project's code page:
+                self.code_raw = code_data
+                # decode it to unicode:
                 self.code = project.decode_bytes(code_data)
+                # also store a native str version:
+                if PYTHON2:
+                    # UTF-8 encoded bytes for Python 2:
+                    self.code_str = self.code.encode('utf8', errors='replace')
+                else:
+                    # plain unicode for Python 3:
+                    self.code_str = self.code
                 # case-insensitive search in the code_modules dict to find the file extension:
                 # filext = code_modules.get(modulename_modulename.lower(), 'bin')
                 filext = 'vba'
@@ -1545,6 +1560,7 @@ class VBA_Project(object):
         self. project_path = project_path
         self.dir_path = dir_path
         self.relaxed = relaxed
+        #: VBA modules contained in the project (list of VBA_Module objects)
         self.modules = []
         log.debug('Parsing the dir stream from %r' % dir_path)
         # read data from dir stream (compressed)
