@@ -1349,12 +1349,12 @@ class VBA_Module(object):
         #: VBA project name (unicode str)
         self.name = None
         #: VBA project name, unicode copy (unicode str)
-        self.name_unicode = None
+        self._name_unicode = None
         #: Stream name containing the VBA project (unicode str)
         self.streamname = None
-        self.streamname_unicode = None
+        self._streamname_unicode = None
         self.docstring = None
-        self.docstring_unicode = None
+        self._docstring_unicode = None
         self.textoffset = None
         self.type = None
         self.readonly = False
@@ -1384,7 +1384,7 @@ class VBA_Module(object):
                 # Specifies a VBA identifier as the name of the containing MODULE Record (section 2.3.4.2.3.2).
                 # MUST contain the UTF-16 encoding of MODULENAME Record
                 size = struct.unpack("<L", dir_stream.read(4))[0]
-                self.name_unicode = dir_stream.read(size).decode('UTF-16LE', 'replace')
+                self._name_unicode = dir_stream.read(size).decode('UTF-16LE', 'replace')
                 section_id = struct.unpack("<H", dir_stream.read(2))[0]
             if section_id == 0x001A:
                 # 2.3.4.2.3.2.3 MODULESTREAMNAME Record
@@ -1397,7 +1397,7 @@ class VBA_Module(object):
                 reserved = struct.unpack("<H", dir_stream.read(2))[0]
                 project.check_value('MODULESTREAMNAME_Reserved', 0x0032, reserved)
                 size = struct.unpack("<L", dir_stream.read(4))[0]
-                self.streamname_unicode = dir_stream.read(size).decode('UTF-16LE', 'replace')
+                self._streamname_unicode = dir_stream.read(size).decode('UTF-16LE', 'replace')
                 section_id = struct.unpack("<H", dir_stream.read(2))[0]
             if section_id == 0x001C:
                 # 2.3.4.2.3.2.4 MODULEDOCSTRING Record
@@ -1408,7 +1408,7 @@ class VBA_Module(object):
                 reserved = struct.unpack("<H", dir_stream.read(2))[0]
                 project.check_value('MODULEDOCSTRING_Reserved', 0x0048, reserved)
                 size = struct.unpack("<L", dir_stream.read(4))[0]
-                self.docstring_unicode = dir_stream.read(size)
+                self._docstring_unicode = dir_stream.read(size)
                 section_id = struct.unpack("<H", dir_stream.read(2))[0]
             if section_id == 0x0031:
                 # 2.3.4.2.3.2.5 MODULEOFFSET Record
@@ -1470,14 +1470,14 @@ class VBA_Module(object):
                 log.warning('unknown or invalid module section id {0:04X}'.format(section_id))
         
             log.debug("Module Name = {0}".format(self.name))
-            log.debug("Module Name Unicode = {0}".format(self.name_unicode))
+            log.debug("Module Name Unicode = {0}".format(self._name_unicode))
             log.debug("Stream Name = {0}".format(self.streamname))
-            log.debug("Stream Name Unicode = {0}".format(self.streamname_unicode))
+            log.debug("Stream Name Unicode = {0}".format(self._streamname_unicode))
             log.debug("TextOffset = {0}".format(self.textoffset))
         
             code_data = None
             # let's try the different names we have, just in case some are missing:
-            try_names = (self.streamname, self.streamname_unicode, self.name, self.name_unicode)
+            try_names = (self.streamname, self._streamname_unicode, self.name, self._name_unicode)
             for stream_name in try_names:
                 # TODO: if olefile._find were less private, could replace this
                 #        try-except with calls to it
@@ -1518,15 +1518,8 @@ class VBA_Module(object):
                     # plain unicode for Python 3:
                     self.code_str = self.code
                 # case-insensitive search in the code_modules dict to find the file extension:
-                # filext = code_modules.get(modulename_modulename.lower(), 'bin')
-                filext = 'vba'
+                filext = self.project.module_ext.get(self.name.lower(), 'vba')
                 self.filename = '{0}.{1}'.format(self.name, filext)
-                #yield (code_path, filename, code_data)
-                # print '-'*79
-                # print filename
-                # print ''
-                # print code_data
-                # print ''
                 log.debug('extracted file {0}'.format(self.filename))
             else:
                 log.warning("module stream {0} has code data length 0".format(self.streamname))
@@ -1562,6 +1555,8 @@ class VBA_Project(object):
         self.relaxed = relaxed
         #: VBA modules contained in the project (list of VBA_Module objects)
         self.modules = []
+        #: file extension for each VBA module
+        self.module_ext = {}
         log.debug('Parsing the dir stream from %r' % dir_path)
         # read data from dir stream (compressed)
         dir_compressed = ole.openstream(dir_path).read()
@@ -1868,6 +1863,59 @@ class VBA_Project(object):
             else:
                 raise UnexpectedDataError(self.dir_path, name, expected, value)
 
+    def parse_project_stream(self):
+        """
+        Parse the PROJECT stream from the VBA project
+        :return:
+        """
+        # Open the PROJECT stream:
+        # reference: [MS-OVBA] 2.3.1 PROJECT Stream
+        project_stream = self.ole.openstream(self.project_path)
+
+        # sample content of the PROJECT stream:
+
+        ##    ID="{5312AC8A-349D-4950-BDD0-49BE3C4DD0F0}"
+        ##    Document=ThisDocument/&H00000000
+        ##    Module=NewMacros
+        ##    Name="Project"
+        ##    HelpContextID="0"
+        ##    VersionCompatible32="393222000"
+        ##    CMG="F1F301E705E705E705E705"
+        ##    DPB="8F8D7FE3831F2020202020"
+        ##    GC="2D2FDD81E51EE61EE6E1"
+        ##
+        ##    [Host Extender Info]
+        ##    &H00000001={3832D640-CF90-11CF-8E43-00A0C911005A};VBE;&H00000000
+        ##    &H00000002={000209F2-0000-0000-C000-000000000046};Word8.0;&H00000000
+        ##
+        ##    [Workspace]
+        ##    ThisDocument=22, 29, 339, 477, Z
+        ##    NewMacros=-4, 42, 832, 510, C
+
+        self.module_ext = {}
+
+        for line in project_stream:
+            line = self.decode_bytes(line)
+            log.debug('PROJECT: %r' % line)
+            line = line.strip()
+            if '=' in line:
+                # split line at the 1st equal sign:
+                name, value = line.split('=', 1)
+                # looking for code modules
+                # add the code module as a key in the dictionary
+                # the value will be the extension needed later
+                # The value is converted to lowercase, to allow case-insensitive matching (issue #3)
+                value = value.lower()
+                if name == 'Document':
+                    # split value at the 1st slash, keep 1st part:
+                    value = value.split('/', 1)[0]
+                    self.module_ext[value] = CLASS_EXTENSION
+                elif name == 'Module':
+                    self.module_ext[value] = MODULE_EXTENSION
+                elif name == 'Class':
+                    self.module_ext[value] = CLASS_EXTENSION
+                elif name == 'BaseClass':
+                    self.module_ext[value] = FORM_EXTENSION
 
     def parse_modules(self):
         dir_stream = self.dir_stream
@@ -1888,7 +1936,7 @@ class VBA_Project(object):
         for module_index in xrange(0, self.modules_count):
             module = VBA_Module(self, self.dir_stream, module_index=module_index)
             self.modules.append(module)
-            yield (module.code_path, module.filename, module.code)
+            yield (module.code_path, module.filename, module.code_str)
         _ = unused   # make pylint happy: now variable "unused" is being used ;-)
         return
 
@@ -1917,59 +1965,10 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
     log.debug('relaxed is %s' % relaxed)
 
     project = VBA_Project(ole, vba_root, project_path, dir_path, relaxed=False)
-
-    # Open the PROJECT stream:
-    # reference: [MS-OVBA] 2.3.1 PROJECT Stream
-    # TODO: in fact the PROJECT stream is encoded using the code page specified in the dir stream, should be read afterwards
-    project_stream = ole.openstream(project_path)
-
-    # sample content of the PROJECT stream:
-
-    ##    ID="{5312AC8A-349D-4950-BDD0-49BE3C4DD0F0}"
-    ##    Document=ThisDocument/&H00000000
-    ##    Module=NewMacros
-    ##    Name="Project"
-    ##    HelpContextID="0"
-    ##    VersionCompatible32="393222000"
-    ##    CMG="F1F301E705E705E705E705"
-    ##    DPB="8F8D7FE3831F2020202020"
-    ##    GC="2D2FDD81E51EE61EE6E1"
-    ##
-    ##    [Host Extender Info]
-    ##    &H00000001={3832D640-CF90-11CF-8E43-00A0C911005A};VBE;&H00000000
-    ##    &H00000002={000209F2-0000-0000-C000-000000000046};Word8.0;&H00000000
-    ##
-    ##    [Workspace]
-    ##    ThisDocument=22, 29, 339, 477, Z
-    ##    NewMacros=-4, 42, 832, 510, C
-
-    code_modules = {}
-
-    for line in project_stream:
-        line = project.decode_bytes(line)
-        log.debug('PROJECT: %r' % line)
-        line = line.strip()
-        if '=' in line:
-            # split line at the 1st equal sign:
-            name, value = line.split('=', 1)
-            # looking for code modules
-            # add the code module as a key in the dictionary
-            # the value will be the extension needed later
-            # The value is converted to lowercase, to allow case-insensitive matching (issue #3)
-            value = value.lower()
-            if name == 'Document':
-                # split value at the 1st slash, keep 1st part:
-                value = value.split('/', 1)[0]
-                code_modules[value] = CLASS_EXTENSION
-            elif name == 'Module':
-                code_modules[value] = MODULE_EXTENSION
-            elif name == 'Class':
-                code_modules[value] = CLASS_EXTENSION
-            elif name == 'BaseClass':
-                code_modules[value] = FORM_EXTENSION
+    project.parse_project_stream()
 
     for code_path, filename, code_data in project.parse_modules():
-        yield (code_path, filename, code_data.encode('utf8', 'replace'))
+        yield (code_path, filename, code_data)
 
 
 def vba_collapse_long_lines(vba_code):
