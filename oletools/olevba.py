@@ -214,7 +214,7 @@ from __future__ import print_function
 # 2018-12-06       PL: - colorize the suspicious keywords found in VBA code
 # 2019-01-01       PL: - removed support for Python 2.6
 
-__version__ = '0.54dev7'
+__version__ = '0.54dev8'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -358,6 +358,21 @@ else:
             return _backslashreplace_errors(exc)
 
         codecs.register_error("backslashreplace", backslashreplace_errors)
+
+
+def unicode2str(unicode_string):
+    """
+    convert a unicode string to a native str:
+        - on Python 3, it returns the same string
+        - on Python 2, the string is encoded with UTF-8 to a bytes str
+    :param unicode_string: unicode string to be converted
+    :return: the string converted to str
+    :rtype: str
+    """
+    if PYTHON2:
+        return unicode_string.encode('utf8', errors='replace')
+    else:
+        return unicode_string
 
 
 # === LOGGING =================================================================
@@ -1365,7 +1380,10 @@ class VBA_Module(object):
         self.code = None
         #: VBA source code in native str format (str encoded with UTF-8 for Python 2, str for Python 3)
         self.code_str = None
+        #: VBA module file name including an extension based on the module type such as bas, cls, frm (unicode str)
         self.filename = None
+        #: VBA module file name in native str format (str)
+        self.filename_str = None
         self.code_path = None
         try:
             # 2.3.4.2.3.2.1 MODULENAME Record
@@ -1376,10 +1394,7 @@ class VBA_Module(object):
             modulename_bytes = dir_stream.read(size)
             # Module name always stored as Unicode:
             self.name = project.decode_bytes(modulename_bytes)
-            if PYTHON2:
-                self.name_str = self.name.encode('utf8', errors='replace')
-            else:
-                self.name_str = self.name
+            self.name_str = unicode2str(self.name)
             # account for optional sections
             # TODO: shouldn't this be a loop? (check MS-OVBA)
             section_id = struct.unpack("<H", dir_stream.read(2))[0]
@@ -1398,10 +1413,7 @@ class VBA_Module(object):
                 streamname_bytes = dir_stream.read(size)
                 # Store it as Unicode:
                 self.streamname = project.decode_bytes(streamname_bytes)
-                if PYTHON2:
-                    self.streamname_str = self.streamname.encode('utf8', errors='replace')
-                else:
-                    self.streamname_str = self.streamname
+                self.streamname_str = unicode2str(self.streamname)
                 reserved = struct.unpack("<H", dir_stream.read(2))[0]
                 project.check_value('MODULESTREAMNAME_Reserved', 0x0032, reserved)
                 size = struct.unpack("<L", dir_stream.read(4))[0]
@@ -1519,16 +1531,12 @@ class VBA_Module(object):
                 # decode it to unicode:
                 self.code = project.decode_bytes(code_data)
                 # also store a native str version:
-                if PYTHON2:
-                    # UTF-8 encoded bytes for Python 2:
-                    self.code_str = self.code.encode('utf8', errors='replace')
-                else:
-                    # plain unicode for Python 3:
-                    self.code_str = self.code
+                self.code_str = unicode2str(self.code)
                 # case-insensitive search in the code_modules dict to find the file extension:
                 filext = self.project.module_ext.get(self.name.lower(), 'vba')
                 self.filename = u'{0}.{1}'.format(self.name, filext)
-                log.debug('extracted file {0}'.format(repr(self.filename)))
+                self.filename_str = unicode2str(self.filename)
+                log.debug('extracted file {0}'.format(self.filename_str))
             else:
                 log.warning("module stream {0} has code data length 0".format(self.streamname_str))
         except (UnexpectedDataError, SubstreamOpenError):
@@ -1552,7 +1560,7 @@ class VBA_Project(object):
         Extract VBA macros from an OleFileIO object.
 
         :param vba_root: path to the VBA root storage, containing the VBA storage and the PROJECT stream
-        :param vba_project: path to the PROJECT stream
+        :param project_path: path to the PROJECT stream
         :param relaxed: If True, only create info/debug log entry if data is not as expected
                         (e.g. opening substream fails); if False, raise an error in this case
         """
@@ -1944,7 +1952,7 @@ class VBA_Project(object):
         for module_index in xrange(0, self.modules_count):
             module = VBA_Module(self, self.dir_stream, module_index=module_index)
             self.modules.append(module)
-            yield (module.code_path, module.filename, module.code_str)
+            yield (module.code_path, module.filename_str, module.code_str)
         _ = unused   # make pylint happy: now variable "unused" is being used ;-)
         return
 
