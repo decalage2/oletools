@@ -239,14 +239,14 @@ __version__ = '0.54dev7'
 # - extract_macros: use combined struct.unpack instead of many calls
 # - all except clauses should target specific exceptions
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # REFERENCES:
 # - [MS-OVBA]: Microsoft Office VBA File Format Structure
 #   http://msdn.microsoft.com/en-us/library/office/cc313094%28v=office.12%29.aspx
 # - officeparser: https://github.com/unixfreak0037/officeparser
 
 
-#--- IMPORTS ------------------------------------------------------------------
+# --- IMPORTS ------------------------------------------------------------------
 
 import sys
 import os
@@ -263,7 +263,6 @@ import zlib
 import email  # for MHTML parsing
 import string # for printable
 import json   # for json output mode (argument --json)
-import codecs
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -298,7 +297,7 @@ _thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
 # print('_thismodule_dir = %r' % _thismodule_dir)
 _parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
 # print('_parent_dir = %r' % _thirdparty_dir)
-if not _parent_dir in sys.path:
+if _parent_dir not in sys.path:
     sys.path.insert(0, _parent_dir)
 
 import olefile
@@ -330,38 +329,35 @@ if sys.version_info[0] <= 2:
     # on Python 2, just use the normal ord() because items are bytes
     byte_ord = ord
     #: Default string encoding for the olevba API
-    DEFAULT_API_ENCODING = 'utf8' # on Python 2: UTF-8 (bytes)
+    DEFAULT_API_ENCODING = 'utf8'  # on Python 2: UTF-8 (bytes)
 else:
     # Python 3.x+
     PYTHON2 = False
+
     # to use ord on bytes/bytearray items the same way in Python 2+3
     # on Python 3, items are int, so just return the item
-    byte_ord = lambda x: x
+    def byte_ord(x):
+        return x
     # xrange is now called range:
     xrange = range
     # unichr does not exist anymore, only chr:
     unichr = chr
     from functools import reduce
     #: Default string encoding for the olevba API
-    DEFAULT_API_ENCODING = None # on Python 3: None (unicode)
+    DEFAULT_API_ENCODING = None  # on Python 3: None (unicode)
+    # Python 3.0 - 3.4 support:
+    # From https://gist.github.com/ynkdir/867347/c5e188a4886bc2dd71876c7e069a7b00b6c16c61
+    if sys.version_info < (3, 5):
+        import codecs
+        _backslashreplace_errors = codecs.lookup_error("backslashreplace")
 
+        def backslashreplace_errors(exc):
+            if isinstance(exc, UnicodeDecodeError):
+                u = "".join("\\x{0:02x}".format(c) for c in exc.object[exc.start:exc.end])
+                return u, exc.end
+            return _backslashreplace_errors(exc)
 
-# === PYTHON 3.0 - 3.4 SUPPORT ======================================================
-
-# From https://gist.github.com/ynkdir/867347/c5e188a4886bc2dd71876c7e069a7b00b6c16c61
-
-if sys.version_info >= (3, 0) and sys.version_info < (3, 5):
-    import codecs
-
-    _backslashreplace_errors = codecs.lookup_error("backslashreplace")
-
-    def backslashreplace_errors(exc):
-        if isinstance(exc, UnicodeDecodeError):
-            u = "".join("\\x{0:02x}".format(c) for c in exc.object[exc.start:exc.end])
-            return (u, exc.end)
-        return _backslashreplace_errors(exc)
-
-    codecs.register_error("backslashreplace", backslashreplace_errors)
+        codecs.register_error("backslashreplace", backslashreplace_errors)
 
 
 # === LOGGING =================================================================
@@ -378,7 +374,7 @@ def get_logger(name, level=logging.CRITICAL+1):
     # First, test if there is already a logger with the same name, else it
     # will generate duplicate messages (due to duplicate handlers):
     if name in logging.Logger.manager.loggerDict:
-        #NOTE: another less intrusive but more "hackish" solution would be to
+        # NOTE: another less intrusive but more "hackish" solution would be to
         # use getLogger then test if its effective level is not default.
         logger = logging.getLogger(name)
         # make sure level is OK:
@@ -1346,12 +1342,16 @@ class VBA_Module(object):
         """
         #: reference to the VBA project for later use (VBA_Project)
         self.project = project
-        #: VBA project name (unicode str)
+        #: VBA module name (unicode str)
         self.name = None
-        #: VBA project name, unicode copy (unicode str)
+        #: VBA module name as a native str (utf8 bytes on py2, str on py3)
+        self.name_str = None
+        #: VBA module name, unicode copy (unicode str)
         self._name_unicode = None
-        #: Stream name containing the VBA project (unicode str)
+        #: Stream name containing the VBA module (unicode str)
         self.streamname = None
+        #: Stream name containing the VBA module as a native str (utf8 bytes on py2, str on py3)
+        self.streamname_str = None
         self._streamname_unicode = None
         self.docstring = None
         self._docstring_unicode = None
@@ -1376,6 +1376,10 @@ class VBA_Module(object):
             modulename_bytes = dir_stream.read(size)
             # Module name always stored as Unicode:
             self.name = project.decode_bytes(modulename_bytes)
+            if PYTHON2:
+                self.name_str = self.name.encode('utf8', errors='replace')
+            else:
+                self.name_str = self.name
             # account for optional sections
             # TODO: shouldn't this be a loop? (check MS-OVBA)
             section_id = struct.unpack("<H", dir_stream.read(2))[0]
@@ -1394,6 +1398,10 @@ class VBA_Module(object):
                 streamname_bytes = dir_stream.read(size)
                 # Store it as Unicode:
                 self.streamname = project.decode_bytes(streamname_bytes)
+                if PYTHON2:
+                    self.streamname_str = self.streamname.encode('utf8', errors='replace')
+                else:
+                    self.streamname_str = self.streamname
                 reserved = struct.unpack("<H", dir_stream.read(2))[0]
                 project.check_value('MODULESTREAMNAME_Reserved', 0x0032, reserved)
                 size = struct.unpack("<L", dir_stream.read(4))[0]
@@ -1469,10 +1477,10 @@ class VBA_Module(object):
             if section_id != None:
                 log.warning('unknown or invalid module section id {0:04X}'.format(section_id))
         
-            log.debug("Module Name = {0}".format(self.name))
-            log.debug("Module Name Unicode = {0}".format(self._name_unicode))
-            log.debug("Stream Name = {0}".format(self.streamname))
-            log.debug("Stream Name Unicode = {0}".format(self._streamname_unicode))
+            log.debug("Module Name = {0}".format(self.name_str))
+            # log.debug("Module Name Unicode = {0}".format(self._name_unicode))
+            log.debug("Stream Name = {0}".format(self.streamname_str))
+            # log.debug("Stream Name Unicode = {0}".format(self._streamname_unicode))
             log.debug("TextOffset = {0}".format(self.textoffset))
         
             code_data = None
@@ -1519,10 +1527,10 @@ class VBA_Module(object):
                     self.code_str = self.code
                 # case-insensitive search in the code_modules dict to find the file extension:
                 filext = self.project.module_ext.get(self.name.lower(), 'vba')
-                self.filename = '{0}.{1}'.format(self.name, filext)
-                log.debug('extracted file {0}'.format(self.filename))
+                self.filename = u'{0}.{1}'.format(self.name, filext)
+                log.debug('extracted file {0}'.format(repr(self.filename)))
             else:
-                log.warning("module stream {0} has code data length 0".format(self.streamname))
+                log.warning("module stream {0} has code data length 0".format(self.streamname_str))
         except (UnexpectedDataError, SubstreamOpenError):
             raise
         except Exception as exc:
