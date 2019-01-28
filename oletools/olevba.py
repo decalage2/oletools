@@ -261,7 +261,7 @@ import binascii
 import base64
 import zlib
 import email  # for MHTML parsing
-import string # for printable
+import string  # for printable
 import json   # for json output mode (argument --json)
 
 # import lxml or ElementTree for XML parsing:
@@ -1746,6 +1746,7 @@ class VBA_Project(object):
                 reference_id = check
                 reference_sizeof_name = struct.unpack("<L", dir_stream.read(4))[0]
                 reference_name = dir_stream.read(reference_sizeof_name)
+                log.debug('REFERENCE name: %s' % unicode2str(self.decode_bytes(reference_name)))
                 reference_reserved = struct.unpack("<H", dir_stream.read(2))[0]
                 # According to [MS-OVBA] 2.3.4.2.2.2 REFERENCENAME Record:
                 # "Reserved (2 bytes): MUST be 0x003E. MUST be ignored."
@@ -1776,6 +1777,7 @@ class VBA_Project(object):
                 referenceoriginal_id = check
                 referenceoriginal_sizeof_libidoriginal = struct.unpack("<L", dir_stream.read(4))[0]
                 referenceoriginal_libidoriginal = dir_stream.read(referenceoriginal_sizeof_libidoriginal)
+                log.debug('REFERENCE original lib id: %s' % unicode2str(self.decode_bytes(referenceoriginal_libidoriginal)))
                 unused = referenceoriginal_id
                 unused = referenceoriginal_libidoriginal
                 continue
@@ -1787,6 +1789,7 @@ class VBA_Project(object):
                 referencecontrol_sizetwiddled = struct.unpack("<L", dir_stream.read(4))[0]  # ignore
                 referencecontrol_sizeof_libidtwiddled = struct.unpack("<L", dir_stream.read(4))[0]
                 referencecontrol_libidtwiddled = dir_stream.read(referencecontrol_sizeof_libidtwiddled)
+                log.debug('REFERENCE control twiddled lib id: %s' % unicode2str(self.decode_bytes(referencecontrol_libidtwiddled)))
                 referencecontrol_reserved1 = struct.unpack("<L", dir_stream.read(4))[0]  # ignore
                 self.check_value('REFERENCECONTROL_Reserved1', 0x0000, referencecontrol_reserved1)
                 referencecontrol_reserved2 = struct.unpack("<H", dir_stream.read(2))[0]  # ignore
@@ -1801,6 +1804,8 @@ class VBA_Project(object):
                     referencecontrol_namerecordextended_sizeof_name = struct.unpack("<L", dir_stream.read(4))[0]
                     referencecontrol_namerecordextended_name = dir_stream.read(
                         referencecontrol_namerecordextended_sizeof_name)
+                    log.debug('REFERENCE control name record extended: %s' % unicode2str(
+                        self.decode_bytes(referencecontrol_namerecordextended_name)))
                     referencecontrol_namerecordextended_reserved = struct.unpack("<H", dir_stream.read(2))[0]
                     if referencecontrol_namerecordextended_reserved == 0x003E:
                         referencecontrol_namerecordextended_sizeof_name_unicode = struct.unpack("<L", dir_stream.read(4))[0]
@@ -1838,6 +1843,7 @@ class VBA_Project(object):
                 referenceregistered_size = struct.unpack("<L", dir_stream.read(4))[0]
                 referenceregistered_sizeof_libid = struct.unpack("<L", dir_stream.read(4))[0]
                 referenceregistered_libid = dir_stream.read(referenceregistered_sizeof_libid)
+                log.debug('REFERENCE registered lib id: %s' % unicode2str(self.decode_bytes(referenceregistered_libid)))
                 referenceregistered_reserved1 = struct.unpack("<L", dir_stream.read(4))[0]
                 self.check_value('REFERENCEREGISTERED_Reserved1', 0x0000, referenceregistered_reserved1)
                 referenceregistered_reserved2 = struct.unpack("<H", dir_stream.read(2))[0]
@@ -1854,8 +1860,10 @@ class VBA_Project(object):
                 referenceproject_size = struct.unpack("<L", dir_stream.read(4))[0]
                 referenceproject_sizeof_libidabsolute = struct.unpack("<L", dir_stream.read(4))[0]
                 referenceproject_libidabsolute = dir_stream.read(referenceproject_sizeof_libidabsolute)
+                log.debug('REFERENCE project lib id absolute: %s' % unicode2str(self.decode_bytes(referenceproject_libidabsolute)))
                 referenceproject_sizeof_libidrelative = struct.unpack("<L", dir_stream.read(4))[0]
                 referenceproject_libidrelative = dir_stream.read(referenceproject_sizeof_libidrelative)
+                log.debug('REFERENCE project lib id relative: %s' % unicode2str(self.decode_bytes(referenceproject_libidrelative)))
                 referenceproject_majorversion = struct.unpack("<L", dir_stream.read(4))[0]
                 referenceproject_minorversion = struct.unpack("<H", dir_stream.read(2))[0]
                 unused = referenceproject_id
