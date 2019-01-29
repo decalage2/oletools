@@ -201,6 +201,7 @@ from __future__ import print_function
 # 2017-06-08       PL: - fixed issue #122 Chr() with negative numbers
 # 2017-06-15       PL: - deobfuscation line by line to handle large files
 # 2017-07-11 v0.52 PL: - raise exception instead of sys.exit (issue #180)
+# 2017-11-20       PL: - fixed issue #219, do not close the file too early
 # 2017-11-24       PL: - added keywords to detect self-modifying macros and
 #                        attempts to disable macro security (issue #221)
 # 2018-03-19       PL: - removed pyparsing from the thirdparty subfolder
@@ -3550,6 +3551,11 @@ def main(cmd_line_args=None):
                 continue
 
             try:
+                # close the previous file if analyzing several:
+                # (this must be done here to avoid closing the file if there is only 1,
+                # to fix issue #219)
+                if vba_parser is not None:
+                    vba_parser.close()
                 # Open the file
                 vba_parser = VBA_Parser_CLI(filename, data=data, container=container,
                                             relaxed=options.relaxed)
@@ -3626,10 +3632,6 @@ def main(cmd_line_args=None):
                 return_code = RETURN_ENCRYPTED if return_code == 0 \
                                                 else RETURN_SEVERAL_ERRS
             # Here we do not close the vba_parser, because process_file may need it below.
-
-            finally:
-                if vba_parser is not None:
-                    vba_parser.close()
 
         if options.output_mode == 'triage':
             print('\n(Flags: OpX=OpenXML, XML=Word2003XML, FlX=FlatOPC XML, MHT=MHTML, TXT=Text, M=Macros, ' \
