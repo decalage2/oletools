@@ -5,7 +5,7 @@ Read storages, (sub-)streams, records from xls file
 #
 # === LICENSE ==================================================================
 
-# xls_parser is copyright (c) 2014-2018 Philippe Lagadec (http://www.decalage.info)
+# xls_parser is copyright (c) 2014-2019 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -33,8 +33,10 @@ Read storages, (sub-)streams, records from xls file
 # 2017-11-02 v0.1 CH: - first version
 # 2017-11-02 v0.2 CH: - move some code to record_base.py
 #                        (to avoid copy-and-paste in ppt_parser.py)
+# 2019-01-30 v0.54dev9 PL: - fixed import to avoid mixing installed oletools
+#                            and dev version
 
-__version__ = '0.2'
+__version__ = '0.54dev9'
 
 # -----------------------------------------------------------------------------
 #  TODO:
@@ -56,17 +58,14 @@ import os.path
 from struct import unpack
 import logging
 
-try:
-    from oletools import record_base
-except ImportError:
-    # little hack to allow absolute imports even if oletools is not installed.
-    # Copied from olevba.py
-    PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__))))
-    if PARENT_DIR not in sys.path:
-        sys.path.insert(0, PARENT_DIR)
-    del PARENT_DIR
-    from oletools import record_base
+# little hack to allow absolute imports even if oletools is not installed.
+# Copied from olevba.py
+PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))))
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+del PARENT_DIR
+from oletools import record_base
 
 
 # === PYTHON 2+3 SUPPORT ======================================================
