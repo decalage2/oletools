@@ -14,7 +14,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE ==================================================================
 
-# codepages is copyright (c) 2018 Philippe Lagadec (http://www.decalage.info)
+# codepages is copyright (c) 2018-2019 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -41,8 +41,9 @@ http://www.decalage.info/python/oletools
 # -----------------------------------------------------------------------------
 # CHANGELOG:
 # 2018-12-13 v0.54 PL: - first version
+# 2019-01-30       PL: - added a few code pages from xlrd
 
-__version__ = '0.54dev6'
+__version__ = '0.54dev9'
 
 # -----------------------------------------------------------------------------
 # TODO:
@@ -243,10 +244,13 @@ CODEPAGE_TO_CODEC = {
     10004: 'mac-arabic',
     10005: 'hebrew',    # not found: 'mac-hebrew',
     10006: 'mac-greek',
-    10007: 'ascii',     # nothing appropriate found: 'mac-russian',
+    #10007: 'ascii',     # nothing appropriate found: 'mac-russian',
+    10007: 'mac_cyrillic',  # guess (from xlrd)
     10008: 'gb2312',    # not found: 'mac-gb2312',
     10021: 'thai',      # not found: mac-thai',
-    10029: 'maccentraleurope',  # not found: 'mac-east europe',
+    #10029: 'maccentraleurope',  # not found: 'mac-east europe',
+    10029: 'mac_latin2',  # guess (from xlrd)
+    10079: 'mac_iceland',  # guess (from xlrd)
     10081: 'mac-turkish',
 
     12000: 'utf_32_le', # Unicode UTF-32, little endian byte order
@@ -265,6 +269,9 @@ CODEPAGE_TO_CODEC = {
     28599: 'iso8859_9',
     28603: 'iso8859_13',
     28605: 'iso8859_15',
+
+    32768: 'mac_roman', # from xlrd
+    32769: 'cp1252', # from xlrd
     38598: 'iso8859_8',
 
     65000: 'utf7',
