@@ -8,7 +8,10 @@ This is the case for xls and ppt, so classes are bases for xls_parser.py and
 ppt_record_parser.py .
 """
 
-# === LICENSE =================================================================
+# === LICENSE ==================================================================
+
+# record_base is copyright (c) 2014-2019 Philippe Lagadec (http://www.decalage.info)
+# All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -37,8 +40,10 @@ from __future__ import print_function
 # CHANGELOG:
 # 2017-11-30 v0.01 CH: - first version based on xls_parser
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
+# 2019-01-30       PL: - fixed import to avoid mixing installed oletools
+#                        and dev version
 
-__version__ = '0.54dev1'
+__version__ = '0.54dev9'
 
 # -----------------------------------------------------------------------------
 # TODO:
@@ -63,16 +68,13 @@ import logging
 
 import olefile
 
-try:
-    from oletools.common.errors import FileIsEncryptedError
-except ImportError:
-    # little hack to allow absolute imports even if oletools is not installed.
-    PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__))))
-    if PARENT_DIR not in sys.path:
-        sys.path.insert(0, PARENT_DIR)
-    del PARENT_DIR
-    from oletools.common.errors import FileIsEncryptedError
+# little hack to allow absolute imports even if oletools is not installed.
+PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))))
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+del PARENT_DIR
+from oletools.common.errors import FileIsEncryptedError
 from oletools import oleid
 
 
