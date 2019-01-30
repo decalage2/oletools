@@ -33,8 +33,8 @@ Read storages, (sub-)streams, records from xls file
 # 2017-11-02 v0.1 CH: - first version
 # 2017-11-02 v0.2 CH: - move some code to record_base.py
 #                        (to avoid copy-and-paste in ppt_parser.py)
-# 2019-01-30 v0.54dev9 PL: - fixed import to avoid mixing installed oletools
-#                            and dev version
+# 2019-01-30 v0.54 PL: - fixed import to avoid mixing installed oletools
+#                        and dev version
 
 __version__ = '0.54dev9'
 
