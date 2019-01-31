@@ -470,7 +470,7 @@ def extract_OleFormVariables(ole_file, stream_dir):
         elif var['ClsidCacheIndex'] == 18:
             consume_TabStripControl(data)
         elif var['ClsidCacheIndex'] == 21:
-            consume_LabelControl(data)
+            var['value'] = consume_LabelControl(data)
         elif var['ClsidCacheIndex'] == 47:
             consume_ScrollBarControl(data)
         elif var['ClsidCacheIndex'] == 57:
