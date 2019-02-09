@@ -1580,7 +1580,7 @@ class VBA_Project(object):
         dir_stream = BytesIO(decompress_stream(bytearray(dir_compressed)))
         # store reference for later use:
         self.dir_stream = dir_stream
-
+        self.references = []
         # reference: MS-VBAL 2.3.4.2 dir Stream: Version Independent Project Information
 
         # PROJECTSYSKIND Record
@@ -1850,7 +1850,7 @@ class VBA_Project(object):
                 self.check_value('REFERENCEREGISTERED_Reserved2', 0x0000, referenceregistered_reserved2)
                 unused = referenceregistered_id
                 unused = referenceregistered_size
-                unused = referenceregistered_libid
+                self.references.append(referenceregistered_libid)
                 continue
 
             if check == 0x000E:
@@ -1973,11 +1973,28 @@ class VBA_Project(object):
         """
         return bytes_string.decode(self.codec, errors=errors)
 
+    def projectReferences(self):
+        """
+        Returns projects references string
+        """
+        referenceString = ""
+        for reference in self.references:
+            referenceDetails = reference.split('#')
+            referenceString = referenceString + "Registry : " + referenceDetails[0][4:-1] + ";"
+            referenceString = referenceString + "Version : " + referenceDetails[1] + ";"
+            referenceString = referenceString + "Lindt : " + referenceDetails[2] + ";"
+            referenceString = referenceString + "Library : " + referenceDetails[3] + ";"
+            referenceString = referenceString + "Description : " + referenceDetails[4] + "\n"
+        return referenceString; 
 
 
-def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
+
+
+
+def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False,project_references=False):
     """
     Extract VBA macros from an OleFileIO object.
+    Extract COM Projects references. (optional)
     Internal function, do not call directly.
 
     vba_root: path to the VBA root storage, containing the VBA storage and the PROJECT stream
@@ -1987,13 +2004,23 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
     This is a generator, yielding (stream path, VBA filename, VBA source code) for each VBA code stream
     """
     log.debug('relaxed is %s' % relaxed)
+    log.debug('project_references is %s' % project_references)
 
     project = VBA_Project(ole, vba_root, project_path, dir_path, relaxed=False)
     project.parse_project_stream()
-
+    # whether to add COM project refernces information in output or not
+    if(project_references):
+        _extract_com_references(project)
+    
     for code_path, filename, code_data in project.parse_modules():
         yield (code_path, filename, code_data)
 
+# outputs COM references of a Projecct
+def _extract_com_references(project):
+    print ('Project References')
+    print ('-' * 70)
+    print (project.projectReferences())
+    print ('-' * 70) 
 
 def vba_collapse_long_lines(vba_code):
     """
@@ -2478,7 +2505,7 @@ class VBA_Parser(object):
     Class to parse MS Office files, to detect VBA macros and extract VBA source code
     """
 
-    def __init__(self, filename, data=None, container=None, relaxed=False, encoding=DEFAULT_API_ENCODING):
+    def __init__(self, filename, data=None, container=None, relaxed=False, encoding=DEFAULT_API_ENCODING,project_references=False):
         """
         Constructor for VBA_Parser
 
@@ -2534,6 +2561,8 @@ class VBA_Parser(object):
         self.nb_vbastrings = 0
         #: Encoding for VBA source code and strings returned by all methods
         self.encoding = encoding
+        #whether to show project references or not
+        self.project_references = project_references
 
         # if filename is None:
         #     if isinstance(_file, basestring):
@@ -3084,7 +3113,7 @@ class VBA_Parser(object):
                 try:
                     for stream_path, vba_filename, vba_code in \
                             _extract_vba(self.ole_file, vba_root, project_path,
-                                         dir_path, self.relaxed):
+                                         dir_path, self.relaxed, self.project_references):
                         # store direntry ids in a set:
                         vba_stream_ids.add(self.ole_file._find(stream_path))
                         yield (self.filename, stream_path, vba_filename, vba_code)
@@ -3692,6 +3721,8 @@ def parse_args(cmd_line_args=None):
                             help="Attempt to deobfuscate VBA expressions (slow)")
     parser.add_option('--relaxed', dest="relaxed", action="store_true", default=False,
                             help="Do not raise errors if opening of substream fails")
+    parser.add_option('--references', action = "store_true", dest = "project_references", default=False,
+                      help='display information of COM references used in project')
 
     (options, args) = parser.parse_args(cmd_line_args)
 
@@ -3792,7 +3823,7 @@ def main(cmd_line_args=None):
                     vba_parser.close()
                 # Open the file
                 vba_parser = VBA_Parser_CLI(filename, data=data, container=container,
-                                            relaxed=options.relaxed)
+                                            relaxed=options.relaxed,project_references=options.project_references)
 
                 if options.output_mode == 'detailed':
                     # fully detailed output
