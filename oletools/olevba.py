@@ -2055,7 +2055,7 @@ def detect_autoexec(vba_code, obfuscation=None):
         for keyword in keywords:
             #TODO: if keyword is already a compiled regex, use it as-is
             # search using regex to detect word boundaries:
-            match = re.search(r'(?i)\b' + keyword + r'\b', vba_code)
+            match = re.search(r'(?i)\b' + re.escape(keyword) + r'\b', vba_code)
             if match:
                 #if keyword.lower() in vba_code:
                 found_keyword = match.group()
@@ -2081,7 +2081,8 @@ def detect_suspicious(vba_code, obfuscation=None):
     for description, keywords in SUSPICIOUS_KEYWORDS.items():
         for keyword in keywords:
             # search using regex to detect word boundaries:
-            match = re.search(r'(?i)\b' + keyword + r'\b', vba_code)
+            # note: each keyword must be escaped if it contains special chars such as '\'
+            match = re.search(r'(?i)\b' + re.escape(keyword) + r'\b', vba_code)
             if match:
                 #if keyword.lower() in vba_code:
                 found_keyword = match.group()
@@ -2128,6 +2129,9 @@ def detect_hex_strings(vba_code):
         value = match.group()
         if value not in found:
             decoded = binascii.unhexlify(value)
+            # On python 3, convert it to unicode
+            if not PYTHON2:
+                decoded = decoded.decode('utf8', errors='replace')
             results.append((value, decoded))
             found.add(value)
     return results
@@ -2153,6 +2157,9 @@ def detect_base64_strings(vba_code):
         if value not in found and value.lower() not in BASE64_WHITELIST:
             try:
                 decoded = base64.b64decode(value)
+                # On python 3, convert it to unicode
+                if not PYTHON2:
+                    decoded = decoded.decode('utf8', errors='replace')
                 results.append((value, decoded))
                 found.add(value)
             except (TypeError, ValueError) as exc:
@@ -2181,6 +2188,9 @@ def detect_dridex_strings(vba_code):
         if value not in found:
             try:
                 decoded = DridexUrlDecode(value)
+                # On python 3, convert it to unicode
+                if not PYTHON2:
+                    decoded = decoded.decode('utf8', errors='replace')
                 results.append((value, decoded))
                 found.add(value)
             except Exception as exc:
