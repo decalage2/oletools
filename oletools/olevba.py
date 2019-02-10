@@ -3298,7 +3298,8 @@ class VBA_Parser(object):
                 # Extract printable strings from the form object stream "o":
                 for m in re_printable_string.finditer(form_data):
                     log.debug('Printable string found in form: %r' % m.group())
-                    yield (self.filename, '/'.join(o_stream), m.group())
+                    if m.group() != b'Tahoma':
+                        yield (self.filename, '/'.join(o_stream), m.group())
 
     def extract_form_strings_extended(self):
         if self.ole_file is None:
@@ -3494,10 +3495,11 @@ class VBA_Parser_CLI(VBA_Parser):
                                 log.error('Unicode conversion to be fixed before colorizing the output')
                             print(vba_code_filtered)
                 for (subfilename, stream_path, form_string) in self.extract_form_strings():
-                    print('-' * 79)
-                    print('VBA FORM STRING IN %r - OLE stream: %r' % (subfilename, stream_path))
-                    print('- ' * 39)
-                    print(form_string)
+                    if form_string is not None:
+                        print('-' * 79)
+                        print('VBA FORM STRING IN %r - OLE stream: %r' % (subfilename, stream_path))
+                        print('- ' * 39)
+                        print(form_string)
                 try:
                     for (subfilename, stream_path, form_variables) in self.extract_form_strings_extended():
                         if form_variables is not None:
