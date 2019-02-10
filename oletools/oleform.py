@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# REFERENCES:
+# - MS-OFORMS: https://msdn.microsoft.com/en-us/library/office/cc313125%28v=office.12%29.aspx?f=255&MSPPError=-2147217396
+
 # CHANGELOG:
 # 2018-02-19 v0.53 PL: - fixed issue #260, removed long integer literals
 
