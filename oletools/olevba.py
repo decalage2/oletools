@@ -3271,11 +3271,12 @@ class VBA_Parser(object):
         """
         Extract printable strings from each VBA Form found in the file
 
-        Iterator: yields (filename, stream_path, vba_filename, vba_code) for each VBA macro found
+        Iterator: yields (filename, stream_path, form_string) for each printable string found in forms
         If the file is OLE, filename is the path of the file.
         If the file is OpenXML, filename is the path of the OLE subfile containing VBA macros
         within the zip archive, e.g. word/vbaProject.bin.
         If the file is PPT, result is as for OpenXML but filename is useless
+        Note: form_string is a raw bytes string on Python 2, a unicode str on Python 3
         """
         if self.ole_file is None:
             # This may be either an OpenXML/PPT or a text file:
@@ -3298,8 +3299,13 @@ class VBA_Parser(object):
                 # Extract printable strings from the form object stream "o":
                 for m in re_printable_string.finditer(form_data):
                     log.debug('Printable string found in form: %r' % m.group())
-                    if m.group() != b'Tahoma':
-                        yield (self.filename, '/'.join(o_stream), m.group())
+                    # On Python 3, convert bytes string to unicode str:
+                    if PYTHON2:
+                        found_str = m.group()
+                    else:
+                        found_str = m.group().decode('utf8', errors='replace')
+                    if found_str != 'Tahoma':
+                        yield (self.filename, '/'.join(o_stream), found_str)
 
     def extract_form_strings_extended(self):
         if self.ole_file is None:
