@@ -375,6 +375,23 @@ def unicode2str(unicode_string):
         return unicode_string
 
 
+def bytes2str(bytes_string, encoding='utf8'):
+    """
+    convert a bytes string to a native str:
+        - on Python 2, it returns the same string (bytes=str)
+        - on Python 3, the string is decoded using the provided encoding
+          (UTF-8 by default) to a unicode str
+    :param bytes_string: bytes string to be converted
+    :param encoding: codec to be used for decoding
+    :return: the string converted to str
+    :rtype: str
+    """
+    if PYTHON2:
+        return bytes_string
+    else:
+        return bytes_string.decode('utf8', errors='replace')
+
+
 # === LOGGING =================================================================
 
 def get_logger(name, level=logging.CRITICAL+1):
@@ -2128,10 +2145,7 @@ def detect_hex_strings(vba_code):
     for match in re_hex_string.finditer(vba_code):
         value = match.group()
         if value not in found:
-            decoded = binascii.unhexlify(value)
-            # On python 3, convert it to unicode
-            if not PYTHON2:
-                decoded = decoded.decode('utf8', errors='replace')
+            decoded = bytes2str(binascii.unhexlify(value))
             results.append((value, decoded))
             found.add(value)
     return results
@@ -2156,10 +2170,7 @@ def detect_base64_strings(vba_code):
         # only keep new values and not in the whitelist:
         if value not in found and value.lower() not in BASE64_WHITELIST:
             try:
-                decoded = base64.b64decode(value)
-                # On python 3, convert it to unicode
-                if not PYTHON2:
-                    decoded = decoded.decode('utf8', errors='replace')
+                decoded = bytes2str(base64.b64decode(value))
                 results.append((value, decoded))
                 found.add(value)
             except (TypeError, ValueError) as exc:
@@ -2187,10 +2198,7 @@ def detect_dridex_strings(vba_code):
             continue
         if value not in found:
             try:
-                decoded = DridexUrlDecode(value)
-                # On python 3, convert it to unicode
-                if not PYTHON2:
-                    decoded = decoded.decode('utf8', errors='replace')
+                decoded = bytes2str(DridexUrlDecode(value))
                 results.append((value, decoded))
                 found.add(value)
             except Exception as exc:
@@ -2366,7 +2374,7 @@ class VBA_Scanner(object):
                 # StrReverse after hex decoding:
                 self.code_hex_rev += '\n' + decoded[::-1]
                 # StrReverse before hex decoding:
-                self.code_rev_hex += '\n' + binascii.unhexlify(encoded[::-1])
+                self.code_rev_hex += '\n' + bytes2str(binascii.unhexlify(encoded[::-1]))
                 #example: https://malwr.com/analysis/NmFlMGI4YTY1YzYyNDkwNTg1ZTBiZmY5OGI3YjlhYzU/
         #TODO: also append the full code reversed if StrReverse? (risk of false positives?)
         # Detect Base64-encoded strings
@@ -3494,15 +3502,15 @@ class VBA_Parser_CLI(VBA_Parser):
                             print('(empty macro)')
                         else:
                             # check if the VBA code contains special characters such as backspace (issue #358)
-                            if b'\x08' in vba_code_filtered:
+                            if '\x08' in vba_code_filtered:
                                 log.warning('The VBA code contains special characters such as backspace, that may be used for obfuscation.')
                                 if sys.stdout.isatty():
                                     # if the standard output is the console, we'll display colors
                                     backspace = colorclass.Color(b'{autored}\\x08{/red}')
                                 else:
-                                    backspace = b'\\x08'
+                                    backspace = '\\x08'
                                 # replace backspace by "\x08" for display
-                                vba_code_filtered = vba_code_filtered.replace(b'\x08', backspace)
+                                vba_code_filtered = vba_code_filtered.replace('\x08', backspace)
                             try:
                                 # Colorize the interesting keywords in the output:
                                 vba_code_filtered = colorclass.Color(self.colorize_keywords(vba_code_filtered))
