@@ -2797,12 +2797,12 @@ class VBA_Parser(object):
         try:
             # parse the MIME content
             # remove any leading whitespace or newline (workaround for issue in email package)
-            stripped_data = data.lstrip('\r\n\t ')
+            stripped_data = data.lstrip(b'\r\n\t ')
             # strip any junk from the beginning of the file
             # (issue #31 fix by Greg C - gdigreg)
             # TODO: improve keywords to avoid false positives
-            mime_offset = stripped_data.find('MIME')
-            content_offset = stripped_data.find('Content')
+            mime_offset = stripped_data.find(b'MIME')
+            content_offset = stripped_data.find(b'Content')
             # if "MIME" is found, and located before "Content":
             if -1 < mime_offset <= content_offset:
                 stripped_data = stripped_data[mime_offset:]
@@ -2811,7 +2811,11 @@ class VBA_Parser(object):
             elif content_offset > -1:
                 stripped_data = stripped_data[content_offset:]
             # TODO: quick and dirty fix: insert a standard line with MIME-Version header?
-            mhtml = email.message_from_string(stripped_data)
+            if PYTHON2:
+                mhtml = email.message_from_string(stripped_data)
+            else:
+                # on Python 3, need to use message_from_bytes instead:
+                mhtml = email.message_from_bytes(stripped_data)
             # find all the attached files:
             for part in mhtml.walk():
                 content_type = part.get_content_type()  # always returns a value
@@ -2824,7 +2828,7 @@ class VBA_Parser(object):
                 # using the ActiveMime/MSO format (zlib-compressed), and Base64 encoded.
                 # decompress the zlib data starting at offset 0x32, which is the OLE container:
                 # check ActiveMime header:
-                if isinstance(part_data, str) and is_mso_file(part_data):
+                if isinstance(part_data, bytes) and is_mso_file(part_data):
                     log.debug('Found ActiveMime header, decompressing MSO container')
                     try:
                         ole_data = mso_file_extract(part_data)
