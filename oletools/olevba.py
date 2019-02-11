@@ -2021,9 +2021,13 @@ def vba_collapse_long_lines(vba_code):
     :return: str, VBA module code with long lines collapsed
     """
     # TODO: use a regex instead, to allow whitespaces after the underscore?
-    vba_code = vba_code.replace(' _\r\n', ' ')
-    vba_code = vba_code.replace(' _\r', ' ')
-    vba_code = vba_code.replace(' _\n', ' ')
+    try:
+        vba_code = vba_code.replace(' _\r\n', ' ')
+        vba_code = vba_code.replace(' _\r', ' ')
+        vba_code = vba_code.replace(' _\n', ' ')
+    except:
+        log.exception('type(vba_code)=%s' % type(vba_code))
+        raise
     return vba_code
 
 
@@ -2890,7 +2894,9 @@ class VBA_Parser(object):
         """
         log.info('Opening text file %s' % self.filename)
         # directly store the source code:
-        self.vba_code_all_modules = data
+        # On Python 2, store it as a raw bytes string
+        # On Python 3, convert it to unicode assuming it was encoded with UTF-8
+        self.vba_code_all_modules = bytes2str(data)
         self.contains_macros = True
         # set type only if parsing succeeds
         self.type = TYPE_TEXT
