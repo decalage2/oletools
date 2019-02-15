@@ -2251,7 +2251,8 @@ def detect_vba_strings(vba_code):
 
 
 def json2ascii(json_obj, encoding='utf8', errors='replace'):
-    """ ensure there is no unicode in json and all strings are safe to decode
+    """
+    ensure there is no unicode in json and all strings are safe to decode
 
     works recursively, decodes and re-encodes every string to/from unicode
     to ensure there will be no trouble in loading the dumped json output
@@ -2260,21 +2261,33 @@ def json2ascii(json_obj, encoding='utf8', errors='replace'):
         pass
     elif isinstance(json_obj, (bool, int, float)):
         pass
-    elif isinstance(json_obj, bytes):
-        # de-code and re-encode
-        dencoded = json_obj.decode(encoding, errors).encode(encoding, errors)
-        if dencoded != json_obj:
-            log.debug('json2ascii: replaced: {0} (len {1})'
-                     .format(json_obj, len(json_obj)))
-            log.debug('json2ascii:     with: {0} (len {1})'
-                     .format(dencoded, len(dencoded)))
-        return dencoded
-    elif isinstance(json_obj, unicode):
-        log.debug('json2ascii: encode unicode: {0}'
-                 .format(json_obj.encode(encoding, errors)))
+    elif isinstance(json_obj, str):
+        if PYTHON2:
+            # de-code and re-encode
+            dencoded = json_obj.decode(encoding, errors).encode(encoding, errors)
+            if dencoded != json_obj:
+                log.debug('json2ascii: replaced: {0} (len {1})'
+                         .format(json_obj, len(json_obj)))
+                log.debug('json2ascii:     with: {0} (len {1})'
+                         .format(dencoded, len(dencoded)))
+            return dencoded
+        else:
+            # on Python 3, just keep Unicode strings as-is:
+            return json_obj
+    elif isinstance(json_obj, unicode) and PYTHON2:
+        # On Python 2, encode unicode to bytes:
+        json_obj_bytes = json_obj.encode(encoding, errors)
+        log.debug('json2ascii: encode unicode: {0}'.format(json_obj_bytes))
         # cannot put original into logger
         # print 'original: ' json_obj
-        return json_obj.encode(encoding, errors)
+        return json_obj_bytes
+    elif isinstance(json_obj, bytes) and not PYTHON2:
+        # On Python 3, decode bytes to unicode str
+        json_obj_str = json_obj.decode(encoding, errors)
+        log.debug('json2ascii: encode unicode: {0}'.format(json_obj_str))
+        # cannot put original into logger
+        # print 'original: ' json_obj
+        return json_obj_str
     elif isinstance(json_obj, dict):
         for key in json_obj:
             json_obj[key] = json2ascii(json_obj[key])
