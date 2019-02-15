@@ -342,6 +342,8 @@ else:
     xrange = range
     # unichr does not exist anymore, only chr:
     unichr = chr
+    # json2ascii also needs "unicode":
+    unicode = str
     from functools import reduce
     #: Default string encoding for the olevba API
     DEFAULT_API_ENCODING = None  # on Python 3: None (unicode)
@@ -2258,7 +2260,7 @@ def json2ascii(json_obj, encoding='utf8', errors='replace'):
         pass
     elif isinstance(json_obj, (bool, int, float)):
         pass
-    elif isinstance(json_obj, str):
+    elif isinstance(json_obj, bytes):
         # de-code and re-encode
         dencoded = json_obj.decode(encoding, errors).encode(encoding, errors)
         if dencoded != json_obj:
