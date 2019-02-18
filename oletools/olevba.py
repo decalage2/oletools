@@ -312,8 +312,7 @@ from pyparsing import \
 from oletools import ppt_parser
 from oletools import oleform
 from oletools import rtfobj
-from oletools import oleid
-from oletools.common.errors import FileIsEncryptedError
+from oletools import crypto
 from oletools.common import codepages
 
 # monkeypatch email to fix issue #32:
@@ -2585,12 +2584,6 @@ class VBA_Parser(object):
             # This looks like an OLE file
             self.open_ole(_file)
 
-            # check whether file is encrypted (need to do this before try ppt)
-            log.debug('Check encryption of ole file')
-            crypt_indicator = oleid.OleID(self.ole_file).check_encrypted()
-            if crypt_indicator.value:
-                raise FileIsEncryptedError(filename)
-
             # if this worked, try whether it is a ppt file (special ole file)
             self.open_ppt()
         if self.type is None and zipfile.is_zipfile(_file):
@@ -3738,6 +3731,10 @@ def parse_args(cmd_line_args=None):
                       help='find files recursively in subdirectories.')
     parser.add_option("-z", "--zip", dest='zip_password', type='str', default=None,
                       help='if the file is a zip archive, open all files from it, using the provided password.')
+    parser.add_option("-p", "--password", type='str', action='append',
+                      default=[],
+                      help='if encrypted office files are encountered, try '
+                           'decryption with this password. May be repeated.')
     parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
                       help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
     # output mode; could make this even simpler with add_option(type='choice') but that would make
@@ -3787,7 +3784,7 @@ def parse_args(cmd_line_args=None):
     return options, args
 
 
-def process_file(filename, data, container, options):
+def process_file(filename, data, container, options, crypto_nesting=0):
     """
     Part of main function that processes a single file.
 
@@ -3821,47 +3818,70 @@ def process_file(filename, data, container, options):
         else:  # (should be impossible)
             raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
 
-    except (SubstreamOpenError, UnexpectedDataError) as exc:
-        if options.output_mode == 'triage':
-            print('%-12s %s - Error opening substream or uenxpected ' \
-                  'content' % ('?', filename))
-        elif options.output_mode == 'json':
-            print_json(file=filename, type='error',
-                       error=type(exc).__name__, message=str(exc))
+        # even if processing succeeds, file might still be encrypted
+        log.debug('Checking for encryption')
+        if not crypto.is_encrypted(filename):
+            return RETURN_OK
+    except Exception as exc:
+        log.debug('Checking for encryption')
+        if crypto.is_encrypted(filename):
+            pass   # deal with this below
         else:
-            log.exception('Error opening substream or unexpected '
-                          'content in %s' % filename)
-        return RETURN_OPEN_ERROR
-    except FileOpenError as exc:
-        if options.output_mode == 'triage':
-            print('%-12s %s - File format not supported' % ('?', filename))
-        elif options.output_mode == 'json':
-            print_json(file=filename, type='error',
-                       error=type(exc).__name__, message=str(exc))
-        else:
-            log.exception('Failed to open %s -- probably not supported!' % filename)
-        return RETURN_OPEN_ERROR
-    except ProcessingError as exc:
-        if options.output_mode == 'triage':
-            print('%-12s %s - %s' % ('!ERROR', filename, exc.orig_exc))
-        elif options.output_mode == 'json':
-            print_json(file=filename, type='error',
-                       error=type(exc).__name__,
-                       message=str(exc.orig_exc))
-        else:
-            log.exception('Error processing file %s (%s)!'
-                          % (filename, exc.orig_exc))
-        return RETURN_PARSE_ERROR
-    except FileIsEncryptedError as exc:
-        if options.output_mode == 'triage':
-            print('%-12s %s - File is encrypted' % ('!ERROR', filename))
-        elif options.output_mode == 'json':
-            print_json(file=filename, type='error',
-                       error=type(exc).__name__, message=str(exc))
-        else:
-            log.exception('File %s is encrypted!' % (filename))
-        return RETURN_ENCRYPTED
-    return RETURN_OK
+            if isinstance(exc, (SubstreamOpenError, UnexpectedDataError)):
+                if options.output_mode in ('triage', 'unspecified'):
+                    print('%-12s %s - Error opening substream or uenxpected ' \
+                          'content' % ('?', filename))
+                elif options.output_mode == 'json':
+                    print_json(file=filename, type='error',
+                               error=type(exc).__name__, message=str(exc))
+                else:
+                    log.exception('Error opening substream or unexpected '
+                                  'content in %s' % filename)
+                return RETURN_OPEN_ERROR
+            elif isinstance(exc, FileOpenError):
+                if options.output_mode in ('triage', 'unspecified'):
+                    print('%-12s %s - File format not supported' % ('?', filename))
+                elif options.output_mode == 'json':
+                    print_json(file=filename, type='error',
+                               error=type(exc).__name__, message=str(exc))
+                else:
+                    log.exception('Failed to open %s -- probably not supported!' % filename)
+                return RETURN_OPEN_ERROR
+            elif isinstance(exc, ProcessingError):
+                if options.output_mode in ('triage', 'unspecified'):
+                    print('%-12s %s - %s' % ('!ERROR', filename, exc.orig_exc))
+                elif options.output_mode == 'json':
+                    print_json(file=filename, type='error',
+                               error=type(exc).__name__,
+                               message=str(exc.orig_exc))
+                else:
+                    log.exception('Error processing file %s (%s)!'
+                                  % (filename, exc.orig_exc))
+                return RETURN_PARSE_ERROR
+            else:
+                raise    # let caller deal with this
+
+    # we reach this point only if file is encrypted
+    # check if this is an encrypted file in an encrypted file in an ...
+    if crypto_nesting >= crypto.MAX_NESTING_DEPTH:
+        raise crypto.MaxCryptoNestingReached(crypto_nesting, filename)
+
+    decrypted_file = None
+    try:
+        log.debug('Checking encryption passwords {}'.format(options.password))
+        passwords = options.password + \
+            [crypto.WRITE_PROTECT_ENCRYPTION_PASSWORD, ]
+        decrypted_file = crypto.decrypt(filename, passwords)
+        if not decrypted_file:
+            raise crypto.WrongEncryptionPassword(filename)
+        log.info('Working on decrypted file')
+        return process_file(decrypted_file, data, container or filename,
+                            options, crypto_nesting+1)
+    except Exception:
+        raise
+    finally:     # clean up
+        if decrypted_file is not None and os.path.isfile(decrypted_file):
+            os.unlink(decrypted_file)
 
 
 def main(cmd_line_args=None):
