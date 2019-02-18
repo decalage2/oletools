@@ -5,7 +5,11 @@ crypto.py
 Module to be used by other scripts and modules in oletools, that provides
 information on encryption in OLE files.
 
+Uses :py:mod:`msoffcrypto-tool` to decrypt if it is available. Otherwise
+decryption will fail with an ImportError.
+
 .. seealso:: [MS-OFFCRYPTO]
+.. seealso:: https://github.com/nolze/msoffcrypto-tool
 
 crypto is part of the python-oletools package:
 http://www.decalage.info/python/oletools
@@ -44,6 +48,14 @@ http://www.decalage.info/python/oletools
 __version__ = '0.01'
 
 import struct
+import os
+from os.path import splitext, isfile
+from tempfile import mkstemp
+
+try:
+    import msoffcrypto
+except ImportError:
+    msoffcrypto = None
 
 
 def is_encrypted(olefile):
@@ -119,3 +131,78 @@ def is_encrypted(olefile):
 
     # no indication of encryption
     return False
+
+
+WRITE_PROTECT_ENCRYPTION_PASSWORD = 'VelvetSweatshop'
+
+
+def _check_msoffcrypto():
+    """raise an :py:class:`ImportError` if :py:data:`msoffcrypto` is `None`."""
+    if msoffcrypto is None:
+        raise ImportError('msoffcrypto-tools could not be imported')
+
+
+def try_decrypt_write_protection(filename, **temp_file_args):
+    """
+    Try to decrypt a file that was encrypted just to achieve write protection.
+
+    One way to achieve write protection / read only access to an office
+    document is to embed the file encrypted into an OLE file using a fixed
+    password. This is of course no real protection, just a way to tell GUIs to
+    discourage modifications of the file.
+
+    This function tries to decrypt the given file using that standard password
+    and returns an ole file accessing the decrypted data. If the decryption
+    fails the encryption is probably a real one and None is returned.
+
+    Decryption output will be sent to a temporary file, whose name is returned.
+
+    :param str filename: path to an ole file on disc
+    :param temp_file_args: arguments for :py:func:`tempfile.mkstemp` e.g.,
+                           `dirname` or `prefix`. `suffix` will default to
+                           suffix of input `filename`; `text` will be ignored
+    :returns: name of the decrypted temporary file.
+    :raises: :py:class:`ImportError` if :py:mod:`msoffcrypto-tools` not found
+    :raises: :py:class:`ValueError` if the given file is not encrypted
+    """
+    _check_msoffcrypto()
+
+    result = None
+    with open(filename, 'rb') as reader:
+        crypto_file = msoffcrypto.OfficeFile(reader)
+        if not crypto_file.is_encrypted():
+            raise ValueError('Given input file {} is not encrypted!'
+                             .format(filename))
+        try:
+            crypto_file.load_key(password=WRITE_PROTECT_ENCRYPTION_PASSWORD)
+        except Exception:
+            return None    # password verification failed
+
+        # create temp file
+        if 'suffix' not in temp_file_args:
+            temp_file_args['suffix'] = splitext(filename)[1]
+        temp_file_args['text'] = False
+
+        write_descriptor = None
+        write_handle = None
+        try:
+            write_descriptor, result = mkstemp(**temp_file_args)
+            write_handle = os.fdopen(write_descriptor, 'wb')
+            crypto_file.decrypt(write_handle)
+
+            # non-error cleanup: close file descriptor and handle
+            write_handle.close()
+            write_handle = None
+            # os.close(write_descriptor) already done by write_handle.close
+            write_descriptor = None
+        except Exception:
+            # error: clean up: close everything and del file ignoring errors;
+            # then re-raise original exception
+            if write_handle:
+                    write_handle.close()
+            elif write_descriptor:
+                os.close(write_descriptor)
+            if result and isfile(result):
+                os.unlink(result)
+            raise
+    return result
