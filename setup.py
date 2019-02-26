@@ -28,6 +28,7 @@ to install this package.
 # 2018-09-15       PL: - easygui is now a dependency
 # 2018-09-22       PL: - colorclass is now a dependency
 # 2018-10-27       PL: - fixed issue #359 (bug when importing log_helper)
+# 2019-02-26       CH: - add optional dependency msoffcrypto for decryption
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -316,6 +317,10 @@ def main():
             "easygui",
             'colorclass',
         ],
+        extras_require = {
+            # msoffcrypto-tools by nolze can be used to decrypt some office files
+            'decrypt': ['msoffcrypto']
+        }
     )
 
 
