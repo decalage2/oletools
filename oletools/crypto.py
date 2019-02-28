@@ -88,6 +88,7 @@ import struct
 import os
 from os.path import splitext, isfile
 from tempfile import mkstemp
+import zipfile
 from oletools.common.errors import CryptoErrorBase, WrongEncryptionPassword, \
     UnsupportedEncryptionError, MaxCryptoNestingReached
 from olefile import OleFileIO
@@ -103,7 +104,7 @@ except ImportError:
 MAX_NESTING_DEPTH = 10
 
 
-def is_encrypted(olefile):
+def is_encrypted(some_file):
     """
     Determine whether document contains encrypted content.
 
@@ -127,15 +128,33 @@ def is_encrypted(olefile):
     "well-known property" PIDSI_DOC_SECURITY if the SummaryInformation stream
     is accessible (c.f. [MS-OLEPS] 2.25.1)
 
-    :param olefile: An opened OleFileIO or a filename to such a file
-    :type olefile: :py:class:`olefile.OleFileIO` or `str`
+    :param some_file: File name or an opened OleFileIO
+    :type some_file: :py:class:`olefile.OleFileIO` or `str`
     :returns: True if (and only if) the file contains encrypted content
     """
-    if isinstance(olefile, str):
-        ole = olefile.OleFileIO(olefile)
-    else:
-        ole = olefile   # assume it is an olefile.OleFileIO
+    if not isinstance(some_file, str):
+        return is_encrypted_ole(some_file)   # assume it is OleFileIO
+    if zipfile.is_zipfile(some_file):
+        return is_encrypted_zip(some_file)
+    # otherwise assume it is the name of an ole file
+    return is_encrypted_ole(OleFileIO(some_file))
 
+
+def is_encrypted_zip(filename):
+    """Specialization of :py:func:`is_encrypted` for zip-based files."""
+    # try to decrypt a few bytes from first entry
+    with zipfile.ZipFile(filename, 'r') as zipper:
+        first_entry = zipper.infolist()[0]
+        try:
+            with zipper.open(first_entry, 'r') as reader:
+                reader.read(min(16, first_entry.file_size))
+            return False
+        except RuntimeError as rt_err:
+            return 'crypt' in str(rt_err)
+
+
+def is_encrypted_ole(ole):
+    """Specialization of :py:func:`is_encrypted` for ole files."""
     # check well known property for password protection
     # (this field may be missing for Powerpoint2000, for example)
     # TODO: check whether password protection always implies encryption. Could
