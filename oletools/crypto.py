@@ -8,6 +8,43 @@ information on encryption in OLE files.
 Uses :py:mod:`msoffcrypto-tool` to decrypt if it is available. Otherwise
 decryption will fail with an ImportError.
 
+Encryption/Write-Protection can be realized in many different ways. They range
+from setting a single flag in an otherwise unprotected file to embedding a
+regular file (e.g.  xlsx) in an EncryptedStream inside an OLE file. That means
+that (1) that lots of bad things are accesible even if no encryption password
+is known, and (2) even basic attributes like the file type can change by
+decryption. Therefore I suggest the following general routine to deal with
+potentially encrypted files::
+
+    def script_main_function(input_file, args):
+        '''Wrapper around main function to deal with encrypted files.'''
+        initial_stuff(input_file, args)
+        result = None
+        try:
+            result = do_your_thing_assuming_no_encryption(input_file)
+            if not crypto_is_encrypted(input_file):
+                return result
+        except Exception:
+            if not crypto_is_encrypted(input_file):
+                raise
+        decrypted_file = None
+        try:
+            decrypted_file = crypto.decrypt(input_file)
+        except Exception:
+            raise
+        finally:     # clean up
+            try:     # (maybe file was not yet created)
+                os.unlink(decrypted_file)
+            except Exception:
+                pass
+
+That means that caller code needs another wrapper around its main function. I
+did try it another way first (a transparent on-demand unencrypt) but for the
+above reasons I believe this is the better way. Also, non-top-level-code can
+just assume that it works on unencrypted data and fail with an exception if
+encrypted data makes its work impossible. No need to check `if is_encrypted()`
+at the start of functions.
+
 .. seealso:: [MS-OFFCRYPTO]
 .. seealso:: https://github.com/nolze/msoffcrypto-tool
 
