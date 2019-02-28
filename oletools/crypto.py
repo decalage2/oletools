@@ -133,6 +133,8 @@ def is_encrypted(olefile):
     return False
 
 
+#: one way to achieve "write protection" in office files is to encrypt the file
+#: using this password
 WRITE_PROTECT_ENCRYPTION_PASSWORD = 'VelvetSweatshop'
 
 
@@ -142,22 +144,19 @@ def _check_msoffcrypto():
         raise ImportError('msoffcrypto-tools could not be imported')
 
 
-def try_decrypt_write_protection(filename, **temp_file_args):
+def decrypt(filename, passwords=None, **temp_file_args):
     """
-    Try to decrypt a file that was encrypted just to achieve write protection.
+    Try to decrypt an encrypted file
 
-    One way to achieve write protection / read only access to an office
-    document is to embed the file encrypted into an OLE file using a fixed
-    password. This is of course no real protection, just a way to tell GUIs to
-    discourage modifications of the file.
-
-    This function tries to decrypt the given file using that standard password
-    and returns an ole file accessing the decrypted data. If the decryption
-    fails the encryption is probably a real one and None is returned.
-
-    Decryption output will be sent to a temporary file, whose name is returned.
+    This function tries to decrypt the given file using a given set of
+    passwords. If no password is given, tries the standard password for write
+    protection. Creates a file with decrypted data whose file name is returned.
+    If the decryption fails, None is returned.
 
     :param str filename: path to an ole file on disc
+    :param passwords: list/set/tuple/... of passwords or a single password or
+                      None
+    :type passwords: iterable or str or None
     :param temp_file_args: arguments for :py:func:`tempfile.mkstemp` e.g.,
                            `dirname` or `prefix`. `suffix` will default to
                            suffix of input `filename`; `text` will be ignored
@@ -167,42 +166,51 @@ def try_decrypt_write_protection(filename, **temp_file_args):
     """
     _check_msoffcrypto()
 
-    result = None
+    if passwords is None:
+        passwords = (WRITE_PROTECT_ENCRYPTION_PASSWORD, )
+    elif isinstance(passwords, str):
+        passwords = (passwords, )
+
+    decrypt_file = None
     with open(filename, 'rb') as reader:
         crypto_file = msoffcrypto.OfficeFile(reader)
         if not crypto_file.is_encrypted():
             raise ValueError('Given input file {} is not encrypted!'
                              .format(filename))
-        try:
-            crypto_file.load_key(password=WRITE_PROTECT_ENCRYPTION_PASSWORD)
-        except Exception:
-            return None    # password verification failed
 
-        # create temp file
-        if 'suffix' not in temp_file_args:
-            temp_file_args['suffix'] = splitext(filename)[1]
-        temp_file_args['text'] = False
+        for password in passwords:
+            try:
+                crypto_file.load_key(password=password)
+            except Exception:
+                continue     # password verification failed, try next
 
-        write_descriptor = None
-        write_handle = None
-        try:
-            write_descriptor, result = mkstemp(**temp_file_args)
-            write_handle = os.fdopen(write_descriptor, 'wb')
-            crypto_file.decrypt(write_handle)
+            # create temp file
+            if 'suffix' not in temp_file_args:
+                temp_file_args['suffix'] = splitext(filename)[1]
+            temp_file_args['text'] = False
 
-            # non-error cleanup: close file descriptor and handle
-            write_handle.close()
-            write_handle = None
-            # os.close(write_descriptor) already done by write_handle.close
             write_descriptor = None
-        except Exception:
-            # error: clean up: close everything and del file ignoring errors;
-            # then re-raise original exception
-            if write_handle:
+            write_handle = None
+            try:
+                write_descriptor, decrypt_file = mkstemp(**temp_file_args)
+                write_handle = os.fdopen(write_descriptor, 'wb')
+                write_descriptor = None      # is now handled via write_handle
+                crypto_file.decrypt(write_handle)
+
+                # decryption was successfull; clean up and return
+                write_handle.close()
+                write_handle = None
+                break
+            except Exception:
+                # error: clean up: close everything and del file ignoring errors;
+                # then re-raise original exception
+                if write_handle:
                     write_handle.close()
-            elif write_descriptor:
-                os.close(write_descriptor)
-            if result and isfile(result):
-                os.unlink(result)
-            raise
-    return result
+                elif write_descriptor:
+                    os.close(write_descriptor)
+                if decrypt_file and isfile(decrypt_file):
+                    os.unlink(decrypt_file)
+                decrypt_file = None
+                raise
+    # if we reach this, all passwords were tried without success
+    return decrypt_file
