@@ -88,11 +88,19 @@ import struct
 import os
 from os.path import splitext, isfile
 from tempfile import mkstemp
+from oletools.common.errors import CryptoErrorBase, WrongEncryptionPassword, \
+    UnsupportedEncryptionError, MaxCryptoNestingReached
+from olefile import OleFileIO
 
 try:
     import msoffcrypto
 except ImportError:
     msoffcrypto = None
+
+
+#: if there is an encrypted file embedded in an encrypted file,
+#: how deep down do we go
+MAX_NESTING_DEPTH = 10
 
 
 def is_encrypted(olefile):
