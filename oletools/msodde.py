@@ -64,7 +64,7 @@ from oletools import xls_parser
 from oletools import rtfobj
 from oletools import oleid
 from oletools.common.log_helper import log_helper
-from oletools.common.errors import FileIsEncryptedError
+from oletools.common.errors import UnsupportedEncryptionError
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:
@@ -898,7 +898,7 @@ def process_file(filepath, field_filter_mode=None):
         oid = oleid.OleID(ole)
         if oid.check_encrypted().value:
             log.debug('is encrypted - raise error')
-            raise FileIsEncryptedError(filepath)
+            raise UnsupportedEncryptionError(filepath)
         elif oid.check_powerpoint().value:
             log.debug('is ppt - cannot have DDE')
             return u''
