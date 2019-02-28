@@ -204,17 +204,26 @@ def decrypt(filename, passwords=None, **temp_file_args):
     :type passwords: iterable or str or None
     :param temp_file_args: arguments for :py:func:`tempfile.mkstemp` e.g.,
                            `dirname` or `prefix`. `suffix` will default to
-                           suffix of input `filename`; `text` will be ignored
+                           suffix of input `filename`, `prefix` defaults to
+                           `oletools-decrypt-`; `text` will be ignored
     :returns: name of the decrypted temporary file.
     :raises: :py:class:`ImportError` if :py:mod:`msoffcrypto-tools` not found
     :raises: :py:class:`ValueError` if the given file is not encrypted
     """
     _check_msoffcrypto()
 
-    if passwords is None:
-        passwords = (WRITE_PROTECT_ENCRYPTION_PASSWORD, )
-    elif isinstance(passwords, str):
+    # normalize password so we always have a list/tuple
+    if isinstance(passwords, str):
         passwords = (passwords, )
+    elif not passwords:
+        passwords = (WRITE_PROTECT_ENCRYPTION_PASSWORD, )
+
+    # check temp file args
+    if 'prefix' not in temp_file_args:
+        temp_file_args['prefix'] = 'oletools-decrypt-'
+    if 'suffix' not in temp_file_args:
+        temp_file_args['suffix'] = splitext(filename)[1]
+    temp_file_args['text'] = False
 
     decrypt_file = None
     with open(filename, 'rb') as reader:
@@ -224,19 +233,13 @@ def decrypt(filename, passwords=None, **temp_file_args):
                              .format(filename))
 
         for password in passwords:
-            try:
-                crypto_file.load_key(password=password)
-            except Exception:
-                continue     # password verification failed, try next
-
-            # create temp file
-            if 'suffix' not in temp_file_args:
-                temp_file_args['suffix'] = splitext(filename)[1]
-            temp_file_args['text'] = False
-
             write_descriptor = None
             write_handle = None
+            decrypt_file = None
             try:
+                crypto_file.load_key(password=password)
+
+                # create temp file
                 write_descriptor, decrypt_file = mkstemp(**temp_file_args)
                 write_handle = os.fdopen(write_descriptor, 'wb')
                 write_descriptor = None      # is now handled via write_handle
@@ -247,8 +250,7 @@ def decrypt(filename, passwords=None, **temp_file_args):
                 write_handle = None
                 break
             except Exception:
-                # error: clean up: close everything and del file ignoring errors;
-                # then re-raise original exception
+                # error-clean up: close everything and del temp file
                 if write_handle:
                     write_handle.close()
                 elif write_descriptor:
@@ -256,6 +258,5 @@ def decrypt(filename, passwords=None, **temp_file_args):
                 if decrypt_file and isfile(decrypt_file):
                     os.unlink(decrypt_file)
                 decrypt_file = None
-                raise
     # if we reach this, all passwords were tried without success
     return decrypt_file
