@@ -880,7 +880,7 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                 ole_column += '\nTemp path = %r' % rtfobj.temp_path
                 ole_color = 'yellow'
                 # check if the file extension is executable:
-                _, ext = os.path.splitext(rtfobj.filename)
+                _, ext = os.path.splitext(rtfobj.temp_path)
                 log.debug('File extension: %r' % ext)
                 if re_executable_extensions.match(ext):
                     ole_color = 'red'
