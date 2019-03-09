@@ -880,9 +880,16 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                 ole_column += '\nTemp path = %r' % rtfobj.temp_path
                 ole_color = 'yellow'
                 # check if the file extension is executable:
-                _, ext = os.path.splitext(rtfobj.filename)
-                log.debug('File extension: %r' % ext)
-                if re_executable_extensions.match(ext):
+
+                _, temp_ext = os.path.splitext(rtfobj.temp_path)
+                log.debug('Temp path extension: %r' % temp_ext)
+                _, file_ext = os.path.splitext(rtfobj.filename)
+                log.debug('File extension: %r' % file_ext)
+
+                if temp_ext != file_ext:
+                    ole_column += "\nMODIFIED FILE EXTENSION"
+
+                if re_executable_extensions.match(temp_ext) or re_executable_extensions.match(file_ext):
                     ole_color = 'red'
                     ole_column += '\nEXECUTABLE FILE'
             # else:
