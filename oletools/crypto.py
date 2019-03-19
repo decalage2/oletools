@@ -84,6 +84,7 @@ http://www.decalage.info/python/oletools
 
 __version__ = '0.01'
 
+import sys
 import struct
 import os
 from os.path import splitext, isfile
@@ -246,7 +247,18 @@ def decrypt(filename, passwords=None, **temp_file_args):
 
     decrypt_file = None
     with open(filename, 'rb') as reader:
-        crypto_file = msoffcrypto.OfficeFile(reader)
+        try:
+            crypto_file = msoffcrypto.OfficeFile(reader)
+        except Exception as exc:   # e.g. ppt, not yet supported by msoffcrypto
+            if 'Unrecognized file format' in str(exc):
+                # raise different exception without stack trace of original exc
+                if sys.version_info.major == 2:
+                    raise UnsupportedEncryptionError(filename)
+                else:
+                    # this is a syntax error in python 2, so wrap it in exec()
+                    exec('raise UnsupportedEncryptionError(filename) from None')
+            else:
+                raise
         if not crypto_file.is_encrypted():
             raise ValueError('Given input file {} is not encrypted!'
                              .format(filename))
