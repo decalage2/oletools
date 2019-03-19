@@ -213,8 +213,9 @@ from __future__ import print_function
 # 2018-12-03       PL: - uses tablestream (+colors) instead of prettytable
 # 2018-12-06       PL: - colorize the suspicious keywords found in VBA code
 # 2019-01-01       PL: - removed support for Python 2.6
+# 2019-03-18       PL: - added XLM/XLF macros detection for Excel OLE files
 
-__version__ = '0.54dev8'
+__version__ = '0.54dev9'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -3080,7 +3081,27 @@ class VBA_Parser(object):
                         log.debug('Trace:', exc_trace=True)
                     else:
                         raise SubstreamOpenError(self.filename, d.name, exc)
+        if self.detect_xlm_macros():
+            self.contains_macros = True
         return self.contains_macros
+
+    def detect_xlm_macros(self):
+        from oletools.thirdparty.oledump.plugin_biff import cBIFF
+        self.xlm_macros = []
+        if self.ole_file is None:
+            return False
+        for excel_stream in ('Workbook', 'Book'):
+            if self.ole_file.exists(excel_stream):
+                log.debug('Found Excel stream %r' % excel_stream)
+                data = self.ole_file.openstream(excel_stream).read()
+                log.debug('Running BIFF plugin from oledump')
+                biff_plugin = cBIFF(name=[excel_stream], stream=data, options='-x')
+                self.xlm_macros = biff_plugin.Analyze()
+                if len(self.xlm_macros)>0:
+                    log.debug('Found XLM macros')
+                    return True
+        return False
+
 
     def encode_string(self, unicode_str):
         """
@@ -3164,6 +3185,11 @@ class VBA_Parser(object):
                             log.debug('Error processing stream %r in file %r (%s)' % (d.name, self.filename, exc))
                             log.debug('Traceback:', exc_info=True)
                             # do not raise the error, as it is unlikely to be a compressed macro stream
+            if self.xlm_macros:
+                vba_code = ''
+                for line in self.xlm_macros:
+                    vba_code += "' " + line + '\n'
+                yield ('xlm_macro', 'xlm_macro', 'xlm_macro.txt', vba_code)
 
     def extract_all_macros(self):
         """
