@@ -8,6 +8,15 @@ class CryptoErrorBase(ValueError):
     """Base class for crypto-based exceptions."""
     pass
 
+
+class CryptoLibNotImported(CryptoErrorBase, ImportError):
+    """Exception thrown if msoffcrypto is needed but could not be imported."""
+
+    def __init__(self):
+        super(CryptoLibNotImported, self).__init__(
+            'msoffcrypto-tools could not be imported')
+
+
 class UnsupportedEncryptionError(CryptoErrorBase):
     """Exception thrown if file is encrypted and cannot deal with it."""
     def __init__(self, filename=None):
