@@ -3996,6 +3996,13 @@ def main(cmd_line_args=None):
             print_json(type='MetaInformation', return_code=return_code,
                        n_processed=count, _json_is_last=True)
 
+    except crypto.CryptoErrorBase as exc:
+        log.exception('Problems with encryption in main: {}'.format(exc),
+                      exc_info=True)
+        if return_code == RETURN_OK:
+            return_code = RETURN_ENCRYPTED
+        else:
+            return_code == RETURN_SEVERAL_ERRS
     except Exception as exc:
         # some unexpected error, maybe some of the types caught in except clauses
         # above were not sufficient. This is very bad, so log complete trace at exception level
