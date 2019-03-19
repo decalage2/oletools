@@ -90,7 +90,7 @@ from os.path import splitext, isfile
 from tempfile import mkstemp
 import zipfile
 from oletools.common.errors import CryptoErrorBase, WrongEncryptionPassword, \
-    UnsupportedEncryptionError, MaxCryptoNestingReached
+    UnsupportedEncryptionError, MaxCryptoNestingReached, CryptoLibNotImported
 from olefile import OleFileIO
 
 try:
@@ -203,9 +203,9 @@ WRITE_PROTECT_ENCRYPTION_PASSWORD = 'VelvetSweatshop'
 
 
 def _check_msoffcrypto():
-    """raise an :py:class:`ImportError` if :py:data:`msoffcrypto` is `None`."""
+    """Raise a :py:class:`CryptoLibNotImported` if msoffcrypto not imported."""
     if msoffcrypto is None:
-        raise ImportError('msoffcrypto-tools could not be imported')
+        raise CryptoLibNotImported()
 
 
 def decrypt(filename, passwords=None, **temp_file_args):
