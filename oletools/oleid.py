@@ -86,13 +86,13 @@ from os.path import dirname, abspath
 # little hack to allow absolute imports even if oletools is not installed
 # (required to run oletools directly as scripts in any directory).
 try:
-    from oletools.thirdparty import prettytable
+    from oletools.thirdparty.prettytable import prettytable
 except ImportError:
     PARENT_DIR = dirname(dirname(abspath(__file__)))
     if PARENT_DIR not in sys.path:
         sys.path.insert(0, PARENT_DIR)
     del PARENT_DIR
-    from oletools.thirdparty import prettytable
+    from oletools.thirdparty.prettytable import prettytable
 
 import olefile
 
