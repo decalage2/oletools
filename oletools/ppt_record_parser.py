@@ -149,6 +149,10 @@ def is_ppt(filename):
     Param filename can be anything that OleFileIO constructor accepts: name of
     file or file data or data stream.
 
+    Will not try to decrypt the file not even try to determine whether it is
+    encrypted. If the file is encrypted will either raise an error or just
+    return `False`.
+
     see also: oleid.OleID.check_powerpoint
     """
     have_current_user = False
