@@ -89,6 +89,7 @@ packages=[
     'oletools.thirdparty.xglob',
     'oletools.thirdparty.DridexUrlDecoder',
     'oletools.thirdparty.tablestream',
+    'oletools.thirdparty.oledump',
 ]
 ##setupdir = '.'
 ##package_dir={'': setupdir}
