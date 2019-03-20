@@ -589,19 +589,19 @@ def ParseExpression(expression):
 
     result = ''
     while len(expression) > 0:
-        ptgid = ord(expression[0])
+        ptgid = expression[0]
         expression = expression[1:]
         if ptgid in dTokens:
             result += dTokens[ptgid] + ' '
             if ptgid == 0x17:
-                length = ord(expression[0])
+                length = expression[0]
                 expression = expression[1:]
                 if expression[0] == '\x00': # probably BIFF8 -> UNICODE (compressed)
                     expression = expression[1:]
                 result += '"%s" ' % expression[:length]
                 expression = expression[length:]
             elif ptgid == 0x19:
-                grbit = ord(expression[0])
+                grbit = expression[0]
                 expression = expression[1:]
                 if grbit & 0x04:
                     result += 'CHOOSE '
@@ -611,25 +611,25 @@ def ParseExpression(expression):
             elif ptgid == 0x16 or ptgid == 0x0e:
                 pass
             elif ptgid == 0x1e:
-                result += '%d ' % (ord(expression[0]) + ord(expression[1]) * 0x100)
+                result += '%d ' % (expression[0] + expression[1] * 0x100)
                 expression = expression[2:]
             elif ptgid == 0x41:
-                functionid = ord(expression[0]) + ord(expression[1]) * 0x100
+                functionid = expression[0] + expression[1] * 0x100
                 result += '%s (0x%04x) ' % (dFunctions.get(functionid, '*UNKNOWN FUNCTION*'), functionid)
                 expression = expression[2:]
             elif ptgid == 0x22 or ptgid == 0x42:
-                functionid = ord(expression[1]) + ord(expression[2]) * 0x100
-                result += 'args %d func %s (0x%04x) ' % (ord(expression[0]), dFunctions.get(functionid, '*UNKNOWN FUNCTION*'), functionid)
+                functionid = expression[1] + expression[2] * 0x100
+                result += 'args %d func %s (0x%04x) ' % (expression[0], dFunctions.get(functionid, '*UNKNOWN FUNCTION*'), functionid)
                 expression = expression[3:]
             elif ptgid == 0x23:
-                result += '%04x ' % (ord(expression[0]) + ord(expression[1]) * 0x100)
+                result += '%04x ' % (expression[0] + expression[1] * 0x100)
                 expression = expression[14:]
             elif ptgid == 0x1f:
                 result += 'FLOAT '
                 expression = expression[8:]
             elif ptgid == 0x26:
                 expression = expression[4:]
-                expression = expression[ord(expression[0]) + ord(expression[1]) * 0x100:]
+                expression = expression[expression[0] + expression[1] * 0x100:]
                 result += 'REFERENCE-EXPRESSION '
             elif ptgid == 0x01:
                 formatcodes = 'HH'
@@ -935,7 +935,8 @@ class cBIFF(object):  # cPluginParent):
 
         if self.streamname in [['Workbook'], ['Book']]:
             self.ran = True
-            stream = self.stream
+            # use a bytearray to have Python 2+3 compatibility with the same code (no need for ord())
+            stream = bytearray(self.stream)
 
             oParser = optparse.OptionParser()
             oParser.add_option('-s', '--strings', action='store_true', default=False, help='Dump strings')
@@ -948,10 +949,12 @@ class cBIFF(object):  # cPluginParent):
             if options.find.startswith('0x'):
                 options.find = binascii.a2b_hex(options.find[2:])
 
-            while stream != '':
+            while len(stream)>0:
                 formatcodes = 'HH'
                 formatsize = struct.calcsize(formatcodes)
+                # print('formatsize=%d' % formatsize)
                 opcode, length = struct.unpack(formatcodes, stream[0:formatsize])
+                # print('opcode=%d length=%d len(stream)=%d' % (opcode, length, len(stream)))
                 stream = stream[formatsize:]
                 data = stream[:length]
                 stream = stream[length:]
@@ -961,6 +964,7 @@ class cBIFF(object):  # cPluginParent):
                 else:
                     opcodename = ''
                 line = '%04x %6d %s' % (opcode, length, opcodename)
+                # print(line)
 
                 # FORMULA record
                 if opcode == 0x06 and len(data) >= 21:
@@ -972,26 +976,29 @@ class cBIFF(object):  # cPluginParent):
                     length = struct.unpack(formatcodes, data[20:20 + formatsize])[0]
                     expression = data[22:]
                     line += ' - R%dC%d len=%d %s' % (row + 1, column + 1, length, ParseExpression(expression))
+                    # print(line)
 
                 # FORMULA record #a# difference BIFF4 and BIFF5+
                 if opcode == 0x18 and len(data) >= 16:
-                    if ord(data[0]) & 0x20:
+                    if data[0] & 0x20:
                         dBuildInNames = {1: 'Auto_Open', 2: 'Auto_Close'}
-                        code = ord(data[14])
+                        code = data[14]
                         if code == 0: #a# hack with BIFF8 Unicode
-                            code = ord(data[15])
+                            code = data[15]
                         line += ' - build-in-name %d %s' % (code, dBuildInNames.get(code, '?'))
                     else:
                         pass
-                        line += ' - %s' % (data[14:14+ord(data[3])])
+                        line += ' - %s' % (data[14:14+data[3]])
+                    # print(line)
 
                 # BOUNDSHEET record
                 if opcode == 0x85 and len(data) >= 6:
                     dSheetType = {0: 'worksheet or dialog sheet', 1: 'Excel 4.0 macro sheet', 2: 'chart', 6: 'Visual Basic module'}
-                    if ord(data[5]) == 1:
+                    if data[5] == 1:
                         macros4Found = True
                     dSheetState = {0: 'visible', 1: 'hidden', 2: 'very hidden'}
-                    line += ' - %s, %s' % (dSheetType.get(ord(data[5]), '%02x' % ord(data[5])), dSheetState.get(ord(data[4]), '%02x' % ord(data[4])))
+                    line += ' - %s, %s' % (dSheetType.get(data[5], '%02x' % data[5]), dSheetState.get(data[4], '%02x' % data[4]))
+                    # print(line)
 
                 # STRING record
                 if opcode == 0x207 and len(data) >= 4:
@@ -1004,6 +1011,7 @@ class cBIFF(object):  # cPluginParent):
                             strings += ' '
                         strings += ' '.join(values[1])
                     line += ' - %s' % strings
+                    # print(line)
 
                 if options.find == '' and options.opcode == '' and not options.xlm or options.opcode != '' and options.opcode.lower() in line.lower() or options.find != '' and options.find in data or options.xlm and opcode in [0x06, 0x18, 0x85, 0x207]:
                     result.append(line)
