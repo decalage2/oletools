@@ -215,7 +215,7 @@ from __future__ import print_function
 # 2019-01-01       PL: - removed support for Python 2.6
 # 2019-03-18       PL: - added XLM/XLF macros detection for Excel OLE files
 
-__version__ = '0.54dev10'
+__version__ = '0.54dev11'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -3093,9 +3093,6 @@ class VBA_Parser(object):
         for excel_stream in ('Workbook', 'Book'):
             if self.ole_file.exists(excel_stream):
                 log.debug('Found Excel stream %r' % excel_stream)
-                if not PYTHON2:
-                    log.warning('XLM/XLF macro detection is not yet enabled for Python 3')
-                    return False
                 data = self.ole_file.openstream(excel_stream).read()
                 log.debug('Running BIFF plugin from oledump')
                 try:
