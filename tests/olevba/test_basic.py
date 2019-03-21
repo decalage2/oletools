@@ -28,7 +28,11 @@ class TestOlevbaBasic(unittest.TestCase):
         CRYPT_DIR = join(DATA_BASE_DIR, 'encrypted')
         CRYPT_RETURN_CODE = 9
         ADD_ARGS = [], ['-d', ], ['-a', ], ['-j', ], ['-t', ]
+        EXCEPTIONS = ['autostart-encrypt-standardpassword.xlsm',
+                      'autostart-encrypt-standardpassword.xlsb']
         for filename in os.listdir(CRYPT_DIR):
+            if filename in EXCEPTIONS:
+                continue
             full_name = join(CRYPT_DIR, filename)
             for args in ADD_ARGS:
                 try:
