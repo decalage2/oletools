@@ -13,9 +13,11 @@ from tests.common.log_helper import log_helper_test_main
 from tests.common.log_helper import log_helper_test_imported
 from os.path import dirname, join, relpath, abspath
 
+from tests.test_utils import PROJECT_ROOT
+
 # this is the common base of "tests" and "oletools" dirs
-ROOT_DIRECTORY = abspath(join(__file__, '..', '..', '..', '..'))
-TEST_FILE = relpath(join(dirname(__file__), 'log_helper_test_main.py'), ROOT_DIRECTORY)
+TEST_FILE = relpath(join(dirname(abspath(__file__)), 'log_helper_test_main.py'),
+                    PROJECT_ROOT)
 PYTHON_EXECUTABLE = sys.executable
 
 MAIN_LOG_MESSAGES = [
@@ -90,9 +92,9 @@ class TestLogHelper(unittest.TestCase):
         child = subprocess.Popen(
             [PYTHON_EXECUTABLE, TEST_FILE] + args,
             shell=False,
-            env={'PYTHONPATH': ROOT_DIRECTORY},
+            env={'PYTHONPATH': PROJECT_ROOT},
             universal_newlines=True,
-            cwd=ROOT_DIRECTORY,
+            cwd=PROJECT_ROOT,
             stdin=None,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
