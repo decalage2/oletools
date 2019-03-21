@@ -209,6 +209,11 @@ def _check_msoffcrypto():
         raise CryptoLibNotImported()
 
 
+def check_msoffcrypto():
+    """Return `True` iff :py:mod:`msoffcrypto` could be imported."""
+    return msoffcrypto is not None
+
+
 def decrypt(filename, passwords=None, **temp_file_args):
     """
     Try to decrypt an encrypted file
