@@ -62,6 +62,7 @@ from oletools import ooxml
 from oletools import xls_parser
 from oletools import rtfobj
 from oletools.ppt_record_parser import is_ppt
+from oletools import crypto
 from oletools.common.log_helper import log_helper
 from oletools.common.errors import UnsupportedEncryptionError
 
@@ -304,6 +305,9 @@ def process_args(cmd_line_args=None):
                         default=DEFAULT_LOG_LEVEL,
                         help="logging level debug/info/warning/error/critical "
                              "(default=%(default)s)")
+    parser.add_argument("-p", "--password", type=str, action='append',
+                        help='if encrypted office files are encountered, try '
+                             'decryption with this password. May be repeated.')
     filter_group = parser.add_argument_group(
         title='Filter which OpenXML field commands are returned',
         description='Only applies to OpenXML (e.g. docx) and rtf, not to OLE '
@@ -930,6 +934,53 @@ def process_file(filepath, field_filter_mode=None):
 
 # === MAIN =================================================================
 
+
+def process_maybe_encrypted(filepath, passwords, crypto_nesting=0, **kwargs):
+    """
+    Process a file that might be encrypted.
+
+    Calls :py:func:`process_file` and if that fails tries to decrypt and
+    process the result. Based on recommendation in module doc string of
+    :py:mod:`oletools.crypto`.
+
+    :param str filepath: path to file on disc.
+    :param passwords: list of passwords (str) to try for decryption
+    :param int crypto_nesting: How many decryption layers were already used to
+                               get the given file.
+    :param kwargs: same as :py:func:`process_file`
+    :returns: same as :py:func:`process_file`
+    """
+    result = u''
+    try:
+        result = process_file(filepath, **kwargs)
+        if not crypto.is_encrypted(filepath):
+            return result
+    except Exception:
+        if not crypto.is_encrypted(filepath):
+            raise
+
+    # we reach this point only if file is encrypted
+    # check if this is an encrypted file in an encrypted file in an ...
+    if crypto_nesting >= crypto.MAX_NESTING_DEPTH:
+        raise crypto.MaxCryptoNestingReached(crypto_nesting, filepath)
+
+    decrypted_file = None
+    try:
+        logger.debug('Trying to decrypt file')
+        decrypted_file = crypto.decrypt(filepath, passwords)
+        logger.info('Analyze decrypted file')
+        result = process_maybe_encrypted(decrypted_file, passwords,
+                                         crypto_nesting+1, **kwargs)
+    except Exception:
+        raise
+    finally:     # clean up
+        try:     # (maybe file was not yet created)
+            os.unlink(decrypted_file)
+        except Exception:
+            pass
+    return result
+
+
 def main(cmd_line_args=None):
     """ Main function, called if this file is called as a script
 
@@ -954,7 +1005,9 @@ def main(cmd_line_args=None):
     text = ''
     return_code = 1
     try:
-        text = process_file(args.filepath, args.field_filter_mode)
+        text = process_maybe_encrypted(
+            args.filepath, args.password,
+            field_filter_mode=args.field_filter_mode)
         return_code = 0
     except Exception as exc:
         logger.exception(exc.message)
