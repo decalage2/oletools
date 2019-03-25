@@ -935,7 +935,8 @@ def process_file(filepath, field_filter_mode=None):
 # === MAIN =================================================================
 
 
-def process_maybe_encrypted(filepath, passwords, crypto_nesting=0, **kwargs):
+def process_maybe_encrypted(filepath, passwords=None, crypto_nesting=0,
+                            **kwargs):
     """
     Process a file that might be encrypted.
 
@@ -944,7 +945,7 @@ def process_maybe_encrypted(filepath, passwords, crypto_nesting=0, **kwargs):
     :py:mod:`oletools.crypto`.
 
     :param str filepath: path to file on disc.
-    :param passwords: list of passwords (str) to try for decryption
+    :param passwords: list of passwords (str) to try for decryption or None
     :param int crypto_nesting: How many decryption layers were already used to
                                get the given file.
     :param kwargs: same as :py:func:`process_file`
@@ -965,6 +966,11 @@ def process_maybe_encrypted(filepath, passwords, crypto_nesting=0, **kwargs):
         raise crypto.MaxCryptoNestingReached(crypto_nesting, filepath)
 
     decrypted_file = None
+    if passwords is None:
+        passwords = [crypto.WRITE_PROTECT_ENCRYPTION_PASSWORD, ]
+    else:
+        passwords = list(passwords) + \
+            [crypto.WRITE_PROTECT_ENCRYPTION_PASSWORD, ]
     try:
         logger.debug('Trying to decrypt file')
         decrypted_file = crypto.decrypt(filepath, passwords)
