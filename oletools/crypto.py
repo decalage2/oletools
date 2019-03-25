@@ -16,20 +16,27 @@ is known, and (2) even basic attributes like the file type can change by
 decryption. Therefore I suggest the following general routine to deal with
 potentially encrypted files::
 
-    def script_main_function(input_file, args):
+    def script_main_function(input_file, passwords, crypto_nesting=0, args):
         '''Wrapper around main function to deal with encrypted files.'''
         initial_stuff(input_file, args)
         result = None
         try:
             result = do_your_thing_assuming_no_encryption(input_file)
-            if not crypto_is_encrypted(input_file):
+            if not crypto.is_encrypted(input_file):
                 return result
         except Exception:
-            if not crypto_is_encrypted(input_file):
+            if not crypto.is_encrypted(input_file):
                 raise
+        # we reach this point only if file is encrypted
+        # check if this is an encrypted file in an encrypted file in an ...
+        if crypto_nesting >= crypto.MAX_NESTING_DEPTH:
+            raise crypto.MaxCryptoNestingReached(crypto_nesting, filename)
         decrypted_file = None
         try:
-            decrypted_file = crypto.decrypt(input_file)
+            decrypted_file = crypto.decrypt(input_file, passwords)
+            # might still be encrypted, so call this again recursively
+            result = script_main_function(decrypted_file, passwords,
+                                          crypto_nesting+1, args)
         except Exception:
             raise
         finally:     # clean up
@@ -38,6 +45,7 @@ potentially encrypted files::
             except Exception:
                 pass
 
+(Realized e.g. in :py:mod:`oletools.msodde`).
 That means that caller code needs another wrapper around its main function. I
 did try it another way first (a transparent on-demand unencrypt) but for the
 above reasons I believe this is the better way. Also, non-top-level-code can
