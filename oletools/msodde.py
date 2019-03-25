@@ -353,10 +353,9 @@ def process_doc_field(data):
 
     if data.lstrip().lower().startswith(u'dde'):
         return data
-    elif data.lstrip().lower().startswith(u'\x00d\x00d\x00e\x00'):
+    if data.lstrip().lower().startswith(u'\x00d\x00d\x00e\x00'):
         return data
-    else:
-        return u''
+    return u''
 
 
 OLE_FIELD_START = 0x13
@@ -621,7 +620,7 @@ def field_is_blacklisted(contents):
         logger.debug('too few args: found {0}, but need at least {1} in "{2}"'
                      .format(nargs, nargs_required, contents))
         return False
-    elif nargs > nargs_required + nargs_optional:
+    if nargs > nargs_required + nargs_optional:
         logger.debug('too many args: found {0}, but need at most {1}+{2} in '
                      '"{3}"'
                      .format(nargs, nargs_required, nargs_optional, contents))
@@ -899,9 +898,8 @@ def process_file(filepath, field_filter_mode=None):
         if is_ppt(ole):
             logger.debug('is ppt - cannot have DDE')
             return u''
-        else:
-            logger.debug('Process file as word 2003 (doc)')
-            return process_doc(ole)
+        logger.debug('Process file as word 2003 (doc)')
+        return process_doc(ole)
 
     with open(filepath, 'rb') as file_handle:
         if file_handle.read(4) == RTF_START:
@@ -918,18 +916,18 @@ def process_file(filepath, field_filter_mode=None):
     if doctype == ooxml.DOCTYPE_EXCEL:
         logger.debug('Process file as excel 2007+ (xlsx)')
         return process_xlsx(filepath)
-    elif doctype in (ooxml.DOCTYPE_EXCEL_XML, ooxml.DOCTYPE_EXCEL_XML2003):
+    if doctype in (ooxml.DOCTYPE_EXCEL_XML, ooxml.DOCTYPE_EXCEL_XML2003):
         logger.debug('Process file as xml from excel 2003/2007+')
         return process_excel_xml(filepath)
-    elif doctype in (ooxml.DOCTYPE_WORD_XML, ooxml.DOCTYPE_WORD_XML2003):
+    if doctype in (ooxml.DOCTYPE_WORD_XML, ooxml.DOCTYPE_WORD_XML2003):
         logger.debug('Process file as xml from word 2003/2007+')
         return process_docx(filepath)
-    elif doctype is None:
+    if doctype is None:
         logger.debug('Process file as csv')
         return process_csv(filepath)
-    else:  # could be docx; if not: this is the old default code path
-        logger.debug('Process file as word 2007+ (docx)')
-        return process_docx(filepath, field_filter_mode)
+    # could be docx; if not: this is the old default code path
+    logger.debug('Process file as word 2007+ (docx)')
+    return process_docx(filepath, field_filter_mode)
 
 
 # === MAIN =================================================================
