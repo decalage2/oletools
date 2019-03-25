@@ -214,8 +214,9 @@ from __future__ import print_function
 # 2018-12-06       PL: - colorize the suspicious keywords found in VBA code
 # 2019-01-01       PL: - removed support for Python 2.6
 # 2019-03-18       PL: - added XLM/XLF macros detection for Excel OLE files
+# 2019-03-25       CH: - added decryption of password-protected files
 
-__version__ = '0.54dev11'
+__version__ = '0.54dev12'
 
 #------------------------------------------------------------------------------
 # TODO:
