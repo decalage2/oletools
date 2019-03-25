@@ -1016,7 +1016,7 @@ def main(cmd_line_args=None):
             field_filter_mode=args.field_filter_mode)
         return_code = 0
     except Exception as exc:
-        logger.exception(exc.message)
+        logger.exception(str(exc))
 
     logger.print_str('DDE Links:')
     logger.print_str(text)
