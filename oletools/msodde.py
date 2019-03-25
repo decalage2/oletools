@@ -420,7 +420,7 @@ def process_doc_stream(stream):
                 pass
             elif len(field_contents) > OLE_FIELD_MAX_SIZE:
                 logger.debug('field exceeds max size of {0}. Ignore rest'
-                          .format(OLE_FIELD_MAX_SIZE))
+                             .format(OLE_FIELD_MAX_SIZE))
                 max_size_exceeded = True
 
             # appending a raw byte to a unicode string here. Not clean but
@@ -440,7 +440,7 @@ def process_doc_stream(stream):
         logger.debug('big field was not a field after all')
 
     logger.debug('Checked {0} characters, found {1} fields'
-              .format(idx, len(result_parts)))
+                 .format(idx, len(result_parts)))
 
     return result_parts
 
@@ -465,11 +465,10 @@ def process_doc(ole):
             direntry = ole._load_direntry(sid)
         is_stream = direntry.entry_type == olefile.STGTY_STREAM
         logger.debug('direntry {:2d} {}: {}'
-                  .format(sid, '[orphan]' if is_orphan else direntry.name,
-                          'is stream of size {}'.format(direntry.size)
-                          if is_stream else
-                          'no stream ({})'
-                          .format(direntry.entry_type)))
+                     .format(sid, '[orphan]' if is_orphan else direntry.name,
+                             'is stream of size {}'.format(direntry.size)
+                             if is_stream else
+                             'no stream ({})'.format(direntry.entry_type)))
         if is_stream:
             new_parts = process_doc_stream(
                 ole._open(direntry.isectStart, direntry.size))
@@ -609,7 +608,7 @@ def field_is_blacklisted(contents):
     except ValueError:    # first word is no blacklisted command
         return False
     logger.debug('trying to match "{0}" to blacklist command {1}'
-              .format(contents, FIELD_BLACKLIST[index]))
+                 .format(contents, FIELD_BLACKLIST[index]))
     _, nargs_required, nargs_optional, sw_with_arg, sw_solo, sw_format \
         = FIELD_BLACKLIST[index]
 
@@ -621,11 +620,12 @@ def field_is_blacklisted(contents):
         nargs += 1
     if nargs < nargs_required:
         logger.debug('too few args: found {0}, but need at least {1} in "{2}"'
-                  .format(nargs, nargs_required, contents))
+                     .format(nargs, nargs_required, contents))
         return False
     elif nargs > nargs_required + nargs_optional:
-        logger.debug('too many args: found {0}, but need at most {1}+{2} in "{3}"'
-                  .format(nargs, nargs_required, nargs_optional, contents))
+        logger.debug('too many args: found {0}, but need at most {1}+{2} in '
+                     '"{3}"'
+                     .format(nargs, nargs_required, nargs_optional, contents))
         return False
 
     # check switches
@@ -635,14 +635,14 @@ def field_is_blacklisted(contents):
         if expect_arg:            # this is an argument for the last switch
             if arg_choices and (word not in arg_choices):
                 logger.debug('Found invalid switch argument "{0}" in "{1}"'
-                          .format(word, contents))
+                             .format(word, contents))
                 return False
             expect_arg = False
             arg_choices = []   # in general, do not enforce choices
             continue           # "no further questions, your honor"
         elif not FIELD_SWITCH_REGEX.match(word):
             logger.debug('expected switch, found "{0}" in "{1}"'
-                      .format(word, contents))
+                         .format(word, contents))
             return False
         # we want a switch and we got a valid one
         switch = word[1]
@@ -664,7 +664,7 @@ def field_is_blacklisted(contents):
                 arg_choices = []  # too many choices to list them here
         else:
             logger.debug('unexpected switch {0} in "{1}"'
-                      .format(switch, contents))
+                         .format(switch, contents))
             return False
 
     # if nothing went wrong sofar, the contents seems to match the blacklist
@@ -690,7 +690,7 @@ def process_xlsx(filepath):
     for subfile, content_type, handle in parser.iter_non_xml():
         try:
             logger.info('Parsing non-xml subfile {0} with content type {1}'
-                         .format(subfile, content_type))
+                        .format(subfile, content_type))
             for record in xls_parser.parse_xlsb_part(handle, content_type,
                                                      subfile):
                 logger.debug('{0}: {1}'.format(subfile, record))
@@ -729,7 +729,8 @@ class RtfFieldParser(rtfobj.RtfParser):
 
     def open_destination(self, destination):
         if destination.cword == b'fldinst':
-            logger.debug('*** Start field data at index %Xh' % destination.start)
+            logger.debug('*** Start field data at index %Xh'
+                         % destination.start)
 
     def close_destination(self, destination):
         if destination.cword == b'fldinst':
@@ -760,7 +761,7 @@ def process_rtf(file_handle, field_filter_mode=None):
     all_fields = [field.decode('ascii') for field in rtfparser.fields]
     # apply field command filter
     logger.debug('found {1} fields, filtering with mode "{0}"'
-              .format(field_filter_mode, len(all_fields)))
+                 .format(field_filter_mode, len(all_fields)))
     if field_filter_mode in (FIELD_FILTER_ALL, None):
         clean_fields = all_fields
     elif field_filter_mode == FIELD_FILTER_DDE:
@@ -817,11 +818,12 @@ def process_csv(filepath):
                     results, _ = process_csv_dialect(file_handle, delim)
                 except csv.Error:   # e.g. sniffing fails
                     logger.debug('failed to csv-parse with delimiter {0!r}'
-                              .format(delim))
+                                 .format(delim))
 
         if is_small and not results:
             # try whole file as single cell, since sniffing fails in this case
-            logger.debug('last attempt: take whole file as single unquoted cell')
+            logger.debug('last attempt: take whole file as single unquoted '
+                         'cell')
             file_handle.seek(0)
             match = CSV_DDE_FORMAT.match(file_handle.read(CSV_SMALL_THRESH))
             if match:
@@ -838,8 +840,8 @@ def process_csv_dialect(file_handle, delimiters):
                                   delimiters=delimiters)
     dialect.strict = False     # microsoft is never strict
     logger.debug('sniffed csv dialect with delimiter {0!r} '
-              'and quote char {1!r}'
-              .format(dialect.delimiter, dialect.quotechar))
+                 'and quote char {1!r}'
+                 .format(dialect.delimiter, dialect.quotechar))
 
     # rewind file handle to start
     file_handle.seek(0)
