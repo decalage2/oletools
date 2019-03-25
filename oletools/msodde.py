@@ -51,7 +51,6 @@ from __future__ import print_function
 
 import argparse
 import os
-from os.path import abspath, dirname
 import sys
 import re
 import csv
@@ -64,7 +63,6 @@ from oletools import rtfobj
 from oletools.ppt_record_parser import is_ppt
 from oletools import crypto
 from oletools.common.log_helper import log_helper
-from oletools.common.errors import UnsupportedEncryptionError
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:
@@ -978,8 +976,6 @@ def process_maybe_encrypted(filepath, passwords=None, crypto_nesting=0,
         logger.info('Analyze decrypted file')
         result = process_maybe_encrypted(decrypted_file, passwords,
                                          crypto_nesting+1, **kwargs)
-    except Exception:
-        raise
     finally:     # clean up
         try:     # (maybe file was not yet created)
             os.unlink(decrypted_file)
