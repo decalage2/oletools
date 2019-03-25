@@ -11,7 +11,6 @@ Supported formats:
 - RTF
 - CSV (exported from / imported into Excel)
 - XML (exported from Word 2003, Word 2007+, Excel 2003, (Excel 2007+?)
-- raises an error if run with files encrypted using MS Crypto API RC4
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -62,7 +61,7 @@ import olefile
 from oletools import ooxml
 from oletools import xls_parser
 from oletools import rtfobj
-from oletools import oleid
+from oletools.ppt_record_parser import is_ppt
 from oletools.common.log_helper import log_helper
 from oletools.common.errors import UnsupportedEncryptionError
 
@@ -892,14 +891,8 @@ def process_file(filepath, field_filter_mode=None):
             logger.debug('Process file as excel 2003 (xls)')
             return process_xls(filepath)
 
-        # encrypted files also look like ole, even if office 2007+ (xml-based)
-        # so check for encryption, first
         ole = olefile.OleFileIO(filepath, path_encoding=None)
-        oid = oleid.OleID(ole)
-        if oid.check_encrypted().value:
-            log.debug('is encrypted - raise error')
-            raise UnsupportedEncryptionError(filepath)
-        elif oid.check_powerpoint().value:
+        if is_ppt(ole):
             log.debug('is ppt - cannot have DDE')
             return u''
         else:
