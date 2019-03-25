@@ -123,7 +123,7 @@ class TestDdeLinks(unittest.TestCase):
 
     def test_excel(self):
         """ check that dde links are found in excel 2007+ files """
-        expect = ['DDE-Link cmd /c calc.exe', ]
+        expect = ['cmd /c calc.exe', ]
         for extn in 'xlsx', 'xlsm', 'xlsb':
             output = msodde.process_file(
                 join(BASE_DIR, 'msodde', 'dde-test.' + extn), msodde.FIELD_FILTER_BLACKLIST)
