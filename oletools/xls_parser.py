@@ -101,7 +101,7 @@ def read_unicode(data, start_idx, n_chars):
     """ read a unicode string from a XLUnicodeStringNoCch structure """
     # first bit 0x0 --> only low-bytes are saved, all high bytes are 0
     # first bit 0x1 --> 2 bytes per character
-    low_bytes_only = (ord(data[start_idx]) == 0)
+    low_bytes_only = (ord(data[start_idx:start_idx+1]) == 0)
     if low_bytes_only:
         end_idx = start_idx + 1 + n_chars
         return data[start_idx+1:end_idx].decode('ascii'), end_idx
@@ -349,6 +349,7 @@ class XlsRecordSupBook(XlsRecord):
     LINK_TYPE_EXTERNAL = 'external workbook'
 
     def finish_constructing(self, _):
+        """Finish constructing this record; called at end of constructor."""
         # set defaults
         self.ctab = None
         self.cch = None
