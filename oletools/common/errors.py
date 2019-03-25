@@ -14,7 +14,7 @@ class CryptoLibNotImported(CryptoErrorBase, ImportError):
 
     def __init__(self):
         super(CryptoLibNotImported, self).__init__(
-            'msoffcrypto-tools could not be imported')
+            'msoffcrypto-tools is not installed. Please run "pip install msoffcrypto-tool" or see https://github.com/nolze/msoffcrypto-tool')
 
 
 class UnsupportedEncryptionError(CryptoErrorBase):
@@ -29,7 +29,7 @@ class WrongEncryptionPassword(CryptoErrorBase):
     """Exception thrown if encryption could be handled but passwords wrong."""
     def __init__(self, filename=None):
         super(WrongEncryptionPassword, self).__init__(
-            'Given passwords could not decrypt office file{}'
+            'Given passwords could not decrypt office file{}, use option -p to specify the password'
             .format('' if filename is None else ' ' + filename))
 
 
