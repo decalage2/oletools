@@ -379,7 +379,7 @@ def process_doc_stream(stream):
     while True:
         idx += 1
         char = stream.read(1)    # loop over every single byte
-        if len(char) == 0:
+        if len(char) == 0:                   # pylint: disable=len-as-condition
             break
         else:
             char = ord(char)
@@ -535,7 +535,7 @@ def process_docx(filepath, field_filter_mode=None):
                     level += 1
                 if attrib_type == "end":
                     level -= 1
-                    if level == 0 or level == -1:  # edge-case; level gets -1
+                    if level in (0, -1):  # edge-case; level gets -1
                         all_fields.append(ddetext)
                         ddetext = u''
                         level = 0  # reset edge-case
@@ -564,6 +564,7 @@ def process_docx(filepath, field_filter_mode=None):
 
 
 def unquote(field):
+    """TODO: document what exactly is happening here..."""
     if "QUOTE" not in field or NO_QUOTES:
         return field
     # split into components
