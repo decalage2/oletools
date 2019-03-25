@@ -93,6 +93,7 @@ except ImportError:
         sys.path.insert(0, PARENT_DIR)
     del PARENT_DIR
     from oletools.thirdparty.prettytable import prettytable
+from oletools import crypto
 
 import olefile
 
@@ -279,20 +280,7 @@ class OleID(object):
         self.indicators.append(encrypted)
         if not self.ole:
             return None
-        # check if bit 1 of security field = 1:
-        # (this field may be missing for Powerpoint2000, for example)
-        if self.suminfo_data is None:
-            self.check_properties()
-        if 0x13 in self.suminfo_data:
-            if self.suminfo_data[0x13] & 1:
-                encrypted.value = True
-        # check if this is an OpenXML encrypted file
-        elif self.ole.exists('EncryptionInfo'):
-            encrypted.value = True
-        # or an encrypted ppt file
-        if self.ole.exists('EncryptedSummary') and \
-                not self.ole.exists('SummaryInformation'):
-            encrypted.value = True
+        encrypted.value = crypto.is_encrypted(self.ole)
         return encrypted
 
     def check_word(self):
@@ -316,27 +304,7 @@ class OleID(object):
             return None, None
         if self.ole.exists('WordDocument'):
             word.value = True
-            # check for Word-specific encryption flag:
-            stream = None
-            try:
-                stream = self.ole.openstream(["WordDocument"])
-                # pass header 10 bytes
-                stream.read(10)
-                # read flag structure:
-                temp16 = struct.unpack("H", stream.read(2))[0]
-                f_encrypted = (temp16 & 0x0100) >> 8
-                if f_encrypted:
-                    # correct encrypted indicator if present or add one
-                    encrypt_ind = self.get_indicator('encrypted')
-                    if encrypt_ind:
-                        encrypt_ind.value = True
-                    else:
-                        self.indicators.append('encrypted', True, name='Encrypted')
-            except Exception:
-                raise
-            finally:
-                if stream is not None:
-                    stream.close()
+
             # check for VBA macros:
             if self.ole.exists('Macros'):
                 macros.value = True

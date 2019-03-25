@@ -16,7 +16,7 @@ class TestBasic(unittest.TestCase):
 
     def test_is_ppt(self):
         """ test ppt_record_parser.is_ppt(filename) """
-        exceptions = []
+        exceptions = ['encrypted.ppt', ]     # actually is ppt but embedded
         for base_dir, _, files in os.walk(DATA_BASE_DIR):
             for filename in files:
                 if filename in exceptions:

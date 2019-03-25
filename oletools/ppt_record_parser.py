@@ -63,7 +63,7 @@ except ImportError:
         sys.path.insert(0, PARENT_DIR)
     del PARENT_DIR
     from oletools import record_base
-from oletools.common.errors import FileIsEncryptedError
+from oletools.common.errors import CryptoErrorBase
 
 
 # types of relevant records (there are much more than listed here)
@@ -149,6 +149,10 @@ def is_ppt(filename):
     Param filename can be anything that OleFileIO constructor accepts: name of
     file or file data or data stream.
 
+    Will not try to decrypt the file not even try to determine whether it is
+    encrypted. If the file is encrypted will either raise an error or just
+    return `False`.
+
     see also: oleid.OleID.check_powerpoint
     """
     have_current_user = False
@@ -181,11 +185,8 @@ def is_ppt(filename):
                         return True
             else:   # ignore other streams/storages since they are optional
                 continue
-    except FileIsEncryptedError:
-        assert ppt_file is not None, \
-            'Encryption error should not be raised from just opening OLE file.'
-        # just rely on stream names, copied from oleid
-        return ppt_file.exists('PowerPoint Document')
+    except CryptoErrorBase:
+        raise
     except Exception:
         pass
     return False
