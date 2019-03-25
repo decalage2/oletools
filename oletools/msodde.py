@@ -21,7 +21,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE =================================================================
 
-# msodde is copyright (c) 2017-2018 Philippe Lagadec (http://www.decalage.info)
+# msodde is copyright (c) 2017-2019 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -86,8 +86,10 @@ from oletools.common.log_helper import log_helper
 # 2018-03-21       CH: - added detection for various CSV formulas (issue #259)
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
 # 2018-10-25       CH: - detect encryption and raise error if detected
+# 2019-03-25       CH: - added decryption of password-protected files
 
-__version__ = '0.54dev4'
+
+__version__ = '0.54dev12'
 
 # -----------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these
