@@ -679,7 +679,7 @@ def process_xlsx(filepath):
         tag = elem.tag.lower()
         if tag == 'ddelink' or tag.endswith('}ddelink'):
             # we have found a dde link. Try to get more info about it
-            link_info = ['DDE-Link']
+            link_info = []
             if 'ddeService' in elem.attrib:
                 link_info.append(elem.attrib['ddeService'])
             if 'ddeTopic' in elem.attrib:
@@ -697,8 +697,7 @@ def process_xlsx(filepath):
                 if isinstance(record, xls_parser.XlsbBeginSupBook) and \
                         record.link_type == \
                         xls_parser.XlsbBeginSupBook.LINK_TYPE_DDE:
-                    dde_links.append('DDE-Link ' + record.string1 + ' ' +
-                                     record.string2)
+                    dde_links.append(record.string1 + ' ' + record.string2)
         except Exception:
             if content_type.startswith('application/vnd.ms-excel.') or \
                content_type.startswith('application/vnd.ms-office.'):  # pylint: disable=bad-indentation
