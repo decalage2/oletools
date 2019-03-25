@@ -525,7 +525,8 @@ def process_docx(filepath, field_filter_mode=None):
             else:
                 elem = curr_elem
             if elem is None:
-                raise BadOOXML(filepath, 'Got "None"-Element from iter_xml')
+                raise ooxml.BadOOXML(filepath,
+                                     'Got "None"-Element from iter_xml')
 
             # check if FLDCHARTYPE and whether "begin" or "end" tag
             attrib_type = elem.attrib.get(ATTR_W_FLDCHARTYPE[0]) or \
@@ -696,7 +697,7 @@ def process_xlsx(filepath):
                         record.link_type == \
                         xls_parser.XlsbBeginSupBook.LINK_TYPE_DDE:
                     dde_links.append(record.string1 + ' ' + record.string2)
-        except Exception:
+        except Exception as exc:
             if content_type.startswith('application/vnd.ms-excel.') or \
                content_type.startswith('application/vnd.ms-office.'):  # pylint: disable=bad-indentation
                 # should really be able to parse these either as xml or records
@@ -896,7 +897,7 @@ def process_file(filepath, field_filter_mode=None):
 
         ole = olefile.OleFileIO(filepath, path_encoding=None)
         if is_ppt(ole):
-            log.debug('is ppt - cannot have DDE')
+            logger.debug('is ppt - cannot have DDE')
             return u''
         else:
             logger.debug('Process file as word 2003 (doc)')
