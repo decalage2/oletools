@@ -312,8 +312,7 @@ from pyparsing import \
 from oletools import ppt_parser
 from oletools import oleform
 from oletools import rtfobj
-from oletools import oleid
-from oletools.common.errors import FileIsEncryptedError
+from oletools import crypto
 from oletools.common import codepages
 
 # monkeypatch email to fix issue #32:
@@ -2585,12 +2584,6 @@ class VBA_Parser(object):
             # This looks like an OLE file
             self.open_ole(_file)
 
-            # check whether file is encrypted (need to do this before try ppt)
-            log.debug('Check encryption of ole file')
-            crypt_indicator = oleid.OleID(self.ole_file).check_encrypted()
-            if crypt_indicator.value:
-                raise FileIsEncryptedError(filename)
-
             # if this worked, try whether it is a ppt file (special ole file)
             self.open_ppt()
         if self.type is None and zipfile.is_zipfile(_file):
@@ -3741,6 +3734,10 @@ def parse_args(cmd_line_args=None):
                       help='find files recursively in subdirectories.')
     parser.add_option("-z", "--zip", dest='zip_password', type='str', default=None,
                       help='if the file is a zip archive, open all files from it, using the provided password.')
+    parser.add_option("-p", "--password", type='str', action='append',
+                      default=[],
+                      help='if encrypted office files are encountered, try '
+                           'decryption with this password. May be repeated.')
     parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
                       help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
     # output mode; could make this even simpler with add_option(type='choice') but that would make
@@ -3790,6 +3787,106 @@ def parse_args(cmd_line_args=None):
     return options, args
 
 
+def process_file(filename, data, container, options, crypto_nesting=0):
+    """
+    Part of main function that processes a single file.
+
+    This handles exceptions and encryption.
+
+    Returns a single code summarizing the status of processing of this file
+    """
+    try:
+        # Open the file
+        vba_parser = VBA_Parser_CLI(filename, data=data, container=container,
+                                    relaxed=options.relaxed)
+
+        if options.output_mode == 'detailed':
+            # fully detailed output
+            vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
+                         display_code=options.display_code,
+                         hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
+                         show_deobfuscated_code=options.show_deobfuscated_code,
+                         deobfuscate=options.deobfuscate)
+        elif options.output_mode == 'triage':
+            # summarized output for triage:
+            vba_parser.process_file_triage(show_decoded_strings=options.show_decoded_strings,
+                                           deobfuscate=options.deobfuscate)
+        elif options.output_mode == 'json':
+            print_json(
+                vba_parser.process_file_json(show_decoded_strings=options.show_decoded_strings,
+                         display_code=options.display_code,
+                         hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
+                         show_deobfuscated_code=options.show_deobfuscated_code,
+                         deobfuscate=options.deobfuscate))
+        else:  # (should be impossible)
+            raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
+
+        # even if processing succeeds, file might still be encrypted
+        log.debug('Checking for encryption')
+        if not crypto.is_encrypted(filename):
+            return RETURN_OK
+    except Exception as exc:
+        log.debug('Checking for encryption')
+        if crypto.is_encrypted(filename):
+            pass   # deal with this below
+        else:
+            if isinstance(exc, (SubstreamOpenError, UnexpectedDataError)):
+                if options.output_mode in ('triage', 'unspecified'):
+                    print('%-12s %s - Error opening substream or uenxpected ' \
+                          'content' % ('?', filename))
+                elif options.output_mode == 'json':
+                    print_json(file=filename, type='error',
+                               error=type(exc).__name__, message=str(exc))
+                else:
+                    log.exception('Error opening substream or unexpected '
+                                  'content in %s' % filename)
+                return RETURN_OPEN_ERROR
+            elif isinstance(exc, FileOpenError):
+                if options.output_mode in ('triage', 'unspecified'):
+                    print('%-12s %s - File format not supported' % ('?', filename))
+                elif options.output_mode == 'json':
+                    print_json(file=filename, type='error',
+                               error=type(exc).__name__, message=str(exc))
+                else:
+                    log.exception('Failed to open %s -- probably not supported!' % filename)
+                return RETURN_OPEN_ERROR
+            elif isinstance(exc, ProcessingError):
+                if options.output_mode in ('triage', 'unspecified'):
+                    print('%-12s %s - %s' % ('!ERROR', filename, exc.orig_exc))
+                elif options.output_mode == 'json':
+                    print_json(file=filename, type='error',
+                               error=type(exc).__name__,
+                               message=str(exc.orig_exc))
+                else:
+                    log.exception('Error processing file %s (%s)!'
+                                  % (filename, exc.orig_exc))
+                return RETURN_PARSE_ERROR
+            else:
+                raise    # let caller deal with this
+
+    # we reach this point only if file is encrypted
+    # check if this is an encrypted file in an encrypted file in an ...
+    if crypto_nesting >= crypto.MAX_NESTING_DEPTH:
+        raise crypto.MaxCryptoNestingReached(crypto_nesting, filename)
+
+    decrypted_file = None
+    try:
+        log.debug('Checking encryption passwords {}'.format(options.password))
+        passwords = options.password + \
+            [crypto.WRITE_PROTECT_ENCRYPTION_PASSWORD, ]
+        decrypted_file = crypto.decrypt(filename, passwords)
+        if not decrypted_file:
+            raise crypto.WrongEncryptionPassword(filename)
+        log.info('Working on decrypted file')
+        return process_file(decrypted_file, data, container or filename,
+                            options, crypto_nesting+1)
+    except Exception:
+        raise
+    finally:     # clean up
+        if decrypted_file is not None and os.path.isfile(decrypted_file):
+            os.unlink(decrypted_file)
+
+
 def main(cmd_line_args=None):
     """
     Main function, called when olevba is run from the command line
@@ -3824,35 +3921,44 @@ def main(cmd_line_args=None):
     if options.output_mode == 'triage' and options.show_deobfuscated_code:
         log.info('ignoring option --reveal in triage output mode')
 
-    # Column headers (do not know how many files there will be yet, so if no output_mode
-    # was specified, we will print triage for first file --> need these headers)
-    if options.output_mode in ('triage', 'unspecified'):
+    # gather info on all files that must be processed
+    # ignore directory names stored in zip files:
+    all_input_info = tuple((container, filename, data) for
+                           container, filename, data in xglob.iter_files(
+                               args, recursive=options.recursive,
+                               zip_password=options.zip_password,
+                               zip_fname=options.zip_fname)
+                           if not (container and filename.endswith('/')))
+
+    # specify output mode if options -t, -d and -j were not specified
+    if options.output_mode == 'unspecified':
+        if len(all_input_info) == 1:
+            options.output_mode = 'detailed'
+        else:
+            options.output_mode = 'triage'
+
+    # Column headers for triage mode
+    if options.output_mode == 'triage':
         print('%-12s %-65s' % ('Flags', 'Filename'))
         print('%-12s %-65s' % ('-' * 11, '-' * 65))
 
     previous_container = None
     count = 0
     container = filename = data = None
-    vba_parser = None
     return_code = RETURN_OK
     try:
-        for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
-                                                          zip_password=options.zip_password, zip_fname=options.zip_fname):
-            # ignore directory names stored in zip files:
-            if container and filename.endswith('/'):
-                continue
-
+        for container, filename, data in all_input_info:
             # handle errors from xglob
             if isinstance(data, Exception):
                 if isinstance(data, PathNotFoundException):
-                    if options.output_mode in ('triage', 'unspecified'):
+                    if options.output_mode == 'triage':
                         print('%-12s %s - File not found' % ('?', filename))
                     elif options.output_mode != 'json':
                         log.error('Given path %r does not exist!' % filename)
                     return_code = RETURN_FILE_NOT_FOUND if return_code == 0 \
                                                     else RETURN_SEVERAL_ERRS
                 else:
-                    if options.output_mode in ('triage', 'unspecified'):
+                    if options.output_mode == 'triage':
                         print('%-12s %s - Failed to read from zip file %s' % ('?', filename, container))
                     elif options.output_mode != 'json':
                         log.error('Exception opening/reading %r from zip file %r: %s'
@@ -3864,107 +3970,42 @@ def main(cmd_line_args=None):
                                error=type(data).__name__, message=str(data))
                 continue
 
-            try:
-                # close the previous file if analyzing several:
-                # (this must be done here to avoid closing the file if there is only 1,
-                # to fix issue #219)
-                if vba_parser is not None:
-                    vba_parser.close()
-                # Open the file
-                vba_parser = VBA_Parser_CLI(filename, data=data, container=container,
-                                            relaxed=options.relaxed)
+            if options.output_mode == 'triage':
+                # print container name when it changes:
+                if container != previous_container:
+                    if container is not None:
+                        print('\nFiles in %s:' % container)
+                    previous_container = container
 
-                if options.output_mode == 'detailed':
-                    # fully detailed output
-                    vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
-                                 display_code=options.display_code,
-                                 hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
-                                 show_deobfuscated_code=options.show_deobfuscated_code,
-                                 deobfuscate=options.deobfuscate)
-                elif options.output_mode in ('triage', 'unspecified'):
-                    # print container name when it changes:
-                    if container != previous_container:
-                        if container is not None:
-                            print('\nFiles in %s:' % container)
-                        previous_container = container
-                    # summarized output for triage:
-                    vba_parser.process_file_triage(show_decoded_strings=options.show_decoded_strings,
-                                                   deobfuscate=options.deobfuscate)
-                elif options.output_mode == 'json':
-                    print_json(
-                        vba_parser.process_file_json(show_decoded_strings=options.show_decoded_strings,
-                                 display_code=options.display_code,
-                                 hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
-                                 show_deobfuscated_code=options.show_deobfuscated_code,
-                                 deobfuscate=options.deobfuscate))
-                else:  # (should be impossible)
-                    raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
-                count += 1
+            # process the file, handling errors and encryption
+            curr_return_code = process_file(filename, data, container, options)
+            count += 1
 
-            except (SubstreamOpenError, UnexpectedDataError) as exc:
-                if options.output_mode in ('triage', 'unspecified'):
-                    print('%-12s %s - Error opening substream or uenxpected ' \
-                          'content' % ('?', filename))
-                elif options.output_mode == 'json':
-                    print_json(file=filename, type='error',
-                               error=type(exc).__name__, message=str(exc))
-                else:
-                    log.exception('Error opening substream or unexpected '
-                                  'content in %s' % filename)
-                return_code = RETURN_OPEN_ERROR if return_code == 0 \
-                                                else RETURN_SEVERAL_ERRS
-            except FileOpenError as exc:
-                if options.output_mode in ('triage', 'unspecified'):
-                    print('%-12s %s - File format not supported' % ('?', filename))
-                elif options.output_mode == 'json':
-                    print_json(file=filename, type='error',
-                               error=type(exc).__name__, message=str(exc))
-                else:
-                    log.exception('Failed to open %s -- probably not supported!' % filename)
-                return_code = RETURN_OPEN_ERROR if return_code == 0 \
-                                                else RETURN_SEVERAL_ERRS
-            except ProcessingError as exc:
-                if options.output_mode in ('triage', 'unspecified'):
-                    print('%-12s %s - %s' % ('!ERROR', filename, exc.orig_exc))
-                elif options.output_mode == 'json':
-                    print_json(file=filename, type='error',
-                               error=type(exc).__name__,
-                               message=str(exc.orig_exc))
-                else:
-                    log.exception('Error processing file %s (%s)!'
-                                  % (filename, exc.orig_exc))
-                return_code = RETURN_PARSE_ERROR if return_code == 0 \
-                                                else RETURN_SEVERAL_ERRS
-            except FileIsEncryptedError as exc:
-                if options.output_mode in ('triage', 'unspecified'):
-                    print('%-12s %s - File is encrypted' % ('!ERROR', filename))
-                elif options.output_mode == 'json':
-                    print_json(file=filename, type='error',
-                               error=type(exc).__name__, message=str(exc))
-                else:
-                    log.exception('File %s is encrypted!' % (filename))
-                return_code = RETURN_ENCRYPTED if return_code == 0 \
-                                                else RETURN_SEVERAL_ERRS
-            # Here we do not close the vba_parser, because process_file may need it below.
+            # adjust overall return code
+            if curr_return_code == RETURN_OK:
+                continue                    # do not modify overall return code
+            if return_code == RETURN_OK:
+                return_code = curr_return_code      # first error return code
+            else:
+                return_code = RETURN_SEVERAL_ERRS   # several errors
 
         if options.output_mode == 'triage':
             print('\n(Flags: OpX=OpenXML, XML=Word2003XML, FlX=FlatOPC XML, MHT=MHTML, TXT=Text, M=Macros, ' \
                   'A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex strings, ' \
                   'B=Base64 strings, D=Dridex strings, V=VBA strings, ?=Unknown)\n')
 
-        if count == 1 and options.output_mode == 'unspecified':
-            # if options -t, -d and -j were not specified and it's a single file, print details:
-            vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
-                             display_code=options.display_code,
-                             hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
-                             show_deobfuscated_code=options.show_deobfuscated_code,
-                             deobfuscate=options.deobfuscate)
-
         if options.output_mode == 'json':
             # print last json entry (a last one without a comma) and closing ]
             print_json(type='MetaInformation', return_code=return_code,
                        n_processed=count, _json_is_last=True)
 
+    except crypto.CryptoErrorBase as exc:
+        log.exception('Problems with encryption in main: {}'.format(exc),
+                      exc_info=True)
+        if return_code == RETURN_OK:
+            return_code = RETURN_ENCRYPTED
+        else:
+            return_code == RETURN_SEVERAL_ERRS
     except Exception as exc:
         # some unexpected error, maybe some of the types caught in except clauses
         # above were not sufficient. This is very bad, so log complete trace at exception level
