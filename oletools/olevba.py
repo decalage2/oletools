@@ -3561,7 +3561,9 @@ class VBA_Parser_CLI(VBA_Parser):
                                 vba_code_filtered = vba_code_filtered.replace('\x08', backspace)
                             try:
                                 # Colorize the interesting keywords in the output:
-                                vba_code_filtered = colorclass.Color(self.colorize_keywords(vba_code_filtered))
+                                # (unless the output is redirected to a file)
+                                if sys.stdout.isatty():
+                                    vba_code_filtered = colorclass.Color(self.colorize_keywords(vba_code_filtered))
                             except UnicodeError:
                                 # TODO better handling of Unicode
                                 log.error('Unicode conversion to be fixed before colorizing the output')
