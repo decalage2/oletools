@@ -61,6 +61,57 @@ class TestLogHelper(unittest.TestCase):
             log_helper_test_imported.CRITICAL_MESSAGE
         ])
 
+    def test_logs_type_ignored(self):
+        """Run test script with logging enabled at info level. Want no type."""
+        output = self._run_test(['enable', 'info'])
+
+        expect = '\n'.join([
+            'INFO     ' + log_helper_test_main.INFO_MESSAGE,
+            'WARNING  ' + log_helper_test_main.WARNING_MESSAGE,
+            'ERROR    ' + log_helper_test_main.ERROR_MESSAGE,
+            'CRITICAL ' + log_helper_test_main.CRITICAL_MESSAGE,
+            'INFO     ' + log_helper_test_main.RESULT_MESSAGE,
+            'INFO     ' + log_helper_test_imported.INFO_MESSAGE,
+            'WARNING  ' + log_helper_test_imported.WARNING_MESSAGE,
+            'ERROR    ' + log_helper_test_imported.ERROR_MESSAGE,
+            'CRITICAL ' + log_helper_test_imported.CRITICAL_MESSAGE,
+            'INFO     ' + log_helper_test_imported.RESULT_MESSAGE,
+        ])
+        self.assertEqual(output, expect)
+
+    def test_logs_type_in_json(self):
+        """Check type field is contained in json log."""
+        output = self._run_test(['enable', 'as-json', 'info'])
+
+        # convert to json preserving order of output
+        jout = json.loads(output)
+
+        jexpect = [
+            dict(type='msg', level='INFO',
+                 msg=log_helper_test_main.INFO_MESSAGE),
+            dict(type='msg', level='WARNING',
+                 msg=log_helper_test_main.WARNING_MESSAGE),
+            dict(type='msg', level='ERROR',
+                 msg=log_helper_test_main.ERROR_MESSAGE),
+            dict(type='msg', level='CRITICAL',
+                 msg=log_helper_test_main.CRITICAL_MESSAGE),
+            # this is the important entry (has a different "type" field):
+            dict(type=log_helper_test_main.RESULT_TYPE, level='INFO',
+                 msg=log_helper_test_main.RESULT_MESSAGE),
+            dict(type='msg', level='INFO',
+                 msg=log_helper_test_imported.INFO_MESSAGE),
+            dict(type='msg', level='WARNING',
+                 msg=log_helper_test_imported.WARNING_MESSAGE),
+            dict(type='msg', level='ERROR',
+                 msg=log_helper_test_imported.ERROR_MESSAGE),
+            dict(type='msg', level='CRITICAL',
+                 msg=log_helper_test_imported.CRITICAL_MESSAGE),
+            # ... and this:
+            dict(type=log_helper_test_imported.RESULT_TYPE, level='INFO',
+                 msg=log_helper_test_imported.RESULT_MESSAGE),
+        ]
+        self.assertEqual(jout, jexpect)
+
     def test_json_correct_on_exceptions(self):
         """
         Test that even on unhandled exceptions our JSON is always correct
