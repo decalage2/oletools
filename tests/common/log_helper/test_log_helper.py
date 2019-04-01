@@ -125,10 +125,10 @@ class TestLogHelper(unittest.TestCase):
     def _assert_json_messages(self, output, messages):
         try:
             json_data = json.loads(output)
-            self.assertEquals(len(json_data), len(messages))
+            self.assertEqual(len(json_data), len(messages))
 
             for i in range(len(messages)):
-                self.assertEquals(messages[i], json_data[i]['msg'])
+                self.assertEqual(messages[i], json_data[i]['msg'])
         except ValueError:
             self.fail('Invalid json:\n' + output)
 
@@ -155,7 +155,7 @@ class TestLogHelper(unittest.TestCase):
         if not isinstance(output, str):
             output = output.decode('utf-8')
 
-        self.assertEquals(child.returncode == 0, should_succeed)
+        self.assertEqual(child.returncode == 0, should_succeed)
 
         return output.strip()
 
