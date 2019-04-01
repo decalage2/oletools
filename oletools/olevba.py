@@ -216,7 +216,7 @@ from __future__ import print_function
 # 2019-03-18       PL: - added XLM/XLF macros detection for Excel OLE files
 # 2019-03-25       CH: - added decryption of password-protected files
 
-__version__ = '0.54dev12'
+__version__ = '0.54dev13'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -436,6 +436,7 @@ def enable_logging():
     log.setLevel(logging.NOTSET)
     # Also enable logging in the ppt_parser module:
     ppt_parser.enable_logging()
+    crypto.enable_logging()
 
 
 
@@ -3825,11 +3826,12 @@ def process_file(filename, data, container, options, crypto_nesting=0):
             raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
 
         # even if processing succeeds, file might still be encrypted
-        log.debug('Checking for encryption')
+        log.debug('Checking for encryption (normal)')
         if not crypto.is_encrypted(filename):
+            log.debug('no encryption detected')
             return RETURN_OK
     except Exception as exc:
-        log.debug('Checking for encryption')
+        log.debug('Checking for encryption (after exception)')
         if crypto.is_encrypted(filename):
             pass   # deal with this below
         else:

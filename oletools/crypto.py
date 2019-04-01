@@ -89,8 +89,9 @@ http://www.decalage.info/python/oletools
 # -----------------------------------------------------------------------------
 # CHANGELOG:
 # 2019-02-14 v0.01 CH: - first version with encryption check from oleid
+# 2019-04-01 v0.54 PL: - fixed bug in is_encrypted_ole
 
-__version__ = '0.01'
+__version__ = '0.54dev13'
 
 import sys
 import struct
@@ -98,8 +99,8 @@ import os
 from os.path import splitext, isfile
 from tempfile import mkstemp
 import zipfile
-from oletools.common.errors import CryptoErrorBase, WrongEncryptionPassword, \
-    UnsupportedEncryptionError, MaxCryptoNestingReached, CryptoLibNotImported
+import logging
+
 from olefile import OleFileIO
 
 try:
@@ -107,11 +108,65 @@ try:
 except ImportError:
     msoffcrypto = None
 
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+if _parent_dir not in sys.path:
+    sys.path.insert(0, _parent_dir)
+
+from oletools.common.errors import CryptoErrorBase, WrongEncryptionPassword, \
+    UnsupportedEncryptionError, MaxCryptoNestingReached, CryptoLibNotImported
+from oletools.common.log_helper import log_helper
+
 
 #: if there is an encrypted file embedded in an encrypted file,
 #: how deep down do we go
 MAX_NESTING_DEPTH = 10
 
+# === LOGGING =================================================================
+
+# TODO: use log_helper instead
+
+def get_logger(name, level=logging.CRITICAL+1):
+    """
+    Create a suitable logger object for this module.
+    The goal is not to change settings of the root logger, to avoid getting
+    other modules' logs on the screen.
+    If a logger exists with same name, reuse it. (Else it would have duplicate
+    handlers and messages would be doubled.)
+    The level is set to CRITICAL+1 by default, to avoid any logging.
+    """
+    # First, test if there is already a logger with the same name, else it
+    # will generate duplicate messages (due to duplicate handlers):
+    if name in logging.Logger.manager.loggerDict:
+        # NOTE: another less intrusive but more "hackish" solution would be to
+        # use getLogger then test if its effective level is not default.
+        logger = logging.getLogger(name)
+        # make sure level is OK:
+        logger.setLevel(level)
+        return logger
+    # get a new logger:
+    logger = logging.getLogger(name)
+    # only add a NullHandler for this logger, it is up to the application
+    # to configure its own logging:
+    logger.addHandler(logging.NullHandler())
+    logger.setLevel(level)
+    return logger
+
+# a global logger object used for debugging:
+log = get_logger('crypto')
+
+def enable_logging():
+    """
+    Enable logging for this module (disabled by default).
+    This will set the module-specific logger level to NOTSET, which
+    means the main application controls the actual logging level.
+    """
+    log.setLevel(logging.NOTSET)
 
 def is_encrypted(some_file):
     """
@@ -141,7 +196,8 @@ def is_encrypted(some_file):
     :type some_file: :py:class:`olefile.OleFileIO` or `str`
     :returns: True if (and only if) the file contains encrypted content
     """
-    if not isinstance(some_file, str):
+    log.debug('is_encrypted')
+    if isinstance(some_file, OleFileIO):
         return is_encrypted_ole(some_file)   # assume it is OleFileIO
     if zipfile.is_zipfile(some_file):
         return is_encrypted_zip(some_file)
@@ -151,6 +207,8 @@ def is_encrypted(some_file):
 
 def is_encrypted_zip(filename):
     """Specialization of :py:func:`is_encrypted` for zip-based files."""
+    log.debug('is_encrypted_zip')
+    # TODO: distinguish OpenXML from normal zip files
     # try to decrypt a few bytes from first entry
     with zipfile.ZipFile(filename, 'r') as zipper:
         first_entry = zipper.infolist()[0]
@@ -164,6 +222,7 @@ def is_encrypted_zip(filename):
 
 def is_encrypted_ole(ole):
     """Specialization of :py:func:`is_encrypted` for ole files."""
+    log.debug('is_encrypted_ole')
     # check well known property for password protection
     # (this field may be missing for Powerpoint2000, for example)
     # TODO: check whether password protection always implies encryption. Could
@@ -176,10 +235,11 @@ def is_encrypted_ole(ole):
     # check a few stream names
     # TODO: check whether these actually contain data and whether other
     # necessary properties exist / are set
-    elif ole.exists('EncryptionInfo'):
+    if ole.exists('EncryptionInfo'):
+        log.debug('found stream EncryptionInfo')
         return True
     # or an encrypted ppt file
-    elif ole.exists('EncryptedSummary') and \
+    if ole.exists('EncryptedSummary') and \
             not ole.exists('SummaryInformation'):
         return True
 
