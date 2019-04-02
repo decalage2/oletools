@@ -445,7 +445,9 @@ class XmlParser(object):
                 elif isstr(args):
                     subfiles = [args, ]
                 else:
-                    subfiles = tuple(args)   # make a copy in case orig changes
+                    # make a copy in case original args are modified
+                    # Not sure whether this really is needed...
+                    subfiles = tuple(arg for arg in args)
 
                 for subfile in subfiles:
                     with zipper.open(subfile, 'r') as handle:
