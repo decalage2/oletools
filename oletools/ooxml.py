@@ -646,7 +646,7 @@ def test():
 
     see module doc for more info
     """
-    log_helper.enable_logging(False, logger.DEBUG)
+    log_helper.enable_logging(False, 'debug')
     if len(sys.argv) != 2:
         print(u'To test this code, give me a single file as arg')
         return 2
