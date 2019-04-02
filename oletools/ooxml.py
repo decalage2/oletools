@@ -16,11 +16,11 @@ TODO: "xml2003" == "flatopc"?
 """
 
 import sys
-from oletools.common.log_helper import log_helper
 from zipfile import ZipFile, BadZipfile, is_zipfile
 from os.path import splitext
 import io
 import re
+from oletools.common.log_helper import log_helper
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -107,16 +107,14 @@ def debug_str(elem):
     text = u', '.join(parts)
     if len(text) > 150:
         return text[:147] + u'...]'
-    else:
-        return text + u']'
+    return text + u']'
 
 
 def isstr(some_var):
     """ version-independent test for isinstance(some_var, (str, unicode)) """
     if sys.version_info.major == 2:
         return isinstance(some_var, basestring)  # true for str and unicode
-    else:
-        return isinstance(some_var, str)         # there is no unicode
+    return isinstance(some_var, str)         # there is no unicode
 
 
 ###############################################################################
@@ -136,10 +134,9 @@ def get_type(filename):
         prog_id = match.groups()[0]
         if prog_id == WORD_XML_PROG_ID:
             return DOCTYPE_WORD_XML
-        elif prog_id == EXCEL_XML_PROG_ID:
+        if prog_id == EXCEL_XML_PROG_ID:
             return DOCTYPE_EXCEL_XML
-        else:
-            return DOCTYPE_NONE
+        return DOCTYPE_NONE
 
     is_doc = False
     is_xls = False
@@ -169,9 +166,8 @@ def get_type(filename):
         return DOCTYPE_POWERPOINT
     if not is_doc and not is_xls and not is_ppt:
         return DOCTYPE_NONE
-    else:
-        logger.warning('Encountered contradictory content types')
-        return DOCTYPE_MIXED
+    logger.warning('Encountered contradictory content types')
+    return DOCTYPE_MIXED
 
 
 def is_ooxml(filename):
@@ -184,6 +180,7 @@ def is_ooxml(filename):
         return False
     if doctype == DOCTYPE_NONE:
         return False
+    return True
 
 
 ###############################################################################
@@ -223,6 +220,7 @@ class ZipSubFile(object):
     See also (and maybe could some day merge with):
     ppt_record_parser.IterStream; also: oleobj.FakeFile
     """
+    CHUNK_SIZE = 4096
 
     def __init__(self, container, filename, mode='r', size=None):
         """ remember all necessary vars but do not open yet """
@@ -260,7 +258,7 @@ class ZipSubFile(object):
         # print('ZipSubFile: opened; size={}'.format(self.size))
         return self
 
-    def write(self, *args, **kwargs):                          # pylint: disable=unused-argument,no-self-use
+    def write(self, *args, **kwargs):
         """ write is not allowed """
         raise IOError('writing not implemented')
 
@@ -318,10 +316,9 @@ class ZipSubFile(object):
         """ helper for seek: skip forward by given amount using read() """
         # print('ZipSubFile: seek by skipping {} bytes starting at {}'
         #       .format(self.pos, to_skip))
-        CHUNK_SIZE = 4096
-        n_chunks, leftover = divmod(to_skip, CHUNK_SIZE)
+        n_chunks, leftover = divmod(to_skip, self.CHUNK_SIZE)
         for _ in range(n_chunks):
-            self.read(CHUNK_SIZE)    # just read and discard
+            self.read(self.CHUNK_SIZE)    # just read and discard
         self.read(leftover)
         # print('ZipSubFile: seek by skipping done, pos now {}'
         #       .format(self.pos))
@@ -424,8 +421,7 @@ class XmlParser(object):
         if match:
             self._is_single_xml = True
             return True
-        if not match:
-            raise BadOOXML(self.filename, 'is no zip and has no prog_id')
+        raise BadOOXML(self.filename, 'is no zip and has no prog_id')
 
     def iter_files(self, args=None):
         """ Find files in zip or just give single xml file """
@@ -509,7 +505,7 @@ class XmlParser(object):
                     if event == 'start':
                         if elem.tag in want_tags:
                             logger.debug('remember start of tag {0} at {1}'
-                                          .format(elem.tag, depth))
+                                         .format(elem.tag, depth))
                             inside_tags.append((elem.tag, depth))
                         depth += 1
                         continue
@@ -525,18 +521,18 @@ class XmlParser(object):
                                 inside_tags.pop()
                             else:
                                 logger.error('found end for wanted tag {0} '
-                                              'but last start tag {1} does not'
-                                              ' match'.format(curr_tag,
-                                                              inside_tags[-1]))
+                                             'but last start tag {1} does not'
+                                             ' match'.format(curr_tag,
+                                                             inside_tags[-1]))
                                 # try to recover: close all deeper tags
                                 while inside_tags and \
                                         inside_tags[-1][1] >= depth:
                                     logger.debug('recover: pop {0}'
-                                                  .format(inside_tags[-1]))
+                                                 .format(inside_tags[-1]))
                                     inside_tags.pop()
                         except IndexError:    # no inside_tag[-1]
                             logger.error('found end of {0} at depth {1} but '
-                                          'no start event')
+                                         'no start event')
                     # yield element
                     if is_wanted or not want_tags:
                         yield subfile, elem, depth
@@ -581,15 +577,15 @@ class XmlParser(object):
                     if extension.startswith('.'):
                         extension = extension[1:]
                     defaults.append((extension, elem.attrib['ContentType']))
-                    logger.debug('found content type for extension {0[0]}: {0[1]}'
-                                  .format(defaults[-1]))
+                    logger.debug('found content type for extension {0[0]}: '
+                                 '{0[1]}'.format(defaults[-1]))
                 elif elem.tag.endswith('Override'):
                     subfile = elem.attrib['PartName']
                     if subfile.startswith('/'):
                         subfile = subfile[1:]
                     files.append((subfile, elem.attrib['ContentType']))
-                    logger.debug('found content type for subfile {0[0]}: {0[1]}'
-                                  .format(files[-1]))
+                    logger.debug('found content type for subfile {0[0]}: '
+                                 '{0[1]}'.format(files[-1]))
         except BadOOXML as oo_err:
             if oo_err.more_info.startswith('invalid subfile') and \
                     FILE_CONTENT_TYPES in oo_err.more_info:
@@ -614,7 +610,7 @@ class XmlParser(object):
         """
         if not self.did_iter_all:
             logger.warning('Did not iterate through complete file. '
-                            'Should run iter_xml() without args, first.')
+                           'Should run iter_xml() without args, first.')
         if not self.subfiles_no_xml:
             return
 
