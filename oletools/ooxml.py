@@ -144,15 +144,22 @@ def get_type(filename):
     is_doc = False
     is_xls = False
     is_ppt = False
-    for _, elem, _ in parser.iter_xml(FILE_CONTENT_TYPES):
-        logger.debug(u'  ' + debug_str(elem))
-        try:
-            content_type = elem.attrib['ContentType']
-        except KeyError:         # ContentType not an attr
-            continue
-        is_xls |= content_type.startswith(CONTENT_TYPES_EXCEL)
-        is_doc |= content_type.startswith(CONTENT_TYPES_WORD)
-        is_ppt |= content_type.startswith(CONTENT_TYPES_PPT)
+    try:
+        for _, elem, _ in parser.iter_xml(FILE_CONTENT_TYPES):
+            logger.debug(u'  ' + debug_str(elem))
+            try:
+                content_type = elem.attrib['ContentType']
+            except KeyError:         # ContentType not an attr
+                continue
+            is_xls |= content_type.startswith(CONTENT_TYPES_EXCEL)
+            is_doc |= content_type.startswith(CONTENT_TYPES_WORD)
+            is_ppt |= content_type.startswith(CONTENT_TYPES_PPT)
+    except BadOOXML as oo_err:
+        if oo_err.more_info.startswith('invalid subfile') and \
+                FILE_CONTENT_TYPES in oo_err.more_info:
+            # no FILE_CONTENT_TYPES in zip, so probably no ms office xml.
+            return DOCTYPE_NONE
+        raise
 
     if is_doc and not is_xls and not is_ppt:
         return DOCTYPE_WORD
@@ -433,11 +440,6 @@ class XmlParser(object):
             subfiles = None
             try:
                 zipper = ZipFile(self.filename)
-                try:
-                    _ = zipper.getinfo(FILE_CONTENT_TYPES)
-                except KeyError:
-                    raise BadOOXML(self.filename,
-                                   'No content type information')
                 if not args:
                     subfiles = zipper.namelist()
                 elif isstr(args):
@@ -451,6 +453,8 @@ class XmlParser(object):
                 if not args:
                     self.did_iter_all = True
             except KeyError as orig_err:
+                # Note: do not change text of this message without adjusting
+                #       conditions in except handlers
                 raise BadOOXML(self.filename,
                                'invalid subfile: ' + str(orig_err))
             except BadZipfile:
@@ -568,21 +572,30 @@ class XmlParser(object):
 
         defaults = []
         files = []
-        for _, elem, _ in self.iter_xml(FILE_CONTENT_TYPES):
-            if elem.tag.endswith('Default'):
-                extension = elem.attrib['Extension']
-                if extension.startswith('.'):
-                    extension = extension[1:]
-                defaults.append((extension, elem.attrib['ContentType']))
-                logger.debug('found content type for extension {0[0]}: {0[1]}'
-                              .format(defaults[-1]))
-            elif elem.tag.endswith('Override'):
-                subfile = elem.attrib['PartName']
-                if subfile.startswith('/'):
-                    subfile = subfile[1:]
-                files.append((subfile, elem.attrib['ContentType']))
-                logger.debug('found content type for subfile {0[0]}: {0[1]}'
-                              .format(files[-1]))
+        try:
+            for _, elem, _ in self.iter_xml(FILE_CONTENT_TYPES):
+                if elem.tag.endswith('Default'):
+                    extension = elem.attrib['Extension']
+                    if extension.startswith('.'):
+                        extension = extension[1:]
+                    defaults.append((extension, elem.attrib['ContentType']))
+                    logger.debug('found content type for extension {0[0]}: {0[1]}'
+                                  .format(defaults[-1]))
+                elif elem.tag.endswith('Override'):
+                    subfile = elem.attrib['PartName']
+                    if subfile.startswith('/'):
+                        subfile = subfile[1:]
+                    files.append((subfile, elem.attrib['ContentType']))
+                    logger.debug('found content type for subfile {0[0]}: {0[1]}'
+                                  .format(files[-1]))
+        except BadOOXML as oo_err:
+            if oo_err.more_info.startswith('invalid subfile') and \
+                    FILE_CONTENT_TYPES in oo_err.more_info:
+                # no FILE_CONTENT_TYPES in zip, so probably no ms office xml.
+                # Maybe OpenDocument format? In any case, try to analyze.
+                pass
+            else:
+                raise
         return dict(files), dict(defaults)
 
     def iter_non_xml(self):
