@@ -458,7 +458,7 @@ class XmlParser(object):
                 raise BadOOXML(self.filename,
                                'invalid subfile: ' + str(orig_err))
             except BadZipfile:
-                raise BadOOXML(self.filename, 'neither zip nor xml')
+                raise BadOOXML(self.filename, 'not in zip format')
             finally:
                 if zipper:
                     zipper.close()
@@ -548,7 +548,7 @@ class XmlParser(object):
             except ET.ParseError as err:
                 self.subfiles_no_xml.add(subfile)
                 if subfile is None:    # this is no zip subfile but single xml
-                    raise BadOOXML(self.filename, 'is neither zip nor xml')
+                    raise BadOOXML(self.filename, 'content is not valid XML')
                 elif subfile.endswith('.xml'):
                     log = logger.warning
                 else:
