@@ -750,12 +750,12 @@ def process_file(filename, data, output_dir=None):
 
     xml_parser = None
     if is_zipfile(filename):
-        log.info('file is a OOXML file, looking for relationships with external links')
+        log.info('file could be an OOXML file, looking for relationships with '
+                 'external links')
         xml_parser = XmlParser(filename)
         for relationship, target in find_external_relationships(xml_parser):
             did_dump = True
             print("Found relationship '%s' with external link %s" % (relationship, target))
-
 
     # look for ole files inside file (e.g. unzip docx)
     # have to finish work on every ole stream inside iteration, since handles
@@ -765,9 +765,9 @@ def process_file(filename, data, output_dir=None):
             continue
 
         for path_parts in ole.listdir():
+            stream_path = '/'.join(path_parts)
+            log.debug('Checking stream %r', stream_path)
             if path_parts[-1] == '\x01Ole10Native':
-                stream_path = '/'.join(path_parts)
-                log.debug('Checking stream %r', stream_path)
                 stream = None
                 try:
                     stream = ole.openstream(path_parts)
