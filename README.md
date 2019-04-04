@@ -26,7 +26,19 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2018-05-30 v0.53**:
+- **2019-04-04 v0.54**:
+    - olevba, msodde: added support for encrypted MS Office files 
+    - olevba: added detection and extraction of XLM/XLF Excel 4 macros (thanks to plugin_biff from Didier Stevens' oledump)
+    - olevba, mraptor: added detection of VBA running Excel 4 macros
+    - olevba: detect and display special characters such as backspace
+    - olevba: colorized output showing suspicious keywords in the VBA code
+    - olevba, mraptor: full Python 3 compatibility, no separate olevba3/mraptor3 anymore
+    - olevba: improved handling of code pages and unicode
+    - olevba: fixed a false-positive in VBA macro detection
+    - rtfobj: improved OLE Package handling, improved Equation object detection
+    - oleobj: added detection of external links to objects in OpenXML
+    - replaced third party packages by PyPI dependencies
+- 2018-05-30 v0.53:
     - olevba and mraptor can now parse Word/PowerPoint 2007+ pure XML files (aka Flat OPC format)
     - improved support for VBA forms in olevba (oleform)
     - rtfobj now displays the CLSID of OLE objects, which is the best way to identify them. Known-bad CLSIDs such as MS Equation Editor are highlighted in red.
@@ -153,7 +165,7 @@ License
 This license applies to the python-oletools package, apart from the thirdparty folder which contains third-party files 
 published with their own license.
 
-The python-oletools package is copyright (c) 2012-2018 Philippe Lagadec (http://www.decalage.info)
+The python-oletools package is copyright (c) 2012-2019 Philippe Lagadec (http://www.decalage.info)
 
 All rights reserved.
 
