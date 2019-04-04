@@ -36,7 +36,7 @@ Read storages, (sub-)streams, records from xls file
 # 2019-01-30 v0.54 PL: - fixed import to avoid mixing installed oletools
 #                        and dev version
 
-__version__ = '0.54dev9'
+__version__ = '0.54'
 
 # -----------------------------------------------------------------------------
 #  TODO:

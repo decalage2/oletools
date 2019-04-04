@@ -43,7 +43,7 @@ from __future__ import print_function
 # 2019-01-30       PL: - fixed import to avoid mixing installed oletools
 #                        and dev version
 
-__version__ = '0.54dev9'
+__version__ = '0.54'
 
 # -----------------------------------------------------------------------------
 # TODO:

@@ -17,7 +17,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# oleid is copyright (c) 2012-2018, Philippe Lagadec (http://www.decalage.info)
+# oleid is copyright (c) 2012-2019, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -59,7 +59,7 @@ from __future__ import print_function
 # 2018-10-19       CH: - accept olefile as well as filename, return Indicators,
 #                        improve encryption detection for ppt
 
-__version__ = '0.54dev4'
+__version__ = '0.54'
 
 
 #------------------------------------------------------------------------------

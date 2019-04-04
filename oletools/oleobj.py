@@ -14,7 +14,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE =================================================================
 
-# oleobj is copyright (c) 2015-2018 Philippe Lagadec (http://www.decalage.info)
+# oleobj is copyright (c) 2015-2019 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -89,7 +89,7 @@ from oletools.ooxml import XmlParser
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
 # 2018-10-30       SA: - added detection of external links (PR #317)
 
-__version__ = '0.54dev4'
+__version__ = '0.54'
 
 # -----------------------------------------------------------------------------
 # TODO:
