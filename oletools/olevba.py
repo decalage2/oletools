@@ -216,7 +216,7 @@ from __future__ import print_function
 # 2019-03-18       PL: - added XLM/XLF macros detection for Excel OLE files
 # 2019-03-25       CH: - added decryption of password-protected files
 
-__version__ = '0.54dev13'
+__version__ = '0.54dev14'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -652,7 +652,7 @@ SUSPICIOUS_KEYWORDS = {
     # ShellExecute: https://twitter.com/StanHacked/status/1075088449768693762
     'May run an executable file or a system command':
         ('Shell', 'vbNormal', 'vbNormalFocus', 'vbHide', 'vbMinimizedFocus', 'vbMaximizedFocus', 'vbNormalNoFocus',
-         'vbMinimizedNoFocus', 'WScript.Shell', 'Run', 'ShellExecute'),
+         'vbMinimizedNoFocus', 'WScript.Shell', 'Run', 'ShellExecute', 'ShellExecuteA', 'shell32'),
     # MacScript: see https://msdn.microsoft.com/en-us/library/office/gg264812.aspx
     'May run an executable file or a system command on a Mac':
         ('MacScript',),
@@ -685,6 +685,8 @@ SUSPICIOUS_KEYWORDS = {
         ('New-Object',),
     'May run an application (if combined with CreateObject)':
         ('Shell.Application',),
+    'May run an Excel 4 Macro (aka XLM/XLF)':
+        ('ExecuteExcel4Macro',),
     'May enumerate application windows (if combined with Shell.Application object)':
         ('Windows', 'FindWindow'),
     'May run code from a DLL':
@@ -2115,7 +2117,9 @@ def detect_suspicious(vba_code, obfuscation=None):
     for description, keywords in SUSPICIOUS_KEYWORDS_NOREGEX.items():
         for keyword in keywords:
             if keyword.lower() in vba_code:
-                results.append((keyword, description + obf_text))
+                # avoid reporting backspace chars out of plain VBA code:
+                if not(keyword=='\b' and obfuscation is not None):
+                    results.append((keyword, description + obf_text))
     return results
 
 
