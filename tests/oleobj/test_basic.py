@@ -41,8 +41,10 @@ SAMPLES += tuple(
      'ab8c65e4c0fc51739aa66ca5888265b4')
     for extn in ('xls', 'xlsx', 'xlsb', 'xlsm', 'xla', 'xlam', 'xlt', 'xltm',
                  'xltx', 'ppt', 'pptx', 'pptm', 'pps', 'ppsx', 'ppsm', 'pot',
-                 'potx', 'potm')
+                 'potx', 'potm', 'ods', 'odp')
 )
+SAMPLES += (('embedded-simple-2007.odt', 'simple-text-file.txt',
+     'bd5c063a5a43f67b3c50dc7b0f1195af'), )
 
 
 def calc_md5(filename):
