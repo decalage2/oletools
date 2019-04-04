@@ -101,7 +101,7 @@ from oletools.common.log_helper import log_helper
 # 2019-03-25       CH: - added decryption of password-protected files
 
 
-__version__ = '0.54dev12'
+__version__ = '0.54'
 
 # -----------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these

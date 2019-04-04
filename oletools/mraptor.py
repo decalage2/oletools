@@ -60,7 +60,7 @@ http://www.decalage.info/python/oletools
 # 2018-05-25 v0.53 PL: - added Word/PowerPoint 2007+ XML (aka Flat OPC) issue #283
 # 2019-04-04 v0.54 PL: - added ExecuteExcel4Macro, ShellExecuteA, XLM keywords
 
-__version__ = '0.54dev14'
+__version__ = '0.54'
 
 #------------------------------------------------------------------------------
 # TODO:

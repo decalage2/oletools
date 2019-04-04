@@ -43,7 +43,7 @@ http://www.decalage.info/python/oletools
 # 2018-12-13 v0.54 PL: - first version
 # 2019-01-30       PL: - added a few code pages from xlrd
 
-__version__ = '0.54dev9'
+__version__ = '0.54'
 
 # -----------------------------------------------------------------------------
 # TODO:

@@ -43,7 +43,7 @@ file structure and will replace this module some time soon!
 # 2017-04-23 v0.51 PL: - fixed absolute imports and issue #101
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
 
-__version__ = '0.54dev1'
+__version__ = '0.54'
 
 
 # --- IMPORTS ------------------------------------------------------------------
