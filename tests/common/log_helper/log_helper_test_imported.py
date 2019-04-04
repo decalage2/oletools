@@ -11,6 +11,8 @@ INFO_MESSAGE = 'imported: info log'
 WARNING_MESSAGE = 'imported: warning log'
 ERROR_MESSAGE = 'imported: error log'
 CRITICAL_MESSAGE = 'imported: critical log'
+RESULT_MESSAGE = 'imported: result log'
+RESULT_TYPE = 'imported: result'
 
 logger = log_helper.get_or_create_silent_logger('test_imported', logging.ERROR)
 
@@ -21,3 +23,4 @@ def log():
     logger.warning(WARNING_MESSAGE)
     logger.error(ERROR_MESSAGE)
     logger.critical(CRITICAL_MESSAGE)
+    logger.info(RESULT_MESSAGE, type=RESULT_TYPE)

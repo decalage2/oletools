@@ -1030,7 +1030,8 @@ def main(cmd_line_args=None):
         logger.exception(str(exc))
 
     logger.print_str('DDE Links:')
-    logger.print_str(text)
+    for link in text.splitlines():
+        logger.print_str(text, type='dde-link')
 
     log_helper.end_logging()
 
