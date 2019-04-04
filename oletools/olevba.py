@@ -613,7 +613,8 @@ AUTOEXEC_KEYWORDS = {
 
     # MS Excel:
     'Runs when the Excel Workbook is opened':
-        ('Auto_Open', 'Workbook_Open', 'Workbook_Activate'),
+        ('Auto_Open', 'Workbook_Open', 'Workbook_Activate', 'Auto_Ope'),
+        # TODO: "Auto_Ope" is temporarily here because of a bug in plugin_biff, which misses the last byte in "Auto_Open"...
     'Runs when the Excel Workbook is closed':
         ('Auto_Close', 'Workbook_Close'),
 
@@ -670,6 +671,8 @@ SUSPICIOUS_KEYWORDS = {
          'invoke-command', 'scriptblock', 'Invoke-Expression', 'AuthorizationManager'),
     'May run an executable file or a system command using PowerShell':
         ('Start-Process',),
+    'May run an executable file or a system command using Excel 4 Macros (XLM/XLF)':
+        ('EXEC',),
     'May hide the application':
         ('Application.Visible', 'ShowWindow', 'SW_HIDE'),
     'May create a directory':
@@ -695,9 +698,11 @@ SUSPICIOUS_KEYWORDS = {
     'May run code from a library on a Mac':
     #TODO: regex to find declare+lib on same line - see mraptor
         ('libc.dylib', 'dylib'),
+    'May run code from a DLL using Excel 4 Macros (XLM/XLF)':
+        ('REGISTER',),
     'May inject code into another process':
         ('CreateThread', 'VirtualAlloc', # (issue #9) suggested by Davy Douhine - used by MSF payload
-        'VirtualAllocEx', 'RtlMoveMemory',
+        'VirtualAllocEx', 'RtlMoveMemory', 'WriteProcessMemory'
         ),
     'May run a shellcode in memory':
         ('EnumSystemLanguageGroupsW?', # Used by Hancitor in Oct 2016
