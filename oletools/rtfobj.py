@@ -103,7 +103,7 @@ __version__ = '0.54dev1'
 
 # === IMPORTS =================================================================
 
-import re, os, sys, binascii, logging, optparse
+import re, os, sys, binascii, logging, optparse, hashlib
 import os.path
 from time import time
 
@@ -678,6 +678,7 @@ class RtfObjParser(RtfParser):
             rtfobj.hexdata = hexdata
             object_data = binascii.unhexlify(hexdata)
             rtfobj.rawdata = object_data
+            rtfobj.rawdata_md5 = hashlib.md5(object_data).hexdigest()                    
             # TODO: check if all hex data is extracted properly
 
             obj = oleobj.OleObject()
@@ -687,6 +688,7 @@ class RtfObjParser(RtfParser):
                 rtfobj.class_name = obj.class_name
                 rtfobj.oledata_size = obj.data_size
                 rtfobj.oledata = obj.data
+                rtfobj.oledata_md5 = hashlib.md5(obj.data).hexdigest()         
                 rtfobj.is_ole = True
                 if obj.class_name.lower() == b'package':
                     opkg = oleobj.OleNativeStream(bindata=obj.data,
@@ -695,6 +697,7 @@ class RtfObjParser(RtfParser):
                     rtfobj.src_path = opkg.src_path
                     rtfobj.temp_path = opkg.temp_path
                     rtfobj.olepkgdata = opkg.data
+                    rtfobj.olepkgdata_md5 = hashlib.md5(opkg.data).hexdigest()     
                     rtfobj.is_package = True
                 else:
                     if olefile.isOleFile(obj.data):
@@ -878,6 +881,7 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                 ole_column += '\nFilename: %r' % rtfobj.filename
                 ole_column += '\nSource path: %r' % rtfobj.src_path
                 ole_column += '\nTemp path = %r' % rtfobj.temp_path
+                ole_column += '\nMD5 = %r' % rtfobj.olepkgdata_md5
                 ole_color = 'yellow'
                 # check if the file extension is executable:
 
@@ -892,8 +896,8 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                 if re_executable_extensions.match(temp_ext) or re_executable_extensions.match(file_ext):
                     ole_color = 'red'
                     ole_column += '\nEXECUTABLE FILE'
-            # else:
-            #     pkg_column = 'Not an OLE Package'
+            else:
+                ole_column += '\nMD5 = %r' % rtfobj.oledata_md5
             if rtfobj.clsid is not None:
                 ole_column += '\nCLSID: %s' % rtfobj.clsid
                 ole_column += '\n%s' % rtfobj.clsid_desc
@@ -942,6 +946,7 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                 else:
                     fname = '%s_object_%08X.noname' % (fname_prefix, rtfobj.start)
                 print('  saving to file %s' % fname)
+                print('  md5 %s' % rtfobj.olepkgdata_md5)
                 open(fname, 'wb').write(rtfobj.olepkgdata)
             # When format_id=TYPE_LINKED, oledata_size=None
             elif rtfobj.is_ole and rtfobj.oledata_size is not None:
@@ -959,11 +964,13 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                     ext = 'bin'
                 fname = '%s_object_%08X.%s' % (fname_prefix, rtfobj.start, ext)
                 print('  saving to file %s' % fname)
+                print('  md5 %s' % rtfobj.oledata_md5)
                 open(fname, 'wb').write(rtfobj.oledata)
             else:
                 print('Saving raw data in object #%d:' % i)
                 fname = '%s_object_%08X.raw' % (fname_prefix, rtfobj.start)
                 print('  saving object to file %s' % fname)
+                print('  md5 %s' % rtfobj.rawdata_md5)
                 open(fname, 'wb').write(rtfobj.rawdata)
 
 
@@ -1047,4 +1054,3 @@ if __name__ == '__main__':
     main()
 
 # This code was developed while listening to The Mary Onettes "Lost"
-
