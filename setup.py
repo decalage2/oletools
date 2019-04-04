@@ -48,7 +48,7 @@ import os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.54dev13'
+version      = '0.54'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       = "Philippe Lagadec"
@@ -321,7 +321,7 @@ def main():
         extras_require = {
             # msoffcrypto-tools by nolze can be used to decrypt some office files
             # TODO: make it a required dependency?
-            'decrypt': ['msoffcrypto']
+            'decrypt': ['msoffcrypto-tool']
         }
     )
 
