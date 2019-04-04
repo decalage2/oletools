@@ -12,7 +12,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE ==================================================================
 
-# oletools are copyright (c) 2018 Philippe Lagadec (http://www.decalage.info)
+# oletools are copyright (c) 2018-2019 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -43,7 +43,7 @@ http://www.decalage.info/python/oletools
 # 2018-04-18       PL: - added known-bad CLSIDs from Cuckoo sandbox (issue #290)
 # 2018-05-08       PL: - added more CLSIDs (issues #299, #304), merged and sorted
 
-__version__ = '0.54dev3'
+__version__ = '0.54'
 
 
 # REFERENCES:
@@ -140,6 +140,7 @@ KNOWN_CLSIDS = {
     '8E75D913-3D21-11D2-85C4-080009A0C626': 'AutoCAD 2004-2006 Document',
     '9181DC5F-E07D-418A-ACA6-8EEA1ECB8E9E': 'MSCOMCTL.TreeCtrl (may trigger CVE-2012-0158)',
     '975797FC-4E2A-11D0-B702-00C04FD8DBF7': 'Loads ELSEXT.DLL (Known Related to CVE-2015-6128)',
+    '978C9E23-D4B0-11CE-BF2D-00AA003F40D0': 'Microsoft Forms 2.0 Label (Forms.Label.1)',
     '996BF5E0-8044-4650-ADEB-0B013914E99C': 'MSCOMCTL.ListViewCtrl (may trigger CVE-2012-0158)',
     'A08A033D-1A75-4AB6-A166-EAD02F547959': 'otkloadr WRAssembly Object (can be used to bypass ASLR after triggering an exploit)',
     'B54F3741-5B07-11CF-A4B0-00AA004A55E8': 'vbscript.dll - VB Script Language (ProgID: VBS, VBScript)',
