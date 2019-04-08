@@ -80,22 +80,25 @@ __version__ = '0.54'
 
 #=== IMPORTS =================================================================
 
-import argparse, sys, re, zlib, struct
+import argparse, sys, re, zlib, struct, os
 from os.path import dirname, abspath
 
-# little hack to allow absolute imports even if oletools is not installed
-# (required to run oletools directly as scripts in any directory).
-try:
-    from oletools.thirdparty.prettytable import prettytable
-except ImportError:
-    PARENT_DIR = dirname(dirname(abspath(__file__)))
-    if PARENT_DIR not in sys.path:
-        sys.path.insert(0, PARENT_DIR)
-    del PARENT_DIR
-    from oletools.thirdparty.prettytable import prettytable
-from oletools import crypto
-
 import olefile
+
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if _parent_dir not in sys.path:
+    sys.path.insert(0, _parent_dir)
+
+from oletools.thirdparty.prettytable import prettytable
+from oletools import crypto
 
 
 
