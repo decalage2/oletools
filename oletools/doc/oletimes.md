@@ -10,7 +10,7 @@ It is part of the [python-oletools](http://www.decalage.info/python/oletools) pa
 ## Usage
 
 ```text
-oletimes.py <file>
+oletimes <file>
 ```
 
 ### Example
@@ -18,7 +18,7 @@ oletimes.py <file>
 Checking the malware sample [DIAN_caso-5415.doc](https://malwr.com/analysis/M2I4YWRhM2IwY2QwNDljN2E3ZWFjYTg3ODk4NmZhYmE/):
 
 ```text
->oletimes.py DIAN_caso-5415.doc
+>oletimes DIAN_caso-5415.doc
 
 +----------------------------+---------------------+---------------------+
 | Stream/Storage name        | Modification Time   | Creation Time       |

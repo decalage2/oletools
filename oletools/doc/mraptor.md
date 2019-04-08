@@ -24,7 +24,7 @@ It is part of the [python-oletools](http://www.decalage.info/python/oletools) pa
 ## Usage
 
 ```text
-Usage: mraptor.py [options] <filename> [filename2 ...]
+Usage: mraptor [options] <filename> [filename2 ...]
 
 Options:
   -h, --help            show this help message and exit
@@ -54,19 +54,19 @@ An exit code is returned based on the analysis result:
 Scan a single file:
 
 ```text
-mraptor.py file.doc
+mraptor file.doc
 ```
 
 Scan a single file, stored in a Zip archive with password "infected":
 
 ```text
-mraptor.py malicious_file.xls.zip -z infected
+mraptor malicious_file.xls.zip -z infected
 ```
 
 Scan a collection of files stored in a folder:
 
 ```text
-mraptor.py "MalwareZoo/VBA/*"
+mraptor "MalwareZoo/VBA/*"
 ```
 
 **Important**: on Linux/MacOSX, always add double quotes around a file name when you use
@@ -77,10 +77,8 @@ list of files matching the wildcards before starting the script.
 
 ## Python 3 support - mraptor3
 
-As of v0.50, mraptor has been ported to Python 3 thanks to @sebdraven.
-However, the differences between Python 2 and 3 are significant and for now
-there is a separate version of mraptor named mraptor3 to be used with
-Python 3.
+Since v0.54, mraptor is fully compatible with both Python 2 and 3.
+There is no need to use mraptor3 anymore, however it is still present for backward compatibility.
 
 
 --------------------------------------------------------------------------

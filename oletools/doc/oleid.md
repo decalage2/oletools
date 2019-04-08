@@ -32,7 +32,7 @@ Planned improvements:
 ## Usage
 
 ```text
-oleid.py <file>
+oleid <file>
 ```
 
 ### Example 
@@ -40,7 +40,7 @@ oleid.py <file>
 Analyzing a Word document containing a Flash object and VBA macros:
 
 ```text
-C:\oletools>oleid.py word_flash_vba.doc
+C:\oletools>oleid word_flash_vba.doc
 
 Filename: word_flash_vba.doc
 +-------------------------------+-----------------------+
