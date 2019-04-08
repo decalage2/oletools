@@ -127,56 +127,65 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li>olevba scans the macro source code and the deobfuscated strings to find suspicious keywords, auto-executable macros and potential IOCs (URLs, IP addresses, e-mail addresses, executable filenames, etc).</li>
 </ol>
 <h2 id="usage">Usage</h2>
-<pre class="text"><code>Usage: olevba.py [options] &lt;filename&gt; [filename2 ...]
-    
+<pre class="text"><code>Usage: olevba [options] &lt;filename&gt; [filename2 ...]
+
 Options:
   -h, --help            show this help message and exit
   -r                    find files recursively in subdirectories.
   -z ZIP_PASSWORD, --zip=ZIP_PASSWORD
                         if the file is a zip archive, open all files from it,
-                        using the provided password (requires Python 2.6+)
+                        using the provided password.
+  -p PASSWORD, --password=PASSWORD
+                        if encrypted office files are encountered, try
+                        decryption with this password. May be repeated.
   -f ZIP_FNAME, --zipfname=ZIP_FNAME
                         if the file is a zip archive, file(s) to be opened
                         within the zip. Wildcards * and ? are supported.
                         (default:*)
-  -t, --triage          triage mode, display results as a summary table
-                        (default for multiple files)
-  -d, --detailed        detailed mode, display full results (default for
-                        single file)
   -a, --analysis        display only analysis results, not the macro source
                         code
   -c, --code            display only VBA source code, do not analyze it
-  -i INPUT, --input=INPUT
-                        input file containing VBA source code to be analyzed
-                        (no parsing)
   --decode              display all the obfuscated strings with their decoded
                         content (Hex, Base64, StrReverse, Dridex, VBA).
   --attr                display the attribute lines at the beginning of VBA
                         source code
   --reveal              display the macro source code after replacing all the
-                        obfuscated strings by their decoded content.</code></pre>
+                        obfuscated strings by their decoded content.
+  -l LOGLEVEL, --loglevel=LOGLEVEL
+                        logging level debug/info/warning/error/critical
+                        (default=warning)
+  --deobf               Attempt to deobfuscate VBA expressions (slow)
+  --relaxed             Do not raise errors if opening of substream fails
+
+  Output mode (mutually exclusive):
+    -t, --triage        triage mode, display results as a summary table
+                        (default for multiple files)
+    -d, --detailed      detailed mode, display full results (default for
+                        single file)
+    -j, --json          json mode, detailed in json format (never default)</code></pre>
+<p><strong>New in v0.54:</strong> the -p option can now be used to decrypt encrypted documents using the provided password(s).</p>
 <h3 id="examples">Examples</h3>
 <p>Scan a single file:</p>
-<pre class="text"><code>olevba.py file.doc</code></pre>
+<pre class="text"><code>olevba file.doc</code></pre>
 <p>Scan a single file, stored in a Zip archive with password “infected”:</p>
-<pre class="text"><code>olevba.py malicious_file.xls.zip -z infected</code></pre>
+<pre class="text"><code>olevba malicious_file.xls.zip -z infected</code></pre>
 <p>Scan a single file, showing all obfuscated strings decoded:</p>
-<pre class="text"><code>olevba.py file.doc --decode</code></pre>
+<pre class="text"><code>olevba file.doc --decode</code></pre>
 <p>Scan a single file, showing the macro source code with VBA strings deobfuscated:</p>
-<pre class="text"><code>olevba.py file.doc --reveal</code></pre>
+<pre class="text"><code>olevba file.doc --reveal</code></pre>
 <p>Scan VBA source code extracted into a text file:</p>
-<pre class="text"><code>olevba.py source_code.vba</code></pre>
+<pre class="text"><code>olevba source_code.vba</code></pre>
 <p>Scan a collection of files stored in a folder:</p>
-<pre class="text"><code>olevba.py &quot;MalwareZoo/VBA/*&quot;</code></pre>
+<pre class="text"><code>olevba &quot;MalwareZoo/VBA/*&quot;</code></pre>
 <p>NOTE: On Linux, MacOSX and other Unix variants, it is required to add double quotes around wildcards. Otherwise, they will be expanded by the shell instead of olevba.</p>
 <p>Scan all .doc and .xls files, recursively in all subfolders:</p>
-<pre class="text"><code>olevba.py &quot;MalwareZoo/VBA/*.doc&quot; &quot;MalwareZoo/VBA/*.xls&quot; -r</code></pre>
+<pre class="text"><code>olevba &quot;MalwareZoo/VBA/*.doc&quot; &quot;MalwareZoo/VBA/*.xls&quot; -r</code></pre>
 <p>Scan all .doc files within all .zip files with password, recursively:</p>
-<pre class="text"><code>olevba.py &quot;MalwareZoo/VBA/*.zip&quot; -r -z infected -f &quot;*.doc&quot;</code></pre>
+<pre class="text"><code>olevba &quot;MalwareZoo/VBA/*.zip&quot; -r -z infected -f &quot;*.doc&quot;</code></pre>
 <h3 id="detailed-analysis-mode-default-for-single-file">Detailed analysis mode (default for single file)</h3>
 <p>When a single file is scanned, or when using the option -d, all details of the analysis are displayed.</p>
 <p>For example, checking the malware sample <a href="https://malwr.com/analysis/M2I4YWRhM2IwY2QwNDljN2E3ZWFjYTg3ODk4NmZhYmE/">DIAN_caso-5415.doc</a>:</p>
-<pre class="text"><code>&gt;olevba.py c:\MalwareZoo\VBA\DIAN_caso-5415.doc.zip -z infected
+<pre class="text"><code>&gt;olevba c:\MalwareZoo\VBA\DIAN_caso-5415.doc.zip -z infected
 ===============================================================================
 FILE: DIAN_caso-5415.doc.malware in c:\MalwareZoo\VBA\DIAN_caso-5415.doc.zip
 Type: OLE
@@ -246,7 +255,7 @@ ANALYSIS:
 <li><strong>V</strong>: VBA string expressions (potential obfuscation)</li>
 </ul>
 <p>Here is an example:</p>
-<pre class="text"><code>c:\&gt;olevba.py \MalwareZoo\VBA\samples\*
+<pre class="text"><code>c:\&gt;olevba \MalwareZoo\VBA\samples\*
 Flags       Filename
 ----------- -----------------------------------------------------------------
 OLE:MASI--- \MalwareZoo\VBA\samples\DIAN_caso-5415.doc.malware
@@ -266,7 +275,7 @@ OpX:MASI--- \MalwareZoo\VBA\samples\RottenKitten.xlsb.malware
 OLE:MASI-B- \MalwareZoo\VBA\samples\ROVNIX.doc.malware
 OLE:MA----- \MalwareZoo\VBA\samples\Word within Word macro auto.doc</code></pre>
 <h2 id="python-3-support---olevba3">Python 3 support - olevba3</h2>
-<p>As of v0.50, olevba has been ported to Python 3 thanks to <span class="citation" data-cites="sebdraven">@sebdraven</span>. However, the differences between Python 2 and 3 are significant and for now there is a separate version of olevba named olevba3 to be used with Python 3.</p>
+<p>Since v0.54, olevba is fully compatible with both Python 2 and 3. There is no need to use olevba3 anymore, however it is still present for backward compatibility.</p>
 <hr />
 <h2 id="how-to-use-olevba-in-python-applications">How to use olevba in Python applications</h2>
 <p>olevba may be used to open a MS Office file, detect if it contains VBA macros, extract and analyze the VBA source code from your own python applications.</p>

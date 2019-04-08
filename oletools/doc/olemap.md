@@ -10,7 +10,7 @@ It is part of the [python-oletools](http://www.decalage.info/python/oletools) pa
 ## Usage
 
 ```text
-Usage: olemap.py <filename>
+Usage: olemap <filename>
 ```
 
 ### Examples
@@ -18,7 +18,7 @@ Usage: olemap.py <filename>
 Scan a single file:
 
 ```text
-olemap.py file.doc
+olemap file.doc
 ```
     
 ![](olemap1.png)

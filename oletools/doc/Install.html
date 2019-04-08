@@ -16,28 +16,43 @@
   <![endif]-->
 </head>
 <body>
-<h1 id="how-to-download-and-install-python-oletools">How to Download and Install python-oletools</h1>
+<h1 id="how-to-download-and-install-oletools">How to Download and Install oletools</h1>
 <h2 id="pre-requisites">Pre-requisites</h2>
-<p>The recommended Python version to run oletools is <strong>Python 2.7</strong>. Python 2.6 is also supported, but as it is not tested as often as 2.7, some features might not work as expected.</p>
-<p>Since oletools v0.50, thanks to contributions by <span class="citation" data-cites="Sebdraven">[@Sebdraven]</span>(https://twitter.com/Sebdraven), most tools can also run with <strong>Python 3.x</strong>. As this is quite new, please <a href="(https://github.com/decalage2/oletools/issues)">report any issue</a> you may encounter.</p>
+<p>The recommended Python version to run oletools is the latest <strong>Python 3.x</strong> (3.7 for now). Python 2.7 is still supported, but as it will become end of life in 2020 (see https://pythonclock.org/), it is highly recommended to switch to Python 3 now.</p>
 <h2 id="recommended-way-to-downloadinstallupdate-oletools-pip">Recommended way to Download+Install/Update oletools: pip</h2>
 <p>Pip is included with Python since version 2.7.9 and 3.4. If it is not installed on your system, either upgrade Python or see https://pip.pypa.io/en/stable/installing/</p>
 <h3 id="linux-mac-osx-unix">Linux, Mac OSX, Unix</h3>
 <p>To download and install/update the latest release version of oletools, run the following command in a shell:</p>
 <pre class="text"><code>sudo -H pip install -U oletools</code></pre>
+<p>Replace <code>pip</code> by <code>pip3</code> or <code>pip2</code> to install on a specific Python version.</p>
+<p><strong>New in v0.54:</strong> To enable the decryption of encrypted documents, you also need to install the msoffcrypto-tool package:</p>
+<pre class="text"><code>sudo -H pip install -U msoffcrypto-tool</code></pre>
 <p><strong>Important</strong>: Since version 0.50, pip will automatically create convenient command-line scripts in /usr/local/bin to run all the oletools from any directory.</p>
 <h3 id="windows">Windows</h3>
 <p>To download and install/update the latest release version of oletools, run the following command in a cmd window:</p>
 <pre class="text"><code>pip install -U oletools</code></pre>
+<p>Replace <code>pip</code> by <code>pip3</code> or <code>pip2</code> to install on a specific Python version.</p>
+<p><strong>Note</strong>: with Python 3, you may need to open a cmd window with Administrator privileges in order to run pip and install for all users. If that is not possible, you may also install only for the current user by adding the <code>--user</code> option:</p>
+<pre class="text"><code>pip3 install -U --user oletools</code></pre>
+<p><strong>New in v0.54:</strong> To enable the decryption of encrypted documents, you also need to install the msoffcrypto-tool package:</p>
+<pre class="text"><code>pip install -U msoffcrypto-tool</code></pre>
 <p><strong>Important</strong>: Since version 0.50, pip will automatically create convenient command-line scripts to run all the oletools from any directory: olevba, mraptor, oleid, rtfobj, etc.</p>
 <h2 id="how-to-install-the-latest-development-version">How to install the latest development version</h2>
 <p>If you want to benefit from the latest improvements in the development version, you may also use pip:</p>
 <h3 id="linux-mac-osx-unix-1">Linux, Mac OSX, Unix</h3>
 <pre class="text"><code>sudo -H pip install -U https://github.com/decalage2/oletools/archive/master.zip</code></pre>
+<p>Replace <code>pip</code> by <code>pip3</code> or <code>pip2</code> to install on a specific Python version.</p>
+<p><strong>New in v0.54:</strong> To enable the decryption of encrypted documents, you also need to install the msoffcrypto-tool package:</p>
+<pre class="text"><code>sudo -H pip install -U msoffcrypto-tool</code></pre>
 <h3 id="windows-1">Windows</h3>
 <pre class="text"><code>pip install -U https://github.com/decalage2/oletools/archive/master.zip</code></pre>
+<p>Replace <code>pip</code> by <code>pip3</code> or <code>pip2</code> to install on a specific Python version.</p>
+<p><strong>Note</strong>: with Python 3, you may need to open a cmd window with Administrator privileges in order to run pip and install for all users. If that is not possible, you may also install only for the current user by adding the <code>--user</code> option:</p>
+<pre class="text"><code>pip3 install -U --user https://github.com/decalage2/oletools/archive/master.zip</code></pre>
+<p><strong>New in v0.54:</strong> To enable the decryption of encrypted documents, you also need to install the msoffcrypto-tool package:</p>
+<pre class="text"><code>pip install -U msoffcrypto-tool</code></pre>
 <h2 id="how-to-install-offline---computer-without-internet-access">How to install offline - Computer without Internet access</h2>
-<p>First, download the oletools archive on a computer with Internet access: * Latest stable version: from https://github.com/decalage2/oletools/releases * Development version: https://github.com/decalage2/oletools/archive/master.zip</p>
+<p>First, download the oletools archive on a computer with Internet access: * Latest stable version: from https://pypi.org/project/oletools/ or https://github.com/decalage2/oletools/releases * Development version: https://github.com/decalage2/oletools/archive/master.zip</p>
 <p>Copy the archive file to the target computer.</p>
 <p>On Linux, Mac OSX, Unix, run the following command using the filename of the archive that you downloaded:</p>
 <pre class="text"><code>sudo -H pip install -U oletools.zip</code></pre>

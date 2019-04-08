@@ -21,7 +21,7 @@ For this, simply add the -o option to work on OLE streams rather than raw files,
 ## Usage
 
 ```text
-Usage: pyxswf.py [options] <file.bad>
+Usage: pyxswf [options] <file.bad>
 
 Options:
   -o, --ole             Parse an OLE file (e.g. Word, Excel) to look for SWF
@@ -47,12 +47,12 @@ Options:
 ### Example 1 - detecting and extracting a SWF file from a Word document on Windows:
 
 ```text
-C:\oletools>pyxswf.py -o word_flash.doc
+C:\oletools>pyxswf -o word_flash.doc
 OLE stream: 'Contents'
 [SUMMARY] 1 SWF(s) in MD5:993664cc86f60d52d671b6610813cfd1:Contents
         [ADDR] SWF 1 at 0x8  - FWS Header
 
-C:\oletools>pyxswf.py -xo word_flash.doc
+C:\oletools>pyxswf -xo word_flash.doc
 OLE stream: 'Contents'
 [SUMMARY] 1 SWF(s) in MD5:993664cc86f60d52d671b6610813cfd1:Contents
         [ADDR] SWF 1 at 0x8  - FWS Header
@@ -62,7 +62,7 @@ OLE stream: 'Contents'
 ### Example 2 - detecting and extracting a SWF file from a RTF document on Windows:
 
 ```text
-C:\oletools>pyxswf.py -xf "rtf_flash.rtf"
+C:\oletools>pyxswf -xf "rtf_flash.rtf"
 RTF embedded object size 1498557 at index 000036DD
 [SUMMARY] 1 SWF(s) in MD5:46a110548007e04f4043785ac4184558:RTF_embedded_object_0
 00036DD
