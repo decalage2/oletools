@@ -1,16 +1,12 @@
-How to Download and Install python-oletools
-===========================================
+How to Download and Install oletools
+====================================
 
 Pre-requisites
 --------------
 
-The recommended Python version to run oletools is Python 2.7.
-Python 2.6 is also supported, but as it is not tested as often as 2.7, some features
-might not work as expected.
-
-Since v0.50, oletools can also run with Python 3.x. As this is quite new, please
-report any issue you may encounter.
-
+The recommended Python version to run oletools is the latest **Python 3.x** (3.7 for now).
+Python 2.7 is still supported, but as it will become end of life in 2020 (see https://pythonclock.org/), it is highly
+recommended to switch to Python 3 now.
 
 Recommended way to Download+Install/Update oletools: pip
 --------------------------------------------------------
@@ -23,7 +19,17 @@ system, either upgrade Python or see https://pip.pypa.io/en/stable/installing/
 To download and install/update the latest release version of oletools,
 run the following command in a shell:
 
+```text
 sudo -H pip install -U oletools
+```
+
+Replace `pip` by `pip3` or `pip2` to install on a specific Python version.
+
+**New in v0.54:** To enable the decryption of encrypted documents, you also need to install the msoffcrypto-tool package:
+```text
+sudo -H pip install -U msoffcrypto-tool
+```
+
 
 **Important**: Since version 0.50, pip will automatically create convenient command-line scripts
 in /usr/local/bin to run all the oletools from any directory.
@@ -33,7 +39,24 @@ in /usr/local/bin to run all the oletools from any directory.
 To download and install/update the latest release version of oletools,
 run the following command in a cmd window:
 
+```text
 pip install -U oletools
+```
+
+Replace `pip` by `pip3` or `pip2` to install on a specific Python version.
+
+**Note**: with Python 3, you may need to open a cmd window with Administrator privileges in order to run pip
+and install for all users. If that is not possible, you may also install only for the current user
+by adding the `--user` option:
+
+```text
+pip3 install -U --user oletools
+```
+
+**New in v0.54:** To enable the decryption of encrypted documents, you also need to install the msoffcrypto-tool package:
+```text
+pip install -U msoffcrypto-tool
+```
 
 **Important**: Since version 0.50, pip will automatically create convenient command-line scripts
 to run all the oletools from any directory: olevba, mraptor, oleid, rtfobj, etc.
@@ -47,18 +70,44 @@ you may also use pip:
 
 ### Linux, Mac OSX, Unix
 
+```text
 sudo -H pip install -U https://github.com/decalage2/oletools/archive/master.zip
+```
+
+Replace `pip` by `pip3` or `pip2` to install on a specific Python version.
+
+**New in v0.54:** To enable the decryption of encrypted documents, you also need to install the msoffcrypto-tool package:
+```text
+sudo -H pip install -U msoffcrypto-tool
+```
 
 ### Windows
 
+```text
 pip install -U https://github.com/decalage2/oletools/archive/master.zip
+```
+
+Replace `pip` by `pip3` or `pip2` to install on a specific Python version.
+
+**Note**: with Python 3, you may need to open a cmd window with Administrator privileges in order to run pip
+and install for all users. If that is not possible, you may also install only for the current user
+by adding the `--user` option:
+
+```text
+pip3 install -U --user https://github.com/decalage2/oletools/archive/master.zip
+```
+
+**New in v0.54:** To enable the decryption of encrypted documents, you also need to install the msoffcrypto-tool package:
+```text
+pip install -U msoffcrypto-tool
+```
 
 
 How to install offline - Computer without Internet access
 ---------------------------------------------------------
 
 First, download the oletools archive on a computer with Internet access:
-* Latest stable version: from https://github.com/decalage2/oletools/releases
+* Latest stable version: from https://pypi.org/project/oletools/ or https://github.com/decalage2/oletools/releases
 * Development version: https://github.com/decalage2/oletools/archive/master.zip
 
 Copy the archive file to the target computer.
@@ -66,11 +115,15 @@ Copy the archive file to the target computer.
 On Linux, Mac OSX, Unix, run the following command using the filename of the
 archive that you downloaded:
 
+```text
 sudo -H pip install -U oletools.zip
+```
 
 On Windows:
 
+```text
 pip install -U oletools.zip
+```
 
 
 Old school install using setup.py
@@ -88,9 +141,12 @@ Then extract the archive, open a shell and go to the oletools directory.
 
 ### Linux, Mac OSX, Unix
 
+```text
 sudo -H python setup.py install
+```
 
 ### Windows:
 
+```text
 python setup.py install
-
+```
