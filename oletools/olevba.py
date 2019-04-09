@@ -215,8 +215,9 @@ from __future__ import print_function
 # 2019-01-01       PL: - removed support for Python 2.6
 # 2019-03-18       PL: - added XLM/XLF macros detection for Excel OLE files
 # 2019-03-25       CH: - added decryption of password-protected files
+# 2019-04-09       PL: - decompress_stream accepts bytes (issue #422)
 
-__version__ = '0.54'
+__version__ = '0.54.1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -1249,8 +1250,8 @@ def decompress_stream(compressed_container):
     """
     Decompress a stream according to MS-OVBA section 2.4.1
 
-    compressed_container: string compressed according to the MS-OVBA 2.4.1.3.6 Compression algorithm
-    return the decompressed container as a string (bytes)
+    compressed_container: bytearray or bytes compressed according to the MS-OVBA 2.4.1.3.6 Compression algorithm
+    return the decompressed container as a bytes string
     """
     # 2.4.1.2 State Variables
 
@@ -1272,9 +1273,10 @@ def decompress_stream(compressed_container):
     # DecompressedChunkStart: The location of the first byte of the DecompressedChunk (section 2.4.1.1.3) within the
     #                         DecompressedBuffer (section 2.4.1.1.2).
 
-    # Check the input is a bytearray:
+    # Check the input is a bytearray, otherwise convert it (assuming it's bytes):
     if not isinstance(compressed_container, bytearray):
-        raise TypeError('decompress_stream requires a bytearray as input')
+        compressed_container = bytearray(compressed_container)
+        # raise TypeError('decompress_stream requires a bytearray as input')
     decompressed_container = bytearray()  # result
     compressed_current = 0
 
