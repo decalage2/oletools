@@ -1,4 +1,5 @@
 pyparsing>=2.2.0
-olefile>=0.45
+olefile>=0.46
+easygui
 colorclass
 msoffcrypto-tool
