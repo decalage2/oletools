@@ -11,12 +11,14 @@ from __future__ import print_function
 import unittest
 import sys
 import os
-from os.path import join
+from os.path import join, basename
 from traceback import print_exc
+import json
+from collections import OrderedDict
 from oletools import msodde
 from oletools.crypto import \
     WrongEncryptionPassword, CryptoLibNotImported, check_msoffcrypto
-from tests.test_utils import DATA_BASE_DIR as BASE_DIR
+from tests.test_utils import call_and_capture, DATA_BASE_DIR as BASE_DIR
 
 
 class TestReturnCode(unittest.TestCase):
@@ -105,6 +107,28 @@ class TestReturnCode(unittest.TestCase):
         elif expect_error and not isinstance(found_error, expect_error):
             self.fail('Wrong kind of error {} from msodde for {}, expected {}'
                       .format(type(found_error), filename, expect_error))
+
+
+@unittest.skipIf(not check_msoffcrypto(),
+                 'Module msoffcrypto not installed for {}'
+                 .format(basename(sys.executable)))
+class TestErrorOutput(unittest.TestCase):
+    """msodde does not specify error by return code but text output."""
+
+    def test_crypt_output(self):
+        """Check for helpful error message when failing to decrypt."""
+        for suffix in 'doc', 'docm', 'docx', 'ppt', 'pptm', 'pptx', 'xls', \
+                'xlsb', 'xlsm', 'xlsx':
+            example_file = join(BASE_DIR, 'encrypted', 'encrypted.' + suffix)
+            output, ret_code = call_and_capture('msodde', ['-j', example_file],
+                                                accept_nonzero_exit=True)
+            self.assertEqual(ret_code, 1)
+            data = json.loads(output, object_pairs_hook=OrderedDict)
+            # debug: json.dump(data, sys.stdout, indent=4)
+            self.assertTrue(all(part['type'] == 'msg' for part in data))
+            self.assertTrue(any(part['level'] == 'ERROR' and
+                                'passwords could not decrypt' in part['msg']
+                                for part in data))
 
 
 class TestDdeLinks(unittest.TestCase):
