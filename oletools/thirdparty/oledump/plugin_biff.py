@@ -1005,11 +1005,11 @@ class cBIFF(object):  # cPluginParent):
                     values = Strings(data[3:]).values()
                     strings = ''
                     if values[0] != []:
-                        strings += ' '.join(values[0])
+                        strings += ' '.join(str(values[0]))
                     if values[1] != []:
                         if strings != '':
                             strings += ' '
-                        strings += ' '.join(values[1])
+                        strings += ' '.join(str(values[1]))
                     line += ' - %s' % strings
                     # print(line)
 
