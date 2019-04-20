@@ -217,7 +217,7 @@ from __future__ import print_function
 # 2019-03-25       CH: - added decryption of password-protected files
 # 2019-04-09       PL: - decompress_stream accepts bytes (issue #422)
 
-__version__ = '0.54.1'
+__version__ = '0.54.2'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -2584,6 +2584,7 @@ class VBA_Parser(object):
         self.nb_vbastrings = 0
         #: Encoding for VBA source code and strings returned by all methods
         self.encoding = encoding
+        self.xlm_macros = []
 
         # if filename is None:
         #     if isinstance(_file, basestring):
