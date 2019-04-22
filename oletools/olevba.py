@@ -3933,10 +3933,10 @@ def main(cmd_line_args=None):
 
     # with the option --reveal, make sure --deobf is also enabled:
     if options.show_deobfuscated_code and not options.deobfuscate:
-        log.info('set --deobf because --reveal was set')
+        log.debug('set --deobf because --reveal was set')
         options.deobfuscate = True
     if options.output_mode == 'triage' and options.show_deobfuscated_code:
-        log.info('ignoring option --reveal in triage output mode')
+        log.debug('ignoring option --reveal in triage output mode')
 
     # gather info on all files that must be processed
     # ignore directory names stored in zip files:
