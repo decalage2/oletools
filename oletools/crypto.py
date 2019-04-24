@@ -91,6 +91,7 @@ http://www.decalage.info/python/oletools
 # 2019-02-14 v0.01 CH: - first version with encryption check from oleid
 # 2019-04-01 v0.54 PL: - fixed bug in is_encrypted_ole
 # 2019-05-23       PL: - added DEFAULT_PASSWORDS list
+# 2019-05-24       CH: - use log_helper
 
 __version__ = '0.54.2'
 
@@ -130,44 +131,9 @@ MAX_NESTING_DEPTH = 10
 
 # === LOGGING =================================================================
 
-# TODO: use log_helper instead
-
-def get_logger(name, level=logging.CRITICAL+1):
-    """
-    Create a suitable logger object for this module.
-    The goal is not to change settings of the root logger, to avoid getting
-    other modules' logs on the screen.
-    If a logger exists with same name, reuse it. (Else it would have duplicate
-    handlers and messages would be doubled.)
-    The level is set to CRITICAL+1 by default, to avoid any logging.
-    """
-    # First, test if there is already a logger with the same name, else it
-    # will generate duplicate messages (due to duplicate handlers):
-    if name in logging.Logger.manager.loggerDict:
-        # NOTE: another less intrusive but more "hackish" solution would be to
-        # use getLogger then test if its effective level is not default.
-        logger = logging.getLogger(name)
-        # make sure level is OK:
-        logger.setLevel(level)
-        return logger
-    # get a new logger:
-    logger = logging.getLogger(name)
-    # only add a NullHandler for this logger, it is up to the application
-    # to configure its own logging:
-    logger.addHandler(logging.NullHandler())
-    logger.setLevel(level)
-    return logger
-
 # a global logger object used for debugging:
-log = get_logger('crypto')
+log = log_helper.get_or_create_silent_logger('crypto')
 
-def enable_logging():
-    """
-    Enable logging for this module (disabled by default).
-    This will set the module-specific logger level to NOTSET, which
-    means the main application controls the actual logging level.
-    """
-    log.setLevel(logging.NOTSET)
 
 
 def is_encrypted(some_file):
