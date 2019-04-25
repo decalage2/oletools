@@ -197,8 +197,40 @@ def is_encrypted(some_file):
     :returns: True if (and only if) the file contains encrypted content
     """
     log.debug('is_encrypted')
+
+    # ask msoffcrypto if possible
+    if check_msoffcrypto():
+        log.debug('Checking for encryption using msoffcrypto')
+        file_handle = None
+        file_pos = None
+        try:
+            if isinstance(some_file, OleFileIO):
+                # TODO: hacky, replace once msoffcrypto-tools accepts OleFileIO
+                file_handle = some_file.fp
+                file_pos = file_handle.tell()
+                file_handle.seek(0)
+            else:
+                file_handle = open(some_file, 'rb')
+
+            return msoffcrypto.OfficeFile(file_handle).is_encrypted()
+
+        except Exception as exc:
+            log.warning('msoffcrypto failed to interpret file {} or determine '
+                        'whether it is encrypted: {}'
+                        .format(file_handle.name, exc))
+
+        finally:
+            try:
+                if file_pos is not None:   # input was OleFileIO
+                    file_handle.seek(file_pos)
+                else:                      # input was file name
+                    file_handle.close()
+            except Exception as exc:
+                log.warning('Ignoring error during clean up: {}'.format(exc))
+
+    # if that failed, try ourselves with older and less accurate code
     if isinstance(some_file, OleFileIO):
-        return _is_encrypted_ole(some_file)   # assume it is OleFileIO
+        return _is_encrypted_ole(some_file)
     if zipfile.is_zipfile(some_file):
         return _is_encrypted_zip(some_file)
     # otherwise assume it is the name of an ole file
