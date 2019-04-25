@@ -198,14 +198,14 @@ def is_encrypted(some_file):
     """
     log.debug('is_encrypted')
     if isinstance(some_file, OleFileIO):
-        return is_encrypted_ole(some_file)   # assume it is OleFileIO
+        return _is_encrypted_ole(some_file)   # assume it is OleFileIO
     if zipfile.is_zipfile(some_file):
-        return is_encrypted_zip(some_file)
+        return _is_encrypted_zip(some_file)
     # otherwise assume it is the name of an ole file
-    return is_encrypted_ole(OleFileIO(some_file))
+    return _is_encrypted_ole(OleFileIO(some_file))
 
 
-def is_encrypted_zip(filename):
+def _is_encrypted_zip(filename):
     """Specialization of :py:func:`is_encrypted` for zip-based files."""
     log.debug('is_encrypted_zip')
     # TODO: distinguish OpenXML from normal zip files
@@ -220,7 +220,7 @@ def is_encrypted_zip(filename):
             return 'crypt' in str(rt_err)
 
 
-def is_encrypted_ole(ole):
+def _is_encrypted_ole(ole):
     """Specialization of :py:func:`is_encrypted` for ole files."""
     log.debug('is_encrypted_ole')
     # check well known property for password protection
