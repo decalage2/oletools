@@ -82,7 +82,8 @@ class LogHelper:
         """
         return self._get_or_create_logger(name, level, logging.NullHandler())
 
-    def enable_logging(self, use_json=False, level='warning', log_format=DEFAULT_MESSAGE_FORMAT, stream=None):
+    def enable_logging(self, use_json=False, level='warning', log_format=DEFAULT_MESSAGE_FORMAT, stream=None,
+                       other_logger_has_first_line=False):
         """
         This function initializes the root logger and enables logging.
         We set the level of the root logger to the one passed by calling logging.basicConfig.
@@ -93,6 +94,9 @@ class LogHelper:
         which in turn will log to the stream set in this function.
         Since the root logger is the one doing the work, when using JSON we set its formatter
         so that every message logged is JSON-compatible.
+
+        If other code also creates json output, that other code should output the
+        first logging line and tell us via `other_logger_has_first_line`.
         """
         if self._is_enabled:
             raise ValueError('re-enabling logging. Not sure whether that is ok...')
@@ -115,7 +119,7 @@ class LogHelper:
 
         # add a JSON formatter to the root logger, which will be used by every logger
         if self._use_json:
-            _root_logger_wrapper.set_formatter(JsonFormatter())
+            _root_logger_wrapper.set_formatter(JsonFormatter(other_logger_has_first_line))
             print('[')
 
     def end_logging(self):

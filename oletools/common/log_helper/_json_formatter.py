@@ -8,6 +8,10 @@ class JsonFormatter(logging.Formatter):
     """
     _is_first_line = True
 
+    def __init__(self, other_logger_has_first_line=False):
+        if other_logger_has_first_line:
+            self._is_first_line = False
+
     def format(self, record):
         """
         Since we don't buffer messages, we always prepend messages with a comma to make
