@@ -229,12 +229,18 @@ def is_encrypted(some_file):
                 log.warning('Ignoring error during clean up: {}'.format(exc))
 
     # if that failed, try ourselves with older and less accurate code
-    if isinstance(some_file, OleFileIO):
-        return _is_encrypted_ole(some_file)
-    if zipfile.is_zipfile(some_file):
-        return _is_encrypted_zip(some_file)
-    # otherwise assume it is the name of an ole file
-    return _is_encrypted_ole(OleFileIO(some_file))
+    try:
+        if isinstance(some_file, OleFileIO):
+            return _is_encrypted_ole(some_file)
+        if zipfile.is_zipfile(some_file):
+            return _is_encrypted_zip(some_file)
+        # otherwise assume it is the name of an ole file
+        return _is_encrypted_ole(OleFileIO(some_file))
+    except Exception as exc:
+        log.warning('Failed to check {} for encryption ({}); assume it is not '
+                    'encrypted.'.format(some_file, exc))
+
+    return False
 
 
 def _is_encrypted_zip(filename):
