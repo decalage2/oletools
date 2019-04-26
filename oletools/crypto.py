@@ -168,6 +168,7 @@ def enable_logging():
     """
     log.setLevel(logging.NOTSET)
 
+
 def is_encrypted(some_file):
     """
     Determine whether document contains encrypted content.
@@ -294,8 +295,6 @@ def _is_encrypted_ole(ole):
             f_encrypted = (temp16 & 0x0100) >> 8
             if f_encrypted:
                 return True
-        except Exception:
-            raise
         finally:
             if stream is not None:
                 stream.close()
