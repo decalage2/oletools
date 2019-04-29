@@ -2,13 +2,11 @@
 
 import sys
 import unittest
-import os
 from os.path import join as pjoin
-from subprocess import check_output, CalledProcessError
 import json
 from collections import OrderedDict
 
-from tests.test_utils import DATA_BASE_DIR, SOURCE_BASE_DIR
+from tests.test_utils import DATA_BASE_DIR, call_and_capture
 
 from oletools import crypto
 
@@ -34,25 +32,11 @@ class OlevbaCryptoWriteProtectTest(unittest.TestCase):
     """
     def test_autostart(self):
         """Check that autostart macro is found in xls[mb] sample file."""
-        # create a PYTHONPATH environment var to prefer our olevba
-        env = os.environ
-        try:
-            env['PYTHONPATH'] = SOURCE_BASE_DIR + os.pathsep + \
-                                os.environ['PYTHONPATH']
-        except KeyError:
-            env['PYTHONPATH'] = SOURCE_BASE_DIR
-
         for suffix in 'xlsm', 'xlsb':
             example_file = pjoin(
                 DATA_BASE_DIR, 'encrypted',
                 'autostart-encrypt-standardpassword.' + suffix)
-            try:
-                output = check_output([sys.executable, '-m', 'olevba', '-j',
-                                       example_file],
-                                      universal_newlines=True, env=env)
-            except CalledProcessError as err:
-                print(err.output)
-                raise
+            output, _ = call_and_capture('olevba', args=('-j', example_file))
             data = json.loads(output, object_pairs_hook=OrderedDict)
             # debug: json.dump(data, sys.stdout, indent=4)
             self.assertEqual(len(data), 4)
