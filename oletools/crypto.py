@@ -246,7 +246,7 @@ def is_encrypted(some_file):
 
 def _is_encrypted_zip(filename):
     """Specialization of :py:func:`is_encrypted` for zip-based files."""
-    log.debug('is_encrypted_zip')
+    log.debug('Checking for encryption in zip file')
     # TODO: distinguish OpenXML from normal zip files
     # try to decrypt a few bytes from first entry
     with zipfile.ZipFile(filename, 'r') as zipper:
@@ -261,7 +261,7 @@ def _is_encrypted_zip(filename):
 
 def _is_encrypted_ole(ole):
     """Specialization of :py:func:`is_encrypted` for ole files."""
-    log.debug('is_encrypted_ole')
+    log.debug('Checking for encryption in OLE file')
     # check well known property for password protection
     # (this field may be missing for Powerpoint2000, for example)
     # TODO: check whether password protection always implies encryption. Could
