@@ -10,13 +10,108 @@ else:
     from oletools import olevba3 as olevba
 import os
 from os.path import join
+from contextlib import contextmanager
+try:
+    from cStringIO import StringIO
+except ImportError:   # py3:
+    from io import StringIO
 
 # Directory with test data, independent of current working directory
 from tests.test_utils import DATA_BASE_DIR
 
 
+@contextmanager
+def capture_output():
+    """
+    Temporarily replace stdout/stderr with buffers to capture output.
+
+    Once we only support python>=3.4: this is already built into python as
+    :py:func:`contextlib.redirect_stdout`.
+
+    Not quite sure why, but seems to only work once per test function ...
+    """
+    orig_stdout = sys.stdout
+    orig_stderr = sys.stderr
+
+    try:
+        sys.stdout = StringIO()
+        sys.stderr = StringIO()
+        yield sys.stdout, sys.stderr
+
+    finally:
+        sys.stdout = orig_stdout
+        sys.stderr = orig_stderr
+
+
 class TestOlevbaBasic(unittest.TestCase):
     """Tests olevba basic functionality"""
+
+    def test_text_behaviour(self):
+        """Test behaviour of olevba when presented with pure text file."""
+        self.do_test_behaviour('text')
+
+    def test_empty_behaviour(self):
+        """Test behaviour of olevba when presented with pure text file."""
+        self.do_test_behaviour('empty')
+
+    def do_test_behaviour(self, filename):
+        input_file = join(DATA_BASE_DIR, 'basic', filename)
+        ret_code = -1
+
+        # run olevba, capturing its output and return code
+        with capture_output() as (stdout, stderr):
+            with self.assertRaises(SystemExit) as raise_context:
+                olevba.main([input_file, ])
+            ret_code = raise_context.exception.code
+
+        # check that return code is 0
+        self.assertEqual(ret_code, 0)
+
+        # check there are only warnings in stderr
+        stderr = stderr.getvalue()
+        skip_line = False
+        for line in stderr.splitlines():
+            if skip_line:
+                skip_line = False
+                continue
+            self.assertTrue(line.startswith('WARNING ') or
+                            'ResourceWarning' in line,
+                            msg='Line "{}" in stderr is unexpected for {}'
+                                .format(line.rstrip(), filename))
+            if 'ResourceWarning' in line:
+                skip_line = True
+        self.assertIn('not encrypted', stderr)
+
+        # check stdout
+        stdout = stdout.getvalue().lower()
+        self.assertIn(input_file.lower(), stdout)
+        self.assertIn('type: text', stdout)
+        self.assertIn('no suspicious', stdout)
+        self.assertNotIn('error', stdout)
+        self.assertNotIn('warn', stdout)
+
+    def test_rtf_behaviour(self):
+        """Test behaviour of olevba when presented with an rtf file."""
+        input_file = join(DATA_BASE_DIR, 'msodde', 'RTF-Spec-1.7.rtf')
+        ret_code = -1
+
+        # run olevba, capturing its output and return code
+        with capture_output() as (stdout, stderr):
+            with self.assertRaises(SystemExit) as raise_context:
+                olevba.main([input_file, ])
+            ret_code = raise_context.exception.code
+
+        # check that return code is olevba.RETURN_OPEN_ERROR
+        self.assertEqual(ret_code, 5)
+        stdout = stdout.getvalue().lower()
+        self.assertNotIn('error', stdout)
+        self.assertNotIn('warn', stdout)
+
+        stderr = stderr.getvalue().lower()
+        self.assertIn('fileopenerror', stderr)
+        self.assertIn('is rtf', stderr)
+        self.assertIn('rtfobj.py', stderr)
+        self.assertIn('not encrypted', stderr)
 
     def test_crypt_return(self):
         """
