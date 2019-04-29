@@ -4,10 +4,6 @@ Test basic functionality of olevba[3]
 
 import unittest
 import sys
-if sys.version_info.major <= 2:
-    from oletools import olevba
-else:
-    from oletools import olevba3 as olevba
 import os
 from os.path import join
 from contextlib import contextmanager
@@ -15,6 +11,10 @@ try:
     from cStringIO import StringIO
 except ImportError:   # py3:
     from io import StringIO
+if sys.version_info.major <= 2:
+    from oletools import olevba
+else:
+    from oletools import olevba3 as olevba
 
 # Directory with test data, independent of current working directory
 from tests.test_utils import DATA_BASE_DIR
@@ -55,6 +55,7 @@ class TestOlevbaBasic(unittest.TestCase):
         self.do_test_behaviour('empty')
 
     def do_test_behaviour(self, filename):
+        """Helper for test_{text,empty}_behaviour."""
         input_file = join(DATA_BASE_DIR, 'basic', filename)
         ret_code = -1
 
@@ -76,7 +77,7 @@ class TestOlevbaBasic(unittest.TestCase):
                 continue
             self.assertTrue(line.startswith('WARNING ') or
                             'ResourceWarning' in line,
-                            msg='Line "{}" in stderr is unexpected for {}'
+                            msg='Line "{}" in stderr is unexpected for {}'\
                                 .format(line.rstrip(), filename))
             if 'ResourceWarning' in line:
                 skip_line = True
@@ -136,11 +137,12 @@ class TestOlevbaBasic(unittest.TestCase):
             full_name = join(CRYPT_DIR, filename)
             for args in ADD_ARGS:
                 try:
-                    ret_code = olevba.main(args + [full_name, ])
-                except SystemExit as se:
-                    ret_code = se.code or 0   # se.code can be None
+                    olevba.main(args + [full_name, ])
+                    self.fail('Olevba should have exited')
+                except SystemExit as sys_exit:
+                    ret_code = sys_exit.code or 0   # sys_exit.code can be None
                 self.assertEqual(ret_code, CRYPT_RETURN_CODE,
-                                 msg='Wrong return code {} for args {}'
+                                 msg='Wrong return code {} for args {}'\
                                      .format(ret_code, args + [filename, ]))
 
 
