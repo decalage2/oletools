@@ -361,6 +361,8 @@ def decrypt(filename, passwords=None, **temp_file_args):
             crypto_file = msoffcrypto.OfficeFile(reader)
         except Exception as exc:   # e.g. ppt, not yet supported by msoffcrypto
             if 'Unrecognized file format' in str(exc):
+                log.debug('Caught exception', exc_info=True)
+
                 # raise different exception without stack trace of original exc
                 if sys.version_info.major == 2:
                     raise UnsupportedEncryptionError(filename)
@@ -374,6 +376,7 @@ def decrypt(filename, passwords=None, **temp_file_args):
                              .format(filename))
 
         for password in passwords:
+            log.debug('Trying to decrypt with password {!r}'.format(password))
             write_descriptor = None
             write_handle = None
             decrypt_file = None
@@ -391,6 +394,8 @@ def decrypt(filename, passwords=None, **temp_file_args):
                 write_handle = None
                 break
             except Exception:
+                log.debug('Failed to decrypt', exc_info=True)
+
                 # error-clean up: close everything and del temp file
                 if write_handle:
                     write_handle.close()
@@ -400,4 +405,5 @@ def decrypt(filename, passwords=None, **temp_file_args):
                     os.unlink(decrypt_file)
                 decrypt_file = None
     # if we reach this, all passwords were tried without success
+    log.debug('All passwords failed')
     return decrypt_file
