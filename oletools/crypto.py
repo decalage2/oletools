@@ -393,6 +393,8 @@ def decrypt(filename, passwords=None, **temp_file_args):
                 write_handle.close()
                 write_handle = None
                 break
+            except ImportError:
+                raise
             except Exception:
                 log.debug('Failed to decrypt', exc_info=True)
 
