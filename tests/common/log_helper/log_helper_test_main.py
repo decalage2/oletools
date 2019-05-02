@@ -2,6 +2,7 @@
 
 import sys
 import logging
+import warnings
 from tests.common.log_helper import log_helper_test_imported
 from oletools.common.log_helper import log_helper
 
@@ -11,7 +12,9 @@ WARNING_MESSAGE = 'main: warning log'
 ERROR_MESSAGE = 'main: error log'
 CRITICAL_MESSAGE = 'main: critical log'
 RESULT_MESSAGE = 'main: result log'
+
 RESULT_TYPE = 'main: result'
+ACTUAL_WARNING = 'Warnings can pop up anywhere, have to be prepared!'
 
 logger = log_helper.get_or_create_silent_logger('test_main')
 
@@ -24,7 +27,8 @@ def enable_logging():
 
 def main(args):
     """
-    Try to cover possible logging scenarios. For each scenario covered, here's the expected args and outcome:
+    Try to cover possible logging scenarios. For each scenario covered, here's
+    the expected args and outcome:
     - Log without enabling: ['<level>']
         * logging when being imported - should never print
     - Log as JSON without enabling: ['as-json', '<level>']
@@ -35,6 +39,8 @@ def main(args):
         * logging as JSON when being run as script - should log messages as JSON
     - Enable, log as JSON and throw: ['enable', 'as-json', 'throw', '<level>']
         * should produce JSON-compatible output, even after an unhandled exception
+    - Enable, log as JSON and warn: ['enable', 'as-json', 'warn', '<level>']
+        * should produce JSON-compatible output, even after a warning
     """
 
     # the level should always be the last argument passed
@@ -42,6 +48,7 @@ def main(args):
     use_json = 'as-json' in args
     throw = 'throw' in args
     percent_autoformat = '%-autoformat' in args
+    warn = 'warn' in args
 
     log_helper_test_imported.logger.setLevel(logging.ERROR)
 
@@ -52,6 +59,10 @@ def main(args):
 
     if throw:
         raise Exception('An exception occurred before ending the logging')
+
+    if warn:
+        warnings.warn(ACTUAL_WARNING)
+        log_helper_test_imported.warn()
 
     log_helper.end_logging()
 

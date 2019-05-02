@@ -142,6 +142,32 @@ class TestLogHelper(unittest.TestCase):
         self.assertIn('INFO:test_main:main: info log', output)
         self.assertIn('INFO:test_imported:imported: info log', output)
 
+    def test_json_correct_on_warnings(self):
+        """
+        Test that even on warnings our JSON is always correct
+        """
+        output = self._run_test(['enable', 'as-json', 'warn', 'warning'])
+        expected_messages = [
+            log_helper_test_main.WARNING_MESSAGE,
+            log_helper_test_main.ERROR_MESSAGE,
+            log_helper_test_main.CRITICAL_MESSAGE,
+            log_helper_test_imported.WARNING_MESSAGE,
+            log_helper_test_imported.ERROR_MESSAGE,
+            log_helper_test_imported.CRITICAL_MESSAGE,
+        ]
+
+        for msg in expected_messages:
+            self.assertIn(msg, output)
+
+        # last two entries of output should be warnings
+        jout = json.loads(output)
+        self.assertEqual(jout[-2]['level'], 'WARNING')
+        self.assertEqual(jout[-1]['level'], 'WARNING')
+        self.assertEqual(jout[-2]['type'], 'warning')
+        self.assertEqual(jout[-1]['type'], 'warning')
+        self.assertIn(log_helper_test_main.ACTUAL_WARNING, jout[-2]['msg'])
+        self.assertIn(log_helper_test_imported.ACTUAL_WARNING, jout[-1]['msg'])
+
     def _assert_json_messages(self, output, messages):
         try:
             json_data = json.loads(output)
@@ -163,6 +189,8 @@ class TestLogHelper(unittest.TestCase):
         When arg `run_third_party` is `True`, we do not run the `TEST_FILE` as
         main moduel but the `TEST_FILE_3RD_PARTY` and return contents of
         `stderr` instead of `stdout`.
+
+        TODO: use tests.utils.call_and_capture
         """
         all_args = [PYTHON_EXECUTABLE, ]
         if run_third_party:
