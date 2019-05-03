@@ -152,6 +152,11 @@ class LogHelper:
         self._use_json = use_json
         sys.excepthook = self._get_except_hook(sys.excepthook)
 
+        # make sure warnings do not mess up our output
+        logging.captureWarnings(True)
+        warn_logger = self.get_or_create_silent_logger('py.warnings')
+        warn_logger.set_warnings_logger()
+
         # since there could be loggers already created we go through all of them
         # and set their levels to 0 so they will use the root logger's level
         for name in self._all_names:
@@ -174,6 +179,7 @@ class LogHelper:
 
         # end logging
         self._all_names = set()
+        logging.captureWarnings(False)
         logging.shutdown()
 
         # end json list

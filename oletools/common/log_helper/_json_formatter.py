@@ -18,12 +18,22 @@ class JsonFormatter(logging.Formatter):
         the output JSON-compatible. The only exception is when printing the first line,
         so we need to keep track of it.
 
-        We assume that all input comes from the OletoolsLoggerAdapter which
-        ensures that there is a `type` field in the record. Otherwise will have
-        to add a try-except around the access to `record.type`.
+        The resulting text is just a json dump of the :py:class:`logging.LogRecord`
+        object that is received as input, so no %-formatting or similar is done. Raw
+        unformatted message and formatting arguments are contained in fields `msg` and
+        `args` of the output.
+
+        Arg `record` has a `type` field when created by `OletoolLoggerAdapter`. If not
+        (e.g. captured warnings or output from third-party libraries), we add one.
         """
         json_dict = dict(msg=record.msg.replace('\n', ' '), level=record.levelname)
-        json_dict['type'] = record.type
+        try:
+            json_dict['type'] = record.type
+        except AttributeError:
+            if record.name == 'py.warnings':   # this is the name of the logger
+                json_dict['type'] = 'warning'
+            else:
+                json_dict['type'] = 'msg'
         formatted_message = '    ' + json.dumps(json_dict)
 
         if self._is_first_line:

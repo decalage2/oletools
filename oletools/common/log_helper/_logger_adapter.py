@@ -7,6 +7,7 @@ class OletoolsLoggerAdapter(logging.LoggerAdapter):
     Adapter class for all loggers returned by the logging module.
     """
     _json_enabled = None
+    _is_warn_logger = False   # this is always False
 
     def print_str(self, message, **kwargs):
         """
@@ -44,7 +45,10 @@ class OletoolsLoggerAdapter(logging.LoggerAdapter):
             kwargs['extra']['type'] = kwargs['type']
             del kwargs['type']    # downstream loggers cannot deal with this
         if 'type' not in kwargs['extra']:
-            kwargs['extra']['type'] = 'msg'   # type will be added to LogRecord
+            if self._is_warn_logger:
+                kwargs['extra']['type'] = 'warning'    # this will add field
+            else:
+                kwargs['extra']['type'] = 'msg'        # 'type' to LogRecord
         return msg, kwargs
 
     def set_json_enabled_function(self, json_enabled):
@@ -52,6 +56,12 @@ class OletoolsLoggerAdapter(logging.LoggerAdapter):
         Set a function to be called to check whether JSON output is enabled.
         """
         self._json_enabled = json_enabled
+
+    def set_warnings_logger(self):
+        """Make this the logger for warnings"""
+        # create a object attribute that shadows the class attribute which is
+        # always False
+        self._is_warn_logger = True
 
     def level(self):
         """Return current level of logger."""
