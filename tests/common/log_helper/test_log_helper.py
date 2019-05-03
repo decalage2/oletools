@@ -168,6 +168,24 @@ class TestLogHelper(unittest.TestCase):
         self.assertIn(log_helper_test_main.ACTUAL_WARNING, jout[-2]['msg'])
         self.assertIn(log_helper_test_imported.ACTUAL_WARNING, jout[-1]['msg'])
 
+    def test_warnings(self):
+        """Check that warnings are captured and printed correctly"""
+        output = self._run_test(['enable', 'warn', 'warning'])
+
+        expect = '\n'.join([
+            'WARNING  ' + log_helper_test_main.WARNING_MESSAGE,
+            'ERROR    ' + log_helper_test_main.ERROR_MESSAGE,
+            'CRITICAL ' + log_helper_test_main.CRITICAL_MESSAGE,
+            'WARNING  ' + log_helper_test_imported.WARNING_MESSAGE,
+            'ERROR    ' + log_helper_test_imported.ERROR_MESSAGE,
+            'CRITICAL ' + log_helper_test_imported.CRITICAL_MESSAGE,
+            'WARNING  ' + log_helper_test_main.ACTUAL_WARNING,
+            '  warnings.warn(ACTUAL_WARNING)',   # warnings include source line
+            'WARNING  ' + log_helper_test_imported.ACTUAL_WARNING,
+            '  warnings.warn(ACTUAL_WARNING)',   # warnings include source line
+        ])
+        self.assertEqual(output, expect)
+
     def _assert_json_messages(self, output, messages):
         try:
             json_data = json.loads(output)
