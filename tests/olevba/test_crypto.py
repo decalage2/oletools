@@ -36,7 +36,8 @@ class OlevbaCryptoWriteProtectTest(unittest.TestCase):
             example_file = pjoin(
                 DATA_BASE_DIR, 'encrypted',
                 'autostart-encrypt-standardpassword.' + suffix)
-            output, _ = call_and_capture('olevba', args=('-j', example_file))
+            output, _ = call_and_capture('olevba', args=('-j', example_file),
+                                         exclude_stderr=True)
             data = json.loads(output, object_pairs_hook=OrderedDict)
             # debug: json.dump(data, sys.stdout, indent=4)
             self.assertEqual(len(data), 4)

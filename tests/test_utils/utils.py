@@ -5,7 +5,7 @@
 import sys
 import os
 from os.path import dirname, join, abspath
-from subprocess import check_output, STDOUT, CalledProcessError
+from subprocess import check_output, PIPE, STDOUT, CalledProcessError
 
 
 # Base dir of project, contains subdirs "tests" and "oletools" and README.md
@@ -18,7 +18,8 @@ DATA_BASE_DIR = join(PROJECT_ROOT, 'tests', 'test-data')
 SOURCE_BASE_DIR = join(PROJECT_ROOT, 'oletools')
 
 
-def call_and_capture(module, args=None, accept_nonzero_exit=False):
+def call_and_capture(module, args=None, accept_nonzero_exit=False,
+                     exclude_stderr=False):
     """
     Run module as script, capturing and returning output and return code.
 
@@ -26,11 +27,15 @@ def call_and_capture(module, args=None, accept_nonzero_exit=False):
     modify sys.stdout/sys.stderr to StringIO-Buffers frequently causes trouble.
 
     Only drawback sofar: stdout and stderr are merged into one (which is
-    what users see on their shell as well).
+    what users see on their shell as well). When testing for json-compatible
+    output you should `exclude_stderr` to `False` since logging ignores stderr,
+    so unforseen warnings (e.g. issued by pypy) would mess up your json.
 
     :param str module: name of module to test, e.g. `olevba`
     :param args: arguments for module's main function
     :param bool fail_nonzero: Raise error if command returns non-0 return code
+    :param bool exclude_stderr: Exclude output to `sys.stderr` from output
+                                (e.g. if parsing output through json)
     :returns: ret_code, output
     :rtype: int, str
     """
@@ -49,7 +54,7 @@ def call_and_capture(module, args=None, accept_nonzero_exit=False):
     try:
         output = check_output((sys.executable, '-m', module) + my_args,
                               universal_newlines=True, env=env,
-                              stderr=STDOUT)
+                              stderr=PIPE if exclude_stderr else STDOUT)
         ret_code = 0
 
     except CalledProcessError as err:
