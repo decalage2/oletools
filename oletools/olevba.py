@@ -3893,6 +3893,7 @@ def process_file(filename, data, container, options, crypto_nesting=0):
             [crypto.WRITE_PROTECT_ENCRYPTION_PASSWORD, ]
         decrypted_file = crypto.decrypt(filename, passwords)
         if not decrypted_file:
+            log.error('Decrypt failed, run with debug output to get details')
             raise crypto.WrongEncryptionPassword(filename)
         log.info('Working on decrypted file')
         return process_file(decrypted_file, data, container or filename,
