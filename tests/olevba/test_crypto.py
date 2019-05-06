@@ -2,7 +2,7 @@
 
 import sys
 import unittest
-from os.path import join as pjoin
+from os.path import basename, join as pjoin
 import json
 from collections import OrderedDict
 
@@ -12,8 +12,8 @@ from oletools import crypto
 
 
 @unittest.skipIf(not crypto.check_msoffcrypto(),
-                 'Module msoffcrypto not installed for python{}.{}'
-                 .format(sys.version_info.major, sys.version_info.minor))
+                 'Module msoffcrypto not installed for {}'
+                 .format(basename(sys.executable)))
 class OlevbaCryptoWriteProtectTest(unittest.TestCase):
     """
     Test documents that are 'write-protected' through encryption.
