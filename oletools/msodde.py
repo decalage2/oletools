@@ -908,13 +908,12 @@ def process_file(filepath, field_filter_mode=None):
         if xls_parser.is_xls(filepath):
             logger.debug('Process file as excel 2003 (xls)')
             return process_xls(filepath)
-
-        ole = olefile.OleFileIO(filepath, path_encoding=None)
-        if is_ppt(ole):
+        if is_ppt(filepath):
             logger.debug('is ppt - cannot have DDE')
             return u''
         logger.debug('Process file as word 2003 (doc)')
-        return process_doc(ole)
+        with olefile.OleFileIO(filepath, path_encoding=None) as ole:
+            return process_doc(ole)
 
     with open(filepath, 'rb') as file_handle:
         if file_handle.read(4) == RTF_START:
@@ -970,6 +969,7 @@ def process_maybe_encrypted(filepath, passwords=None, crypto_nesting=0,
         if not crypto.is_encrypted(filepath):
             return result
     except Exception:
+        logger.debug('Ignoring exception:', exc_info=True)
         if not crypto.is_encrypted(filepath):
             raise
 
@@ -997,7 +997,8 @@ def process_maybe_encrypted(filepath, passwords=None, crypto_nesting=0,
         try:     # (maybe file was not yet created)
             os.unlink(decrypted_file)
         except Exception:
-            pass
+            logger.debug('Ignoring exception closing decrypted file:',
+                         exc_info=True)
     return result
 
 
