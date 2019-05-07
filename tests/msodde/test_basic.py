@@ -9,11 +9,14 @@ Ensure that
 from __future__ import print_function
 
 import unittest
-from oletools import msodde
-from tests.test_utils import DATA_BASE_DIR as BASE_DIR
+import sys
 import os
 from os.path import join
 from traceback import print_exc
+from oletools import msodde
+from oletools.crypto import \
+    WrongEncryptionPassword, CryptoLibNotImported, check_msoffcrypto
+from tests.test_utils import DATA_BASE_DIR as BASE_DIR
 
 
 class TestReturnCode(unittest.TestCase):
@@ -46,15 +49,21 @@ class TestReturnCode(unittest.TestCase):
 
     def test_invalid_none(self):
         """ check that no file argument leads to non-zero exit status """
-        self.do_test_validity('', True)
+        if sys.hexversion > 0x03030000:   # version 3.3 and higher
+            # different errors probably depending on whether msoffcryto is
+            # available or not
+            expect_error = (AttributeError, FileNotFoundError)
+        else:
+            expect_error = (AttributeError, IOError)
+        self.do_test_validity('', expect_error)
 
     def test_invalid_empty(self):
         """ check that empty file argument leads to non-zero exit status """
-        self.do_test_validity(join(BASE_DIR, 'basic/empty'), True)
+        self.do_test_validity(join(BASE_DIR, 'basic/empty'), Exception)
 
     def test_invalid_text(self):
         """ check that text file argument leads to non-zero exit status """
-        self.do_test_validity(join(BASE_DIR, 'basic/text'), True)
+        self.do_test_validity(join(BASE_DIR, 'basic/text'), Exception)
 
     def test_encrypted(self):
         """
@@ -64,22 +73,38 @@ class TestReturnCode(unittest.TestCase):
         Encryption) is tested.
         """
         CRYPT_DIR = join(BASE_DIR, 'encrypted')
+        have_crypto = check_msoffcrypto()
         for filename in os.listdir(CRYPT_DIR):
-            self.do_test_validity(join(CRYPT_DIR, filename), True)
+            if have_crypto and 'standardpassword' in filename:
+                # these are automagically decrypted
+                self.do_test_validity(join(CRYPT_DIR, filename))
+            elif have_crypto:
+                self.do_test_validity(join(CRYPT_DIR, filename),
+                                      WrongEncryptionPassword)
+            else:
+                self.do_test_validity(join(CRYPT_DIR, filename),
+                                      CryptoLibNotImported)
 
-    def do_test_validity(self, filename, expect_error=False):
+    def do_test_validity(self, filename, expect_error=None):
         """ helper for test_[in]valid_* """
-        have_exception = False
+        found_error = None
+        # DEBUG: print('Testing file {}'.format(filename))
         try:
             msodde.process_maybe_encrypted(filename,
                             field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
-        except Exception:
-            have_exception = True
+        except Exception as exc:
+            found_error = exc
             # DEBUG: print_exc()
 
-        self.assertEqual(expect_error, have_exception,
-                         msg='Filename={0}, expect={1}, exc={2}'
-                             .format(filename, expect_error, have_exception))
+        if expect_error and not found_error:
+            self.fail('Expected {} but msodde finished without errors for {}'
+                      .format(expect_error, filename))
+        elif not expect_error and found_error:
+            self.fail('Unexpected error {} from msodde for {}'
+                      .format(found_error, filename))
+        elif expect_error and not isinstance(found_error, expect_error):
+            self.fail('Wrong kind of error {} from msodde for {}, expected {}'
+                      .format(type(found_error), filename, expect_error))
 
 
 class TestDdeLinks(unittest.TestCase):
