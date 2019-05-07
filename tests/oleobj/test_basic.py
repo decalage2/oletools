@@ -118,12 +118,15 @@ class TestOleObj(unittest.TestCase):
                              msg='Wrong return value {} for {}. Output:\n{}'
                                  .format(ret_val, sample_name, output))
 
-    def do_test_md5(self, args, test_fun=None):
+    def do_test_md5(self, args, test_fun=None, only_run_every=1):
         """ helper for test_md5 and test_md5_args """
         data_dir = join(DATA_BASE_DIR, 'oleobj')
 
         # name of sample, extension of embedded file, md5 hash of embedded file
-        for sample_name, embedded_name, expect_hash in SAMPLES:
+        for sample_index, (sample_name, embedded_name, expect_hash) \
+                in enumerate(SAMPLES):
+            if sample_index % only_run_every != 0:
+                continue
             args_with_path = args + [join(data_dir, sample_name), ]
             if test_fun is None:
                 output, ret_val = call_and_capture('oleobj', args_with_path,
@@ -150,7 +153,8 @@ class TestOleObj(unittest.TestCase):
 
     def test_non_streamed(self):
         """ Ensure old oleobj behaviour still works: pre-read whole file """
-        return self.do_test_md5(['-d', self.temp_dir], test_fun=preread_file)
+        return self.do_test_md5(['-d', self.temp_dir], test_fun=preread_file,
+                                only_run_every=4)
 
 
 # just in case somebody calls this file as a script
