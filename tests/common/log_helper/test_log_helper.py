@@ -112,6 +112,11 @@ class TestLogHelper(unittest.TestCase):
         ]
         self.assertEqual(jout, jexpect)
 
+    def test_percent_autoformat(self):
+        """Test that auto-formatting of log strings with `%` works."""
+        output = self._run_test(['enable', '%-autoformat', 'info'])
+        self.assertIn('The answer is 47.', output)
+
     def test_json_correct_on_exceptions(self):
         """
         Test that even on unhandled exceptions our JSON is always correct
