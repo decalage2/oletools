@@ -94,24 +94,27 @@ class TestDdeLinks(unittest.TestCase):
     def test_with_dde(self):
         """ check that dde links appear on stdout """
         filename = 'dde-test-from-office2003.doc'
-        output = msodde.process_file(
-            join(BASE_DIR, 'msodde', filename), msodde.FIELD_FILTER_BLACKLIST)
+        output = msodde.process_maybe_encrypted(
+            join(BASE_DIR, 'msodde', filename),
+            field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
         self.assertNotEqual(len(self.get_dde_from_output(output)), 0,
                             msg='Found no dde links in output of ' + filename)
 
     def test_no_dde(self):
         """ check that no dde links appear on stdout """
         filename = 'harmless-clean.doc'
-        output = msodde.process_file(
-            join(BASE_DIR, 'msodde', filename), msodde.FIELD_FILTER_BLACKLIST)
+        output = msodde.process_maybe_encrypted(
+            join(BASE_DIR, 'msodde', filename),
+            field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
         self.assertEqual(len(self.get_dde_from_output(output)), 0,
                          msg='Found dde links in output of ' + filename)
 
     def test_with_dde_utf16le(self):
         """ check that dde links appear on stdout """
         filename = 'dde-test-from-office2013-utf_16le-korean.doc'
-        output = msodde.process_file(
-            join(BASE_DIR, 'msodde', filename), msodde.FIELD_FILTER_BLACKLIST)
+        output = msodde.process_maybe_encrypted(
+            join(BASE_DIR, 'msodde', filename),
+            field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
         self.assertNotEqual(len(self.get_dde_from_output(output)), 0,
                             msg='Found no dde links in output of ' + filename)
 
@@ -119,8 +122,9 @@ class TestDdeLinks(unittest.TestCase):
         """ check that dde links are found in excel 2007+ files """
         expect = ['cmd /c calc.exe', ]
         for extn in 'xlsx', 'xlsm', 'xlsb':
-            output = msodde.process_file(
-                join(BASE_DIR, 'msodde', 'dde-test.' + extn), msodde.FIELD_FILTER_BLACKLIST)
+            output = msodde.process_maybe_encrypted(
+                join(BASE_DIR, 'msodde', 'dde-test.' + extn),
+                field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
 
             self.assertEqual(expect, self.get_dde_from_output(output),
                              msg='unexpected output for dde-test.{0}: {1}'
@@ -130,8 +134,9 @@ class TestDdeLinks(unittest.TestCase):
         """ check that dde in xml from word / excel is found """
         for name_part in 'excel2003', 'word2003', 'word2007':
             filename = 'dde-in-' + name_part + '.xml'
-            output = msodde.process_file(
-                join(BASE_DIR, 'msodde', filename), msodde.FIELD_FILTER_BLACKLIST)
+            output = msodde.process_maybe_encrypted(
+                join(BASE_DIR, 'msodde', filename),
+                field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
             links = self.get_dde_from_output(output)
             self.assertEqual(len(links), 1, 'found {0} dde-links in {1}'
                                             .format(len(links), filename))
@@ -143,15 +148,17 @@ class TestDdeLinks(unittest.TestCase):
     def test_clean_rtf_blacklist(self):
         """ find a lot of hyperlinks in rtf spec """
         filename = 'RTF-Spec-1.7.rtf'
-        output = msodde.process_file(
-            join(BASE_DIR, 'msodde', filename), msodde.FIELD_FILTER_BLACKLIST)
+        output = msodde.process_maybe_encrypted(
+            join(BASE_DIR, 'msodde', filename),
+            field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
         self.assertEqual(len(self.get_dde_from_output(output)), 1413)
 
     def test_clean_rtf_ddeonly(self):
         """ find no dde links in rtf spec """
         filename = 'RTF-Spec-1.7.rtf'
-        output = msodde.process_file(
-            join(BASE_DIR, 'msodde', filename), msodde.FIELD_FILTER_DDE)
+        output = msodde.process_maybe_encrypted(
+            join(BASE_DIR, 'msodde', filename),
+            field_filter_mode=msodde.FIELD_FILTER_DDE)
         self.assertEqual(len(self.get_dde_from_output(output)), 0,
                          msg='Found dde links in output of ' + filename)
 
