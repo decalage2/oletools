@@ -64,28 +64,22 @@ class TestReturnCode(unittest.TestCase):
         Encryption) is tested.
         """
         CRYPT_DIR = join(BASE_DIR, 'encrypted')
-        ADD_ARGS = '', '-j', '-d', '-f', '-a'
         for filename in os.listdir(CRYPT_DIR):
-            full_name = join(CRYPT_DIR, filename)
-            for args in ADD_ARGS:
-                self.do_test_validity(args + ' ' + full_name, True)
+            self.do_test_validity(join(CRYPT_DIR, filename), True)
 
-    def do_test_validity(self, args, expect_error=False):
-        """ helper for test_valid_doc[x] """
+    def do_test_validity(self, filename, expect_error=False):
+        """ helper for test_[in]valid_* """
         have_exception = False
         try:
-            msodde.process_file(args, msodde.FIELD_FILTER_BLACKLIST)
+            msodde.process_maybe_encrypted(filename,
+                            field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
         except Exception:
             have_exception = True
-            print_exc()
-        except SystemExit as exc:     # sys.exit() was called
-            have_exception = True
-            if exc.code is None:
-                have_exception = False
+            # DEBUG: print_exc()
 
         self.assertEqual(expect_error, have_exception,
-                         msg='Args={0}, expect={1}, exc={2}'
-                             .format(args, expect_error, have_exception))
+                         msg='Filename={0}, expect={1}, exc={2}'
+                             .format(filename, expect_error, have_exception))
 
 
 class TestDdeLinks(unittest.TestCase):
