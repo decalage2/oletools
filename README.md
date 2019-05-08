@@ -111,6 +111,7 @@ including
 [Vba2Graph](https://github.com/MalwareCantFly/Vba2Graph),
 [Strelka](https://github.com/target/strelka),
 [stoQ](https://stoq.punchcyber.com/),
+[YOMI](https://yomi.yoroi.company),
 and probably [VirusTotal](https://www.virustotal.com). 
 And quite a few [other projects on GitHub](https://github.com/search?q=oletools&type=Repositories).
 (Please [contact me]((http://decalage.info/contact)) if you have or know
