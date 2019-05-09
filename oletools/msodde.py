@@ -493,17 +493,23 @@ def process_xls(filepath):
     """ find dde links in excel ole file """
 
     result = []
-    for stream in xls_parser.XlsFile(filepath).iter_streams():
-        if not isinstance(stream, xls_parser.WorkbookStream):
-            continue
-        for record in stream.iter_records():
-            if not isinstance(record, xls_parser.XlsRecordSupBook):
+    xls_file = None
+    try:
+        xls_file = xls_parser.XlsFile(filepath)
+        for stream in xls_file.iter_streams():
+            if not isinstance(stream, xls_parser.WorkbookStream):
                 continue
-            if record.support_link_type in (
-                    xls_parser.XlsRecordSupBook.LINK_TYPE_OLE_DDE,
-                    xls_parser.XlsRecordSupBook.LINK_TYPE_EXTERNAL):
-                result.append(record.virt_path.replace(u'\u0003', u' '))
-    return u'\n'.join(result)
+            for record in stream.iter_records():
+                if not isinstance(record, xls_parser.XlsRecordSupBook):
+                    continue
+                if record.support_link_type in (
+                        xls_parser.XlsRecordSupBook.LINK_TYPE_OLE_DDE,
+                        xls_parser.XlsRecordSupBook.LINK_TYPE_EXTERNAL):
+                    result.append(record.virt_path.replace(u'\u0003', u' '))
+        return u'\n'.join(result)
+    finally:
+        if xls_file is not None:
+            xls_file.close()
 
 
 def process_docx(filepath, field_filter_mode=None):
