@@ -47,6 +47,13 @@ def call_and_capture(module, args=None, accept_nonzero_exit=False,
     except KeyError:
         env['PYTHONPATH'] = SOURCE_BASE_DIR
 
+    # hack: in python2 output encoding (sys.stdout.encoding) was None
+    # although sys.getdefaultencoding() and sys.getfilesystemencoding were ok
+    # TODO: maybe can remove this once branch
+    #       "encoding-for-non-unicode-environments" is merged
+    if 'PYTHONIOENCODING' not in env:
+        env['PYTHONIOENCODING'] = 'utf8'
+
     # ensure args is a tuple
     my_args = tuple(args) if args else ()
 
