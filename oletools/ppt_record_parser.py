@@ -108,10 +108,11 @@ RECORD_TYPES = dict([
 ])
 
 
-# record types where version is not 0x0 or 0xf
+# record types where version is not 0x0 or 0x1 or 0xf
 VERSION_EXCEPTIONS = dict([
     (0x0400, 2),                       # rt_vbainfoatom
     (0x03ef, 2),                       # rt_slideatom
+    (0xe9c7, 7),    # tests/test-data/encrypted/encrypted.ppt, not investigated
 ])
 
 
