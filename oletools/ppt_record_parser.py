@@ -187,8 +187,12 @@ def is_ppt(filename):
                 continue
     except CryptoErrorBase:
         raise
-    except Exception:
-        pass
+    except Exception as exc:
+        logging.debug('Ignoring exception in is_ppt, assume is not ppt',
+                      exc_info=True)
+    finally:
+        if ppt_file is not None:
+            ppt_file.close()
     return False
 
 
