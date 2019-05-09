@@ -63,7 +63,6 @@ except ImportError:
         sys.path.insert(0, PARENT_DIR)
     del PARENT_DIR
     from oletools import record_base
-from oletools.common.errors import CryptoErrorBase
 
 
 # types of relevant records (there are much more than listed here)
@@ -174,7 +173,7 @@ def is_ppt(filename):
                 for record in stream.iter_records():
                     if record.type == 0x0ff5:     # UserEditAtom
                         have_user_edit = True
-                    elif record.type == 0x1772:   # PersisDirectoryAtom
+                    elif record.type == 0x1772:   # PersistDirectoryAtom
                         have_persist_dir = True
                     elif record.type == 0x03e8:   # DocumentContainer
                         have_document_container = True
@@ -185,8 +184,6 @@ def is_ppt(filename):
                         return True
             else:   # ignore other streams/storages since they are optional
                 continue
-    except CryptoErrorBase:
-        raise
     except Exception as exc:
         logging.debug('Ignoring exception in is_ppt, assume is not ppt',
                       exc_info=True)
