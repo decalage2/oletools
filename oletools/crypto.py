@@ -236,7 +236,8 @@ def is_encrypted(some_file):
         if zipfile.is_zipfile(some_file):
             return _is_encrypted_zip(some_file)
         # otherwise assume it is the name of an ole file
-        return _is_encrypted_ole(OleFileIO(some_file))
+        with OleFileIO(some_file) as ole:
+            return _is_encrypted_ole(ole)
     except Exception as exc:
         log.warning('Failed to check {} for encryption ({}); assume it is not '
                     'encrypted.'.format(some_file, exc))
