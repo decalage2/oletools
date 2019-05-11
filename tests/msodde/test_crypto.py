@@ -2,7 +2,7 @@
 
 import sys
 import unittest
-from os.path import join as pjoin
+from os.path import basename, join as pjoin
 
 from tests.test_utils import DATA_BASE_DIR
 
@@ -11,8 +11,8 @@ from oletools import msodde
 
 
 @unittest.skipIf(not crypto.check_msoffcrypto(),
-                 'Module msoffcrypto not installed for python{}.{}'
-                 .format(sys.version_info.major, sys.version_info.minor))
+                 'Module msoffcrypto not installed for {}'
+                 .format(basename(sys.executable)))
 class MsoddeCryptoTest(unittest.TestCase):
     """Test integration of decryption in msodde."""
     def test_standard_password(self):

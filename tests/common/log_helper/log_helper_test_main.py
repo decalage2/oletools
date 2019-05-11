@@ -34,11 +34,15 @@ def init_logging_and_log(args):
     level = args[-1]
     use_json = 'as-json' in args
     throw = 'throw' in args
+    percent_autoformat = '%-autoformat' in args
 
     if 'enable' in args:
         log_helper.enable_logging(use_json, level, stream=sys.stdout)
 
     _log()
+
+    if percent_autoformat:
+        logger.info('The %s is %d.', 'answer', 47)
 
     if throw:
         raise Exception('An exception occurred before ending the logging')

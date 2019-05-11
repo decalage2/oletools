@@ -3,20 +3,70 @@ Test basic functionality of olevba[3]
 """
 
 import unittest
-import sys
-if sys.version_info.major <= 2:
-    from oletools import olevba
-else:
-    from oletools import olevba3 as olevba
 import os
 from os.path import join
+import re
 
 # Directory with test data, independent of current working directory
-from tests.test_utils import DATA_BASE_DIR
+from tests.test_utils import DATA_BASE_DIR, call_and_capture
 
 
 class TestOlevbaBasic(unittest.TestCase):
     """Tests olevba basic functionality"""
+
+    def test_text_behaviour(self):
+        """Test behaviour of olevba when presented with pure text file."""
+        self.do_test_behaviour('text')
+
+    def test_empty_behaviour(self):
+        """Test behaviour of olevba when presented with pure text file."""
+        self.do_test_behaviour('empty')
+
+    def do_test_behaviour(self, filename):
+        """Helper for test_{text,empty}_behaviour."""
+        input_file = join(DATA_BASE_DIR, 'basic', filename)
+        output, _ = call_and_capture('olevba', args=(input_file, ))
+
+        # check output
+        self.assertTrue(re.search(r'^Type:\s+Text\s*$', output, re.MULTILINE),
+                        msg='"Type: Text" not found in output:\n' + output)
+        self.assertTrue(re.search(r'^No suspicious .+ found.$', output,
+                                  re.MULTILINE),
+                        msg='"No suspicous...found" not found in output:\n' + \
+                            output)
+        self.assertNotIn('error', output.lower())
+
+        # check warnings
+        for line in output.splitlines():
+            if line.startswith('WARNING ') and 'encrypted' in line:
+                continue   # encryption warnings are ok
+            elif 'warn' in line.lower():
+                raise self.fail('Found "warn" in output line: "{}"'
+                                .format(line.rstrip()))
+        self.assertIn('not encrypted', output)
+
+    def test_rtf_behaviour(self):
+        """Test behaviour of olevba when presented with an rtf file."""
+        input_file = join(DATA_BASE_DIR, 'msodde', 'RTF-Spec-1.7.rtf')
+        output, ret_code = call_and_capture('olevba', args=(input_file, ),
+                                            accept_nonzero_exit=True)
+
+        # check that return code is olevba.RETURN_OPEN_ERROR
+        self.assertEqual(ret_code, 5)
+
+        # check output:
+        self.assertIn('FileOpenError', output)
+        self.assertIn('is RTF', output)
+        self.assertIn('rtfobj.py', output)
+        self.assertIn('not encrypted', output)
+
+        # check warnings
+        for line in output.splitlines():
+            if line.startswith('WARNING ') and 'encrypted' in line:
+                continue   # encryption warnings are ok
+            elif 'warn' in line.lower():
+                raise self.fail('Found "warn" in output line: "{}"'
+                                .format(line.rstrip()))
 
     def test_crypt_return(self):
         """
@@ -28,23 +78,23 @@ class TestOlevbaBasic(unittest.TestCase):
         CRYPT_DIR = join(DATA_BASE_DIR, 'encrypted')
         CRYPT_RETURN_CODE = 9
         ADD_ARGS = [], ['-d', ], ['-a', ], ['-j', ], ['-t', ]
-        EXCEPTIONS = ['autostart-encrypt-standardpassword.xlsm',   # These ...
-                      'autostart-encrypt-standardpassword.xlsb',   # files ...
-                      'dde-test-encrypt-standardpassword.xls',     # are ...
-                      'dde-test-encrypt-standardpassword.xlsx',    # decrypted
-                      'dde-test-encrypt-standardpassword.xlsm',    # per ...
-                      'dde-test-encrypt-standardpassword.xlsb']    # default.
+        EXCEPTIONS = ['autostart-encrypt-standardpassword.xls',   # These ...
+                      'autostart-encrypt-standardpassword.xlsm',  # files ...
+                      'autostart-encrypt-standardpassword.xlsb',  # are ...
+                      'dde-test-encrypt-standardpassword.xls',    # automati...
+                      'dde-test-encrypt-standardpassword.xlsx',   # ...cally...
+                      'dde-test-encrypt-standardpassword.xlsm',   # decrypted.
+                      'dde-test-encrypt-standardpassword.xlsb']
         for filename in os.listdir(CRYPT_DIR):
             if filename in EXCEPTIONS:
                 continue
             full_name = join(CRYPT_DIR, filename)
             for args in ADD_ARGS:
-                try:
-                    ret_code = olevba.main(args + [full_name, ])
-                except SystemExit as se:
-                    ret_code = se.code or 0   # se.code can be None
+                _, ret_code = call_and_capture('olevba',
+                                               args=[full_name, ] + args,
+                                               accept_nonzero_exit=True)
                 self.assertEqual(ret_code, CRYPT_RETURN_CODE,
-                                 msg='Wrong return code {} for args {}'
+                                 msg='Wrong return code {} for args {}'\
                                      .format(ret_code, args + [filename, ]))
 
 
