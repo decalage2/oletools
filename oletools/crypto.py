@@ -168,6 +168,7 @@ def enable_logging():
     """
     log.setLevel(logging.NOTSET)
 
+
 def is_encrypted(some_file):
     """
     Determine whether document contains encrypted content.
@@ -197,17 +198,55 @@ def is_encrypted(some_file):
     :returns: True if (and only if) the file contains encrypted content
     """
     log.debug('is_encrypted')
-    if isinstance(some_file, OleFileIO):
-        return is_encrypted_ole(some_file)   # assume it is OleFileIO
-    if zipfile.is_zipfile(some_file):
-        return is_encrypted_zip(some_file)
-    # otherwise assume it is the name of an ole file
-    return is_encrypted_ole(OleFileIO(some_file))
+
+    # ask msoffcrypto if possible
+    if check_msoffcrypto():
+        log.debug('Checking for encryption using msoffcrypto')
+        file_handle = None
+        file_pos = None
+        try:
+            if isinstance(some_file, OleFileIO):
+                # TODO: hacky, replace once msoffcrypto-tools accepts OleFileIO
+                file_handle = some_file.fp
+                file_pos = file_handle.tell()
+                file_handle.seek(0)
+            else:
+                file_handle = open(some_file, 'rb')
+
+            return msoffcrypto.OfficeFile(file_handle).is_encrypted()
+
+        except Exception as exc:
+            log.warning('msoffcrypto failed to interpret file {} or determine '
+                        'whether it is encrypted: {}'
+                        .format(file_handle.name, exc))
+
+        finally:
+            try:
+                if file_pos is not None:   # input was OleFileIO
+                    file_handle.seek(file_pos)
+                else:                      # input was file name
+                    file_handle.close()
+            except Exception as exc:
+                log.warning('Ignoring error during clean up: {}'.format(exc))
+
+    # if that failed, try ourselves with older and less accurate code
+    try:
+        if isinstance(some_file, OleFileIO):
+            return _is_encrypted_ole(some_file)
+        if zipfile.is_zipfile(some_file):
+            return _is_encrypted_zip(some_file)
+        # otherwise assume it is the name of an ole file
+        return _is_encrypted_ole(OleFileIO(some_file))
+    except Exception as exc:
+        log.warning('Failed to check {} for encryption ({}); assume it is not '
+                    'encrypted.'.format(some_file, exc))
+
+    return False
 
 
-def is_encrypted_zip(filename):
+def _is_encrypted_zip(filename):
     """Specialization of :py:func:`is_encrypted` for zip-based files."""
-    log.debug('is_encrypted_zip')
+    log.debug('Checking for encryption in zip file')
     # TODO: distinguish OpenXML from normal zip files
     # try to decrypt a few bytes from first entry
     with zipfile.ZipFile(filename, 'r') as zipper:
@@ -220,9 +259,9 @@ def is_encrypted_zip(filename):
             return 'crypt' in str(rt_err)
 
 
-def is_encrypted_ole(ole):
+def _is_encrypted_ole(ole):
     """Specialization of :py:func:`is_encrypted` for ole files."""
-    log.debug('is_encrypted_ole')
+    log.debug('Checking for encryption in OLE file')
     # check well known property for password protection
     # (this field may be missing for Powerpoint2000, for example)
     # TODO: check whether password protection always implies encryption. Could
@@ -256,8 +295,6 @@ def is_encrypted_ole(ole):
             f_encrypted = (temp16 & 0x0100) >> 8
             if f_encrypted:
                 return True
-        except Exception:
-            raise
         finally:
             if stream is not None:
                 stream.close()
@@ -324,6 +361,8 @@ def decrypt(filename, passwords=None, **temp_file_args):
             crypto_file = msoffcrypto.OfficeFile(reader)
         except Exception as exc:   # e.g. ppt, not yet supported by msoffcrypto
             if 'Unrecognized file format' in str(exc):
+                log.debug('Caught exception', exc_info=True)
+
                 # raise different exception without stack trace of original exc
                 if sys.version_info.major == 2:
                     raise UnsupportedEncryptionError(filename)
@@ -337,6 +376,7 @@ def decrypt(filename, passwords=None, **temp_file_args):
                              .format(filename))
 
         for password in passwords:
+            log.debug('Trying to decrypt with password {!r}'.format(password))
             write_descriptor = None
             write_handle = None
             decrypt_file = None
@@ -354,6 +394,8 @@ def decrypt(filename, passwords=None, **temp_file_args):
                 write_handle = None
                 break
             except Exception:
+                log.debug('Failed to decrypt', exc_info=True)
+
                 # error-clean up: close everything and del temp file
                 if write_handle:
                     write_handle.close()
@@ -363,4 +405,5 @@ def decrypt(filename, passwords=None, **temp_file_args):
                     os.unlink(decrypt_file)
                 decrypt_file = None
     # if we reach this, all passwords were tried without success
+    log.debug('All passwords failed')
     return decrypt_file

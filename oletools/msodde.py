@@ -987,6 +987,9 @@ def process_maybe_encrypted(filepath, passwords=None, crypto_nesting=0,
     try:
         logger.debug('Trying to decrypt file')
         decrypted_file = crypto.decrypt(filepath, passwords)
+        if not decrypted_file:
+            logger.error('Decrypt failed, run with debug output to get details')
+            raise crypto.WrongEncryptionPassword(filepath)
         logger.info('Analyze decrypted file')
         result = process_maybe_encrypted(decrypted_file, passwords,
                                          crypto_nesting+1, **kwargs)
