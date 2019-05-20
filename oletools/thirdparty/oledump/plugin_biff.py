@@ -987,7 +987,7 @@ def ParseExpression(expression):
         else:
             result += '*UNKNOWN TOKEN* '
             break
-    if expression == '':
+    if len(expression) == 0:
         return result
     else:
         # 0x006E: 'EXEC', 0x0095: 'REGISTER'
