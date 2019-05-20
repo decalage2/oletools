@@ -91,7 +91,7 @@ http://www.decalage.info/python/oletools
 # 2019-02-14 v0.01 CH: - first version with encryption check from oleid
 # 2019-04-01 v0.54 PL: - fixed bug in is_encrypted_ole
 
-__version__ = '0.54'
+__version__ = '0.54.2'
 
 import sys
 import struct
