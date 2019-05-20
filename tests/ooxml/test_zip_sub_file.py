@@ -144,15 +144,15 @@ class TestZipSubFile(unittest.TestCase):
         self.subfile.seek(0, os.SEEK_END)
         self.compare.seek(0, os.SEEK_END)
 
-        self.assertEquals(self.compare.read(10), self.subfile.read(10))
-        self.assertEquals(self.compare.tell(), self.subfile.tell())
+        self.assertEqual(self.compare.read(10), self.subfile.read(10))
+        self.assertEqual(self.compare.tell(), self.subfile.tell())
 
         self.subfile.seek(0)
         self.compare.seek(0)
         self.subfile.seek(len(FILE_CONTENTS) - 1)
         self.compare.seek(len(FILE_CONTENTS) - 1)
-        self.assertEquals(self.compare.read(10), self.subfile.read(10))
-        self.assertEquals(self.compare.tell(), self.subfile.tell())
+        self.assertEqual(self.compare.read(10), self.subfile.read(10))
+        self.assertEqual(self.compare.tell(), self.subfile.tell())
 
     def test_error_seek(self):
         """ test correct behaviour if seek beyond end (no exception) """

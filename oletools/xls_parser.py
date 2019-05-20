@@ -88,12 +88,18 @@ def is_xls(filename):
     substream.
     See also: oleid.OleID.check_excel
     """
+    xls_file = None
     try:
-        for stream in XlsFile(filename).iter_streams():
+        xls_file = XlsFile(filename)
+        for stream in xls_file.iter_streams():
             if isinstance(stream, WorkbookStream):
                 return True
     except Exception:
-        pass
+        logging.debug('Ignoring exception in is_xls, assume is not xls',
+                      exc_info=True)
+    finally:
+        if xls_file is not None:
+            xls_file.close()
     return False
 
 
