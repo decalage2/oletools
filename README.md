@@ -26,6 +26,9 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
+- **2019-04-04 v0.54.2**:
+    - bugfix release: fixed several issues related to encrypted documents
+      and XLM/XLF Excel 4 macros
 - **2019-04-04 v0.54**:
     - olevba, msodde: added support for encrypted MS Office files 
     - olevba: added detection and extraction of XLM/XLF Excel 4 macros (thanks to plugin_biff from Didier Stevens' oledump)
