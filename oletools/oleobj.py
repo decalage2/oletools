@@ -526,29 +526,35 @@ def find_ole_in_ppt(filename):
     can contain the actual embedded file we are looking for (caller will check
     for these).
     """
-    for stream in PptFile(filename).iter_streams():
-        for record_idx, record in enumerate(stream.iter_records()):
-            if isinstance(record, PptRecordExOleVbaActiveXAtom):
-                ole = None
-                try:
-                    data_start = next(record.iter_uncompressed())
-                    if data_start[:len(olefile.MAGIC)] != olefile.MAGIC:
-                        continue   # could be an ActiveX control or VBA Storage
+    ppt_file = None
+    try:
+        ppt_file = PptFile(filename)
+        for stream in ppt_file.iter_streams():
+            for record_idx, record in enumerate(stream.iter_records()):
+                if isinstance(record, PptRecordExOleVbaActiveXAtom):
+                    ole = None
+                    try:
+                        data_start = next(record.iter_uncompressed())
+                        if data_start[:len(olefile.MAGIC)] != olefile.MAGIC:
+                            continue   # could be ActiveX control / VBA Storage
 
-                    # otherwise, this should be an OLE object
-                    log.debug('Found record with embedded ole object in ppt '
-                              '(stream "{0}", record no {1})'
-                              .format(stream.name, record_idx))
-                    ole = record.get_data_as_olefile()
-                    yield ole
-                except IOError:
-                    log.warning('Error reading data from {0} stream or '
-                                'interpreting it as OLE object'
-                                .format(stream.name))
-                    log.debug('', exc_info=True)
-                finally:
-                    if ole is not None:
-                        ole.close()
+                        # otherwise, this should be an OLE object
+                        log.debug('Found record with embedded ole object in '
+                                  'ppt (stream "{0}", record no {1})'
+                                  .format(stream.name, record_idx))
+                        ole = record.get_data_as_olefile()
+                        yield ole
+                    except IOError:
+                        log.warning('Error reading data from {0} stream or '
+                                    'interpreting it as OLE object'
+                                    .format(stream.name))
+                        log.debug('', exc_info=True)
+                    finally:
+                        if ole is not None:
+                            ole.close()
+    finally:
+        if ppt_file is not None:
+            ppt_file.close()
 
 
 class FakeFile(io.RawIOBase):
