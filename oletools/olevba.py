@@ -1250,8 +1250,9 @@ def decompress_stream(compressed_container):
     """
     Decompress a stream according to MS-OVBA section 2.4.1
 
-    compressed_container: bytearray or bytes compressed according to the MS-OVBA 2.4.1.3.6 Compression algorithm
-    return the decompressed container as a bytes string
+    :param compressed_container bytearray: bytearray or bytes compressed according to the MS-OVBA 2.4.1.3.6 Compression algorithm
+    :return: the decompressed container as a bytes string
+    :rtype: bytes
     """
     # 2.4.1.2 State Variables
 
