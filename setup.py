@@ -29,6 +29,7 @@ to install this package.
 # 2018-09-22       PL: - colorclass is now a dependency
 # 2018-10-27       PL: - fixed issue #359 (bug when importing log_helper)
 # 2019-02-26       CH: - add optional dependency msoffcrypto for decryption
+# 2019-05-22       PL: - 'msoffcrypto-tool' is now a required dependency
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -304,11 +305,11 @@ def main():
         author_email=author_email,
         url=url,
         license=license,
-##        package_dir=package_dir,
+        # package_dir=package_dir,
         packages=packages,
         package_data = package_data,
         download_url=download_url,
-#        data_files=data_files,
+        # data_files=data_files,
         entry_points=entry_points,
         test_suite="tests",
         # scripts=scripts,
@@ -317,12 +318,8 @@ def main():
             "olefile>=0.46",
             "easygui",
             'colorclass',
+            'msoffcrypto-tool',
         ],
-        extras_require = {
-            # msoffcrypto-tools by nolze can be used to decrypt some office files
-            # TODO: make it a required dependency?
-            'decrypt': ['msoffcrypto-tool']
-        }
     )
 
 
