@@ -4,10 +4,9 @@ import sys
 import unittest
 from os.path import basename, join as pjoin
 
-from tests.test_utils import DATA_BASE_DIR
+from tests.test_utils import DATA_BASE_DIR, call_and_capture
 
 from oletools import crypto
-from oletools import msodde
 
 
 @unittest.skipIf(not crypto.check_msoffcrypto(),
@@ -15,15 +14,18 @@ from oletools import msodde
                  .format(basename(sys.executable)))
 class MsoddeCryptoTest(unittest.TestCase):
     """Test integration of decryption in msodde."""
+
     def test_standard_password(self):
         """Check dde-link is found in xls[mb] sample files."""
         for suffix in 'xls', 'xlsx', 'xlsm', 'xlsb':
             example_file = pjoin(DATA_BASE_DIR, 'encrypted',
                                  'dde-test-encrypt-standardpassword.' + suffix)
-            link_text = msodde.process_maybe_encrypted(example_file)
-            self.assertEqual(link_text, 'cmd /c calc.exe',
-                             msg='Unexpected output {!r} for {}'
-                                 .format(link_text, suffix))
+            output, _ = call_and_capture('msodde', [example_file, ])
+            self.assertIn('\nDDE Links:\ncmd /c calc.exe\n', output,
+                          msg='Unexpected output {!r} for {}'
+                              .format(output, suffix))
+
+    # TODO: add more, in particular a sample with a "proper" password
 
 
 if __name__ == '__main__':
