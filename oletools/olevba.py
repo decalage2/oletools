@@ -3890,8 +3890,7 @@ def process_file(filename, data, container, options, crypto_nesting=0):
     decrypted_file = None
     try:
         log.debug('Checking encryption passwords {}'.format(options.password))
-        passwords = options.password + \
-            [crypto.WRITE_PROTECT_ENCRYPTION_PASSWORD, ]
+        passwords = options.password + crypto.DEFAULT_PASSWORDS
         decrypted_file = crypto.decrypt(filename, passwords)
         if not decrypted_file:
             log.error('Decrypt failed, run with debug output to get details')

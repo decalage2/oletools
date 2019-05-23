@@ -90,6 +90,7 @@ http://www.decalage.info/python/oletools
 # CHANGELOG:
 # 2019-02-14 v0.01 CH: - first version with encryption check from oleid
 # 2019-04-01 v0.54 PL: - fixed bug in is_encrypted_ole
+# 2019-05-23       PL: - added DEFAULT_PASSWORDS list
 
 __version__ = '0.54.2'
 
@@ -308,6 +309,9 @@ def _is_encrypted_ole(ole):
 #: using this password
 WRITE_PROTECT_ENCRYPTION_PASSWORD = 'VelvetSweatshop'
 
+#: list of common passwords to be tried by default, used by malware
+DEFAULT_PASSWORDS = [WRITE_PROTECT_ENCRYPTION_PASSWORD, '123', '1234', '12345', '123456', '4321']
+
 
 def _check_msoffcrypto():
     """Raise a :py:class:`CryptoLibNotImported` if msoffcrypto not imported."""
@@ -347,7 +351,7 @@ def decrypt(filename, passwords=None, **temp_file_args):
     if isinstance(passwords, str):
         passwords = (passwords, )
     elif not passwords:
-        passwords = (WRITE_PROTECT_ENCRYPTION_PASSWORD, )
+        passwords = DEFAULT_PASSWORDS
 
     # check temp file args
     if 'prefix' not in temp_file_args:

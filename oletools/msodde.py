@@ -986,10 +986,9 @@ def process_maybe_encrypted(filepath, passwords=None, crypto_nesting=0,
 
     decrypted_file = None
     if passwords is None:
-        passwords = [crypto.WRITE_PROTECT_ENCRYPTION_PASSWORD, ]
+        passwords = crypto.DEFAULT_PASSWORDS
     else:
-        passwords = list(passwords) + \
-            [crypto.WRITE_PROTECT_ENCRYPTION_PASSWORD, ]
+        passwords = list(passwords) + crypto.DEFAULT_PASSWORDS
     try:
         logger.debug('Trying to decrypt file')
         decrypted_file = crypto.decrypt(filepath, passwords)
