@@ -2304,12 +2304,12 @@ def print_json(json_dict=None, _json_is_first=False, **json_parts):
         return
 
     if _json_is_first:
-        print('      ' + lines[0])
+        print('      ' + lines[0], file=sys.stderr)
     else:
-        print(',     ' + lines[0])
+        print(',     ' + lines[0], file=sys.stderr)
 
     for line in lines[1:]:
-        print('      ' + line.rstrip())
+        print('      ' + line.rstrip(), file=sys.stderr)
 
 
 class VBA_Scanner(object):
