@@ -4474,6 +4474,8 @@ def process_file(filename, data, container, options, crypto_nesting=0):
     Returns a single code summarizing the status of processing of this file
     """
     try:
+        vba_parser = None
+
         # Open the file
         vba_parser = VBA_Parser_CLI(filename, data=data, container=container,
                                     relaxed=options.relaxed,
@@ -4501,6 +4503,7 @@ def process_file(filename, data, container, options, crypto_nesting=0):
                                              no_xlm=options.no_xlm))
         else:  # (should be impossible)
             raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
+        vba_parser.close()
 
         # even if processing succeeds, file might still be encrypted
         log.debug('Checking for encryption (normal)')
@@ -4508,6 +4511,9 @@ def process_file(filename, data, container, options, crypto_nesting=0):
             log.debug('no encryption detected')
             return RETURN_OK
     except Exception as exc:
+        if vba_parser:
+            vba_parser.close()
+
         log.debug('Checking for encryption (after exception)')
         if crypto.is_encrypted(filename):
             pass   # deal with this below
