@@ -94,6 +94,7 @@ Projects using oletools:
 
 oletools are used by a number of projects and online malware analysis services,
 including
+[ACE](https://github.com/IntegralDefense/ACE),
 [Anlyz.io](https://sandbox.anlyz.io/),
 [AssemblyLine](https://www.cse-cst.gc.ca/en/assemblyline),
 [CAPE](https://github.com/ctxis/CAPE),
