@@ -256,7 +256,7 @@ import sys
 import os
 import logging
 import struct
-from io import BytesIO
+from io import BytesIO, StringIO
 import math
 import zipfile
 import re
@@ -3605,10 +3605,18 @@ class VBA_Parser_CLI(VBA_Parser):
                 if pcode:
                     print('-' * 79)
                     print('P-CODE disassembly:')
-                    # save sys.stdout, then modify it to capture pcodedmp's output
+                    # pcodedmp prints all its output to sys.stdout, so we need to capture it so that
+                    # we can process the results later on.
+                    # save sys.stdout, then modify it to capture pcodedmp's output:
                     stdout = sys.stdout
-                    output = BytesIO()
+                    if PYTHON2:
+                        # on Python 2, console output is bytes
+                        output = BytesIO()
+                    else:
+                        # on Python 3, console output is unicode
+                        output = StringIO()
                     sys.stdout = output
+                    # we need to fake an argparser for those two args used by pcodedmp:
                     class args:
                         disasmOnly = True
                         verbose = False
@@ -3617,7 +3625,9 @@ class VBA_Parser_CLI(VBA_Parser):
                         pcodedmp.processFile(self.filename, args)
                     except Exception:
                         log.error('Error while running pcodedmp')
-                    sys.stdout = stdout
+                    finally:
+                        # set sys.stdout back to its original value
+                        sys.stdout = stdout
                     print(output.getvalue())
 
                 if not vba_code_only:
