@@ -30,6 +30,7 @@ to install this package.
 # 2018-10-27       PL: - fixed issue #359 (bug when importing log_helper)
 # 2019-02-26       CH: - add optional dependency msoffcrypto for decryption
 # 2019-05-22       PL: - 'msoffcrypto-tool' is now a required dependency
+# 2019-05-23 v0.55 PL: - added pcodedmp as dependency
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -319,6 +320,7 @@ def main():
             "easygui",
             'colorclass',
             'msoffcrypto-tool',
+            'pcodedmp>=1.2.4',
         ],
     )
 
