@@ -45,6 +45,7 @@ General logging helpers
 # TODO:
 
 
+from __future__ import print_function
 from ._json_formatter import JsonFormatter
 from ._logger_adapter import OletoolsLoggerAdapter
 from . import _root_logger_wrapper
@@ -70,6 +71,7 @@ class LogHelper:
         self._all_names = set()  # set so we do not have duplicates
         self._use_json = False
         self._is_enabled = False
+        self._target_stream = None
 
     def get_or_create_silent_logger(self, name=DEFAULT_LOGGER_NAME, level=logging.CRITICAL + 1):
         """
@@ -95,17 +97,25 @@ class LogHelper:
         Since the root logger is the one doing the work, when using JSON we set its formatter
         so that every message logged is JSON-compatible.
 
-        If other code also creates json output, that other code should output the
-        first logging line and tell us via `other_logger_has_first_line`.
+        If other code also creates json output, all items should be pre-pended
+        with a comma like the `JsonFormatter` does. Except the first; use param
+        `other_logger_has_first_line` to clarify whether our logger or the
+        other code will produce the first json item.
         """
         if self._is_enabled:
             raise ValueError('re-enabling logging. Not sure whether that is ok...')
 
-        if stream in (None, sys.stdout):
+        if stream is None:
+            self.target_stream = sys.stdout
+        else:
+            self.target_stream = stream
+
+        if self.target_stream == sys.stdout:
             ensure_stdout_handles_unicode()
 
         log_level = LOG_LEVELS[level]
-        logging.basicConfig(level=log_level, format=log_format, stream=stream)
+        logging.basicConfig(level=log_level, format=log_format,
+                            stream=self.target_stream)
         self._is_enabled = True
 
         self._use_json = use_json
@@ -120,7 +130,7 @@ class LogHelper:
         # add a JSON formatter to the root logger, which will be used by every logger
         if self._use_json:
             _root_logger_wrapper.set_formatter(JsonFormatter(other_logger_has_first_line))
-            print('[')
+            print('[', file=self.target_stream)
 
     def end_logging(self):
         """
@@ -137,7 +147,7 @@ class LogHelper:
 
         # end json list
         if self._use_json:
-            print(']')
+            print(']', file=self.target_stream)
         self._use_json = False
 
     def _get_except_hook(self, old_hook):
