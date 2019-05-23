@@ -25,12 +25,6 @@ sudo -H pip install -U oletools
 
 Replace `pip` by `pip3` or `pip2` to install on a specific Python version.
 
-**New in v0.54:** To enable the decryption of encrypted documents, you also need to install the msoffcrypto-tool package:
-```text
-sudo -H pip install -U msoffcrypto-tool
-```
-
-
 **Important**: Since version 0.50, pip will automatically create convenient command-line scripts
 in /usr/local/bin to run all the oletools from any directory.
 
@@ -53,11 +47,6 @@ by adding the `--user` option:
 pip3 install -U --user oletools
 ```
 
-**New in v0.54:** To enable the decryption of encrypted documents, you also need to install the msoffcrypto-tool package:
-```text
-pip install -U msoffcrypto-tool
-```
-
 **Important**: Since version 0.50, pip will automatically create convenient command-line scripts
 to run all the oletools from any directory: olevba, mraptor, oleid, rtfobj, etc.
 
@@ -76,11 +65,6 @@ sudo -H pip install -U https://github.com/decalage2/oletools/archive/master.zip
 
 Replace `pip` by `pip3` or `pip2` to install on a specific Python version.
 
-**New in v0.54:** To enable the decryption of encrypted documents, you also need to install the msoffcrypto-tool package:
-```text
-sudo -H pip install -U msoffcrypto-tool
-```
-
 ### Windows
 
 ```text
@@ -96,12 +80,6 @@ by adding the `--user` option:
 ```text
 pip3 install -U --user https://github.com/decalage2/oletools/archive/master.zip
 ```
-
-**New in v0.54:** To enable the decryption of encrypted documents, you also need to install the msoffcrypto-tool package:
-```text
-pip install -U msoffcrypto-tool
-```
-
 
 How to install offline - Computer without Internet access
 ---------------------------------------------------------
