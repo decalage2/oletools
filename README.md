@@ -29,6 +29,9 @@ News
 - **2019-05-22 v0.54.2**:
     - bugfix release: fixed several issues related to encrypted documents
       and XLM/XLF Excel 4 macros
+    - msoffcrypto-tool is now installed by default to handle encrypted documents
+    - olevba and msodde now handle documents encrypted with common passwords such
+      as 123, 1234, 4321, 12345, 123456, VelvetSweatShop automatically.
 - **2019-04-04 v0.54**:
     - olevba, msodde: added support for encrypted MS Office files 
     - olevba: added detection and extraction of XLM/XLF Excel 4 macros (thanks to plugin_biff from Didier Stevens' oledump)
