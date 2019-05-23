@@ -111,6 +111,7 @@ including
 [malware-repo](https://github.com/Tigzy/malware-repo),
 [Malware Repository Framework (MRF)](https://www.adlice.com/download/mrf/),
 [olefy](https://github.com/HeinleinSupport/olefy),
+[PeekabooAV](https://github.com/scVENUS/PeekabooAV),
 [pcodedmp](https://github.com/bontchev/pcodedmp),
 [REMnux](https://remnux.org/),
 [Snake](https://github.com/countercept/snake),
