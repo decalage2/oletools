@@ -216,8 +216,9 @@ from __future__ import print_function
 # 2019-03-18       PL: - added XLM/XLF macros detection for Excel OLE files
 # 2019-03-25       CH: - added decryption of password-protected files
 # 2019-04-09       PL: - decompress_stream accepts bytes (issue #422)
+# 2019-05-23 v0.55 PL: - added option --pcode to call pcodedmp and display P-code
 
-__version__ = '0.54.2'
+__version__ = '0.55.dev1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -285,6 +286,7 @@ except ImportError:
                                + "or http://effbot.org/zone/element-index.htm")
 
 import colorclass
+from pcodedmp import pcodedmp
 
 # On Windows, colorclass needs to be enabled:
 if os.name == 'nt':
@@ -3518,7 +3520,7 @@ class VBA_Parser_CLI(VBA_Parser):
     def process_file(self, show_decoded_strings=False,
                      display_code=True, hide_attributes=True,
                      vba_code_only=False, show_deobfuscated_code=False,
-                     deobfuscate=False):
+                     deobfuscate=False, pcode=False):
         """
         Process a single file
 
@@ -3530,6 +3532,7 @@ class VBA_Parser_CLI(VBA_Parser):
                                 otherwise each module is analyzed separately (old behaviour)
         :param hide_attributes: bool, if True the first lines starting with "Attribute VB" are hidden (default)
         :param deobfuscate: bool, if True attempt to deobfuscate VBA expressions (slow)
+        :param pcode bool: if True, call pcodedmp to disassemble P-code and display it
         """
         #TODO: replace print by writing to a provided output file (sys.stdout by default)
         # fix conflicting parameters:
@@ -3599,6 +3602,23 @@ class VBA_Parser_CLI(VBA_Parser):
                     # display the exception with full stack trace for debugging
                     log.info('Error parsing form: %s' % exc)
                     log.debug('Traceback:', exc_info=True)
+                if pcode:
+                    print('-' * 79)
+                    print('P-CODE disassembly:')
+                    # save sys.stdout, then modify it to capture pcodedmp's output
+                    stdout = sys.stdout
+                    output = BytesIO()
+                    sys.stdout = output
+                    class args:
+                        disasmOnly = True
+                        verbose = False
+                    try:
+                        # TODO: handle files in memory too
+                        pcodedmp.processFile(self.filename, args)
+                    except Exception:
+                        log.error('Error while running pcodedmp')
+                    sys.stdout = stdout
+                    print(output.getvalue())
 
                 if not vba_code_only:
                     # analyse the code from all modules at once:
@@ -3786,6 +3806,8 @@ def parse_args(cmd_line_args=None):
                             help="Attempt to deobfuscate VBA expressions (slow)")
     parser.add_option('--relaxed', dest="relaxed", action="store_true", default=False,
                             help="Do not raise errors if opening of substream fails")
+    parser.add_option('--pcode', dest="pcode", action="store_true", default=False,
+                            help="Disassemble and display the P-code (using pcodedmp)")
 
     (options, args) = parser.parse_args(cmd_line_args)
 
@@ -3823,7 +3845,7 @@ def process_file(filename, data, container, options, crypto_nesting=0):
                          display_code=options.display_code,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
                          show_deobfuscated_code=options.show_deobfuscated_code,
-                         deobfuscate=options.deobfuscate)
+                         deobfuscate=options.deobfuscate, pcode=options.pcode)
         elif options.output_mode == 'triage':
             # summarized output for triage:
             vba_parser.process_file_triage(show_decoded_strings=options.show_decoded_strings,
