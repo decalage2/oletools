@@ -3874,14 +3874,15 @@ def main(cmd_line_args=None):
 
     options, args = parse_args(cmd_line_args)
 
-    # enable logging in the modules:
+    # enable logging in the modules (for json, this prints the opening '['):
     log_helper.enable_logging(options.output_mode=='json', options.loglevel,
                               other_logger_has_first_line=True)
 
     # provide info about tool and its version
     if options.output_mode == 'json':
-        # print first json entry with meta info and opening '['
+        # print first json entry with meta info
         print_json(script_name='olevba', version=__version__,
+                   python_version=sys.version_info[0:3],
                    url='http://decalage.info/python/oletools',
                    type='MetaInformation', _json_is_first=True)
     else:
