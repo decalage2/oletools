@@ -112,7 +112,7 @@ class LogHelper:
         # add a JSON formatter to the root logger, which will be used by every logger
         if self._use_json:
             _root_logger_wrapper.set_formatter(JsonFormatter(other_logger_has_first_line))
-            print('[')
+            print('[', file=sys.stderr)
 
     def end_logging(self):
         """
@@ -129,7 +129,7 @@ class LogHelper:
 
         # end json list
         if self._use_json:
-            print(']')
+            print(']', file=sys.stderr)
         self._use_json = False
 
     def _get_except_hook(self, old_hook):
