@@ -4592,6 +4592,7 @@ def main(cmd_line_args=None):
     if options.output_mode == 'json':
         # print first json entry with meta info and opening '['
         print_json(script_name='olevba', version=__version__,
+                   python_version=sys.version_info[0:3],
                    url='http://decalage.info/python/oletools',
                    type='MetaInformation', _json_is_first=True)
     else:
