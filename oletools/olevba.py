@@ -286,7 +286,6 @@ except ImportError:
                                + "or http://effbot.org/zone/element-index.htm")
 
 import colorclass
-from pcodedmp import pcodedmp
 
 # On Windows, colorclass needs to be enabled:
 if os.name == 'nt':
@@ -3603,6 +3602,8 @@ class VBA_Parser_CLI(VBA_Parser):
                     log.info('Error parsing form: %s' % exc)
                     log.debug('Traceback:', exc_info=True)
                 if pcode:
+                    # import pcodedmp here to avoid circular imports:
+                    from pcodedmp import pcodedmp
                     print('-' * 79)
                     print('P-CODE disassembly:')
                     # pcodedmp prints all its output to sys.stdout, so we need to capture it so that
