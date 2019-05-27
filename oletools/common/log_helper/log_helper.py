@@ -62,11 +62,19 @@ LOG_LEVELS = {
     'critical': logging.CRITICAL
 }
 
+#: provide this constant to modules, so they do not have to import
+#: :py:mod:`logging` for themselves just for this one constant.
+NOTSET = logging.NOTSET
+
 DEFAULT_LOGGER_NAME = 'oletools'
 DEFAULT_MESSAGE_FORMAT = '%(levelname)-8s %(message)s'
 
 
 class LogHelper:
+
+    #: for convenience: here again (see also :py:data:`log_helper.NOTSET`)
+    NOTSET = logging.NOTSET
+
     def __init__(self):
         self._all_names = set()  # set so we do not have duplicates
         self._use_json = False
