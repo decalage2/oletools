@@ -105,7 +105,6 @@ import os
 from os.path import splitext, isfile
 from tempfile import mkstemp
 import zipfile
-import logging
 
 from olefile import OleFileIO
 
@@ -138,6 +137,17 @@ MAX_NESTING_DEPTH = 10
 # a global logger object used for debugging:
 log = log_helper.get_or_create_silent_logger('crypto')
 
+
+def enable_logging():
+    """
+    Enable logging for this module (disabled by default).
+
+    For use by third-party libraries that import `crypto` as module.
+
+    This will set the module-specific logger level to NOTSET, which
+    means the main application controls the actual logging level.
+    """
+    log.setLevel(log_helper.NOTSET)
 
 
 def is_encrypted(some_file):
