@@ -253,6 +253,7 @@ class OleRecordStream(object):
             yield rec_object
 
     def close(self):
+        """Close this stream (i.e. the stream given in constructor)."""
         self.stream.close()
 
     def __str__(self):
