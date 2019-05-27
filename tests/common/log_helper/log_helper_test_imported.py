@@ -4,7 +4,6 @@ by the main test file
 """
 
 from oletools.common.log_helper import log_helper
-import logging
 
 DEBUG_MESSAGE = 'imported: debug log'
 INFO_MESSAGE = 'imported: info log'
@@ -14,7 +13,11 @@ CRITICAL_MESSAGE = 'imported: critical log'
 RESULT_MESSAGE = 'imported: result log'
 RESULT_TYPE = 'imported: result'
 
-logger = log_helper.get_or_create_silent_logger('test_imported', logging.ERROR)
+logger = log_helper.get_or_create_silent_logger('test_imported')
+
+def enable_logging():
+    """Enable logging if imported by third party modules."""
+    logger.setLevel(log_helper.NOTSET)
 
 
 def log():
