@@ -20,14 +20,6 @@ TEST_FILE = relpath(join(dirname(abspath(__file__)), 'log_helper_test_main.py'),
                     PROJECT_ROOT)
 PYTHON_EXECUTABLE = sys.executable
 
-MAIN_LOG_MESSAGES = [
-    log_helper_test_main.DEBUG_MESSAGE,
-    log_helper_test_main.INFO_MESSAGE,
-    log_helper_test_main.WARNING_MESSAGE,
-    log_helper_test_main.ERROR_MESSAGE,
-    log_helper_test_main.CRITICAL_MESSAGE
-]
-
 
 class TestLogHelper(unittest.TestCase):
     def test_it_doesnt_log_when_not_enabled(self):
