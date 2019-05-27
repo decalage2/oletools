@@ -4483,6 +4483,7 @@ def process_file(filename, data, container, options, crypto_nesting=0):
             log.debug('no encryption detected')
             return RETURN_OK
     except Exception as exc:
+        log.debug('Caught exception:', exc_info=True)
         if vba_parser:
             vba_parser.close()
 
