@@ -109,6 +109,18 @@ def enable_olefile_logging():
     olefile.enable_logging()
 
 
+def enable_logging():
+    """
+    Enable logging for this module (disabled by default).
+
+    For use by third-party libraries that import `record_base` as module.
+
+    This will set the module-specific logger level to NOTSET, which
+    means the main application controls the actual logging level.
+    """
+    logger.setLevel(log_helper.NOTSET)
+
+
 ###############################################################################
 # Base Classes
 ###############################################################################
