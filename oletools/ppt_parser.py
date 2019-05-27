@@ -1615,7 +1615,7 @@ def iterative_decompress(stream, size, chunk_size=4096):
 
     decompressor = zlib.decompressobj()
     n_read = 0
-    decomp = ''
+    decomp = b''
     return_err = None
 
     try:
