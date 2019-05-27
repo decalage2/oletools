@@ -51,6 +51,7 @@ import re
 import sys
 import io
 from zipfile import is_zipfile
+import random
 
 import olefile
 
@@ -229,6 +230,12 @@ BLACKLISTED_RELATIONSHIP_TYPES = [
     'subDocument',
     'worksheet'
 ]
+
+# Save maximum length of a filename
+MAX_FILENAME_LENGTH = 255
+
+# Max attempts at generating a non-existent random file name
+MAX_FILENAME_ATTEMPTS = 100
 
 # === FUNCTIONS ===============================================================
 
@@ -494,11 +501,40 @@ class OleObject(object):
             self.extra_data = data[index+self.data_size:]
 
 
-def sanitize_filename(filename, replacement='_', max_length=200):
-    """compute basename of filename. Replaces all non-whitelisted characters.
-       The returned filename is always a ascii basename of the file."""
+def shorten_filename(fname, max_len):
+    """Create filename shorter than max_len, trying to preserve suffix."""
+    # simple cases:
+    if not max_len:
+        return fname
+    name_len = len(fname)
+    if name_len < max_len:
+        return fname
+
+    idx = fname.rfind('.')
+    if idx == -1:
+        return fname[:max_len]
+
+    suffix_len = name_len - idx  # length of suffix including '.'
+    if suffix_len > max_len:
+        return fname[:max_len]
+
+    # great, can preserve suffix
+    return fname[:max_len-suffix_len] + fname[idx:]
+
+
+def sanitize_filename(filename, replacement='_',
+                      max_len=MAX_FILENAME_LENGTH):
+    """
+    Return filename that is save to work with.
+
+    Removes path components, replaces all non-whitelisted characters (so output
+    is always a pure-ascii string), replaces '..' and '  ' and shortens to
+    given max length, trying to preserve suffix.
+
+    Might return empty string
+    """
     basepath = os.path.basename(filename).strip()
-    sane_fname = re.sub(u'[^a-zA-Z0-9.\\-_ ]', replacement, basepath)
+    sane_fname = re.sub(u'[^a-zA-Z0-9.\-_ ]', replacement, basepath)
     sane_fname = str(sane_fname)    # py3: does nothing;   py2: unicode --> str
 
     while ".." in sane_fname:
@@ -507,14 +543,71 @@ def sanitize_filename(filename, replacement='_', max_length=200):
     while "  " in sane_fname:
         sane_fname = sane_fname.replace('  ', ' ')
 
-    if not filename:
-        sane_fname = 'NONAME'
+    # limit filename length, try to preserve suffix
+    return shorten_filename(sane_fname, max_len)
 
-    # limit filename length
-    if max_length:
-        sane_fname = sane_fname[:max_length]
 
-    return sane_fname
+def get_sane_embedded_filenames(filename, src_path, tmp_path, max_len,
+                                noname_index):
+    """
+    Get some sane filenames out of path information, preserving file suffix.
+
+    Returns several canddiates, first with suffix, then without, then random
+    with suffix and finally one last attempt ignoring max_len using arg
+    `noname_index`.
+
+    In some malware examples, filename (on which we relied sofar exclusively
+    for this) is empty or " ", but src_path and tmp_path contain paths with
+    proper file names. Try to extract filename from any of those.
+
+    Preservation of suffix is especially important since that controls how
+    windoze treats the file.
+    """
+    suffixes = []
+    candidates_without_suffix = []  # remember these as fallback
+    for candidate in (filename, src_path, tmp_path):
+        # remove path component. Could be from linux, mac or windows
+        idx = max(candidate.rfind('/'), candidate.rfind('\\'))
+        candidate = candidate[idx+1:].strip()
+
+        # sanitize
+        candidate = sanitize_filename(candidate, max_len=max_len)
+
+        if not candidate:
+            continue    # skip whitespace-only
+
+        # identify suffix. Dangerous suffixes are all short
+        idx = candidate.rfind('.')
+        if idx is -1:
+            candidates_without_suffix.append(candidate)
+            continue
+        elif idx < len(candidate)-5:
+            candidates_without_suffix.append(candidate)
+            continue
+
+        # remember suffix
+        suffixes.append(candidate[idx:])
+
+        yield candidate
+
+    # parts with suffix not good enough? try those without one
+    for candidate in candidates_without_suffix:
+        yield candidate
+
+    # then try random
+    suffixes.append('')  # ensure there is something in there
+    for _ in range(MAX_FILENAME_ATTEMPTS):
+        for suffix in suffixes:
+            leftover_len = max_len - len(suffix)
+            if leftover_len < 1:
+                continue
+            name = ''.join(random.sample('abcdefghijklmnopqrstuvwxyz',
+                                         min(26, leftover_len)))
+            yield name + suffix
+
+    # still not returned? Then we have to make up a name ourselves
+    # do not care any more about max_len (maybe it was 0 or negative)
+    yield 'oleobj_%03d' % noname_index
 
 
 def find_ole_in_ppt(filename):
@@ -666,7 +759,8 @@ def find_ole(filename, data, xml_parser=None):
             if xml_parser is None:
                 xml_parser = XmlParser(arg_for_zip)
                 # force iteration so XmlParser.iter_non_xml() returns data
-                [x for x in xml_parser.iter_xml()]
+                for _ in xml_parser.iter_xml():
+                    pass
 
             log.info('is zip file: ' + filename)
             # we looped through the XML files before, now we can
@@ -748,16 +842,17 @@ def process_file(filename, data, output_dir=None):
     If output_dir is given and does not exist, it is created. If it is not
     given, data is saved to same directory as the input file.
     """
+    # sanitize filename, leave space for embedded filename part
+    sane_fname = sanitize_filename(filename, max_len=MAX_FILENAME_LENGTH-5) or\
+        'NONAME'
     if output_dir:
         if not os.path.isdir(output_dir):
             log.info('creating output directory %s', output_dir)
             os.mkdir(output_dir)
 
-        fname_prefix = os.path.join(output_dir,
-                                    sanitize_filename(filename))
+        fname_prefix = os.path.join(output_dir, sane_fname)
     else:
         base_dir = os.path.dirname(filename)
-        sane_fname = sanitize_filename(filename)
         fname_prefix = os.path.join(base_dir, sane_fname)
 
     # TODO: option to extract objects to files (false by default)
@@ -818,11 +913,12 @@ def process_file(filename, data, output_dir=None):
                 print(u'Filename = "%s"' % opkg.filename)
                 print(u'Source path = "%s"' % opkg.src_path)
                 print(u'Temp path = "%s"' % opkg.temp_path)
-                if opkg.filename:
-                    fname = '%s_%s' % (fname_prefix,
-                                       sanitize_filename(opkg.filename))
-                else:
-                    fname = '%s_object_%03d.noname' % (fname_prefix, index)
+                for embedded_fname in get_sane_embedded_filenames(
+                        opkg.filename, opkg.src_path, opkg.temp_path,
+                        MAX_FILENAME_LENGTH - len(sane_fname) - 1, index):
+                    fname = fname_prefix + '_' + embedded_fname
+                    if not os.path.isfile(fname):
+                        break
 
                 # dump
                 try:
