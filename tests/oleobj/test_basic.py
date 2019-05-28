@@ -159,6 +159,65 @@ class TestOleObj(unittest.TestCase):
                                 only_run_every=4)
 
 
+class TestSaneFilenameCreation(unittest.TestCase):
+    """ Test sanitization / creation of sane filenames """
+    def test_with_empty_inputs(self):
+        """Test empty inputs lead to several non-empty distinct outputs"""
+        iter = oleobj.get_sane_embedded_filenames('', '', '', 10, 47)
+        output = set()
+        for attempt in range(10):
+            output.add(next(iter))
+        self.assertEqual(len(output), 10)      # check all 10 are different
+        for fname in output:
+            self.assertNotEqual(fname, '')     # all are non-empty
+
+    def test_that_first_has_priority(self):
+        iter = oleobj.get_sane_embedded_filenames('fname.sfx', 'do_not.use',
+                                                  'do_not.use', 10, 47)
+        self.assertEqual(next(iter), 'fname.sfx')
+        [next(iter) for _ in range(10)]   # check this does not crash
+
+    def test_that_suffixed_have_priority(self):
+        iter = oleobj.get_sane_embedded_filenames('no_suffix', 'also_not',
+                                                  'fname.sfx', 10, 47)
+        self.assertEqual(next(iter), 'fname.sfx')
+        self.assertEqual(next(iter), 'no_suffix')
+        self.assertEqual(next(iter), 'also_not')
+        [next(iter) for _ in range(10)]   # check this does not crash
+
+    def test_with_hardly_any_length(self):
+        iter = oleobj.get_sane_embedded_filenames('fname.suffx', 'fname.sufx',
+                                                  'fname.sfx', 4, 47)
+        self.assertEqual(next(iter), '.sfx')
+        [next(iter) for _ in range(10)]   # check this does not crash
+
+    def test_with_mean_unicode(self):
+        uni_name1 = u'\xfcnic\xf6de-\xdftring'
+        uni_name2 = u'keyboard:\u2328, Braille:\u2800, Phone:\u260e'
+        iter = oleobj.get_sane_embedded_filenames(uni_name1, uni_name2,
+                                                  'regular_txt', 30, 47)
+        self.assertEqual(next(iter), '_nic_de-_tring')
+        self.assertEqual(next(iter), 'keyboard___ Braille___ Phone__')
+        self.assertEqual(next(iter), 'regular_txt')
+        [next(iter) for _ in range(10)]   # check this does not crash
+
+    def test_last_resort(self):
+        iter = oleobj.get_sane_embedded_filenames('', '', '', 10, 47)
+        all_options = list(iter)
+        self.assertEqual(len(all_options), oleobj.MAX_FILENAME_ATTEMPTS+1)
+        self.assertIn('47', all_options[-1])
+
+    def test_realworld_lnk_example(self):
+        fname = ' '
+        src_path = 'E:\\tmp\\doc_package\\doc\\6.lnk'
+        tmp_path = 'C:\\Users\\1\\AppData\\Local\\Temp\\6.lnk'
+        iter = oleobj.get_sane_embedded_filenames(fname, src_path, tmp_path,
+                                                  30, 47)
+        self.assertEqual(next(iter), '6.lnk')
+        self.assertEqual(next(iter), '6.lnk')
+        [next(iter) for _ in range(10)]   # check this does not crash
+
+
 # just in case somebody calls this file as a script
 if __name__ == '__main__':
     unittest.main()
