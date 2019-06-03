@@ -120,15 +120,11 @@ class TestErrorOutput(unittest.TestCase):
         for suffix in 'doc', 'docm', 'docx', 'ppt', 'pptm', 'pptx', 'xls', \
                 'xlsb', 'xlsm', 'xlsx':
             example_file = join(BASE_DIR, 'encrypted', 'encrypted.' + suffix)
-            output, ret_code = call_and_capture('msodde', ['-j', example_file],
+            output, ret_code = call_and_capture('msodde', [example_file, ],
                                                 accept_nonzero_exit=True)
             self.assertEqual(ret_code, 1)
-            data = json.loads(output, object_pairs_hook=OrderedDict)
-            # debug: json.dump(data, sys.stdout, indent=4)
-            self.assertTrue(all(part['type'] == 'msg' for part in data))
-            self.assertTrue(any(part['level'] == 'ERROR' and
-                                'passwords could not decrypt' in part['msg']
-                                for part in data))
+            self.assertIn('passwords could not decrypt office file', output,
+                          msg='Unexpected output: {}'.format(output.strip()))
 
 
 class TestDdeLinks(unittest.TestCase):
