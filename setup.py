@@ -50,7 +50,7 @@ import os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.54.2'
+version      = '0.55.dev2'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       = "Philippe Lagadec"
@@ -320,7 +320,7 @@ def main():
             "easygui",
             'colorclass',
             'msoffcrypto-tool',
-            'pcodedmp>=1.2.4',
+            'pcodedmp>=1.2.5',
         ],
     )
 
