@@ -3439,7 +3439,14 @@ class VBA_Parser(object):
         if self.pcodedmp_output is None:
             log.debug('Calling pcodedmp to extract and disassemble the VBA P-code')
             # import pcodedmp here to avoid circular imports:
-            from pcodedmp import pcodedmp
+            try:
+                from pcodedmp import pcodedmp
+            except Exception:
+                # This may happen with Pypy, because pcodedmp import win_unicode_console...
+                # TODO: this is a workaround, we just ignore P-code
+                log.exception('Error when importing pcodedmp')
+                self.pcodedmp_output = ''
+                return ''
             # logging is disabled after importing pcodedmp, need to re-enable it
             # This is because pcodedmp imports olevba again :-/
             # TODO: here it works only if logging was enabled, need to change pcodedmp!
