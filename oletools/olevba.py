@@ -3512,13 +3512,27 @@ class VBA_Parser(object):
                     if mnemonic in ('ArgsCall', 'ArgsLd', 'St', 'Ld', 'MemSt', 'Label'):
                         # add 1st argument:
                         name = args.split(None, 1)[0]
-                        keywords.add(name)
+                        # sometimes pcodedmp reports names like "id_FFFF", which are not
+                        # directly present in the VBA source code
+                        # (for example "Me" in VBA appears as id_FFFF in P-code)
+                        if not name.startswith('id_'):
+                            keywords.add(name)
                     if mnemonic == 'LitStr':
                         # re_string = re.compile(r'\"([^\"]|\"\")*\"')
                         # for match in re_string.finditer(line):
                         #     print('\t' + match.group())
                         # the string is the 2nd argument:
                         s = args.split(None, 1)[1]
+                        # tricky issue: when a string contains double quotes inside,
+                        # pcodedmp returns a single ", whereas in the VBA source code
+                        # it is always a double "".
+                        # We have to remove the " around the strings, then double the remaining ",
+                        # and put back the " around:
+                        if len(s)>=2:
+                            assert(s[0]=='"' and s[-1]=='"')
+                            s = s[1:-1]
+                            s = s.replace('"', '""')
+                            s = '"' + s + '"'
                         keywords.add(s)
             log.debug('Keywords extracted from P-code: ' + repr(sorted(keywords)))
             self.vba_stomping_detected = False
