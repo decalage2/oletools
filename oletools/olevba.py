@@ -217,8 +217,9 @@ from __future__ import print_function
 # 2019-03-25       CH: - added decryption of password-protected files
 # 2019-04-09       PL: - decompress_stream accepts bytes (issue #422)
 # 2019-05-23 v0.55 PL: - added option --pcode to call pcodedmp and display P-code
+# 2019-06-05       PL: - added VBA stomping detection
 
-__version__ = '0.55.dev1'
+__version__ = '0.55.dev2'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -2587,6 +2588,10 @@ class VBA_Parser(object):
         #: Encoding for VBA source code and strings returned by all methods
         self.encoding = encoding
         self.xlm_macros = []
+        #: Output from pcodedmp, disassembly of the VBA P-code
+        self.pcodedmp_output = None
+        #: Flag set to True/False if VBA stomping detected
+        self.vba_stomping_detected = None
 
         # if filename is None:
         #     if isinstance(_file, basestring):
@@ -3202,6 +3207,15 @@ class VBA_Parser(object):
                 for line in self.xlm_macros:
                     vba_code += "' " + line + '\n'
                 yield ('xlm_macro', 'xlm_macro', 'xlm_macro.txt', vba_code)
+            # Analyse the VBA P-code to detect VBA stomping:
+            # If stomping is detected, add a fake VBA module with the P-code as source comments
+            # so that VBA_Scanner can find keywords and IOCs in it
+            if self.detect_vba_stomping():
+                vba_code = ''
+                for line in self.pcodedmp_output.splitlines():
+                    vba_code += "' " + line + '\n'
+                yield ('VBA P-code', 'VBA P-code', 'VBA_P-code.txt', vba_code)
+
 
     def extract_all_macros(self):
         """
@@ -3241,6 +3255,13 @@ class VBA_Parser(object):
             # Analyze the whole code at once:
             scanner = VBA_Scanner(self.vba_code_all_modules)
             self.analysis_results = scanner.scan(show_decoded_strings, deobfuscate)
+            if self.detect_vba_stomping():
+                log.debug('adding VBA stomping to suspicious keywords')
+                keyword = 'VBA Stomping'
+                description = 'VBA Stomping was detected: the VBA source code and P-code are different, '\
+                    'this may have been used to hide malicious code'
+                scanner.suspicious_keywords.append((keyword, description))
+                scanner.results.append(('Suspicious', keyword, description))
             autoexec, suspicious, iocs, hexstrings, base64strings, dridex, vbastrings = scanner.scan_summary()
             self.nb_autoexec += autoexec
             self.nb_suspicious += suspicious
@@ -3407,6 +3428,114 @@ class VBA_Parser(object):
                 for variable in oleform.extract_OleFormVariables(ole, form_storage):
                     yield (self.filename, '/'.join(form_storage), variable)
 
+    def extract_pcode(self):
+        """
+        Extract and disassemble the VBA P-code, using pcodedmp
+
+        :return: VBA P-code disassembly
+        :rtype: str
+        """
+        # only run it once:
+        if self.pcodedmp_output is None:
+            log.debug('Calling pcodedmp to extract and disassemble the VBA P-code')
+            # import pcodedmp here to avoid circular imports:
+            from pcodedmp import pcodedmp
+            # logging is disabled after importing pcodedmp, need to re-enable it
+            # This is because pcodedmp imports olevba again :-/
+            # TODO: here it works only if logging was enabled, need to change pcodedmp!
+            enable_logging()
+            # pcodedmp prints all its output to sys.stdout, so we need to capture it so that
+            # we can process the results later on.
+            # save sys.stdout, then modify it to capture pcodedmp's output:
+            # stdout = sys.stdout
+            if PYTHON2:
+                # on Python 2, console output is bytes
+                output = BytesIO()
+            else:
+                # on Python 3, console output is unicode
+                output = StringIO()
+            # sys.stdout = output
+            # we need to fake an argparser for those two args used by pcodedmp:
+            class args:
+                disasmOnly = True
+                verbose = False
+            try:
+                # TODO: handle files in memory too
+                log.debug('before pcodedmp')
+                pcodedmp.processFile(self.filename, args, output_file=output)
+                log.debug('after pcodedmp')
+            except Exception as e:
+                # print('Error while running pcodedmp: {}'.format(e), file=sys.stderr, flush=True)
+                # set sys.stdout back to its original value
+                # sys.stdout = stdout
+                log.exception('Error while running pcodedmp')
+            # finally:
+            #     # set sys.stdout back to its original value
+            #     sys.stdout = stdout
+            self.pcodedmp_output = output.getvalue()
+            # print(self.pcodedmp_output)
+            # log.debug(self.pcodedmp_output)
+        return self.pcodedmp_output
+
+    def detect_vba_stomping(self):
+        """
+        Detect VBA stomping, by comparing the keywords present in the P-code and
+        in the VBA source code.
+
+        :return: True if VBA stomping detected, False otherwise
+        :rtype: bool
+        """
+        # only run it once:
+        if self.vba_stomping_detected is None:
+            log.debug('Analysing the P-code to detect VBA stomping')
+            self.extract_pcode()
+            # print('pcodedmp OK')
+            log.debug('pcodedmp OK')
+            # process the output to extract keywords, to detect VBA stomping
+            keywords = set()
+            for line in self.pcodedmp_output.splitlines():
+                if line.startswith('\t'):
+                    log.debug('P-code: ' + line.strip())
+                    tokens = line.split(None, 1)
+                    mnemonic = tokens[0]
+                    args = ''
+                    if len(tokens) == 2:
+                        args = tokens[1].strip()
+                    # log.debug(repr([mnemonic, args]))
+                    # if mnemonic in ('VarDefn',):
+                    #     # just add the rest of the line
+                    #     keywords.add(args)
+                    # if mnemonic == 'FuncDefn':
+                    #     # function definition: just strip parentheses
+                    #     funcdefn = args.strip('()')
+                    #     keywords.add(funcdefn)
+                    if mnemonic in ('ArgsCall', 'ArgsLd', 'St', 'Ld', 'MemSt', 'Label'):
+                        # add 1st argument:
+                        name = args.split(None, 1)[0]
+                        keywords.add(name)
+                    if mnemonic == 'LitStr':
+                        # re_string = re.compile(r'\"([^\"]|\"\")*\"')
+                        # for match in re_string.finditer(line):
+                        #     print('\t' + match.group())
+                        # the string is the 2nd argument:
+                        s = args.split(None, 1)[1]
+                        keywords.add(s)
+            log.debug('Keywords extracted from P-code: ' + repr(sorted(keywords)))
+            self.vba_stomping_detected = False
+            # TODO: add a method to get all VBA code as one string
+            vba_code_all_modules = ''
+            for (_, _, _, vba_code) in self.extract_all_macros():
+                vba_code_all_modules += vba_code + '\n'
+            for keyword in keywords:
+                if keyword not in vba_code_all_modules:
+                    log.debug('Keyword {!r} not found in VBA code'.format(keyword))
+                    log.debug('VBA STOMPING DETECTED!')
+                    self.vba_stomping_detected = True
+                    break
+            if not self.vba_stomping_detected:
+                log.debug('No VBA stomping detected.')
+        return self.vba_stomping_detected
+
     def close(self):
         """
         Close all the open files. This method must be called after usage, if
@@ -3477,6 +3606,8 @@ class VBA_Parser_CLI(VBA_Parser):
                 color_type = COLOR_TYPE.get(kw_type, None)
                 t.write_row((kw_type, keyword, description), colors=(color_type, None, None))
             t.close()
+            if self.vba_stomping_detected:
+                print('VBA Stomping detection is experimental: please report any false positive/negative at https://github.com/decalage2/oletools/issues')
         else:
             print('No suspicious keyword or IOC found.')
 
@@ -3602,34 +3733,10 @@ class VBA_Parser_CLI(VBA_Parser):
                     log.info('Error parsing form: %s' % exc)
                     log.debug('Traceback:', exc_info=True)
                 if pcode:
-                    # import pcodedmp here to avoid circular imports:
-                    from pcodedmp import pcodedmp
                     print('-' * 79)
                     print('P-CODE disassembly:')
-                    # pcodedmp prints all its output to sys.stdout, so we need to capture it so that
-                    # we can process the results later on.
-                    # save sys.stdout, then modify it to capture pcodedmp's output:
-                    stdout = sys.stdout
-                    if PYTHON2:
-                        # on Python 2, console output is bytes
-                        output = BytesIO()
-                    else:
-                        # on Python 3, console output is unicode
-                        output = StringIO()
-                    sys.stdout = output
-                    # we need to fake an argparser for those two args used by pcodedmp:
-                    class args:
-                        disasmOnly = True
-                        verbose = False
-                    try:
-                        # TODO: handle files in memory too
-                        pcodedmp.processFile(self.filename, args)
-                    except Exception:
-                        log.error('Error while running pcodedmp')
-                    finally:
-                        # set sys.stdout back to its original value
-                        sys.stdout = stdout
-                    print(output.getvalue())
+                    pcode = self.extract_pcode()
+                    print(pcode)
 
                 if not vba_code_only:
                     # analyse the code from all modules at once:

@@ -3,4 +3,4 @@ olefile>=0.46
 easygui
 colorclass
 msoffcrypto-tool
-pcodedmp>=1.2.4
+pcodedmp>=1.2.5
