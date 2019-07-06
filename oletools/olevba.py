@@ -4062,8 +4062,13 @@ def process_file(filename, data, container, options, crypto_nesting=0):
     except Exception:
         raise
     finally:     # clean up
-        if decrypted_file is not None and os.path.isfile(decrypted_file):
+        try:
+            log.debug('Removing crypt temp file {}'.format(decrypted_file))
             os.unlink(decrypted_file)
+        except Exception:   # e.g. file does not exist or is None
+            pass
+    # no idea what to return now
+    raise Exception('Programming error -- should never have reached this!')
 
 
 def main(cmd_line_args=None):
