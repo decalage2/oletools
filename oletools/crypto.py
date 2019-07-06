@@ -34,6 +34,8 @@ potentially encrypted files::
         decrypted_file = None
         try:
             decrypted_file = crypto.decrypt(input_file, passwords)
+            if decrypted_file is None:
+                raise crypto.WrongEncryptionPassword(input_file)
             # might still be encrypted, so call this again recursively
             result = script_main_function(decrypted_file, passwords,
                                           crypto_nesting+1, args)
@@ -341,7 +343,7 @@ def decrypt(filename, passwords=None, **temp_file_args):
                            `dirname` or `prefix`. `suffix` will default to
                            suffix of input `filename`, `prefix` defaults to
                            `oletools-decrypt-`; `text` will be ignored
-    :returns: name of the decrypted temporary file.
+    :returns: name of the decrypted temporary file (type str) or `None`
     :raises: :py:class:`ImportError` if :py:mod:`msoffcrypto-tools` not found
     :raises: :py:class:`ValueError` if the given file is not encrypted
     """

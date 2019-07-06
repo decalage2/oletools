@@ -18,7 +18,7 @@ class JsonFormatter(logging.Formatter):
         ensures that there is a `type` field in the record. Otherwise will have
         to add a try-except around the access to `record.type`.
         """
-        json_dict = dict(msg=record.msg, level=record.levelname)
+        json_dict = dict(msg=record.msg.replace('\n', ' '), level=record.levelname)
         json_dict['type'] = record.type
         formatted_message = '    ' + json.dumps(json_dict)
 
