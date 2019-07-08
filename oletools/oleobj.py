@@ -958,20 +958,8 @@ def existing_file(filename):
     return filename
 
 
-def main(cmd_line_args=None):
-    """ main function, called when running this as script
-
-    Per default (cmd_line_args=None) uses sys.argv. For testing, however, can
-    provide other arguments.
-    """
-    # print banner with version
-    ensure_stdout_handles_unicode()
-    print('oleobj %s - http://decalage.info/oletools' % __version__)
-    print('THIS IS WORK IN PROGRESS - Check updates regularly!')
-    print('Please report any issue at '
-          'https://github.com/decalage2/oletools/issues')
-    print('')
-
+def parse_args(cmd_line_args=None):
+    """Parse command line arguments."""
     usage = 'usage: %(prog)s [options] <filename> [filename2 ...]'
     parser = argparse.ArgumentParser(usage=usage)
     # parser.add_argument('-o', '--outfile', dest='outfile',
@@ -1013,10 +1001,31 @@ def main(cmd_line_args=None):
     if options.verbose:
         options.loglevel = 'debug'
 
-    # Print help if no arguments are passed
+    # Print help and return fail status if no input files were given
     if not options.input:
         parser.print_help()
-        return RETURN_ERR_ARGS
+        sys.exit(RETURN_ERR_ARGS)
+
+    return options
+
+
+def main(cmd_line_args=None):
+    """
+    Main function, called when running this as script
+
+    Per default (cmd_line_args=None) uses sys.argv. For testing, however, can
+    provide other arguments.
+    """
+    # print banner with version
+    ensure_stdout_handles_unicode()
+    print('oleobj %s - http://decalage.info/oletools' % __version__)
+    print('THIS IS WORK IN PROGRESS - Check updates regularly!')
+    print('Please report any issue at '
+          'https://github.com/decalage2/oletools/issues')
+    print('')
+
+    # parse command line arguments
+    options = parse_args(cmd_line_args)
 
     # Setup logging to the console:
     # here we use stdout instead of stderr by default, so that the output
