@@ -88,8 +88,10 @@ http://www.decalage.info/python/oletools
 # 2018-05-31 v0.53.1 PP: - fixed issue #316: whitespace after \bin on Python 3
 # 2018-06-22 v0.53.2 PL: - fixed issue #327: added "\pnaiu" & "\pnaiud"
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
+# 2019-07-08 v0.55 MM: - added URL carver for CVE-2017-0199 (Equation Editor) PR #460
+#                      - added SCT to the list of executable file extensions PR #461
 
-__version__ = '0.54'
+__version__ = '0.55.dev3'
 
 # ------------------------------------------------------------------------------
 # TODO:
