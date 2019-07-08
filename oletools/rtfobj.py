@@ -907,7 +907,23 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
             # http://www.kb.cert.org/vuls/id/921560
             if rtfobj.class_name == b'OLE2Link':
                 ole_color = 'red'
-                ole_column += '\nPossibly an exploit for the OLE2Link vulnerability (VU#921560, CVE-2017-0199)'
+                ole_column += '\nPossibly an exploit for the OLE2Link vulnerability (VU#921560, CVE-2017-0199)\n'
+                # https://bitbucket.org/snippets/Alexander_Hanel/7Adpp
+                found_list =  re.findall(r'[a-fA-F0-9\x0D\x0A]{128,}',data)
+                urls = []
+                for item in found_list:
+                    try:
+                        temp = item.replace("\x0D\x0A","").decode("hex")
+                    except:
+                        continue
+                    pat = re.compile(r'(?:[\x20-\x7E][\x00]){3,}')
+                    words = [w.decode('utf-16le') for w in pat.findall(temp)]
+                    for w in words:
+                        if "http" in w:
+                            urls.append(w)
+                urls = sorted(set(urls))
+                if urls:
+                    ole_column += 'URL extracted: ' + ', '.join(urls)
             # Detect Equation Editor exploit
             # https://www.kb.cert.org/vuls/id/421280/
             elif rtfobj.class_name.lower() == b'equation.3':
