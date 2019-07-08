@@ -501,6 +501,77 @@ class OleObject(object):
             self.extra_data = data[index+self.data_size:]
 
 
+class FakeFile(io.RawIOBase):
+    """ create file-like object from data without copying it
+
+    BytesIO is what I would like to use but it copies all the data. This class
+    does not. On the downside: data can only be read and seeked, not written.
+
+    Assume that given data is bytes (str in py2, bytes in py3).
+
+    See also (and maybe can put into common file with):
+    ppt_record_parser.IterStream, ooxml.ZipSubFile
+    """
+
+    def __init__(self, data):
+        """ create FakeFile with given bytes data """
+        super(FakeFile, self).__init__()
+        self.data = data   # this does not actually copy (python is lazy)
+        self.pos = 0
+        self.size = len(data)
+
+    def readable(self):
+        return True
+
+    def writable(self):
+        return False
+
+    def seekable(self):
+        return True
+
+    def readinto(self, target):
+        """ read into pre-allocated target """
+        n_data = min(len(target), self.size-self.pos)
+        if n_data == 0:
+            return 0
+        target[:n_data] = self.data[self.pos:self.pos+n_data]
+        self.pos += n_data
+        return n_data
+
+    def read(self, n_data=-1):
+        """ read and return data """
+        if self.pos >= self.size:
+            return bytes()
+        if n_data == -1:
+            n_data = self.size - self.pos
+        result = self.data[self.pos:self.pos+n_data]
+        self.pos += n_data
+        return result
+
+    def seek(self, pos, offset=io.SEEK_SET):
+        """ jump to another position in file """
+        # calc target position from self.pos, pos and offset
+        if offset == io.SEEK_SET:
+            new_pos = pos
+        elif offset == io.SEEK_CUR:
+            new_pos = self.pos + pos
+        elif offset == io.SEEK_END:
+            new_pos = self.size + pos
+        else:
+            raise ValueError("invalid offset {0}, need SEEK_* constant"
+                             .format(offset))
+        if new_pos < 0:
+            raise IOError('Seek beyond start of file not allowed')
+        self.pos = new_pos
+
+    def tell(self):
+        """ tell where in file we are positioned """
+        return self.pos
+
+
+# === FUNCTIONS ===============================================================
+
+
 def shorten_filename(fname, max_len):
     """Create filename shorter than max_len, trying to preserve suffix."""
     # simple cases:
@@ -651,74 +722,6 @@ def find_ole_in_ppt(filename):
     finally:
         if ppt_file is not None:
             ppt_file.close()
-
-
-class FakeFile(io.RawIOBase):
-    """ create file-like object from data without copying it
-
-    BytesIO is what I would like to use but it copies all the data. This class
-    does not. On the downside: data can only be read and seeked, not written.
-
-    Assume that given data is bytes (str in py2, bytes in py3).
-
-    See also (and maybe can put into common file with):
-    ppt_record_parser.IterStream, ooxml.ZipSubFile
-    """
-
-    def __init__(self, data):
-        """ create FakeFile with given bytes data """
-        super(FakeFile, self).__init__()
-        self.data = data   # this does not actually copy (python is lazy)
-        self.pos = 0
-        self.size = len(data)
-
-    def readable(self):
-        return True
-
-    def writable(self):
-        return False
-
-    def seekable(self):
-        return True
-
-    def readinto(self, target):
-        """ read into pre-allocated target """
-        n_data = min(len(target), self.size-self.pos)
-        if n_data == 0:
-            return 0
-        target[:n_data] = self.data[self.pos:self.pos+n_data]
-        self.pos += n_data
-        return n_data
-
-    def read(self, n_data=-1):
-        """ read and return data """
-        if self.pos >= self.size:
-            return bytes()
-        if n_data == -1:
-            n_data = self.size - self.pos
-        result = self.data[self.pos:self.pos+n_data]
-        self.pos += n_data
-        return result
-
-    def seek(self, pos, offset=io.SEEK_SET):
-        """ jump to another position in file """
-        # calc target position from self.pos, pos and offset
-        if offset == io.SEEK_SET:
-            new_pos = pos
-        elif offset == io.SEEK_CUR:
-            new_pos = self.pos + pos
-        elif offset == io.SEEK_END:
-            new_pos = self.size + pos
-        else:
-            raise ValueError("invalid offset {0}, need SEEK_* constant"
-                             .format(offset))
-        if new_pos < 0:
-            raise IOError('Seek beyond start of file not allowed')
-        self.pos = new_pos
-
-    def tell(self):
-        """ tell where in file we are positioned """
-        return self.pos
 
 
 def find_ole(filename, data, xml_parser=None):
