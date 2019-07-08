@@ -525,7 +525,7 @@ def shorten_filename(fname, max_len):
 def sanitize_filename(filename, replacement='_',
                       max_len=MAX_FILENAME_LENGTH):
     """
-    Return filename that is save to work with.
+    Return filename that is safe to work with.
 
     Removes path components, replaces all non-whitelisted characters (so output
     is always a pure-ascii string), replaces '..' and '  ' and shortens to
@@ -832,32 +832,23 @@ def find_customUI(xml_parser):
             yield customui_onload
 
 
-def process_file(filename, data, output_dir=None):
+def process_file(filename, data, output_dir):
     """ find embedded objects in given file
 
     if data is given (from xglob for encrypted zip files), then filename is
     not used for reading. If not (usual case), then data is read from filename
     on demand.
 
-    If output_dir is given and does not exist, it is created. If it is not
-    given, data is saved to same directory as the input file.
+    `output_dir` is created on demand.
     """
-    # sanitize filename, leave space for embedded filename part
-    sane_fname = sanitize_filename(filename, max_len=MAX_FILENAME_LENGTH-5) or\
-        'NONAME'
-    if output_dir:
-        if not os.path.isdir(output_dir):
-            log.info('creating output directory %s', output_dir)
-            os.mkdir(output_dir)
-
-        fname_prefix = os.path.join(output_dir, sane_fname)
-    else:
-        base_dir = os.path.dirname(filename)
-        fname_prefix = os.path.join(base_dir, sane_fname)
-
     # TODO: option to extract objects to files (false by default)
     print('-'*79)
     print('File: %r' % filename)
+
+    # sanitize filename, leave space for embedded filename part
+    sane_fname = sanitize_filename(filename, max_len=MAX_FILENAME_LENGTH-5) or \
+                 'NONAME'
+    fname_prefix = os.path.join(output_dir, sane_fname)
     index = 1
 
     # do not throw errors but remember them and try continue with other streams
@@ -913,12 +904,18 @@ def process_file(filename, data, output_dir=None):
                 print(u'Filename = "%s"' % opkg.filename)
                 print(u'Source path = "%s"' % opkg.src_path)
                 print(u'Temp path = "%s"' % opkg.temp_path)
+                fname = 'oleobj-extracted-file'
                 for embedded_fname in get_sane_embedded_filenames(
                         opkg.filename, opkg.src_path, opkg.temp_path,
-                        MAX_FILENAME_LENGTH - len(sane_fname) - 1, index):
+                        MAX_FILENAME_LENGTH - len(fname_prefix) - 1, index):
                     fname = fname_prefix + '_' + embedded_fname
                     if not os.path.isfile(fname):
                         break
+
+                # create output dir
+                if not os.path.isdir(output_dir):
+                    log.info('creating output directory %s', output_dir)
+                    os.mkdir(output_dir)
 
                 # dump
                 try:
@@ -1049,8 +1046,13 @@ def main(cmd_line_args=None):
         # ignore directory names stored in zip files:
         if container and filename.endswith('/'):
             continue
+
+        if options.output_dir:
+            output_dir = options.output_dir
+        else:
+            output_dir = os.path.dirname(filename)
         err_stream, err_dumping, did_dump = \
-            process_file(filename, data, options.output_dir)
+            process_file(filename, data, output_dir)
         any_err_stream |= err_stream
         any_err_dumping |= err_dumping
         any_did_dump |= did_dump
