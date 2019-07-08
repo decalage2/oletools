@@ -72,6 +72,7 @@ from oletools.ppt_record_parser import (is_ppt, PptFile,
                                         PptRecordExOleVbaActiveXAtom)
 from oletools.ooxml import XmlParser
 from oletools.common.io_encoding import ensure_stdout_handles_unicode
+from oletools import crypto
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:
@@ -842,7 +843,12 @@ def process_file(filename, data, output_dir):
     not used for reading. If not (usual case), then data is read from filename
     on demand.
 
+    If an error occurs, it is caught locally so analysis on the file can
+    proceed. Return values incidate whether there was any error.
+
     `output_dir` is created on demand.
+
+    :returns: err_stream, err_dumping, did_dump (all three booleans)
     """
     # TODO: option to extract objects to files (false by default)
     print('-'*79)
@@ -948,6 +954,53 @@ def process_file(filename, data, output_dir):
     return err_stream, err_dumping, did_dump
 
 
+def process_crypto_wrapper(filename, data, output_dir, passwords=None,
+                           crypto_nesting=0):
+    """
+    Wrapper around `process_file`, that also tries to decrypt file.
+
+    Same args and return values as `process_file`
+    """
+    try:
+        err_stream, err_dumping, did_dump = \
+            process_file(filename, data, output_dir)
+        log.debug('Checking for encryption')
+        if not crypto.is_encrypted(filename):
+            log.debug('No encryption found')
+            return err_stream, err_dumping, did_dump
+    except Exception:
+        log.debug('Checking for encryption (after exception)')
+        if not crypto.is_encrypted(filename):
+            raise
+    # we reach this point only if file is encrypted
+    # check if this is an encrypted file in an encrypted file in an ...
+    if crypto_nesting >= crypto.MAX_NESTING_DEPTH:
+        raise crypto.MaxCryptoNestingReached(crypto_nesting, filename)
+    decrypted_file = None
+    try:
+        log.debug('Checking encryption passwords {}'.format(options.password))
+        decrypted_file = crypto.decrypt(filename, passwords)
+        if decrypted_file is None:
+            log.error('Decrypt failed, run with debug output to get details')
+            raise crypto.WrongEncryptionPassword(filename)
+        # might still be encrypted, so call this again recursively
+        log.info('Working on decrypted file')
+        err_stream, err_dumping, did_dump = \
+            process_crypto_wrapper(decrypted_file, data, output_dir, passwords,
+                                   crypto_nesting+1)
+        return err_stream, err_dumping, did_dump
+    except Exception:
+        raise
+    finally:     # clean up
+        try:     # (maybe file was not yet created)
+            log.debug('Removing crypt temp file {}'.format(decrypted_file))
+            os.unlink(decrypted_file)
+        except Exception:
+            pass
+    # no idea what to return now
+    raise Exception('Programming error -- should never have reached this!')
+
+
 # === MAIN ====================================================================
 
 
@@ -984,6 +1037,8 @@ def parse_args(cmd_line_args=None):
                         default=DEFAULT_LOG_LEVEL,
                         help='logging level debug/info/warning/error/critical '
                              '(default=%(default)s)')
+    parser.add_argument('-p', '--passwords', type=str, nargs='*',
+                        help='Passwords to try when encryption is found.')
     parser.add_argument('input', nargs='*', type=existing_file, metavar='FILE',
                         help='Office files to parse (same as -i)')
 
@@ -1034,6 +1089,7 @@ def main(cmd_line_args=None):
                         format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
     log.setLevel(logging.NOTSET)
+    crypto.enable_logging()
     if options.loglevel == 'debug-olefile':
         olefile.enable_logging()
 
@@ -1055,7 +1111,8 @@ def main(cmd_line_args=None):
         else:
             output_dir = os.path.dirname(filename)
         err_stream, err_dumping, did_dump = \
-            process_file(filename, data, output_dir)
+            process_crypto_wrapper(filename, data, output_dir,
+                                   options.passwords)
         any_err_stream |= err_stream
         any_err_dumping |= err_dumping
         any_did_dump |= did_dump
