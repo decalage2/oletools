@@ -468,6 +468,10 @@ class RtfParser(object):
                     self.control_symbol(m)
                     self.index += len(m.group())
                     continue
+                # Otherwise, it may be empty so we skip it
+                if data_cropped == '\\ ':
+                    self.index += 1
+                    continue
             # Otherwise, this is plain text:
             # Use a regex to match all characters until the next brace or backslash:
             m = re_text.match(self.data, self.index)
