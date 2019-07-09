@@ -3443,9 +3443,9 @@ class VBA_Parser(object):
             try:
                 from pcodedmp import pcodedmp
             except Exception:
-                # This may happen with Pypy, because pcodedmp import win_unicode_console...
+                # This may happen with Pypy, because pcodedmp imports win_unicode_console...
                 # TODO: this is a workaround, we just ignore P-code
-                log.exception('Error when importing pcodedmp')
+                log.exception('Exception when importing pcodedmp')
                 self.pcodedmp_output = ''
                 return ''
             # logging is disabled after importing pcodedmp, need to re-enable it
