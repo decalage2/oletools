@@ -3442,10 +3442,11 @@ class VBA_Parser(object):
             # import pcodedmp here to avoid circular imports:
             try:
                 from pcodedmp import pcodedmp
-            except Exception:
+            except Exception as e:
                 # This may happen with Pypy, because pcodedmp imports win_unicode_console...
                 # TODO: this is a workaround, we just ignore P-code
-                log.exception('Exception when importing pcodedmp')
+                # TODO: here we just use log.warning, because the word "error" in the output makes some of the tests fail...
+                log.warning('Exception when importing pcodedmp: {}'.format(e))
                 self.pcodedmp_output = ''
                 return ''
             # logging is disabled after importing pcodedmp, need to re-enable it
