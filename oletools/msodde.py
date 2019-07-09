@@ -479,7 +479,7 @@ def process_doc(ole):
                      .format(sid, '[orphan]' if is_orphan else direntry.name,
                              'is stream of size {}'.format(direntry.size)
                              if is_stream else
-                             'no stream ({})'.format(direntry.entry_type)))
+                             'no stream ({})'.format(direntry.entry_type.encode('utf-8'))))
         if is_stream:
             new_parts = process_doc_stream(
                 ole._open(direntry.isectStart, direntry.size))
@@ -627,7 +627,7 @@ def field_is_blacklisted(contents):
     except ValueError:    # first word is no blacklisted command
         return False
     logger.debug('trying to match "{0}" to blacklist command {1}'
-                 .format(contents, FIELD_BLACKLIST[index]))
+                 .format(contents.encode('utf-8'), FIELD_BLACKLIST[index]))
     _, nargs_required, nargs_optional, sw_with_arg, sw_solo, sw_format \
         = FIELD_BLACKLIST[index]
 
