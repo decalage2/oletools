@@ -219,7 +219,7 @@ from __future__ import print_function
 # 2019-05-23 v0.55 PL: - added option --pcode to call pcodedmp and display P-code
 # 2019-06-05       PL: - added VBA stomping detection
 
-__version__ = '0.55.dev2'
+__version__ = '0.55.dev3'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -704,8 +704,9 @@ SUSPICIOUS_KEYWORDS = {
     'May run code from a DLL using Excel 4 Macros (XLM/XLF)':
         ('REGISTER',),
     'May inject code into another process':
-        ('CreateThread', 'VirtualAlloc', # (issue #9) suggested by Davy Douhine - used by MSF payload
-        'VirtualAllocEx', 'RtlMoveMemory', 'WriteProcessMemory'
+        ('CreateThread', 'CreateUserThread', 'VirtualAlloc', # (issue #9) suggested by Davy Douhine - used by MSF payload
+        'VirtualAllocEx', 'RtlMoveMemory', 'WriteProcessMemory',
+        'SetContextThread', 'QueueApcThread', 'WriteVirtualMemory', 'VirtualProtect'
         ),
     'May run a shellcode in memory':
         ('EnumSystemLanguageGroupsW?', # Used by Hancitor in Oct 2016
