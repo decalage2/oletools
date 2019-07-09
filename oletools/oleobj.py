@@ -163,13 +163,21 @@ def get_logger(name, level=logging.CRITICAL+1):
 log = get_logger('oleobj')     # pylint: disable=invalid-name
 
 
-def enable_logging():
+def enable_logging(olefile_logging=False):
     """
     Enable logging for this module (disabled by default).
+
     This will set the module-specific logger level to NOTSET, which
     means the main application controls the actual logging level.
+
+    Also enables logging in crypto and optionally in olefile with param
+    `olefile_logging`.
     """
     log.setLevel(logging.NOTSET)
+    crypto.enable_logging()
+    # todo: enable logging in ooxml and ppt_record_parser as well
+    if olefile_logging:
+        olefile.enable_logging()
 
 
 # === CONSTANTS ===============================================================
@@ -959,8 +967,20 @@ def process_crypto_wrapper(filename, data, output_dir, passwords=None,
     """
     Wrapper around `process_file`, that also tries to decrypt file.
 
-    Same args and return values as `process_file`
+    Args `filename`, `data` and `output_dir` same as for
+    :py:func:`process_file`. Arg `passwords` is forwarded to
+    :py:func:`crypt.decrypt_file`, param `crypto_nesting` prevents too deep
+    recursions into decrypted files.
+
+    Returns `(err_stream, err_dumping, did_dump)` just like `process_file`.
+
+    Failure to decrypt an encrypted file is treated like a `err_stream`.
+    Successfull decryption like `did_dump`, decrypted file is named and treated
+    like other dumps from :py:func:`process_file`.
     """
+    err_stream = False
+    err_dumping = False
+    did_dump = False
     try:
         err_stream, err_dumping, did_dump = \
             process_file(filename, data, output_dir)
@@ -976,29 +996,31 @@ def process_crypto_wrapper(filename, data, output_dir, passwords=None,
     # check if this is an encrypted file in an encrypted file in an ...
     if crypto_nesting >= crypto.MAX_NESTING_DEPTH:
         raise crypto.MaxCryptoNestingReached(crypto_nesting, filename)
-    decrypted_file = None
-    try:
-        log.debug('Checking encryption passwords {}'.format(options.password))
-        decrypted_file = crypto.decrypt(filename, passwords)
-        if decrypted_file is None:
-            log.error('Decrypt failed, run with debug output to get details')
-            raise crypto.WrongEncryptionPassword(filename)
-        # might still be encrypted, so call this again recursively
-        log.info('Working on decrypted file')
-        err_stream, err_dumping, did_dump = \
-            process_crypto_wrapper(decrypted_file, data, output_dir, passwords,
-                                   crypto_nesting+1)
+
+    # decrypt
+    if not os.path.isdir(output_dir):
+        log.info('creating output directory %s', output_dir)
+        os.mkdir(output_dir)
+    prefix = '{}_decrypt-{}'.format(sanitize_filename(filename),
+                                   crypto_nesting or '')   # (avoid the '0')
+    log.debug('Checking encryption passwords {}'.format(passwords))
+    decrypted_file = crypto.decrypt(filename, passwords,
+                                    dir=output_dir, prefix=prefix)
+    if decrypted_file is None:
+        log.error('Decrypt failed, run with debug output to get details')
+        err_stream = True
         return err_stream, err_dumping, did_dump
-    except Exception:
-        raise
-    finally:     # clean up
-        try:     # (maybe file was not yet created)
-            log.debug('Removing crypt temp file {}'.format(decrypted_file))
-            os.unlink(decrypted_file)
-        except Exception:
-            pass
-    # no idea what to return now
-    raise Exception('Programming error -- should never have reached this!')
+
+    # might still be encrypted, so call this again recursively
+    log.info('Working on decrypted file')
+    new_err_stream, new_err_dumping, new_did_dump = \
+        process_crypto_wrapper(decrypted_file, data, output_dir, passwords,
+                               crypto_nesting+1)
+    err_stream |= new_err_stream
+    err_dumping |= new_err_dumping
+    did_dump = True        # we treat the decrypted result like we did dump
+
+    return err_stream, err_dumping, did_dump
 
 
 # === MAIN ====================================================================
@@ -1088,10 +1110,7 @@ def main(cmd_line_args=None):
     logging.basicConfig(level=LOG_LEVELS[options.loglevel], stream=sys.stdout,
                         format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
-    log.setLevel(logging.NOTSET)
-    crypto.enable_logging()
-    if options.loglevel == 'debug-olefile':
-        olefile.enable_logging()
+    enable_logging(options.loglevel == 'debug-olefile')
 
     # remember if there was a problem and continue with other data
     any_err_stream = False
