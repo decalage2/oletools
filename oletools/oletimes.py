@@ -78,8 +78,8 @@ if not _parent_dir in sys.path:
 
 import olefile
 from oletools.thirdparty import xglob
-from oletools.thirdparty.prettytable import prettytable
-
+import colorclass
+from oletools.thirdparty.tablestream import tablestream
 
 # === FUNCTIONS ==============================================================
 
@@ -97,13 +97,14 @@ def dt2str(dt):
 
 
 def process_ole(ole):
-    t = prettytable.PrettyTable(['Stream/Storage name', 'Modification Time', 'Creation Time'])
-    t.align = 'l'
-    t.max_width = 26
-    t.add_row(('Root', dt2str(ole.root.getmtime()), dt2str(ole.root.getctime())))
+    table = tablestream.TableStream(column_width=[39, 26, 26],
+            header_row=('Stream/Storage name', 'Modification Time', 'Creation Time'),
+            style=tablestream.TableStyleSlim)
+    table.write_row(['Root', dt2str(ole.root.getmtime()), dt2str(ole.root.getctime())])
     for obj in ole.listdir(streams=True, storages=True):
-        t.add_row((repr('/'.join(obj)), dt2str(ole.getmtime(obj)), dt2str(ole.getctime(obj))))
-    print(t)
+        table.write_row([repr('/'.join(obj)), dt2str(ole.getmtime(obj)), dt2str(ole.getctime(obj))])
+    table.close()
+    print('')
 
 
 # === MAIN ===================================================================

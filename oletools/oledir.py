@@ -178,18 +178,6 @@ def main():
             ole = olefile.OleFileIO(filename)
         # ole.dumpdirectory()
 
-        # t = prettytable.PrettyTable(('id', 'Status', 'Type', 'Name', 'Left', 'Right', 'Child', '1st Sect', 'Size'))
-        # t.align = 'l'
-        # t.max_width['id'] = 4
-        # t.max_width['Status'] = 6
-        # t.max_width['Type'] = 10
-        # t.max_width['Name'] = 10
-        # t.max_width['Left'] = 5
-        # t.max_width['Right'] = 5
-        # t.max_width['Child'] = 5
-        # t.max_width['1st Sect'] = 8
-        # t.max_width['Size'] = 6
-
         table = tablestream.TableStream(column_width=[4, 6, 7, 22, 5, 5, 5, 8, 6],
             header_row=('id', 'Status', 'Type', 'Name', 'Left', 'Right', 'Child', '1st Sect', 'Size'),
             style=tablestream.TableStyleSlim)
