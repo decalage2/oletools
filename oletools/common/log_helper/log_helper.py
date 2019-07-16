@@ -44,6 +44,7 @@ General logging helpers
 from ._json_formatter import JsonFormatter
 from ._logger_adapter import OletoolsLoggerAdapter
 from . import _root_logger_wrapper
+from ..io_encoding import ensure_stdout_handles_unicode
 import logging
 import sys
 
@@ -91,6 +92,9 @@ class LogHelper:
         """
         if self._is_enabled:
             raise ValueError('re-enabling logging. Not sure whether that is ok...')
+
+        if stream in (None, sys.stdout):
+            ensure_stdout_handles_unicode()
 
         log_level = LOG_LEVELS[level]
         logging.basicConfig(level=log_level, format=log_format, stream=stream)
