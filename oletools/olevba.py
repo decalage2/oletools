@@ -4082,8 +4082,6 @@ def main(cmd_line_args=None):
     in process_args. Per default (cmd_line_args=None), sys.argv is used. Option
     mainly added for unit-testing
     """
-    ensure_stdout_handles_unicode()
-
     options, args = parse_args(cmd_line_args)
 
     # provide info about tool and its version
