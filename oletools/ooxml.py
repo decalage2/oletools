@@ -690,12 +690,11 @@ class XmlParser(object):
 
 
 def test():
-    """ Main function, called when running file as script
-
-    see module doc for more info
     """
-    from oletools.common.io_encoding import ensure_stdout_handles_unicode
-    ensure_stdout_handles_unicode()
+    Test xml parsing; called when running this file as a script.
+
+    Prints every element found in input file (to be given as command line arg).
+    """
     log_helper.enable_logging(False, 'debug')
     if len(sys.argv) != 2:
         print(u'To test this code, give me a single file as arg')
