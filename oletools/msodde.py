@@ -363,7 +363,7 @@ def process_doc_field(data):
     """ check if field instructions start with DDE
 
     expects unicode input, returns unicode output (empty if not dde) """
-    logger.debug('processing field \'{0}\''.format(data))
+    logger.debug(u'processing field \'{0}\''.format(data))
 
     if data.lstrip().lower().startswith(u'dde'):
         return data
@@ -626,7 +626,7 @@ def field_is_blacklisted(contents):
         index = FIELD_BLACKLIST_CMDS.index(words[0].lower())
     except ValueError:    # first word is no blacklisted command
         return False
-    logger.debug('trying to match "{0}" to blacklist command {1}'
+    logger.debug(u'trying to match "{0}" to blacklist command {1}'
                  .format(contents, FIELD_BLACKLIST[index]))
     _, nargs_required, nargs_optional, sw_with_arg, sw_solo, sw_format \
         = FIELD_BLACKLIST[index]
@@ -638,12 +638,12 @@ def field_is_blacklisted(contents):
             break
         nargs += 1
     if nargs < nargs_required:
-        logger.debug('too few args: found {0}, but need at least {1} in "{2}"'
+        logger.debug(u'too few args: found {0}, but need at least {1} in "{2}"'
                      .format(nargs, nargs_required, contents))
         return False
     if nargs > nargs_required + nargs_optional:
-        logger.debug('too many args: found {0}, but need at most {1}+{2} in '
-                     '"{3}"'
+        logger.debug(u'too many args: found {0}, but need at most {1}+{2} in '
+                     u'"{3}"'
                      .format(nargs, nargs_required, nargs_optional, contents))
         return False
 
@@ -653,14 +653,14 @@ def field_is_blacklisted(contents):
     for word in words[1+nargs:]:
         if expect_arg:            # this is an argument for the last switch
             if arg_choices and (word not in arg_choices):
-                logger.debug('Found invalid switch argument "{0}" in "{1}"'
+                logger.debug(u'Found invalid switch argument "{0}" in "{1}"'
                              .format(word, contents))
                 return False
             expect_arg = False
             arg_choices = []   # in general, do not enforce choices
             continue           # "no further questions, your honor"
         elif not FIELD_SWITCH_REGEX.match(word):
-            logger.debug('expected switch, found "{0}" in "{1}"'
+            logger.debug(u'expected switch, found "{0}" in "{1}"'
                          .format(word, contents))
             return False
         # we want a switch and we got a valid one
@@ -682,7 +682,7 @@ def field_is_blacklisted(contents):
             if 'numeric' in sw_format:
                 arg_choices = []  # too many choices to list them here
         else:
-            logger.debug('unexpected switch {0} in "{1}"'
+            logger.debug(u'unexpected switch {0} in "{1}"'
                          .format(switch, contents))
             return False
 
@@ -900,7 +900,7 @@ def process_excel_xml(filepath):
                 break
         if formula is None:
             continue
-        logger.debug('found cell with formula {0}'.format(formula))
+        logger.debug(u'found cell with formula {0}'.format(formula))
         match = re.match(XML_DDE_FORMAT, formula)
         if match:
             dde_links.append(u' '.join(match.groups()[:2]))
