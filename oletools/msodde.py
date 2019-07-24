@@ -99,9 +99,10 @@ from oletools.common.log_helper import log_helper
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
 # 2018-10-25       CH: - detect encryption and raise error if detected
 # 2019-03-25       CH: - added decryption of password-protected files
+# 2019-07-17 v0.55 CH: - fixed issue #267, unicode error on Python 2
 
 
-__version__ = '0.54.2'
+__version__ = '0.55.dev3'
 
 # -----------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these
