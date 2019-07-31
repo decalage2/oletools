@@ -3822,7 +3822,7 @@ class VBA_Parser_CLI(VBA_Parser):
     def process_file_json(self, show_decoded_strings=False,
                           display_code=True, hide_attributes=True,
                           vba_code_only=False, show_deobfuscated_code=False,
-                          deobfuscate=False):
+                          deobfuscate=False, show_pcode=False):
         """
         Process a single file
 
@@ -3837,6 +3837,7 @@ class VBA_Parser_CLI(VBA_Parser):
         :param hide_attributes: bool, if True the first lines starting with "Attribute VB" are hidden (default)
         :param show_deobfuscated_code: bool, if True add deobfuscated code to result
         :param deobfuscate: bool, if True attempt to deobfuscate VBA expressions (slow)
+        :param show_pcode: bool, if True add extracted pcode to result
         """
         #TODO: fix conflicting parameters (?)
 
@@ -3854,6 +3855,7 @@ class VBA_Parser_CLI(VBA_Parser):
         result['analysis'] = None
         result['code_deobfuscated'] = None
         result['do_deobfuscate'] = deobfuscate
+        result['show_pcode'] = show_pcode
 
         try:
             #TODO: handle olefile errors, when an OLE file is malformed
@@ -3882,6 +3884,8 @@ class VBA_Parser_CLI(VBA_Parser):
                                                                   deobfuscate)
                 if show_deobfuscated_code:
                     result['code_deobfuscated'] = self.reveal()
+                if show_pcode:
+                    result['pcode'] = self.extract_pcode()
             result['macros'] = macros
             result['json_conversion_successful'] = True
         except Exception as exc:
@@ -4063,7 +4067,7 @@ def process_file(filename, data, container, options, crypto_nesting=0):
                          display_code=options.display_code,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
                          show_deobfuscated_code=options.show_deobfuscated_code,
-                         deobfuscate=options.deobfuscate))
+                         deobfuscate=options.deobfuscate, pcode=pcode))
         else:  # (should be impossible)
             raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
 
