@@ -3835,6 +3835,7 @@ class VBA_Parser_CLI(VBA_Parser):
         :param global_analysis: bool, if True all modules are merged for a single analysis (default),
                                 otherwise each module is analyzed separately (old behaviour)
         :param hide_attributes: bool, if True the first lines starting with "Attribute VB" are hidden (default)
+        :param show_deobfuscated_code: bool, if True add deobfuscated code to result
         :param deobfuscate: bool, if True attempt to deobfuscate VBA expressions (slow)
         """
         #TODO: fix conflicting parameters (?)
