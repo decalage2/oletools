@@ -2571,7 +2571,8 @@ class VBA_Parser(object):
     Class to parse MS Office files, to detect VBA macros and extract VBA source code
     """
 
-    def __init__(self, filename, data=None, container=None, relaxed=False, encoding=DEFAULT_API_ENCODING):
+    def __init__(self, filename, data=None, container=None, relaxed=False, encoding=DEFAULT_API_ENCODING,
+                 disable_pcode=False):
         """
         Constructor for VBA_Parser
 
@@ -2629,6 +2630,7 @@ class VBA_Parser(object):
         self.encoding = encoding
         self.xlm_macros = []
         #: Output from pcodedmp, disassembly of the VBA P-code
+        self.disable_pcode = disable_pcode
         self.pcodedmp_output = None
         #: Flag set to True/False if VBA stomping detected
         self.vba_stomping_detected = None
@@ -2972,7 +2974,8 @@ class VBA_Parser(object):
         """
         self.ole_subfiles.append(VBA_Parser(filename, data, container,
                                             relaxed=self.relaxed,
-                                            encoding=self.encoding))
+                                            encoding=self.encoding,
+                                            disable_pcode=self.disable_pcode))
 
     def find_vba_projects(self):
         """
@@ -3474,6 +3477,9 @@ class VBA_Parser(object):
         :rtype: str
         """
         # only run it once:
+        if self.disable_pcode:
+            self.pcodedmp_output = ''
+            return ''
         if self.pcodedmp_output is None:
             log.debug('Calling pcodedmp to extract and disassemble the VBA P-code')
             # import pcodedmp here to avoid circular imports:
@@ -4019,6 +4025,8 @@ def parse_args(cmd_line_args=None):
     parser.add_argument('--show-pcode', dest="show_pcode", action="store_true",
                         default=False,
                         help="Show disassembled P-code (using pcodedmp)")
+    parser.add_argument('--no-pcode', action='store_true',
+                        help='Disable extraction and analysis of pcode')
 
     options = parser.parse_args(cmd_line_args)
 
@@ -4048,7 +4056,8 @@ def process_file(filename, data, container, options, crypto_nesting=0):
     try:
         # Open the file
         vba_parser = VBA_Parser_CLI(filename, data=data, container=container,
-                                    relaxed=options.relaxed)
+                                    relaxed=options.relaxed,
+                                    disable_pcode=options.no_pcode)
 
         if options.output_mode == 'detailed':
             # fully detailed output
@@ -4067,7 +4076,7 @@ def process_file(filename, data, container, options, crypto_nesting=0):
                          display_code=options.display_code,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
                          show_deobfuscated_code=options.show_deobfuscated_code,
-                         deobfuscate=options.deobfuscate, pcode=pcode))
+                         deobfuscate=options.deobfuscate, show_pcode=options.show_pcode))
         else:  # (should be impossible)
             raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
 
