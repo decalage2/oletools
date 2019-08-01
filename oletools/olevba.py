@@ -2734,9 +2734,7 @@ class VBA_Parser(object):
                     with z.open(subfile) as file_handle:
                         ole_data = file_handle.read()
                     try:
-                        self.ole_subfiles.append(
-                            VBA_Parser(filename=subfile, data=ole_data,
-                                       relaxed=self.relaxed))
+                        self.append_subfile(filename=subfile, data=ole_data)
                     except OlevbaBaseException as exc:
                         if self.relaxed:
                             log.info('%s is not a valid OLE file (%s)' % (subfile, exc))
@@ -2785,9 +2783,7 @@ class VBA_Parser(object):
                     # TODO: handle different offsets => separate function
                     try:
                         ole_data = mso_file_extract(mso_data)
-                        self.ole_subfiles.append(
-                            VBA_Parser(filename=fname, data=ole_data,
-                                       relaxed=self.relaxed))
+                        self.append_subfile(filename=fname, data=ole_data)
                     except OlevbaBaseException as exc:
                         if self.relaxed:
                             log.info('Error parsing subfile {0}: {1}'
@@ -2832,9 +2828,7 @@ class VBA_Parser(object):
                     for bindata in pkgpart.iterfind(TAG_PKGBINDATA):
                         try:
                             ole_data = binascii.a2b_base64(bindata.text)
-                            self.ole_subfiles.append(
-                                VBA_Parser(filename=fname, data=ole_data,
-                                           relaxed=self.relaxed))
+                            self.append_subfile(filename=fname, data=ole_data)
                         except OlevbaBaseException as exc:
                             if self.relaxed:
                                 log.info('Error parsing subfile {0}: {1}'
@@ -2905,9 +2899,7 @@ class VBA_Parser(object):
 
                         # TODO: check if it is actually an OLE file
                         # TODO: get the MSO filename from content_location?
-                        self.ole_subfiles.append(
-                            VBA_Parser(filename=fname, data=ole_data,
-                                       relaxed=self.relaxed))
+                        self.append_subfile(filename=fname, data=ole_data)
                     except OlevbaBaseException as exc:
                         if self.relaxed:
                             log.info('%s does not contain a valid OLE file (%s)'
@@ -2946,8 +2938,7 @@ class VBA_Parser(object):
         try:
             ppt = ppt_parser.PptParser(self.ole_file, fast_fail=True)
             for vba_data in ppt.iter_vba_data():
-                self.ole_subfiles.append(VBA_Parser(None, vba_data,
-                                                    container='PptParser'))
+                self.append_subfile(None, vba_data, container='PptParser')
             log.info('File is PPT')
             self.ole_file.close()  # just in case
             self.ole_file = None   # required to make other methods look at ole_subfiles
@@ -2975,6 +2966,13 @@ class VBA_Parser(object):
         # set type only if parsing succeeds
         self.type = TYPE_TEXT
 
+    def append_subfile(self, filename, data, container=None):
+        """
+        Create sub-parser for given subfile/data and append to subfiles.
+        """
+        self.ole_subfiles.append(VBA_Parser(filename, data, container,
+                                            relaxed=self.relaxed,
+                                            encoding=self.encoding))
 
     def find_vba_projects(self):
         """
