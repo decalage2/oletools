@@ -262,7 +262,7 @@ from io import BytesIO, StringIO
 import math
 import zipfile
 import re
-import optparse
+import argparse
 import binascii
 import base64
 import zlib
@@ -523,7 +523,7 @@ class UnexpectedDataError(OlevbaBaseException):
 # return codes
 RETURN_OK             = 0
 RETURN_WARNINGS       = 1  # (reserved, not used yet)
-RETURN_WRONG_ARGS     = 2  # (fixed, built into optparse)
+RETURN_WRONG_ARGS     = 2  # (fixed, built into argparse)
 RETURN_FILE_NOT_FOUND = 3
 RETURN_XGLOB_ERR      = 4
 RETURN_OPEN_ERROR     = 5
@@ -3943,57 +3943,82 @@ def parse_args(cmd_line_args=None):
         }
 
     usage = 'usage: olevba [options] <filename> [filename2 ...]'
-    parser = optparse.OptionParser(usage=usage)
-    # parser.add_option('-o', '--outfile', dest='outfile',
+    parser = argparse.ArgumentParser(usage=usage)
+    parser.add_argument('filenames', nargs='*', help='Files to analyze')
+    # parser.add_argument('-o', '--outfile', dest='outfile',
     #     help='output file')
-    # parser.add_option('-c', '--csv', dest='csv',
+    # parser.add_argument('-c', '--csv', dest='csv',
     #     help='export results to a CSV file')
-    parser.add_option("-r", action="store_true", dest="recursive",
-                      help='find files recursively in subdirectories.')
-    parser.add_option("-z", "--zip", dest='zip_password', type='str', default=None,
-                      help='if the file is a zip archive, open all files from it, using the provided password.')
-    parser.add_option("-p", "--password", type='str', action='append',
-                      default=[],
-                      help='if encrypted office files are encountered, try '
-                           'decryption with this password. May be repeated.')
-    parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
-                      help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
-    # output mode; could make this even simpler with add_option(type='choice') but that would make
-    # cmd line interface incompatible...
-    modes = optparse.OptionGroup(parser, title='Output mode (mutually exclusive)')
-    modes.add_option("-t", '--triage', action="store_const", dest="output_mode",
-                     const='triage', default='unspecified',
-                     help='triage mode, display results as a summary table (default for multiple files)')
-    modes.add_option("-d", '--detailed', action="store_const", dest="output_mode",
-                     const='detailed', default='unspecified',
-                     help='detailed mode, display full results (default for single file)')
-    modes.add_option("-j", '--json', action="store_const", dest="output_mode",
-                     const='json', default='unspecified',
-                     help='json mode, detailed in json format (never default)')
-    parser.add_option_group(modes)
-    parser.add_option("-a", '--analysis', action="store_false", dest="display_code", default=True,
-                      help='display only analysis results, not the macro source code')
-    parser.add_option("-c", '--code', action="store_true", dest="vba_code_only", default=False,
-                      help='display only VBA source code, do not analyze it')
-    parser.add_option("--decode", action="store_true", dest="show_decoded_strings",
-                      help='display all the obfuscated strings with their decoded content (Hex, Base64, StrReverse, Dridex, VBA).')
-    parser.add_option("--attr", action="store_false", dest="hide_attributes", default=True,
-                      help='display the attribute lines at the beginning of VBA source code')
-    parser.add_option("--reveal", action="store_true", dest="show_deobfuscated_code",
-                      help='display the macro source code after replacing all the obfuscated strings by their decoded content.')
-    parser.add_option('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
-                            help="logging level debug/info/warning/error/critical (default=%default)")
-    parser.add_option('--deobf', dest="deobfuscate", action="store_true", default=False,
-                            help="Attempt to deobfuscate VBA expressions (slow)")
-    parser.add_option('--relaxed', dest="relaxed", action="store_true", default=False,
-                            help="Do not raise errors if opening of substream fails")
-    parser.add_option('--pcode', dest="pcode", action="store_true", default=False,
-                            help="Disassemble and display the P-code (using pcodedmp)")
+    parser.add_argument("-r", action="store_true", dest="recursive",
+                        help='find files recursively in subdirectories.')
+    parser.add_argument("-z", "--zip", dest='zip_password', type=str,
+                        default=None,
+                        help='if the file is a zip archive, open all files '
+                             'from it, using the provided password.')
+    parser.add_argument("-p", "--password", type=str, action='append',
+                        default=[],
+                        help='if encrypted office files are encountered, try '
+                             'decryption with this password. May be repeated.')
+    parser.add_argument("-f", "--zipfname", dest='zip_fname', type=str,
+                        default='*',
+                        help='if the file is a zip archive, file(s) to be '
+                             'opened within the zip. Wildcards * and ? are '
+                             'supported. (default: %(default)s)')
+    modes = parser.add_argument_group(title='Output mode (mutually exclusive)')
+    modes.add_argument("-t", '--triage', action="store_const",
+                       dest="output_mode", const='triage',
+                       default='unspecified',
+                       help='triage mode, display results as a summary table '
+                            '(default for multiple files)')
+    modes.add_argument("-d", '--detailed', action="store_const",
+                       dest="output_mode", const='detailed',
+                       default='unspecified',
+                       help='detailed mode, display full results (default for '
+                            'single file)')
+    modes.add_argument("-j", '--json', action="store_const",
+                       dest="output_mode", const='json', default='unspecified',
+                       help='json mode, detailed in json format '
+                            '(never default)')
+    parser.add_argument("-a", '--analysis', action="store_false",
+                        dest="display_code", default=True,
+                        help='display only analysis results, not the macro '
+                             'source code')
+    parser.add_argument("-c", '--code', action="store_true",
+                        dest="vba_code_only", default=False,
+                        help='display only VBA source code, do not analyze it')
+    parser.add_argument("--decode", action="store_true",
+                        dest="show_decoded_strings",
+                        help='display all the obfuscated strings with their '
+                             'decoded content (Hex, Base64, StrReverse, '
+                             'Dridex, VBA).')
+    parser.add_argument("--attr", action="store_false", dest="hide_attributes",
+                        default=True,
+                        help='display the attribute lines at the beginning of '
+                             'VBA source code')
+    parser.add_argument("--reveal", action="store_true",
+                        dest="show_deobfuscated_code",
+                        help='display the macro source code after replacing '
+                             'all the obfuscated strings by their decoded '
+                             'content.')
+    parser.add_argument('-l', '--loglevel', dest="loglevel", action="store",
+                        default=DEFAULT_LOG_LEVEL,
+                        help='logging level debug/info/warning/error/critical '
+                             '(default=%(default)s)')
+    parser.add_argument('--deobf', dest="deobfuscate", action="store_true",
+                        default=False,
+                        help="Attempt to deobfuscate VBA expressions (slow)")
+    parser.add_argument('--relaxed', dest="relaxed", action="store_true",
+                        default=False,
+                        help='Do not raise errors if opening of substream '
+                             'fails')
+    parser.add_argument('--pcode', dest="pcode", action="store_true",
+                        default=False,
+                        help="Disassemble and display the P-code (using pcodedmp)")
 
-    (options, args) = parser.parse_args(cmd_line_args)
+    options = parser.parse_args(cmd_line_args)
 
     # Print help if no arguments are passed
-    if len(args) == 0:
+    if len(options.filenames) == 0:
         # print banner with version
         python_version = '%d.%d.%d' % sys.version_info[0:3]
         print('olevba %s on Python %s - http://decalage.info/python/oletools' %
@@ -4004,7 +4029,7 @@ def parse_args(cmd_line_args=None):
 
     options.loglevel = LOG_LEVELS[options.loglevel]
 
-    return options, args
+    return options
 
 
 def process_file(filename, data, container, options, crypto_nesting=0):
@@ -4119,7 +4144,7 @@ def main(cmd_line_args=None):
     in process_args. Per default (cmd_line_args=None), sys.argv is used. Option
     mainly added for unit-testing
     """
-    options, args = parse_args(cmd_line_args)
+    options = parse_args(cmd_line_args)
 
     # provide info about tool and its version
     if options.output_mode == 'json':
@@ -4148,7 +4173,7 @@ def main(cmd_line_args=None):
     # ignore directory names stored in zip files:
     all_input_info = tuple((container, filename, data) for
                            container, filename, data in xglob.iter_files(
-                               args, recursive=options.recursive,
+                               options.filenames, recursive=options.recursive,
                                zip_password=options.zip_password,
                                zip_fname=options.zip_fname)
                            if not (container and filename.endswith('/')))
