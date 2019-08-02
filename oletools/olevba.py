@@ -4101,8 +4101,6 @@ def process_file(filename, data, container, options, crypto_nesting=0):
         log.info('Working on decrypted file')
         return process_file(decrypted_file, data, container or filename,
                             options, crypto_nesting+1)
-    except Exception:
-        raise
     finally:     # clean up
         try:
             log.debug('Removing crypt temp file {}'.format(decrypted_file))
