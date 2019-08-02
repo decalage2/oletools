@@ -4180,8 +4180,6 @@ def main(cmd_line_args=None):
     if options.show_deobfuscated_code and not options.deobfuscate:
         log.debug('set --deobf because --reveal was set')
         options.deobfuscate = True
-    if options.output_mode == 'triage' and options.show_deobfuscated_code:
-        log.debug('ignoring option --reveal in triage output mode')
 
     # gather info on all files that must be processed
     # ignore directory names stored in zip files:
@@ -4198,6 +4196,12 @@ def main(cmd_line_args=None):
             options.output_mode = 'detailed'
         else:
             options.output_mode = 'triage'
+
+    if options.output_mode == 'triage':
+        if options.show_deobfuscated_code:
+            log.debug('ignoring option --reveal in triage output mode')
+        if options.show_pcode:
+            log.debug('ignoring option --show-pcode in triage output mode')
 
     # Column headers for triage mode
     if options.output_mode == 'triage':
