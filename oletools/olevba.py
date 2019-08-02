@@ -4040,6 +4040,9 @@ def parse_args(cmd_line_args=None):
         parser.print_help()
         sys.exit(RETURN_WRONG_ARGS)
 
+    if options.show_pcode and options.no_pcode:
+        parser.error('You cannot combine options --no-pcode and --show-pcode')
+
     options.loglevel = LOG_LEVELS[options.loglevel]
 
     return options
