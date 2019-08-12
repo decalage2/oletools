@@ -217,9 +217,8 @@ from __future__ import print_function
 # 2019-03-25       CH: - added decryption of password-protected files
 # 2019-04-09       PL: - decompress_stream accepts bytes (issue #422)
 # 2019-05-23 v0.55 PL: - added option --pcode to call pcodedmp and display P-code
-# 2019-06-05       PL: - added VBA stomping detection
 
-__version__ = '0.55.dev3'
+__version__ = '0.55.dev1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -287,6 +286,7 @@ except ImportError:
                                + "or http://effbot.org/zone/element-index.htm")
 
 import colorclass
+from pcodedmp import pcodedmp
 
 # On Windows, colorclass needs to be enabled:
 if os.name == 'nt':
@@ -704,9 +704,8 @@ SUSPICIOUS_KEYWORDS = {
     'May run code from a DLL using Excel 4 Macros (XLM/XLF)':
         ('REGISTER',),
     'May inject code into another process':
-        ('CreateThread', 'CreateUserThread', 'VirtualAlloc', # (issue #9) suggested by Davy Douhine - used by MSF payload
-        'VirtualAllocEx', 'RtlMoveMemory', 'WriteProcessMemory',
-        'SetContextThread', 'QueueApcThread', 'WriteVirtualMemory', 'VirtualProtect'
+        ('CreateThread', 'VirtualAlloc', # (issue #9) suggested by Davy Douhine - used by MSF payload
+        'VirtualAllocEx', 'RtlMoveMemory', 'WriteProcessMemory'
         ),
     'May run a shellcode in memory':
         ('EnumSystemLanguageGroupsW?', # Used by Hancitor in Oct 2016
@@ -2589,10 +2588,6 @@ class VBA_Parser(object):
         #: Encoding for VBA source code and strings returned by all methods
         self.encoding = encoding
         self.xlm_macros = []
-        #: Output from pcodedmp, disassembly of the VBA P-code
-        self.pcodedmp_output = None
-        #: Flag set to True/False if VBA stomping detected
-        self.vba_stomping_detected = None
 
         # if filename is None:
         #     if isinstance(_file, basestring):
@@ -3096,7 +3091,7 @@ class VBA_Parser(object):
                         log.debug('Trace:', exc_trace=True)
                     else:
                         raise SubstreamOpenError(self.filename, d.name, exc)
-        if self.detect_xlm_macros():
+        if (not self.no_xlm) and self.detect_xlm_macros():
             self.contains_macros = True
         return self.contains_macros
 
@@ -3208,15 +3203,6 @@ class VBA_Parser(object):
                 for line in self.xlm_macros:
                     vba_code += "' " + line + '\n'
                 yield ('xlm_macro', 'xlm_macro', 'xlm_macro.txt', vba_code)
-            # Analyse the VBA P-code to detect VBA stomping:
-            # If stomping is detected, add a fake VBA module with the P-code as source comments
-            # so that VBA_Scanner can find keywords and IOCs in it
-            if self.detect_vba_stomping():
-                vba_code = ''
-                for line in self.pcodedmp_output.splitlines():
-                    vba_code += "' " + line + '\n'
-                yield ('VBA P-code', 'VBA P-code', 'VBA_P-code.txt', vba_code)
-
 
     def extract_all_macros(self):
         """
@@ -3256,13 +3242,6 @@ class VBA_Parser(object):
             # Analyze the whole code at once:
             scanner = VBA_Scanner(self.vba_code_all_modules)
             self.analysis_results = scanner.scan(show_decoded_strings, deobfuscate)
-            if self.detect_vba_stomping():
-                log.debug('adding VBA stomping to suspicious keywords')
-                keyword = 'VBA Stomping'
-                description = 'VBA Stomping was detected: the VBA source code and P-code are different, '\
-                    'this may have been used to hide malicious code'
-                scanner.suspicious_keywords.append((keyword, description))
-                scanner.results.append(('Suspicious', keyword, description))
             autoexec, suspicious, iocs, hexstrings, base64strings, dridex, vbastrings = scanner.scan_summary()
             self.nb_autoexec += autoexec
             self.nb_suspicious += suspicious
@@ -3429,136 +3408,6 @@ class VBA_Parser(object):
                 for variable in oleform.extract_OleFormVariables(ole, form_storage):
                     yield (self.filename, '/'.join(form_storage), variable)
 
-    def extract_pcode(self):
-        """
-        Extract and disassemble the VBA P-code, using pcodedmp
-
-        :return: VBA P-code disassembly
-        :rtype: str
-        """
-        # only run it once:
-        if self.pcodedmp_output is None:
-            log.debug('Calling pcodedmp to extract and disassemble the VBA P-code')
-            # import pcodedmp here to avoid circular imports:
-            try:
-                from pcodedmp import pcodedmp
-            except Exception as e:
-                # This may happen with Pypy, because pcodedmp imports win_unicode_console...
-                # TODO: this is a workaround, we just ignore P-code
-                # TODO: here we just use log.info, because the word "error" in the output makes some of the tests fail...
-                log.info('Exception when importing pcodedmp: {}'.format(e))
-                self.pcodedmp_output = ''
-                return ''
-            # logging is disabled after importing pcodedmp, need to re-enable it
-            # This is because pcodedmp imports olevba again :-/
-            # TODO: here it works only if logging was enabled, need to change pcodedmp!
-            enable_logging()
-            # pcodedmp prints all its output to sys.stdout, so we need to capture it so that
-            # we can process the results later on.
-            # save sys.stdout, then modify it to capture pcodedmp's output:
-            # stdout = sys.stdout
-            if PYTHON2:
-                # on Python 2, console output is bytes
-                output = BytesIO()
-            else:
-                # on Python 3, console output is unicode
-                output = StringIO()
-            # sys.stdout = output
-            # we need to fake an argparser for those two args used by pcodedmp:
-            class args:
-                disasmOnly = True
-                verbose = False
-            try:
-                # TODO: handle files in memory too
-                log.debug('before pcodedmp')
-                pcodedmp.processFile(self.filename, args, output_file=output)
-                log.debug('after pcodedmp')
-            except Exception as e:
-                # print('Error while running pcodedmp: {}'.format(e), file=sys.stderr, flush=True)
-                # set sys.stdout back to its original value
-                # sys.stdout = stdout
-                log.exception('Error while running pcodedmp')
-            # finally:
-            #     # set sys.stdout back to its original value
-            #     sys.stdout = stdout
-            self.pcodedmp_output = output.getvalue()
-            # print(self.pcodedmp_output)
-            # log.debug(self.pcodedmp_output)
-        return self.pcodedmp_output
-
-    def detect_vba_stomping(self):
-        """
-        Detect VBA stomping, by comparing the keywords present in the P-code and
-        in the VBA source code.
-
-        :return: True if VBA stomping detected, False otherwise
-        :rtype: bool
-        """
-        # only run it once:
-        if self.vba_stomping_detected is None:
-            log.debug('Analysing the P-code to detect VBA stomping')
-            self.extract_pcode()
-            # print('pcodedmp OK')
-            log.debug('pcodedmp OK')
-            # process the output to extract keywords, to detect VBA stomping
-            keywords = set()
-            for line in self.pcodedmp_output.splitlines():
-                if line.startswith('\t'):
-                    log.debug('P-code: ' + line.strip())
-                    tokens = line.split(None, 1)
-                    mnemonic = tokens[0]
-                    args = ''
-                    if len(tokens) == 2:
-                        args = tokens[1].strip()
-                    # log.debug(repr([mnemonic, args]))
-                    # if mnemonic in ('VarDefn',):
-                    #     # just add the rest of the line
-                    #     keywords.add(args)
-                    # if mnemonic == 'FuncDefn':
-                    #     # function definition: just strip parentheses
-                    #     funcdefn = args.strip('()')
-                    #     keywords.add(funcdefn)
-                    if mnemonic in ('ArgsCall', 'ArgsLd', 'St', 'Ld', 'MemSt', 'Label'):
-                        # add 1st argument:
-                        name = args.split(None, 1)[0]
-                        # sometimes pcodedmp reports names like "id_FFFF", which are not
-                        # directly present in the VBA source code
-                        # (for example "Me" in VBA appears as id_FFFF in P-code)
-                        if not name.startswith('id_'):
-                            keywords.add(name)
-                    if mnemonic == 'LitStr':
-                        # re_string = re.compile(r'\"([^\"]|\"\")*\"')
-                        # for match in re_string.finditer(line):
-                        #     print('\t' + match.group())
-                        # the string is the 2nd argument:
-                        s = args.split(None, 1)[1]
-                        # tricky issue: when a string contains double quotes inside,
-                        # pcodedmp returns a single ", whereas in the VBA source code
-                        # it is always a double "".
-                        # We have to remove the " around the strings, then double the remaining ",
-                        # and put back the " around:
-                        if len(s)>=2:
-                            assert(s[0]=='"' and s[-1]=='"')
-                            s = s[1:-1]
-                            s = s.replace('"', '""')
-                            s = '"' + s + '"'
-                        keywords.add(s)
-            log.debug('Keywords extracted from P-code: ' + repr(sorted(keywords)))
-            self.vba_stomping_detected = False
-            # TODO: add a method to get all VBA code as one string
-            vba_code_all_modules = ''
-            for (_, _, _, vba_code) in self.extract_all_macros():
-                vba_code_all_modules += vba_code + '\n'
-            for keyword in keywords:
-                if keyword not in vba_code_all_modules:
-                    log.debug('Keyword {!r} not found in VBA code'.format(keyword))
-                    log.debug('VBA STOMPING DETECTED!')
-                    self.vba_stomping_detected = True
-                    break
-            if not self.vba_stomping_detected:
-                log.debug('No VBA stomping detected.')
-        return self.vba_stomping_detected
-
     def close(self):
         """
         Close all the open files. This method must be called after usage, if
@@ -3629,8 +3478,6 @@ class VBA_Parser_CLI(VBA_Parser):
                 color_type = COLOR_TYPE.get(kw_type, None)
                 t.write_row((kw_type, keyword, description), colors=(color_type, None, None))
             t.close()
-            if self.vba_stomping_detected:
-                print('VBA Stomping detection is experimental: please report any false positive/negative at https://github.com/decalage2/oletools/issues')
         else:
             print('No suspicious keyword or IOC found.')
 
@@ -3673,7 +3520,7 @@ class VBA_Parser_CLI(VBA_Parser):
     def process_file(self, show_decoded_strings=False,
                      display_code=True, hide_attributes=True,
                      vba_code_only=False, show_deobfuscated_code=False,
-                     deobfuscate=False, pcode=False):
+                     deobfuscate=False, pcode=False, no_xlm=False):
         """
         Process a single file
 
@@ -3686,9 +3533,11 @@ class VBA_Parser_CLI(VBA_Parser):
         :param hide_attributes: bool, if True the first lines starting with "Attribute VB" are hidden (default)
         :param deobfuscate: bool, if True attempt to deobfuscate VBA expressions (slow)
         :param pcode bool: if True, call pcodedmp to disassemble P-code and display it
+        :param no_xlm bool: if True, don't use the BIFF plugin to extract old style XLM macros
         """
         #TODO: replace print by writing to a provided output file (sys.stdout by default)
         # fix conflicting parameters:
+        self.no_xlm = no_xlm
         if vba_code_only and not display_code:
             display_code = True
         if self.container:
@@ -3758,8 +3607,30 @@ class VBA_Parser_CLI(VBA_Parser):
                 if pcode:
                     print('-' * 79)
                     print('P-CODE disassembly:')
-                    pcode = self.extract_pcode()
-                    print(pcode)
+                    # pcodedmp prints all its output to sys.stdout, so we need to capture it so that
+                    # we can process the results later on.
+                    # save sys.stdout, then modify it to capture pcodedmp's output:
+                    stdout = sys.stdout
+                    if PYTHON2:
+                        # on Python 2, console output is bytes
+                        output = BytesIO()
+                    else:
+                        # on Python 3, console output is unicode
+                        output = StringIO()
+                    sys.stdout = output
+                    # we need to fake an argparser for those two args used by pcodedmp:
+                    class args:
+                        disasmOnly = True
+                        verbose = False
+                    try:
+                        # TODO: handle files in memory too
+                        pcodedmp.processFile(self.filename, args)
+                    except Exception:
+                        log.error('Error while running pcodedmp')
+                    finally:
+                        # set sys.stdout back to its original value
+                        sys.stdout = stdout
+                    print(output.getvalue())
 
                 if not vba_code_only:
                     # analyse the code from all modules at once:
@@ -3782,7 +3653,7 @@ class VBA_Parser_CLI(VBA_Parser):
     def process_file_json(self, show_decoded_strings=False,
                           display_code=True, hide_attributes=True,
                           vba_code_only=False, show_deobfuscated_code=False,
-                          deobfuscate=False):
+                          deobfuscate=False, no_xlm=False):
         """
         Process a single file
 
@@ -3799,6 +3670,7 @@ class VBA_Parser_CLI(VBA_Parser):
         """
         #TODO: fix conflicting parameters (?)
 
+        self.no_xlm = no_xlm
         if vba_code_only and not display_code:
             display_code = True
 
@@ -3949,6 +3821,8 @@ def parse_args(cmd_line_args=None):
                             help="Do not raise errors if opening of substream fails")
     parser.add_option('--pcode', dest="pcode", action="store_true", default=False,
                             help="Disassemble and display the P-code (using pcodedmp)")
+    parser.add_option('--no-xlm', dest="no_xlm", action="store_true", default=False,
+                            help="Do not extract XLM Excel macros. This may speed up analysis of large files.")
 
     (options, args) = parser.parse_args(cmd_line_args)
 
@@ -3983,21 +3857,21 @@ def process_file(filename, data, container, options, crypto_nesting=0):
         if options.output_mode == 'detailed':
             # fully detailed output
             vba_parser.process_file(show_decoded_strings=options.show_decoded_strings,
-                         display_code=options.display_code,
-                         hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
-                         show_deobfuscated_code=options.show_deobfuscated_code,
-                         deobfuscate=options.deobfuscate, pcode=options.pcode)
+                                    display_code=options.display_code,
+                                    hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
+                                    show_deobfuscated_code=options.show_deobfuscated_code,
+                                    deobfuscate=options.deobfuscate, pcode=options.pcode, no_xlm=options.no_xlm)
         elif options.output_mode == 'triage':
             # summarized output for triage:
             vba_parser.process_file_triage(show_decoded_strings=options.show_decoded_strings,
-                                           deobfuscate=options.deobfuscate)
+                                           deobfuscate=options.deobfuscate, no_xlm=options.no_xlm)
         elif options.output_mode == 'json':
             print_json(
                 vba_parser.process_file_json(show_decoded_strings=options.show_decoded_strings,
                          display_code=options.display_code,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
                          show_deobfuscated_code=options.show_deobfuscated_code,
-                         deobfuscate=options.deobfuscate))
+                         deobfuscate=options.deobfuscate, no_xlm=options.no_xlm))
         else:  # (should be impossible)
             raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
 
@@ -4064,13 +3938,8 @@ def process_file(filename, data, container, options, crypto_nesting=0):
     except Exception:
         raise
     finally:     # clean up
-        try:
-            log.debug('Removing crypt temp file {}'.format(decrypted_file))
+        if decrypted_file is not None and os.path.isfile(decrypted_file):
             os.unlink(decrypted_file)
-        except Exception:   # e.g. file does not exist or is None
-            pass
-    # no idea what to return now
-    raise Exception('Programming error -- should never have reached this!')
 
 
 def main(cmd_line_args=None):
