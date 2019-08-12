@@ -8,7 +8,10 @@ This is the case for xls and ppt, so classes are bases for xls_parser.py and
 ppt_record_parser.py .
 """
 
-# === LICENSE =================================================================
+# === LICENSE ==================================================================
+
+# record_base is copyright (c) 2014-2019 Philippe Lagadec (http://www.decalage.info)
+# All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -37,8 +40,10 @@ from __future__ import print_function
 # CHANGELOG:
 # 2017-11-30 v0.01 CH: - first version based on xls_parser
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
+# 2019-01-30       PL: - fixed import to avoid mixing installed oletools
+#                        and dev version
 
-__version__ = '0.54dev1'
+__version__ = '0.54'
 
 # -----------------------------------------------------------------------------
 # TODO:
@@ -63,16 +68,12 @@ import logging
 
 import olefile
 
-try:
-    from oletools.common.errors import FileIsEncryptedError
-except ImportError:
-    # little hack to allow absolute imports even if oletools is not installed.
-    PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__))))
-    if PARENT_DIR not in sys.path:
-        sys.path.insert(0, PARENT_DIR)
-    del PARENT_DIR
-    from oletools.common.errors import FileIsEncryptedError
+# little hack to allow absolute imports even if oletools is not installed.
+PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))))
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+del PARENT_DIR
 from oletools import oleid
 
 
@@ -125,10 +126,9 @@ class OleRecordFile(olefile.OleFileIO):
     """
 
     def open(self, filename, *args, **kwargs):
-        """Call OleFileIO.open, raise error if is encrypted."""
+        """Call OleFileIO.open."""
         #super(OleRecordFile, self).open(filename, *args, **kwargs)
         OleFileIO.open(self, filename, *args, **kwargs)
-        self.is_encrypted = oleid.OleID(self).check_encrypted().value
 
     @classmethod
     def stream_class_for_name(cls, stream_name):
@@ -161,8 +161,7 @@ class OleRecordFile(olefile.OleFileIO):
                 stream = clz(self._open(direntry.isectStart, direntry.size),
                              direntry.size,
                              None if is_orphan else direntry.name,
-                             direntry.entry_type,
-                             self.is_encrypted)
+                             direntry.entry_type)
                 yield stream
                 stream.close()
 
@@ -175,14 +174,13 @@ class OleRecordStream(object):
     abstract base class
     """
 
-    def __init__(self, stream, size, name, stream_type, is_encrypted=False):
+    def __init__(self, stream, size, name, stream_type):
         self.stream = stream
         self.size = size
         self.name = name
         if stream_type not in ENTRY_TYPE2STR:
             raise ValueError('Unknown stream type: {0}'.format(stream_type))
         self.stream_type = stream_type
-        self.is_encrypted = is_encrypted
 
     def read_record_head(self):
         """ read first few bytes of record to determine size and type
@@ -211,9 +209,6 @@ class OleRecordStream(object):
 
         Stream must be positioned at start of records (e.g. start of stream).
         """
-        if self.is_encrypted:
-            raise FileIsEncryptedError()
-
         while True:
             # unpacking as in olevba._extract_vba
             pos = self.stream.tell()

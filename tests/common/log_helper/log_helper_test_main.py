@@ -9,6 +9,8 @@ INFO_MESSAGE = 'main: info log'
 WARNING_MESSAGE = 'main: warning log'
 ERROR_MESSAGE = 'main: error log'
 CRITICAL_MESSAGE = 'main: critical log'
+RESULT_MESSAGE = 'main: result log'
+RESULT_TYPE = 'main: result'
 
 logger = log_helper.get_or_create_silent_logger('test_main')
 
@@ -32,11 +34,15 @@ def init_logging_and_log(args):
     level = args[-1]
     use_json = 'as-json' in args
     throw = 'throw' in args
+    percent_autoformat = '%-autoformat' in args
 
     if 'enable' in args:
         log_helper.enable_logging(use_json, level, stream=sys.stdout)
 
     _log()
+
+    if percent_autoformat:
+        logger.info('The %s is %d.', 'answer', 47)
 
     if throw:
         raise Exception('An exception occurred before ending the logging')
@@ -50,6 +56,7 @@ def _log():
     logger.warning(WARNING_MESSAGE)
     logger.error(ERROR_MESSAGE)
     logger.critical(CRITICAL_MESSAGE)
+    logger.info(RESULT_MESSAGE, type=RESULT_TYPE)
     log_helper_test_imported.log()
 
 

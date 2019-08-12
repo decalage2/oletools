@@ -17,7 +17,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# rtfobj is copyright (c) 2012-2018, Philippe Lagadec (http://www.decalage.info)
+# rtfobj is copyright (c) 2012-2019, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -88,8 +88,10 @@ http://www.decalage.info/python/oletools
 # 2018-05-31 v0.53.1 PP: - fixed issue #316: whitespace after \bin on Python 3
 # 2018-06-22 v0.53.2 PL: - fixed issue #327: added "\pnaiu" & "\pnaiud"
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
+# 2019-07-08 v0.55 MM: - added URL carver for CVE-2017-0199 (Equation Editor) PR #460
+#                      - added SCT to the list of executable file extensions PR #461
 
-__version__ = '0.54dev1'
+__version__ = '0.55.dev3'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -103,7 +105,7 @@ __version__ = '0.54dev1'
 
 # === IMPORTS =================================================================
 
-import re, os, sys, binascii, logging, optparse
+import re, os, sys, binascii, logging, optparse, hashlib
 import os.path
 from time import time
 
@@ -268,7 +270,7 @@ re_delim_hexblock = re.compile(DELIMITER + PATTERN)
 
 # TODO: use a frozenset instead of a regex?
 re_executable_extensions = re.compile(
-    r"(?i)\.(EXE|COM|PIF|GADGET|MSI|MSP|MSC|VBS|VBE|VB|JSE|JS|WSF|WSC|WSH|WS|BAT|CMD|DLL|SCR|HTA|CPL|CLASS|JAR|PS1XML|PS1|PS2XML|PS2|PSC1|PSC2|SCF|LNK|INF|REG)\b")
+    r"(?i)\.(BAT|CLASS|CMD|CPL|DLL|EXECOM|GADGET|HTA|INF|JAR|JS|JSE|LNK|MSC|MSI|MSP|PIF|PS1|PS1XML|PS2|PS2XML|PSC1|PSC2|REG|SCF|SCR|SCT|VB|VBE|VBS|WS|WSC|WSF|WSH)\b")
 
 # Destination Control Words, according to MS RTF Specifications v1.9.1:
 DESTINATION_CONTROL_WORDS = frozenset((
@@ -678,6 +680,7 @@ class RtfObjParser(RtfParser):
             rtfobj.hexdata = hexdata
             object_data = binascii.unhexlify(hexdata)
             rtfobj.rawdata = object_data
+            rtfobj.rawdata_md5 = hashlib.md5(object_data).hexdigest()                    
             # TODO: check if all hex data is extracted properly
 
             obj = oleobj.OleObject()
@@ -687,6 +690,7 @@ class RtfObjParser(RtfParser):
                 rtfobj.class_name = obj.class_name
                 rtfobj.oledata_size = obj.data_size
                 rtfobj.oledata = obj.data
+                rtfobj.oledata_md5 = hashlib.md5(obj.data).hexdigest()         
                 rtfobj.is_ole = True
                 if obj.class_name.lower() == b'package':
                     opkg = oleobj.OleNativeStream(bindata=obj.data,
@@ -695,6 +699,7 @@ class RtfObjParser(RtfParser):
                     rtfobj.src_path = opkg.src_path
                     rtfobj.temp_path = opkg.temp_path
                     rtfobj.olepkgdata = opkg.data
+                    rtfobj.olepkgdata_md5 = hashlib.md5(opkg.data).hexdigest()     
                     rtfobj.is_package = True
                 else:
                     if olefile.isOleFile(obj.data):
@@ -878,15 +883,23 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                 ole_column += '\nFilename: %r' % rtfobj.filename
                 ole_column += '\nSource path: %r' % rtfobj.src_path
                 ole_column += '\nTemp path = %r' % rtfobj.temp_path
+                ole_column += '\nMD5 = %r' % rtfobj.olepkgdata_md5
                 ole_color = 'yellow'
                 # check if the file extension is executable:
-                _, ext = os.path.splitext(rtfobj.filename)
-                log.debug('File extension: %r' % ext)
-                if re_executable_extensions.match(ext):
+
+                _, temp_ext = os.path.splitext(rtfobj.temp_path)
+                log.debug('Temp path extension: %r' % temp_ext)
+                _, file_ext = os.path.splitext(rtfobj.filename)
+                log.debug('File extension: %r' % file_ext)
+
+                if temp_ext != file_ext:
+                    ole_column += "\nMODIFIED FILE EXTENSION"
+
+                if re_executable_extensions.match(temp_ext) or re_executable_extensions.match(file_ext):
                     ole_color = 'red'
                     ole_column += '\nEXECUTABLE FILE'
-            # else:
-            #     pkg_column = 'Not an OLE Package'
+            else:
+                ole_column += '\nMD5 = %r' % rtfobj.oledata_md5
             if rtfobj.clsid is not None:
                 ole_column += '\nCLSID: %s' % rtfobj.clsid
                 ole_column += '\n%s' % rtfobj.clsid_desc
@@ -896,7 +909,28 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
             # http://www.kb.cert.org/vuls/id/921560
             if rtfobj.class_name == b'OLE2Link':
                 ole_color = 'red'
-                ole_column += '\nPossibly an exploit for the OLE2Link vulnerability (VU#921560, CVE-2017-0199)'
+                ole_column += '\nPossibly an exploit for the OLE2Link vulnerability (VU#921560, CVE-2017-0199)\n'
+                # https://bitbucket.org/snippets/Alexander_Hanel/7Adpp
+                found_list =  re.findall(r'[a-fA-F0-9\x0D\x0A]{128,}',data)
+                urls = []
+                for item in found_list:
+                    try:
+                        temp = item.replace("\x0D\x0A","").decode("hex")
+                    except:
+                        continue
+                    pat = re.compile(r'(?:[\x20-\x7E][\x00]){3,}')
+                    words = [w.decode('utf-16le') for w in pat.findall(temp)]
+                    for w in words:
+                        if "http" in w:
+                            urls.append(w)
+                urls = sorted(set(urls))
+                if urls:
+                    ole_column += 'URL extracted: ' + ', '.join(urls)
+            # Detect Equation Editor exploit
+            # https://www.kb.cert.org/vuls/id/421280/
+            elif rtfobj.class_name.lower() == b'equation.3':
+                ole_color = 'red'
+                ole_column += '\nPossibly an exploit for the Equation Editor vulnerability (VU#421280, CVE-2017-11882)'
         else:
             ole_column = 'Not a well-formed OLE object'
         tstream.write_row((
@@ -930,6 +964,7 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                 else:
                     fname = '%s_object_%08X.noname' % (fname_prefix, rtfobj.start)
                 print('  saving to file %s' % fname)
+                print('  md5 %s' % rtfobj.olepkgdata_md5)
                 open(fname, 'wb').write(rtfobj.olepkgdata)
             # When format_id=TYPE_LINKED, oledata_size=None
             elif rtfobj.is_ole and rtfobj.oledata_size is not None:
@@ -947,11 +982,13 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                     ext = 'bin'
                 fname = '%s_object_%08X.%s' % (fname_prefix, rtfobj.start, ext)
                 print('  saving to file %s' % fname)
+                print('  md5 %s' % rtfobj.oledata_md5)
                 open(fname, 'wb').write(rtfobj.oledata)
             else:
                 print('Saving raw data in object #%d:' % i)
                 fname = '%s_object_%08X.raw' % (fname_prefix, rtfobj.start)
                 print('  saving object to file %s' % fname)
+                print('  md5 %s' % rtfobj.rawdata_md5)
                 open(fname, 'wb').write(rtfobj.rawdata)
 
 
@@ -1035,4 +1072,3 @@ if __name__ == '__main__':
     main()
 
 # This code was developed while listening to The Mary Onettes "Lost"
-

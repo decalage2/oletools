@@ -20,7 +20,7 @@ class TestOleIDBasic(unittest.TestCase):
         """Run all file in test-data through oleid and compare to known ouput"""
         # this relies on order of indicators being constant, could relax that
         # Also requires that files have the correct suffixes (no rtf in doc)
-        NON_OLE_SUFFIXES = ('.xml', '.csv', '.rtf', '')
+        NON_OLE_SUFFIXES = ('.xml', '.csv', '.rtf', '', '.odt', '.ods', '.odp')
         NON_OLE_VALUES = (False, )
         WORD = b'Microsoft Office Word'
         PPT = b'Microsoft Office PowerPoint'
@@ -121,6 +121,33 @@ class TestOleIDBasic(unittest.TestCase):
             'msodde/harmless-clean.docx': (False,),
             'oleform/oleform-PR314.docm': (False,),
             'basic/encrypted.docx': CRYPT,
+            'oleobj/external_link/sample_with_external_link_to_doc.docx': (False,),
+            'oleobj/external_link/sample_with_external_link_to_doc.xlsb': (False,),
+            'oleobj/external_link/sample_with_external_link_to_doc.dotm': (False,),
+            'oleobj/external_link/sample_with_external_link_to_doc.xlsm': (False,),
+            'oleobj/external_link/sample_with_external_link_to_doc.pptx': (False,),
+            'oleobj/external_link/sample_with_external_link_to_doc.dotx': (False,),
+            'oleobj/external_link/sample_with_external_link_to_doc.docm': (False,),
+            'oleobj/external_link/sample_with_external_link_to_doc.potm': (False,),
+            'oleobj/external_link/sample_with_external_link_to_doc.xlsx': (False,),
+            'oleobj/external_link/sample_with_external_link_to_doc.potx': (False,),
+            'oleobj/external_link/sample_with_external_link_to_doc.ppsm': (False,),
+            'oleobj/external_link/sample_with_external_link_to_doc.pptm': (False,),
+            'oleobj/external_link/sample_with_external_link_to_doc.ppsx': (False,),
+            'encrypted/autostart-encrypt-standardpassword.xlsm':
+                (True, False, 'unknown', True, False, False, False, False, False, False, 0),
+            'encrypted/autostart-encrypt-standardpassword.xls':
+                (True, True, EXCEL, True, False, True, True, False, False, False, 0),
+            'encrypted/dde-test-encrypt-standardpassword.xlsx':
+                (True, False, 'unknown', True, False, False, False, False, False, False, 0),
+            'encrypted/dde-test-encrypt-standardpassword.xlsm':
+                (True, False, 'unknown', True, False, False, False, False, False, False, 0),
+            'encrypted/autostart-encrypt-standardpassword.xlsb':
+                (True, False, 'unknown', True, False, False, False, False, False, False, 0),
+            'encrypted/dde-test-encrypt-standardpassword.xls':
+                (True, True, EXCEL, True, False, False, True, False, False, False, 0),
+            'encrypted/dde-test-encrypt-standardpassword.xlsb':
+                (True, False, 'unknown', True, False, False, False, False, False, False, 0),
         }
 
         indicator_names = []
@@ -148,7 +175,8 @@ class TestOleIDBasic(unittest.TestCase):
                                                  OLE_VALUES[name]))
                 except KeyError:
                     print('Should add oleid output for {} to {} ({})'
-                          .format(name, __name__, values[3:]))
+                          .format(name, __name__, values))
+
 
 # just in case somebody calls this file as a script
 if __name__ == '__main__':

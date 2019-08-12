@@ -11,7 +11,6 @@ Supported formats:
 - RTF
 - CSV (exported from / imported into Excel)
 - XML (exported from Word 2003, Word 2007+, Excel 2003, (Excel 2007+?)
-- raises an error if run with files encrypted using MS Crypto API RC4
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -22,7 +21,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE =================================================================
 
-# msodde is copyright (c) 2017-2018 Philippe Lagadec (http://www.decalage.info)
+# msodde is copyright (c) 2017-2019 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -52,19 +51,30 @@ from __future__ import print_function
 
 import argparse
 import os
-from os.path import abspath, dirname
 import sys
 import re
 import csv
 
 import olefile
 
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if _parent_dir not in sys.path:
+    sys.path.insert(0, _parent_dir)
+
 from oletools import ooxml
 from oletools import xls_parser
 from oletools import rtfobj
-from oletools import oleid
+from oletools.ppt_record_parser import is_ppt
+from oletools import crypto
 from oletools.common.log_helper import log_helper
-from oletools.common.errors import FileIsEncryptedError
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:
@@ -88,8 +98,11 @@ from oletools.common.errors import FileIsEncryptedError
 # 2018-03-21       CH: - added detection for various CSV formulas (issue #259)
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
 # 2018-10-25       CH: - detect encryption and raise error if detected
+# 2019-03-25       CH: - added decryption of password-protected files
+# 2019-07-17 v0.55 CH: - fixed issue #267, unicode error on Python 2
 
-__version__ = '0.54dev4'
+
+__version__ = '0.55.dev3'
 
 # -----------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these
@@ -305,6 +318,9 @@ def process_args(cmd_line_args=None):
                         default=DEFAULT_LOG_LEVEL,
                         help="logging level debug/info/warning/error/critical "
                              "(default=%(default)s)")
+    parser.add_argument("-p", "--password", type=str, action='append',
+                        help='if encrypted office files are encountered, try '
+                             'decryption with this password. May be repeated.')
     filter_group = parser.add_argument_group(
         title='Filter which OpenXML field commands are returned',
         description='Only applies to OpenXML (e.g. docx) and rtf, not to OLE '
@@ -348,14 +364,13 @@ def process_doc_field(data):
     """ check if field instructions start with DDE
 
     expects unicode input, returns unicode output (empty if not dde) """
-    logger.debug('processing field \'{0}\''.format(data))
+    logger.debug(u'processing field \'{0}\''.format(data))
 
     if data.lstrip().lower().startswith(u'dde'):
         return data
-    elif data.lstrip().lower().startswith(u'\x00d\x00d\x00e\x00'):
+    if data.lstrip().lower().startswith(u'\x00d\x00d\x00e\x00'):
         return data
-    else:
-        return u''
+    return u''
 
 
 OLE_FIELD_START = 0x13
@@ -379,7 +394,7 @@ def process_doc_stream(stream):
     while True:
         idx += 1
         char = stream.read(1)    # loop over every single byte
-        if len(char) == 0:
+        if len(char) == 0:                   # pylint: disable=len-as-condition
             break
         else:
             char = ord(char)
@@ -417,7 +432,7 @@ def process_doc_stream(stream):
                 pass
             elif len(field_contents) > OLE_FIELD_MAX_SIZE:
                 logger.debug('field exceeds max size of {0}. Ignore rest'
-                          .format(OLE_FIELD_MAX_SIZE))
+                             .format(OLE_FIELD_MAX_SIZE))
                 max_size_exceeded = True
 
             # appending a raw byte to a unicode string here. Not clean but
@@ -437,7 +452,7 @@ def process_doc_stream(stream):
         logger.debug('big field was not a field after all')
 
     logger.debug('Checked {0} characters, found {1} fields'
-              .format(idx, len(result_parts)))
+                 .format(idx, len(result_parts)))
 
     return result_parts
 
@@ -462,11 +477,10 @@ def process_doc(ole):
             direntry = ole._load_direntry(sid)
         is_stream = direntry.entry_type == olefile.STGTY_STREAM
         logger.debug('direntry {:2d} {}: {}'
-                  .format(sid, '[orphan]' if is_orphan else direntry.name,
-                          'is stream of size {}'.format(direntry.size)
-                          if is_stream else
-                          'no stream ({})'
-                          .format(direntry.entry_type)))
+                     .format(sid, '[orphan]' if is_orphan else direntry.name,
+                             'is stream of size {}'.format(direntry.size)
+                             if is_stream else
+                             'no stream ({})'.format(direntry.entry_type)))
         if is_stream:
             new_parts = process_doc_stream(
                 ole._open(direntry.isectStart, direntry.size))
@@ -480,17 +494,23 @@ def process_xls(filepath):
     """ find dde links in excel ole file """
 
     result = []
-    for stream in xls_parser.XlsFile(filepath).iter_streams():
-        if not isinstance(stream, xls_parser.WorkbookStream):
-            continue
-        for record in stream.iter_records():
-            if not isinstance(record, xls_parser.XlsRecordSupBook):
+    xls_file = None
+    try:
+        xls_file = xls_parser.XlsFile(filepath)
+        for stream in xls_file.iter_streams():
+            if not isinstance(stream, xls_parser.WorkbookStream):
                 continue
-            if record.support_link_type in (
-                    xls_parser.XlsRecordSupBook.LINK_TYPE_OLE_DDE,
-                    xls_parser.XlsRecordSupBook.LINK_TYPE_EXTERNAL):
-                result.append(record.virt_path.replace(u'\u0003', u' '))
-    return u'\n'.join(result)
+            for record in stream.iter_records():
+                if not isinstance(record, xls_parser.XlsRecordSupBook):
+                    continue
+                if record.support_link_type in (
+                        xls_parser.XlsRecordSupBook.LINK_TYPE_OLE_DDE,
+                        xls_parser.XlsRecordSupBook.LINK_TYPE_EXTERNAL):
+                    result.append(record.virt_path.replace(u'\u0003', u' '))
+        return u'\n'.join(result)
+    finally:
+        if xls_file is not None:
+            xls_file.close()
 
 
 def process_docx(filepath, field_filter_mode=None):
@@ -525,7 +545,8 @@ def process_docx(filepath, field_filter_mode=None):
             else:
                 elem = curr_elem
             if elem is None:
-                raise BadOOXML(filepath, 'Got "None"-Element from iter_xml')
+                raise ooxml.BadOOXML(filepath,
+                                     'Got "None"-Element from iter_xml')
 
             # check if FLDCHARTYPE and whether "begin" or "end" tag
             attrib_type = elem.attrib.get(ATTR_W_FLDCHARTYPE[0]) or \
@@ -535,7 +556,7 @@ def process_docx(filepath, field_filter_mode=None):
                     level += 1
                 if attrib_type == "end":
                     level -= 1
-                    if level == 0 or level == -1:  # edge-case; level gets -1
+                    if level in (0, -1):  # edge-case; level gets -1
                         all_fields.append(ddetext)
                         ddetext = u''
                         level = 0  # reset edge-case
@@ -564,6 +585,7 @@ def process_docx(filepath, field_filter_mode=None):
 
 
 def unquote(field):
+    """TODO: document what exactly is happening here..."""
     if "QUOTE" not in field or NO_QUOTES:
         return field
     # split into components
@@ -605,8 +627,8 @@ def field_is_blacklisted(contents):
         index = FIELD_BLACKLIST_CMDS.index(words[0].lower())
     except ValueError:    # first word is no blacklisted command
         return False
-    logger.debug('trying to match "{0}" to blacklist command {1}'
-              .format(contents, FIELD_BLACKLIST[index]))
+    logger.debug(u'trying to match "{0}" to blacklist command {1}'
+                 .format(contents, FIELD_BLACKLIST[index]))
     _, nargs_required, nargs_optional, sw_with_arg, sw_solo, sw_format \
         = FIELD_BLACKLIST[index]
 
@@ -617,12 +639,13 @@ def field_is_blacklisted(contents):
             break
         nargs += 1
     if nargs < nargs_required:
-        logger.debug('too few args: found {0}, but need at least {1} in "{2}"'
-                  .format(nargs, nargs_required, contents))
+        logger.debug(u'too few args: found {0}, but need at least {1} in "{2}"'
+                     .format(nargs, nargs_required, contents))
         return False
-    elif nargs > nargs_required + nargs_optional:
-        logger.debug('too many args: found {0}, but need at most {1}+{2} in "{3}"'
-                  .format(nargs, nargs_required, nargs_optional, contents))
+    if nargs > nargs_required + nargs_optional:
+        logger.debug(u'too many args: found {0}, but need at most {1}+{2} in '
+                     u'"{3}"'
+                     .format(nargs, nargs_required, nargs_optional, contents))
         return False
 
     # check switches
@@ -631,15 +654,15 @@ def field_is_blacklisted(contents):
     for word in words[1+nargs:]:
         if expect_arg:            # this is an argument for the last switch
             if arg_choices and (word not in arg_choices):
-                logger.debug('Found invalid switch argument "{0}" in "{1}"'
-                          .format(word, contents))
+                logger.debug(u'Found invalid switch argument "{0}" in "{1}"'
+                             .format(word, contents))
                 return False
             expect_arg = False
             arg_choices = []   # in general, do not enforce choices
             continue           # "no further questions, your honor"
         elif not FIELD_SWITCH_REGEX.match(word):
-            logger.debug('expected switch, found "{0}" in "{1}"'
-                      .format(word, contents))
+            logger.debug(u'expected switch, found "{0}" in "{1}"'
+                         .format(word, contents))
             return False
         # we want a switch and we got a valid one
         switch = word[1]
@@ -660,8 +683,8 @@ def field_is_blacklisted(contents):
             if 'numeric' in sw_format:
                 arg_choices = []  # too many choices to list them here
         else:
-            logger.debug('unexpected switch {0} in "{1}"'
-                      .format(switch, contents))
+            logger.debug(u'unexpected switch {0} in "{1}"'
+                         .format(switch, contents))
             return False
 
     # if nothing went wrong sofar, the contents seems to match the blacklist
@@ -676,7 +699,7 @@ def process_xlsx(filepath):
         tag = elem.tag.lower()
         if tag == 'ddelink' or tag.endswith('}ddelink'):
             # we have found a dde link. Try to get more info about it
-            link_info = ['DDE-Link']
+            link_info = []
             if 'ddeService' in elem.attrib:
                 link_info.append(elem.attrib['ddeService'])
             if 'ddeTopic' in elem.attrib:
@@ -687,16 +710,15 @@ def process_xlsx(filepath):
     for subfile, content_type, handle in parser.iter_non_xml():
         try:
             logger.info('Parsing non-xml subfile {0} with content type {1}'
-                         .format(subfile, content_type))
+                        .format(subfile, content_type))
             for record in xls_parser.parse_xlsb_part(handle, content_type,
                                                      subfile):
                 logger.debug('{0}: {1}'.format(subfile, record))
                 if isinstance(record, xls_parser.XlsbBeginSupBook) and \
                         record.link_type == \
                         xls_parser.XlsbBeginSupBook.LINK_TYPE_DDE:
-                    dde_links.append('DDE-Link ' + record.string1 + ' ' +
-                                     record.string2)
-        except Exception:
+                    dde_links.append(record.string1 + ' ' + record.string2)
+        except Exception as exc:
             if content_type.startswith('application/vnd.ms-excel.') or \
                content_type.startswith('application/vnd.ms-office.'):  # pylint: disable=bad-indentation
                 # should really be able to parse these either as xml or records
@@ -727,7 +749,8 @@ class RtfFieldParser(rtfobj.RtfParser):
 
     def open_destination(self, destination):
         if destination.cword == b'fldinst':
-            logger.debug('*** Start field data at index %Xh' % destination.start)
+            logger.debug('*** Start field data at index %Xh'
+                         % destination.start)
 
     def close_destination(self, destination):
         if destination.cword == b'fldinst':
@@ -758,7 +781,7 @@ def process_rtf(file_handle, field_filter_mode=None):
     all_fields = [field.decode('ascii') for field in rtfparser.fields]
     # apply field command filter
     logger.debug('found {1} fields, filtering with mode "{0}"'
-              .format(field_filter_mode, len(all_fields)))
+                 .format(field_filter_mode, len(all_fields)))
     if field_filter_mode in (FIELD_FILTER_ALL, None):
         clean_fields = all_fields
     elif field_filter_mode == FIELD_FILTER_DDE:
@@ -815,11 +838,12 @@ def process_csv(filepath):
                     results, _ = process_csv_dialect(file_handle, delim)
                 except csv.Error:   # e.g. sniffing fails
                     logger.debug('failed to csv-parse with delimiter {0!r}'
-                              .format(delim))
+                                 .format(delim))
 
         if is_small and not results:
             # try whole file as single cell, since sniffing fails in this case
-            logger.debug('last attempt: take whole file as single unquoted cell')
+            logger.debug('last attempt: take whole file as single unquoted '
+                         'cell')
             file_handle.seek(0)
             match = CSV_DDE_FORMAT.match(file_handle.read(CSV_SMALL_THRESH))
             if match:
@@ -836,8 +860,8 @@ def process_csv_dialect(file_handle, delimiters):
                                   delimiters=delimiters)
     dialect.strict = False     # microsoft is never strict
     logger.debug('sniffed csv dialect with delimiter {0!r} '
-              'and quote char {1!r}'
-              .format(dialect.delimiter, dialect.quotechar))
+                 'and quote char {1!r}'
+                 .format(dialect.delimiter, dialect.quotechar))
 
     # rewind file handle to start
     file_handle.seek(0)
@@ -877,7 +901,7 @@ def process_excel_xml(filepath):
                 break
         if formula is None:
             continue
-        logger.debug('found cell with formula {0}'.format(formula))
+        logger.debug(u'found cell with formula {0}'.format(formula))
         match = re.match(XML_DDE_FORMAT, formula)
         if match:
             dde_links.append(u' '.join(match.groups()[:2]))
@@ -891,19 +915,11 @@ def process_file(filepath, field_filter_mode=None):
         if xls_parser.is_xls(filepath):
             logger.debug('Process file as excel 2003 (xls)')
             return process_xls(filepath)
-
-        # encrypted files also look like ole, even if office 2007+ (xml-based)
-        # so check for encryption, first
-        ole = olefile.OleFileIO(filepath, path_encoding=None)
-        oid = oleid.OleID(ole)
-        if oid.check_encrypted().value:
-            log.debug('is encrypted - raise error')
-            raise FileIsEncryptedError(filepath)
-        elif oid.check_powerpoint().value:
-            log.debug('is ppt - cannot have DDE')
+        if is_ppt(filepath):
+            logger.debug('is ppt - cannot have DDE')
             return u''
-        else:
-            logger.debug('Process file as word 2003 (doc)')
+        logger.debug('Process file as word 2003 (doc)')
+        with olefile.OleFileIO(filepath, path_encoding=None) as ole:
             return process_doc(ole)
 
     with open(filepath, 'rb') as file_handle:
@@ -921,21 +937,76 @@ def process_file(filepath, field_filter_mode=None):
     if doctype == ooxml.DOCTYPE_EXCEL:
         logger.debug('Process file as excel 2007+ (xlsx)')
         return process_xlsx(filepath)
-    elif doctype in (ooxml.DOCTYPE_EXCEL_XML, ooxml.DOCTYPE_EXCEL_XML2003):
+    if doctype in (ooxml.DOCTYPE_EXCEL_XML, ooxml.DOCTYPE_EXCEL_XML2003):
         logger.debug('Process file as xml from excel 2003/2007+')
         return process_excel_xml(filepath)
-    elif doctype in (ooxml.DOCTYPE_WORD_XML, ooxml.DOCTYPE_WORD_XML2003):
+    if doctype in (ooxml.DOCTYPE_WORD_XML, ooxml.DOCTYPE_WORD_XML2003):
         logger.debug('Process file as xml from word 2003/2007+')
         return process_docx(filepath)
-    elif doctype is None:
+    if doctype is None:
         logger.debug('Process file as csv')
         return process_csv(filepath)
-    else:  # could be docx; if not: this is the old default code path
-        logger.debug('Process file as word 2007+ (docx)')
-        return process_docx(filepath, field_filter_mode)
+    # could be docx; if not: this is the old default code path
+    logger.debug('Process file as word 2007+ (docx)')
+    return process_docx(filepath, field_filter_mode)
 
 
 # === MAIN =================================================================
+
+
+def process_maybe_encrypted(filepath, passwords=None, crypto_nesting=0,
+                            **kwargs):
+    """
+    Process a file that might be encrypted.
+
+    Calls :py:func:`process_file` and if that fails tries to decrypt and
+    process the result. Based on recommendation in module doc string of
+    :py:mod:`oletools.crypto`.
+
+    :param str filepath: path to file on disc.
+    :param passwords: list of passwords (str) to try for decryption or None
+    :param int crypto_nesting: How many decryption layers were already used to
+                               get the given file.
+    :param kwargs: same as :py:func:`process_file`
+    :returns: same as :py:func:`process_file`
+    """
+    result = u''
+    try:
+        result = process_file(filepath, **kwargs)
+        if not crypto.is_encrypted(filepath):
+            return result
+    except Exception:
+        logger.debug('Ignoring exception:', exc_info=True)
+        if not crypto.is_encrypted(filepath):
+            raise
+
+    # we reach this point only if file is encrypted
+    # check if this is an encrypted file in an encrypted file in an ...
+    if crypto_nesting >= crypto.MAX_NESTING_DEPTH:
+        raise crypto.MaxCryptoNestingReached(crypto_nesting, filepath)
+
+    decrypted_file = None
+    if passwords is None:
+        passwords = crypto.DEFAULT_PASSWORDS
+    else:
+        passwords = list(passwords) + crypto.DEFAULT_PASSWORDS
+    try:
+        logger.debug('Trying to decrypt file')
+        decrypted_file = crypto.decrypt(filepath, passwords)
+        if not decrypted_file:
+            logger.error('Decrypt failed, run with debug output to get details')
+            raise crypto.WrongEncryptionPassword(filepath)
+        logger.info('Analyze decrypted file')
+        result = process_maybe_encrypted(decrypted_file, passwords,
+                                         crypto_nesting+1, **kwargs)
+    finally:     # clean up
+        try:     # (maybe file was not yet created)
+            os.unlink(decrypted_file)
+        except Exception:
+            logger.debug('Ignoring exception closing decrypted file:',
+                         exc_info=True)
+    return result
+
 
 def main(cmd_line_args=None):
     """ Main function, called if this file is called as a script
@@ -961,13 +1032,16 @@ def main(cmd_line_args=None):
     text = ''
     return_code = 1
     try:
-        text = process_file(args.filepath, args.field_filter_mode)
+        text = process_maybe_encrypted(
+            args.filepath, args.password,
+            field_filter_mode=args.field_filter_mode)
         return_code = 0
     except Exception as exc:
-        logger.exception(exc.message)
+        logger.exception(str(exc))
 
     logger.print_str('DDE Links:')
-    logger.print_str(text)
+    for link in text.splitlines():
+        logger.print_str(text, type='dde-link')
 
     log_helper.end_logging()
 

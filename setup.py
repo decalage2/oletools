@@ -28,6 +28,9 @@ to install this package.
 # 2018-09-15       PL: - easygui is now a dependency
 # 2018-09-22       PL: - colorclass is now a dependency
 # 2018-10-27       PL: - fixed issue #359 (bug when importing log_helper)
+# 2019-02-26       CH: - add optional dependency msoffcrypto for decryption
+# 2019-05-22       PL: - 'msoffcrypto-tool' is now a required dependency
+# 2019-05-23 v0.55 PL: - added pcodedmp as dependency
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -47,7 +50,7 @@ import os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.54dev4'
+version      = '0.55.dev3'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       = "Philippe Lagadec"
@@ -73,6 +76,7 @@ classifiers=[
     "Programming Language :: Python :: 3.4",
     "Programming Language :: Python :: 3.5",
     "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
     "Topic :: Security",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
@@ -89,7 +93,7 @@ packages=[
     'oletools.thirdparty.xglob',
     'oletools.thirdparty.DridexUrlDecoder',
     'oletools.thirdparty.tablestream',
-    'oletools.thirdparty.zipfile27',
+    'oletools.thirdparty.oledump',
 ]
 ##setupdir = '.'
 ##package_dir={'': setupdir}
@@ -175,9 +179,6 @@ package_data={
         'CHANGELOG', 'COPYING', 'README'
         ],
     'oletools.thirdparty.DridexUrlDecoder': [
-        'LICENSE.txt',
-        ],
-    'oletools.thirdparty.zipfile27': [
         'LICENSE.txt',
         ],
     # 'oletools.thirdparty.tablestream': [
@@ -305,11 +306,11 @@ def main():
         author_email=author_email,
         url=url,
         license=license,
-##        package_dir=package_dir,
+        # package_dir=package_dir,
         packages=packages,
         package_data = package_data,
         download_url=download_url,
-#        data_files=data_files,
+        # data_files=data_files,
         entry_points=entry_points,
         test_suite="tests",
         # scripts=scripts,
@@ -318,6 +319,8 @@ def main():
             "olefile>=0.46",
             "easygui",
             'colorclass',
+            'msoffcrypto-tool',
+            'pcodedmp>=1.2.5',
         ],
     )
 

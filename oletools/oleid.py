@@ -17,7 +17,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# oleid is copyright (c) 2012-2018, Philippe Lagadec (http://www.decalage.info)
+# oleid is copyright (c) 2012-2019, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -59,7 +59,7 @@ from __future__ import print_function
 # 2018-10-19       CH: - accept olefile as well as filename, return Indicators,
 #                        improve encryption detection for ppt
 
-__version__ = '0.54dev4'
+__version__ = '0.54'
 
 
 #------------------------------------------------------------------------------
@@ -80,21 +80,25 @@ __version__ = '0.54dev4'
 
 #=== IMPORTS =================================================================
 
-import argparse, sys, re, zlib, struct
+import argparse, sys, re, zlib, struct, os
 from os.path import dirname, abspath
 
-# little hack to allow absolute imports even if oletools is not installed
-# (required to run oletools directly as scripts in any directory).
-try:
-    from oletools.thirdparty import prettytable
-except ImportError:
-    PARENT_DIR = dirname(dirname(abspath(__file__)))
-    if PARENT_DIR not in sys.path:
-        sys.path.insert(0, PARENT_DIR)
-    del PARENT_DIR
-    from oletools.thirdparty import prettytable
-
 import olefile
+
+# IMPORTANT: it should be possible to run oletools directly as scripts
+# in any directory without installing them with pip or setup.py.
+# In that case, relative imports are NOT usable.
+# And to enable Python 2+3 compatibility, we need to use absolute imports,
+# so we add the oletools parent folder to sys.path (absolute+normalized path):
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if _parent_dir not in sys.path:
+    sys.path.insert(0, _parent_dir)
+
+from oletools.thirdparty.prettytable import prettytable
+from oletools import crypto
 
 
 
@@ -279,20 +283,7 @@ class OleID(object):
         self.indicators.append(encrypted)
         if not self.ole:
             return None
-        # check if bit 1 of security field = 1:
-        # (this field may be missing for Powerpoint2000, for example)
-        if self.suminfo_data is None:
-            self.check_properties()
-        if 0x13 in self.suminfo_data:
-            if self.suminfo_data[0x13] & 1:
-                encrypted.value = True
-        # check if this is an OpenXML encrypted file
-        elif self.ole.exists('EncryptionInfo'):
-            encrypted.value = True
-        # or an encrypted ppt file
-        if self.ole.exists('EncryptedSummary') and \
-                not self.ole.exists('SummaryInformation'):
-            encrypted.value = True
+        encrypted.value = crypto.is_encrypted(self.ole)
         return encrypted
 
     def check_word(self):
@@ -316,27 +307,7 @@ class OleID(object):
             return None, None
         if self.ole.exists('WordDocument'):
             word.value = True
-            # check for Word-specific encryption flag:
-            stream = None
-            try:
-                stream = self.ole.openstream(["WordDocument"])
-                # pass header 10 bytes
-                stream.read(10)
-                # read flag structure:
-                temp16 = struct.unpack("H", stream.read(2))[0]
-                f_encrypted = (temp16 & 0x0100) >> 8
-                if f_encrypted:
-                    # correct encrypted indicator if present or add one
-                    encrypt_ind = self.get_indicator('encrypted')
-                    if encrypt_ind:
-                        encrypt_ind.value = True
-                    else:
-                        self.indicators.append('encrypted', True, name='Encrypted')
-            except Exception:
-                raise
-            finally:
-                if stream is not None:
-                    stream.close()
+
             # check for VBA macros:
             if self.ole.exists('Macros'):
                 macros.value = True

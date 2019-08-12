@@ -9,11 +9,16 @@ Ensure that
 from __future__ import print_function
 
 import unittest
-from oletools import msodde
-from tests.test_utils import DATA_BASE_DIR as BASE_DIR
+import sys
 import os
-from os.path import join
+from os.path import join, basename
 from traceback import print_exc
+import json
+from collections import OrderedDict
+from oletools import msodde
+from oletools.crypto import \
+    WrongEncryptionPassword, CryptoLibNotImported, check_msoffcrypto
+from tests.test_utils import call_and_capture, DATA_BASE_DIR as BASE_DIR
 
 
 class TestReturnCode(unittest.TestCase):
@@ -46,15 +51,21 @@ class TestReturnCode(unittest.TestCase):
 
     def test_invalid_none(self):
         """ check that no file argument leads to non-zero exit status """
-        self.do_test_validity('', True)
+        if sys.hexversion > 0x03030000:   # version 3.3 and higher
+            # different errors probably depending on whether msoffcryto is
+            # available or not
+            expect_error = (AttributeError, FileNotFoundError)
+        else:
+            expect_error = (AttributeError, IOError)
+        self.do_test_validity('', expect_error)
 
     def test_invalid_empty(self):
         """ check that empty file argument leads to non-zero exit status """
-        self.do_test_validity(join(BASE_DIR, 'basic/empty'), True)
+        self.do_test_validity(join(BASE_DIR, 'basic/empty'), Exception)
 
     def test_invalid_text(self):
         """ check that text file argument leads to non-zero exit status """
-        self.do_test_validity(join(BASE_DIR, 'basic/text'), True)
+        self.do_test_validity(join(BASE_DIR, 'basic/text'), Exception)
 
     def test_encrypted(self):
         """
@@ -64,28 +75,56 @@ class TestReturnCode(unittest.TestCase):
         Encryption) is tested.
         """
         CRYPT_DIR = join(BASE_DIR, 'encrypted')
-        ADD_ARGS = '', '-j', '-d', '-f', '-a'
+        have_crypto = check_msoffcrypto()
         for filename in os.listdir(CRYPT_DIR):
-            full_name = join(CRYPT_DIR, filename)
-            for args in ADD_ARGS:
-                self.do_test_validity(args + ' ' + full_name, True)
+            if have_crypto and 'standardpassword' in filename:
+                # these are automagically decrypted
+                self.do_test_validity(join(CRYPT_DIR, filename))
+            elif have_crypto:
+                self.do_test_validity(join(CRYPT_DIR, filename),
+                                      WrongEncryptionPassword)
+            else:
+                self.do_test_validity(join(CRYPT_DIR, filename),
+                                      CryptoLibNotImported)
 
-    def do_test_validity(self, args, expect_error=False):
-        """ helper for test_valid_doc[x] """
-        have_exception = False
+    def do_test_validity(self, filename, expect_error=None):
+        """ helper for test_[in]valid_* """
+        found_error = None
+        # DEBUG: print('Testing file {}'.format(filename))
         try:
-            msodde.process_file(args, msodde.FIELD_FILTER_BLACKLIST)
-        except Exception:
-            have_exception = True
-            print_exc()
-        except SystemExit as exc:     # sys.exit() was called
-            have_exception = True
-            if exc.code is None:
-                have_exception = False
+            msodde.process_maybe_encrypted(filename,
+                            field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
+        except Exception as exc:
+            found_error = exc
+            # DEBUG: print_exc()
 
-        self.assertEqual(expect_error, have_exception,
-                         msg='Args={0}, expect={1}, exc={2}'
-                             .format(args, expect_error, have_exception))
+        if expect_error and not found_error:
+            self.fail('Expected {} but msodde finished without errors for {}'
+                      .format(expect_error, filename))
+        elif not expect_error and found_error:
+            self.fail('Unexpected error {} from msodde for {}'
+                      .format(found_error, filename))
+        elif expect_error and not isinstance(found_error, expect_error):
+            self.fail('Wrong kind of error {} from msodde for {}, expected {}'
+                      .format(type(found_error), filename, expect_error))
+
+
+@unittest.skipIf(not check_msoffcrypto(),
+                 'Module msoffcrypto not installed for {}'
+                 .format(basename(sys.executable)))
+class TestErrorOutput(unittest.TestCase):
+    """msodde does not specify error by return code but text output."""
+
+    def test_crypt_output(self):
+        """Check for helpful error message when failing to decrypt."""
+        for suffix in 'doc', 'docm', 'docx', 'ppt', 'pptm', 'pptx', 'xls', \
+                'xlsb', 'xlsm', 'xlsx':
+            example_file = join(BASE_DIR, 'encrypted', 'encrypted.' + suffix)
+            output, ret_code = call_and_capture('msodde', [example_file, ],
+                                                accept_nonzero_exit=True)
+            self.assertEqual(ret_code, 1)
+            self.assertIn('passwords could not decrypt office file', output,
+                          msg='Unexpected output: {}'.format(output.strip()))
 
 
 class TestDdeLinks(unittest.TestCase):
@@ -100,33 +139,37 @@ class TestDdeLinks(unittest.TestCase):
     def test_with_dde(self):
         """ check that dde links appear on stdout """
         filename = 'dde-test-from-office2003.doc'
-        output = msodde.process_file(
-            join(BASE_DIR, 'msodde', filename), msodde.FIELD_FILTER_BLACKLIST)
+        output = msodde.process_maybe_encrypted(
+            join(BASE_DIR, 'msodde', filename),
+            field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
         self.assertNotEqual(len(self.get_dde_from_output(output)), 0,
                             msg='Found no dde links in output of ' + filename)
 
     def test_no_dde(self):
         """ check that no dde links appear on stdout """
         filename = 'harmless-clean.doc'
-        output = msodde.process_file(
-            join(BASE_DIR, 'msodde', filename), msodde.FIELD_FILTER_BLACKLIST)
+        output = msodde.process_maybe_encrypted(
+            join(BASE_DIR, 'msodde', filename),
+            field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
         self.assertEqual(len(self.get_dde_from_output(output)), 0,
                          msg='Found dde links in output of ' + filename)
 
     def test_with_dde_utf16le(self):
         """ check that dde links appear on stdout """
         filename = 'dde-test-from-office2013-utf_16le-korean.doc'
-        output = msodde.process_file(
-            join(BASE_DIR, 'msodde', filename), msodde.FIELD_FILTER_BLACKLIST)
+        output = msodde.process_maybe_encrypted(
+            join(BASE_DIR, 'msodde', filename),
+            field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
         self.assertNotEqual(len(self.get_dde_from_output(output)), 0,
                             msg='Found no dde links in output of ' + filename)
 
     def test_excel(self):
         """ check that dde links are found in excel 2007+ files """
-        expect = ['DDE-Link cmd /c calc.exe', ]
+        expect = ['cmd /c calc.exe', ]
         for extn in 'xlsx', 'xlsm', 'xlsb':
-            output = msodde.process_file(
-                join(BASE_DIR, 'msodde', 'dde-test.' + extn), msodde.FIELD_FILTER_BLACKLIST)
+            output = msodde.process_maybe_encrypted(
+                join(BASE_DIR, 'msodde', 'dde-test.' + extn),
+                field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
 
             self.assertEqual(expect, self.get_dde_from_output(output),
                              msg='unexpected output for dde-test.{0}: {1}'
@@ -136,8 +179,9 @@ class TestDdeLinks(unittest.TestCase):
         """ check that dde in xml from word / excel is found """
         for name_part in 'excel2003', 'word2003', 'word2007':
             filename = 'dde-in-' + name_part + '.xml'
-            output = msodde.process_file(
-                join(BASE_DIR, 'msodde', filename), msodde.FIELD_FILTER_BLACKLIST)
+            output = msodde.process_maybe_encrypted(
+                join(BASE_DIR, 'msodde', filename),
+                field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
             links = self.get_dde_from_output(output)
             self.assertEqual(len(links), 1, 'found {0} dde-links in {1}'
                                             .format(len(links), filename))
@@ -149,15 +193,17 @@ class TestDdeLinks(unittest.TestCase):
     def test_clean_rtf_blacklist(self):
         """ find a lot of hyperlinks in rtf spec """
         filename = 'RTF-Spec-1.7.rtf'
-        output = msodde.process_file(
-            join(BASE_DIR, 'msodde', filename), msodde.FIELD_FILTER_BLACKLIST)
+        output = msodde.process_maybe_encrypted(
+            join(BASE_DIR, 'msodde', filename),
+            field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
         self.assertEqual(len(self.get_dde_from_output(output)), 1413)
 
     def test_clean_rtf_ddeonly(self):
         """ find no dde links in rtf spec """
         filename = 'RTF-Spec-1.7.rtf'
-        output = msodde.process_file(
-            join(BASE_DIR, 'msodde', filename), msodde.FIELD_FILTER_DDE)
+        output = msodde.process_maybe_encrypted(
+            join(BASE_DIR, 'msodde', filename),
+            field_filter_mode=msodde.FIELD_FILTER_DDE)
         self.assertEqual(len(self.get_dde_from_output(output)), 0,
                          msg='Found dde links in output of ' + filename)
 

@@ -13,9 +13,11 @@ from tests.common.log_helper import log_helper_test_main
 from tests.common.log_helper import log_helper_test_imported
 from os.path import dirname, join, relpath, abspath
 
+from tests.test_utils import PROJECT_ROOT
+
 # this is the common base of "tests" and "oletools" dirs
-ROOT_DIRECTORY = abspath(join(__file__, '..', '..', '..', '..'))
-TEST_FILE = relpath(join(dirname(__file__), 'log_helper_test_main.py'), ROOT_DIRECTORY)
+TEST_FILE = relpath(join(dirname(abspath(__file__)), 'log_helper_test_main.py'),
+                    PROJECT_ROOT)
 PYTHON_EXECUTABLE = sys.executable
 
 MAIN_LOG_MESSAGES = [
@@ -59,6 +61,62 @@ class TestLogHelper(unittest.TestCase):
             log_helper_test_imported.CRITICAL_MESSAGE
         ])
 
+    def test_logs_type_ignored(self):
+        """Run test script with logging enabled at info level. Want no type."""
+        output = self._run_test(['enable', 'info'])
+
+        expect = '\n'.join([
+            'INFO     ' + log_helper_test_main.INFO_MESSAGE,
+            'WARNING  ' + log_helper_test_main.WARNING_MESSAGE,
+            'ERROR    ' + log_helper_test_main.ERROR_MESSAGE,
+            'CRITICAL ' + log_helper_test_main.CRITICAL_MESSAGE,
+            'INFO     ' + log_helper_test_main.RESULT_MESSAGE,
+            'INFO     ' + log_helper_test_imported.INFO_MESSAGE,
+            'WARNING  ' + log_helper_test_imported.WARNING_MESSAGE,
+            'ERROR    ' + log_helper_test_imported.ERROR_MESSAGE,
+            'CRITICAL ' + log_helper_test_imported.CRITICAL_MESSAGE,
+            'INFO     ' + log_helper_test_imported.RESULT_MESSAGE,
+        ])
+        self.assertEqual(output, expect)
+
+    def test_logs_type_in_json(self):
+        """Check type field is contained in json log."""
+        output = self._run_test(['enable', 'as-json', 'info'])
+
+        # convert to json preserving order of output
+        jout = json.loads(output)
+
+        jexpect = [
+            dict(type='msg', level='INFO',
+                 msg=log_helper_test_main.INFO_MESSAGE),
+            dict(type='msg', level='WARNING',
+                 msg=log_helper_test_main.WARNING_MESSAGE),
+            dict(type='msg', level='ERROR',
+                 msg=log_helper_test_main.ERROR_MESSAGE),
+            dict(type='msg', level='CRITICAL',
+                 msg=log_helper_test_main.CRITICAL_MESSAGE),
+            # this is the important entry (has a different "type" field):
+            dict(type=log_helper_test_main.RESULT_TYPE, level='INFO',
+                 msg=log_helper_test_main.RESULT_MESSAGE),
+            dict(type='msg', level='INFO',
+                 msg=log_helper_test_imported.INFO_MESSAGE),
+            dict(type='msg', level='WARNING',
+                 msg=log_helper_test_imported.WARNING_MESSAGE),
+            dict(type='msg', level='ERROR',
+                 msg=log_helper_test_imported.ERROR_MESSAGE),
+            dict(type='msg', level='CRITICAL',
+                 msg=log_helper_test_imported.CRITICAL_MESSAGE),
+            # ... and this:
+            dict(type=log_helper_test_imported.RESULT_TYPE, level='INFO',
+                 msg=log_helper_test_imported.RESULT_MESSAGE),
+        ]
+        self.assertEqual(jout, jexpect)
+
+    def test_percent_autoformat(self):
+        """Test that auto-formatting of log strings with `%` works."""
+        output = self._run_test(['enable', '%-autoformat', 'info'])
+        self.assertIn('The answer is 47.', output)
+
     def test_json_correct_on_exceptions(self):
         """
         Test that even on unhandled exceptions our JSON is always correct
@@ -72,10 +130,10 @@ class TestLogHelper(unittest.TestCase):
     def _assert_json_messages(self, output, messages):
         try:
             json_data = json.loads(output)
-            self.assertEquals(len(json_data), len(messages))
+            self.assertEqual(len(json_data), len(messages))
 
             for i in range(len(messages)):
-                self.assertEquals(messages[i], json_data[i]['msg'])
+                self.assertEqual(messages[i], json_data[i]['msg'])
         except ValueError:
             self.fail('Invalid json:\n' + output)
 
@@ -90,9 +148,9 @@ class TestLogHelper(unittest.TestCase):
         child = subprocess.Popen(
             [PYTHON_EXECUTABLE, TEST_FILE] + args,
             shell=False,
-            env={'PYTHONPATH': ROOT_DIRECTORY},
+            env={'PYTHONPATH': PROJECT_ROOT},
             universal_newlines=True,
-            cwd=ROOT_DIRECTORY,
+            cwd=PROJECT_ROOT,
             stdin=None,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
@@ -102,7 +160,7 @@ class TestLogHelper(unittest.TestCase):
         if not isinstance(output, str):
             output = output.decode('utf-8')
 
-        self.assertEquals(child.returncode == 0, should_succeed)
+        self.assertEqual(child.returncode == 0, should_succeed)
 
         return output.strip()
 

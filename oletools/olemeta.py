@@ -15,7 +15,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# olemeta is copyright (c) 2013-2018, Philippe Lagadec (http://www.decalage.info)
+# olemeta is copyright (c) 2013-2019, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -51,7 +51,7 @@ http://www.decalage.info/python/oletools
 # 2017-05-04       PL: - added optparse and xglob (issue #141)
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
 
-__version__ = '0.54dev1'
+__version__ = '0.54'
 
 #------------------------------------------------------------------------------
 # TODO:

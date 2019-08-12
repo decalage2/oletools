@@ -11,7 +11,18 @@ It is part of the [python-oletools](http://www.decalage.info/python/oletools) pa
 ## Usage
 
 ```text
-Usage: oledir.py <filename>
+Usage: oledir [options] <filename> [filename2 ...]
+
+Options:
+  -h, --help            show this help message and exit
+  -r                    find files recursively in subdirectories.
+  -z ZIP_PASSWORD, --zip=ZIP_PASSWORD
+                        if the file is a zip archive, open all files from it,
+                        using the provided password (requires Python 2.6+)
+  -f ZIP_FNAME, --zipfname=ZIP_FNAME
+                        if the file is a zip archive, file(s) to be opened
+                        within the zip. Wildcards * and ? are supported.
+                        (default:*)
 ```
 
 ### Examples
@@ -19,7 +30,7 @@ Usage: oledir.py <filename>
 Scan a single file:
 
 ```text
-oledir.py file.doc
+oledir file.doc
 ```
     
 ![](oledir.png)

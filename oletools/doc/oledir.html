@@ -21,10 +21,21 @@
 <p>It can be used either as a command-line tool, or as a python module from your own applications.</p>
 <p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
 <h2 id="usage">Usage</h2>
-<pre class="text"><code>Usage: oledir.py &lt;filename&gt;</code></pre>
+<pre class="text"><code>Usage: oledir [options] &lt;filename&gt; [filename2 ...]
+
+Options:
+  -h, --help            show this help message and exit
+  -r                    find files recursively in subdirectories.
+  -z ZIP_PASSWORD, --zip=ZIP_PASSWORD
+                        if the file is a zip archive, open all files from it,
+                        using the provided password (requires Python 2.6+)
+  -f ZIP_FNAME, --zipfname=ZIP_FNAME
+                        if the file is a zip archive, file(s) to be opened
+                        within the zip. Wildcards * and ? are supported.
+                        (default:*)</code></pre>
 <h3 id="examples">Examples</h3>
 <p>Scan a single file:</p>
-<pre class="text"><code>oledir.py file.doc</code></pre>
+<pre class="text"><code>oledir file.doc</code></pre>
 <p><img src="oledir.png" /></p>
 <hr />
 <h2 id="how-to-use-oledir-in-python-applications">How to use oledir in Python applications</h2>

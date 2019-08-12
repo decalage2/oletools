@@ -33,6 +33,8 @@ class TestOOXML(unittest.TestCase):
             pptx=ooxml.DOCTYPE_POWERPOINT, pptm=ooxml.DOCTYPE_POWERPOINT,
             ppsx=ooxml.DOCTYPE_POWERPOINT, ppsm=ooxml.DOCTYPE_POWERPOINT,
             potx=ooxml.DOCTYPE_POWERPOINT, potm=ooxml.DOCTYPE_POWERPOINT,
+            ods=ooxml.DOCTYPE_NONE, odt=ooxml.DOCTYPE_NONE,
+            odp=ooxml.DOCTYPE_NONE,
         )
 
         # files that are neither OLE nor xml:

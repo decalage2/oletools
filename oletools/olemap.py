@@ -13,7 +13,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE ==================================================================
 
-# olemap is copyright (c) 2015-2018 Philippe Lagadec (http://www.decalage.info)
+# olemap is copyright (c) 2015-2019 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -52,8 +52,9 @@ http://www.decalage.info/python/oletools
 # 2017-03-23       PL: - only display the header by default
 #                      - added option --exdata to display extra data in hex
 # 2018-08-28 v0.54 PL: - olefile is now a dependency
+# 2019-07-10 v0.55 PL: - fixed display of OLE header CLSID (issue #394)
 
-__version__ = '0.54dev1'
+__version__ = '0.55.dev3'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -121,7 +122,7 @@ def show_header(ole, extra_data=False):
     print("OLE HEADER:")
     t = tablestream.TableStream([24, 16, 79-(4+24+16)], header_row=['Attribute', 'Value', 'Description'])
     t.write_row(['OLE Signature (hex)', binascii.b2a_hex(ole.header_signature).upper(), 'Should be D0CF11E0A1B11AE1'])
-    t.write_row(['Header CLSID (hex)', binascii.b2a_hex(ole.header_clsid).upper(), 'Should be 0'])
+    t.write_row(['Header CLSID', ole.header_clsid, 'Should be empty (0)'])
     t.write_row(['Minor Version', '%04X' % ole.minor_version, 'Should be 003E'])
     t.write_row(['Major Version', '%04X' % ole.dll_version, 'Should be 3 or 4'])
     t.write_row(['Byte Order', '%04X' % ole.byte_order, 'Should be FFFE (little endian)'])

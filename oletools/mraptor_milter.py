@@ -98,18 +98,7 @@ from oletools import olevba, mraptor
 
 from Milter.utils import parse_addr
 
-if sys.version_info[0] <= 2:
-    # Python 2.x
-    if sys.version_info[1] <= 6:
-        # Python 2.6
-        # use is_zipfile backported from Python 2.7:
-        from oletools.thirdparty.zipfile27 import is_zipfile
-    else:
-        # Python 2.7
-        from zipfile import is_zipfile
-else:
-    # Python 3.x+
-    from zipfile import is_zipfile
+from zipfile import is_zipfile
 
 
 
