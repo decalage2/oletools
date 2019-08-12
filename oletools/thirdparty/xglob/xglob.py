@@ -20,7 +20,7 @@ For more info and updates: http://www.decalage.info/xglob
 
 # LICENSE:
 #
-# xglob is copyright (c) 2013-2016, Philippe Lagadec (http://www.decalage.info)
+# xglob is copyright (c) 2013-2018, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -54,8 +54,9 @@ For more info and updates: http://www.decalage.info/xglob
 #                      - fixed issue when using wildcards with empty path
 # 2016-04-28 v0.06 CH: - improved handling of non-existing files
 #                        (by Christian Herdtweck)
+# 2018-12-08 v0.07 PL: - fixed issue #373, zip password must be bytes
 
-__version__ = '0.06'
+__version__ = '0.07'
 
 
 #=== IMPORTS =================================================================
@@ -151,7 +152,12 @@ def iter_files(files, recursive=False, zip_password=None, zip_fname='*'):
         for filename in iglob(filespec):
             if zip_password is not None:
                 # Each file is expected to be a zip archive:
-                #print 'Opening zip archive %s with provided password' % filename
+                # The zip password must be bytes, not unicode/str:
+                if not isinstance(zip_password, bytes):
+                    zip_password = bytes(zip_password, encoding='utf8')
+                # print('Opening zip archive %s with provided password' % filename)
+                # print('zip password: %r' % zip_password)
+                # print(type(zip_password))
                 z = zipfile.ZipFile(filename, 'r')
                 #print 'Looking for file(s) matching "%s"' % zip_fname
                 for subfilename in ziglob(z, zip_fname):

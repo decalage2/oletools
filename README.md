@@ -26,7 +26,25 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2018-05-30 v0.53**:
+- **2019-05-22 v0.54.2**:
+    - bugfix release: fixed several issues related to encrypted documents
+      and XLM/XLF Excel 4 macros
+    - msoffcrypto-tool is now installed by default to handle encrypted documents
+    - olevba and msodde now handle documents encrypted with common passwords such
+      as 123, 1234, 4321, 12345, 123456, VelvetSweatShop automatically.
+- **2019-04-04 v0.54**:
+    - olevba, msodde: added support for encrypted MS Office files 
+    - olevba: added detection and extraction of XLM/XLF Excel 4 macros (thanks to plugin_biff from Didier Stevens' oledump)
+    - olevba, mraptor: added detection of VBA running Excel 4 macros
+    - olevba: detect and display special characters such as backspace
+    - olevba: colorized output showing suspicious keywords in the VBA code
+    - olevba, mraptor: full Python 3 compatibility, no separate olevba3/mraptor3 anymore
+    - olevba: improved handling of code pages and unicode
+    - olevba: fixed a false-positive in VBA macro detection
+    - rtfobj: improved OLE Package handling, improved Equation object detection
+    - oleobj: added detection of external links to objects in OpenXML
+    - replaced third party packages by PyPI dependencies
+- 2018-05-30 v0.53:
     - olevba and mraptor can now parse Word/PowerPoint 2007+ pure XML files (aka Flat OPC format)
     - improved support for VBA forms in olevba (oleform)
     - rtfobj now displays the CLSID of OLE objects, which is the best way to identify them. Known-bad CLSIDs such as MS Equation Editor are highlighted in red.
@@ -75,26 +93,38 @@ Projects using oletools:
 ------------------------
 
 oletools are used by a number of projects and online malware analysis services,
-including [Viper](http://viper.li/), [REMnux](https://remnux.org/),
+including
+[ACE](https://github.com/IntegralDefense/ACE),
+[Anlyz.io](https://sandbox.anlyz.io/),
+[AssemblyLine](https://www.cse-cst.gc.ca/en/assemblyline),
+[CAPE](https://github.com/ctxis/CAPE),
+[Cuckoo Sandbox](https://github.com/cuckoosandbox/cuckoo),
+[DARKSURGEON](https://github.com/cryps1s/DARKSURGEON),
+[Deepviz](https://sandbox.deepviz.com/),
+[dridex.malwareconfig.com](https://dridex.malwareconfig.com),
 [FAME](https://certsocietegenerale.github.io/fame/),
+[FLARE-VM](https://github.com/fireeye/flare-vm),
 [Hybrid-analysis.com](https://www.hybrid-analysis.com/),
 [Joe Sandbox](https://www.document-analyzer.net/),
-[Deepviz](https://sandbox.deepviz.com/),
 [Laika BOSS](https://github.com/lmco/laikaboss),
-[Cuckoo Sandbox](https://github.com/cuckoosandbox/cuckoo),
-[Anlyz.io](https://sandbox.anlyz.io/),
-[ViperMonkey](https://github.com/decalage2/ViperMonkey),
-[pcodedmp](https://github.com/bontchev/pcodedmp),
-[dridex.malwareconfig.com](https://dridex.malwareconfig.com),
-[Snake](https://github.com/countercept/snake),
-[DARKSURGEON](https://github.com/cryps1s/DARKSURGEON),
-[CAPE](https://github.com/ctxis/CAPE),
-[AssemblyLine](https://www.cse-cst.gc.ca/en/assemblyline),
+[MacroMilter](https://github.com/sbidy/MacroMilter),
 [malshare.io](https://malshare.io),
-[Malware Repository Framework (MRF)](https://www.adlice.com/download/mrf/),
 [malware-repo](https://github.com/Tigzy/malware-repo),
-[Vba2Graph](https://github.com/MalwareCantFly/Vba2Graph),
+[Malware Repository Framework (MRF)](https://www.adlice.com/download/mrf/),
+[olefy](https://github.com/HeinleinSupport/olefy),
+[PeekabooAV](https://github.com/scVENUS/PeekabooAV),
+[pcodedmp](https://github.com/bontchev/pcodedmp),
+[PyCIRCLean](https://github.com/CIRCL/PyCIRCLean),
+[REMnux](https://remnux.org/),
+[Snake](https://github.com/countercept/snake),
+[SNDBOX](https://app.sndbox.com),
 [Strelka](https://github.com/target/strelka),
+[stoQ](https://stoq.punchcyber.com/),
+[TheHive/Cortex](https://github.com/TheHive-Project/Cortex-Analyzers),
+[Vba2Graph](https://github.com/MalwareCantFly/Vba2Graph),
+[Viper](http://viper.li/),
+[ViperMonkey](https://github.com/decalage2/ViperMonkey),
+[YOMI](https://yomi.yoroi.company),
 and probably [VirusTotal](https://www.virustotal.com). 
 And quite a few [other projects on GitHub](https://github.com/search?q=oletools&type=Repositories).
 (Please [contact me]((http://decalage.info/contact)) if you have or know
@@ -149,7 +179,7 @@ License
 This license applies to the python-oletools package, apart from the thirdparty folder which contains third-party files 
 published with their own license.
 
-The python-oletools package is copyright (c) 2012-2018 Philippe Lagadec (http://www.decalage.info)
+The python-oletools package is copyright (c) 2012-2019 Philippe Lagadec (http://www.decalage.info)
 
 All rights reserved.
 

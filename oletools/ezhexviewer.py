@@ -16,7 +16,7 @@ Usage in a python application:
 
 ezhexviewer project website: http://www.decalage.info/python/ezhexviewer
 
-ezhexviewer is copyright (c) 2012-2017, Philippe Lagadec (http://www.decalage.info)
+ezhexviewer is copyright (c) 2012-2019, Philippe Lagadec (http://www.decalage.info)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -50,7 +50,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # 2017-04-26       PL: - fixed absolute imports (issue #141)
 # 2018-09-15 v0.54 PL: - easygui is now a dependency
 
-__version__ = '0.54dev1'
+__version__ = '0.54'
 
 #-----------------------------------------------------------------------------
 # TODO:

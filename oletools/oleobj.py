@@ -14,7 +14,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE =================================================================
 
-# oleobj is copyright (c) 2015-2018 Philippe Lagadec (http://www.decalage.info)
+# oleobj is copyright (c) 2015-2019 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -89,7 +89,7 @@ from oletools.ooxml import XmlParser
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
 # 2018-10-30       SA: - added detection of external links (PR #317)
 
-__version__ = '0.54dev4'
+__version__ = '0.54'
 
 # -----------------------------------------------------------------------------
 # TODO:
@@ -526,29 +526,35 @@ def find_ole_in_ppt(filename):
     can contain the actual embedded file we are looking for (caller will check
     for these).
     """
-    for stream in PptFile(filename).iter_streams():
-        for record_idx, record in enumerate(stream.iter_records()):
-            if isinstance(record, PptRecordExOleVbaActiveXAtom):
-                ole = None
-                try:
-                    data_start = next(record.iter_uncompressed())
-                    if data_start[:len(olefile.MAGIC)] != olefile.MAGIC:
-                        continue   # could be an ActiveX control or VBA Storage
+    ppt_file = None
+    try:
+        ppt_file = PptFile(filename)
+        for stream in ppt_file.iter_streams():
+            for record_idx, record in enumerate(stream.iter_records()):
+                if isinstance(record, PptRecordExOleVbaActiveXAtom):
+                    ole = None
+                    try:
+                        data_start = next(record.iter_uncompressed())
+                        if data_start[:len(olefile.MAGIC)] != olefile.MAGIC:
+                            continue   # could be ActiveX control / VBA Storage
 
-                    # otherwise, this should be an OLE object
-                    log.debug('Found record with embedded ole object in ppt '
-                              '(stream "{0}", record no {1})'
-                              .format(stream.name, record_idx))
-                    ole = record.get_data_as_olefile()
-                    yield ole
-                except IOError:
-                    log.warning('Error reading data from {0} stream or '
-                                'interpreting it as OLE object'
-                                .format(stream.name))
-                    log.debug('', exc_info=True)
-                finally:
-                    if ole is not None:
-                        ole.close()
+                        # otherwise, this should be an OLE object
+                        log.debug('Found record with embedded ole object in '
+                                  'ppt (stream "{0}", record no {1})'
+                                  .format(stream.name, record_idx))
+                        ole = record.get_data_as_olefile()
+                        yield ole
+                    except IOError:
+                        log.warning('Error reading data from {0} stream or '
+                                    'interpreting it as OLE object'
+                                    .format(stream.name))
+                        log.debug('', exc_info=True)
+                    finally:
+                        if ole is not None:
+                            ole.close()
+    finally:
+        if ppt_file is not None:
+            ppt_file.close()
 
 
 class FakeFile(io.RawIOBase):
@@ -750,12 +756,12 @@ def process_file(filename, data, output_dir=None):
 
     xml_parser = None
     if is_zipfile(filename):
-        log.info('file is a OOXML file, looking for relationships with external links')
+        log.info('file could be an OOXML file, looking for relationships with '
+                 'external links')
         xml_parser = XmlParser(filename)
         for relationship, target in find_external_relationships(xml_parser):
             did_dump = True
             print("Found relationship '%s' with external link %s" % (relationship, target))
-
 
     # look for ole files inside file (e.g. unzip docx)
     # have to finish work on every ole stream inside iteration, since handles
@@ -765,9 +771,9 @@ def process_file(filename, data, output_dir=None):
             continue
 
         for path_parts in ole.listdir():
+            stream_path = '/'.join(path_parts)
+            log.debug('Checking stream %r', stream_path)
             if path_parts[-1] == '\x01Ole10Native':
-                stream_path = '/'.join(path_parts)
-                log.debug('Checking stream %r', stream_path)
                 stream = None
                 try:
                     stream = ole.openstream(path_parts)

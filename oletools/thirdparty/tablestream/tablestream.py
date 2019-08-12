@@ -55,8 +55,9 @@ from __future__ import print_function
 # 2016-08-28 v0.07 PL: - support for both Python 2.6+ and 3.x
 #                      - all cells are converted to unicode
 # 2018-09-22 v0.08 PL: - removed mention to oletools' thirdparty folder
+# 2019-03-27 v0.09 PL: - slight fix, TableStyleSlim inherits from TableStyle
 
-__version__ = '0.08'
+__version__ = '0.09'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -174,7 +175,7 @@ class TableStyle(object):
     bottom_right = u'+'
 
 
-class TableStyleSlim(object):
+class TableStyleSlim(TableStyle):
     """
     Style for a TableStream.
     Example:

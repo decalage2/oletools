@@ -24,7 +24,7 @@
 <p>mraptor can be used either as a command-line tool, or as a python module from your own applications.</p>
 <p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
 <h2 id="usage">Usage</h2>
-<pre class="text"><code>Usage: mraptor.py [options] &lt;filename&gt; [filename2 ...]
+<pre class="text"><code>Usage: mraptor [options] &lt;filename&gt; [filename2 ...]
 
 Options:
   -h, --help            show this help message and exit
@@ -49,15 +49,15 @@ An exit code is returned based on the analysis result:
  - 20: SUSPICIOUS</code></pre>
 <h3 id="examples">Examples</h3>
 <p>Scan a single file:</p>
-<pre class="text"><code>mraptor.py file.doc</code></pre>
+<pre class="text"><code>mraptor file.doc</code></pre>
 <p>Scan a single file, stored in a Zip archive with password “infected”:</p>
-<pre class="text"><code>mraptor.py malicious_file.xls.zip -z infected</code></pre>
+<pre class="text"><code>mraptor malicious_file.xls.zip -z infected</code></pre>
 <p>Scan a collection of files stored in a folder:</p>
-<pre class="text"><code>mraptor.py &quot;MalwareZoo/VBA/*&quot;</code></pre>
+<pre class="text"><code>mraptor &quot;MalwareZoo/VBA/*&quot;</code></pre>
 <p><strong>Important</strong>: on Linux/MacOSX, always add double quotes around a file name when you use wildcards such as <code>*</code> and <code>?</code>. Otherwise, the shell may replace the argument with the actual list of files matching the wildcards before starting the script.</p>
 <p><img src="mraptor1.png" /></p>
 <h2 id="python-3-support---mraptor3">Python 3 support - mraptor3</h2>
-<p>As of v0.50, mraptor has been ported to Python 3 thanks to <span class="citation" data-cites="sebdraven">@sebdraven</span>. However, the differences between Python 2 and 3 are significant and for now there is a separate version of mraptor named mraptor3 to be used with Python 3.</p>
+<p>Since v0.54, mraptor is fully compatible with both Python 2 and 3. There is no need to use mraptor3 anymore, however it is still present for backward compatibility.</p>
 <hr />
 <h2 id="how-to-use-mraptor-in-python-applications">How to use mraptor in Python applications</h2>
 <p>TODO</p>

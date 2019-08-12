@@ -24,7 +24,7 @@
 <p>It can also extract Flash objects from RTF documents, by parsing embedded objects encoded in hexadecimal format (-f option).</p>
 <p>For this, simply add the -o option to work on OLE streams rather than raw files, or the -f option to work on RTF files.</p>
 <h2 id="usage">Usage</h2>
-<pre class="text"><code>Usage: pyxswf.py [options] &lt;file.bad&gt;
+<pre class="text"><code>Usage: pyxswf [options] &lt;file.bad&gt;
 
 Options:
   -o, --ole             Parse an OLE file (e.g. Word, Excel) to look for SWF
@@ -46,18 +46,18 @@ Options:
                         contain SWFs. Must provide path in quotes
   -c, --compress        Compresses the SWF using Zlib</code></pre>
 <h3 id="example-1---detecting-and-extracting-a-swf-file-from-a-word-document-on-windows">Example 1 - detecting and extracting a SWF file from a Word document on Windows:</h3>
-<pre class="text"><code>C:\oletools&gt;pyxswf.py -o word_flash.doc
+<pre class="text"><code>C:\oletools&gt;pyxswf -o word_flash.doc
 OLE stream: &#39;Contents&#39;
 [SUMMARY] 1 SWF(s) in MD5:993664cc86f60d52d671b6610813cfd1:Contents
         [ADDR] SWF 1 at 0x8  - FWS Header
 
-C:\oletools&gt;pyxswf.py -xo word_flash.doc
+C:\oletools&gt;pyxswf -xo word_flash.doc
 OLE stream: &#39;Contents&#39;
 [SUMMARY] 1 SWF(s) in MD5:993664cc86f60d52d671b6610813cfd1:Contents
         [ADDR] SWF 1 at 0x8  - FWS Header
                 [FILE] Carved SWF MD5: 2498e9c0701dc0e461ab4358f9102bc5.swf</code></pre>
 <h3 id="example-2---detecting-and-extracting-a-swf-file-from-a-rtf-document-on-windows">Example 2 - detecting and extracting a SWF file from a RTF document on Windows:</h3>
-<pre class="text"><code>C:\oletools&gt;pyxswf.py -xf &quot;rtf_flash.rtf&quot;
+<pre class="text"><code>C:\oletools&gt;pyxswf -xf &quot;rtf_flash.rtf&quot;
 RTF embedded object size 1498557 at index 000036DD
 [SUMMARY] 1 SWF(s) in MD5:46a110548007e04f4043785ac4184558:RTF_embedded_object_0
 00036DD

@@ -14,7 +14,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE ==================================================================
 
-# oledir is copyright (c) 2015-2018 Philippe Lagadec (http://www.decalage.info)
+# oledir is copyright (c) 2015-2019 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -53,7 +53,7 @@ from __future__ import print_function
 # 2018-08-28 v0.54 PL: - olefile is now a dependency
 # 2018-10-06           - colorclass is now a dependency
 
-__version__ = '0.54dev1'
+__version__ = '0.54'
 
 #------------------------------------------------------------------------------
 # TODO:

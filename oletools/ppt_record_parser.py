@@ -63,7 +63,6 @@ except ImportError:
         sys.path.insert(0, PARENT_DIR)
     del PARENT_DIR
     from oletools import record_base
-from oletools.common.errors import FileIsEncryptedError
 
 
 # types of relevant records (there are much more than listed here)
@@ -109,10 +108,11 @@ RECORD_TYPES = dict([
 ])
 
 
-# record types where version is not 0x0 or 0xf
+# record types where version is not 0x0 or 0x1 or 0xf
 VERSION_EXCEPTIONS = dict([
     (0x0400, 2),                       # rt_vbainfoatom
     (0x03ef, 2),                       # rt_slideatom
+    (0xe9c7, 7),    # tests/test-data/encrypted/encrypted.ppt, not investigated
 ])
 
 
@@ -149,6 +149,10 @@ def is_ppt(filename):
     Param filename can be anything that OleFileIO constructor accepts: name of
     file or file data or data stream.
 
+    Will not try to decrypt the file not even try to determine whether it is
+    encrypted. If the file is encrypted will either raise an error or just
+    return `False`.
+
     see also: oleid.OleID.check_powerpoint
     """
     have_current_user = False
@@ -170,7 +174,7 @@ def is_ppt(filename):
                 for record in stream.iter_records():
                     if record.type == 0x0ff5:     # UserEditAtom
                         have_user_edit = True
-                    elif record.type == 0x1772:   # PersisDirectoryAtom
+                    elif record.type == 0x1772:   # PersistDirectoryAtom
                         have_persist_dir = True
                     elif record.type == 0x03e8:   # DocumentContainer
                         have_document_container = True
@@ -181,13 +185,12 @@ def is_ppt(filename):
                         return True
             else:   # ignore other streams/storages since they are optional
                 continue
-    except FileIsEncryptedError:
-        assert ppt_file is not None, \
-            'Encryption error should not be raised from just opening OLE file.'
-        # just rely on stream names, copied from oleid
-        return ppt_file.exists('PowerPoint Document')
-    except Exception:
-        pass
+    except Exception as exc:
+        logging.debug('Ignoring exception in is_ppt, assume is not ppt',
+                      exc_info=True)
+    finally:
+        if ppt_file is not None:
+            ppt_file.close()
     return False
 
 
