@@ -3726,7 +3726,7 @@ class VBA_Parser_CLI(VBA_Parser):
         return result
 
 
-    def process_file_triage(self, show_decoded_strings=False, deobfuscate=False):
+    def process_file_triage(self, show_decoded_strings=False, deobfuscate=False, no_xlm=False):
         """
         Process a file in triage mode, showing only summary results on one line.
         """
