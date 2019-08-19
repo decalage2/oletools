@@ -273,12 +273,19 @@ def consume_OleSiteConcreteControl(stream):
                 control_tip_text_len = consume_CountOfBytesWithCompressionFlag(stream)
             propmask.consume(stream, [('fRuntimeLicKey', 4), ('fControlSource', 4), ('fRowSource', 4)])
         # SiteExtraDataBlock: [MS-OFORMS] 2.2.10.12.4
-        name = stream.read(name_len)
+        name = None
+        if (name_len > 0):
+            name = stream.read(name_len)
         # Consume 2 null bytes between name and tag.
-        stream.read(2)
-        tag = stream.read(tag_len)
+        if ((tag_len > 0) or (control_tip_text_len > 0)):
+            stream.read(2)
+            # Sometimes it looks like 2 extra null bytes go here whether or not there is a tag.
+        tag = None
+        if (tag_len > 0):
+            tag = stream.read(tag_len)
         # Skip SitePosition.
-        stream.read(6)
+        if propmask.fPosition:
+            stream.read(8)
         control_tip_text = stream.read(control_tip_text_len)
         if (len(control_tip_text) == 0):
             control_tip_text = None
@@ -467,7 +474,6 @@ def consume_ScrollBarControl(stream):
 def extract_OleFormVariables(ole_file, stream_dir):
     control = ExtendedStream.open(ole_file, '/'.join(stream_dir + ['f']))
     variables = list(consume_FormControl(control))
-    # print('/'.join(stream_dir + ['o']))
     data = ExtendedStream.open(ole_file, '/'.join(stream_dir + ['o']))
     for var in variables:
         # See FormEmbeddedActiveXControlCached for type definition: [MS-OFORMS] 2.4.5
