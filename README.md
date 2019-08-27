@@ -108,6 +108,7 @@ including
 [Joe Sandbox](https://www.document-analyzer.net/),
 [Laika BOSS](https://github.com/lmco/laikaboss),
 [MacroMilter](https://github.com/sbidy/MacroMilter),
+[mailcow](https://mailcow.email/),
 [malshare.io](https://malshare.io),
 [malware-repo](https://github.com/Tigzy/malware-repo),
 [Malware Repository Framework (MRF)](https://www.adlice.com/download/mrf/),
