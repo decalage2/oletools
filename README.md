@@ -122,6 +122,7 @@ including
 [Strelka](https://github.com/target/strelka),
 [stoQ](https://stoq.punchcyber.com/),
 [TheHive/Cortex](https://github.com/TheHive-Project/Cortex-Analyzers),
+[TSUGURI Linux](https://tsurugi-linux.org/),
 [Vba2Graph](https://github.com/MalwareCantFly/Vba2Graph),
 [Viper](http://viper.li/),
 [ViperMonkey](https://github.com/decalage2/ViperMonkey),
