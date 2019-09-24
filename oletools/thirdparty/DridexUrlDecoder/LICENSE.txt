@@ -1,3 +1,0 @@
-DridexUrlDecoder.py is published by James Habben (@JamesHabben)
-on https://github.com/JamesHabben/MalwareStuff
-without explicit license.
