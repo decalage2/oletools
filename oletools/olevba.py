@@ -3557,6 +3557,9 @@ class VBA_Parser(object):
                     #     funcdefn = args.strip('()')
                     #     keywords.add(funcdefn)
                     if mnemonic in ('ArgsCall', 'ArgsLd', 'St', 'Ld', 'MemSt', 'Label'):
+                        # sometimes ArgsCall is followed by "(Call)", if so we remove it (issue #489)
+                        if args.startswith('(Call) '):
+                            args = args[7:]
                         # add 1st argument:
                         name = args.split(None, 1)[0]
                         # sometimes pcodedmp reports names like "id_FFFF", which are not
