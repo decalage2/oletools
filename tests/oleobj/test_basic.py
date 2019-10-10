@@ -10,6 +10,7 @@ from glob import glob
 # Directory with test data, independent of current working directory
 from tests.test_utils import DATA_BASE_DIR, call_and_capture
 from oletools import oleobj
+from oletools.common.io_encoding import ensure_stdout_handles_unicode
 
 
 #: provide some more info to find errors
@@ -61,6 +62,7 @@ def calc_md5(filename):
 
 def preread_file(args):
     """helper for TestOleObj.test_non_streamed: preread + call process_file"""
+    ensure_stdout_handles_unicode()   # usually, main() call this
     ignore_arg, output_dir, filename = args
     if ignore_arg != '-d':
         raise ValueError('ignore_arg not as expected!')

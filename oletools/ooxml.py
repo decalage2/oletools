@@ -13,14 +13,47 @@ TODO: check what is duplicate here with oleid, maybe merge some day?
 TODO: "xml2003" == "flatopc"?
 
 .. codeauthor:: Intra2net AG <info@intra2net>
+License: BSD, see source code or documentation
+
+msodde is part of the python-oletools package:
+http://www.decalage.info/python/oletools
 """
 
+# === LICENSE =================================================================
+
+# msodde is copyright (c) 2017-2019 Philippe Lagadec (http://www.decalage.info)
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#  * Redistributions of source code must retain the above copyright notice,
+#    this list of conditions and the following disclaimer.
+#  * Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# -- IMPORTS ------------------------------------------------------------------
+
 import sys
+from oletools.common.log_helper import log_helper
+from oletools.common.io_encoding import uopen
 from zipfile import ZipFile, BadZipfile, is_zipfile
 from os.path import splitext
 import io
 import re
-from oletools.common.log_helper import log_helper
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -28,6 +61,18 @@ try:
     import lxml.etree as ET
 except ImportError:
     import xml.etree.cElementTree as ET
+
+# -----------------------------------------------------------------------------
+# CHANGELOG:
+# 2018-12-06       CH: - ensure stdout can handle unicode
+
+__version__ = '0.54.2'
+
+
+###############################################################################
+# CONSTANTS
+###############################################################################
+
 
 logger = log_helper.get_or_create_silent_logger('ooxml')
 
@@ -127,7 +172,7 @@ def get_type(filename):
     parser = XmlParser(filename)
     if parser.is_single_xml():
         match = None
-        with open(filename, 'r') as handle:
+        with uopen(filename, 'r') as handle:
             match = re.search(OFFICE_XML_PROGID_REGEX, handle.read(1024))
         if not match:
             return DOCTYPE_NONE
@@ -416,7 +461,7 @@ class XmlParser(object):
 
         # find prog id in xml prolog
         match = None
-        with open(self.filename, 'r') as handle:
+        with uopen(self.filename, 'r') as handle:
             match = re.search(OFFICE_XML_PROGID_REGEX, handle.read(1024))
         if match:
             self._is_single_xml = True
@@ -424,11 +469,18 @@ class XmlParser(object):
         raise BadOOXML(self.filename, 'is no zip and has no prog_id')
 
     def iter_files(self, args=None):
-        """ Find files in zip or just give single xml file """
+        """
+        Find files in zip or just give single xml file
+
+        yields pairs (subfile-name, file-handle) where file-handle is an open
+        file-like object. (Do not care too much about encoding here, the xml
+        parser reads the encoding from the first lines in the file.)
+        """
         if self.is_single_xml():
             if args:
                 raise BadOOXML(self.filename, 'xml has no subfiles')
-            with open(self.filename, 'r') as handle:
+            # do not use uopen, xml parser determines encoding on its own
+            with open(self.filename, 'rb') as handle:
                 yield None, handle   # the subfile=None is needed in iter_xml
             self.did_iter_all = True
         else:
@@ -638,9 +690,10 @@ class XmlParser(object):
 
 
 def test():
-    """ Main function, called when running file as script
+    """
+    Test xml parsing; called when running this file as a script.
 
-    see module doc for more info
+    Prints every element found in input file (to be given as command line arg).
     """
     log_helper.enable_logging(False, 'debug')
     if len(sys.argv) != 2:
