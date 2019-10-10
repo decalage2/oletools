@@ -318,6 +318,7 @@ from oletools import ppt_parser
 from oletools import oleform
 from oletools import rtfobj
 from oletools import crypto
+from oletools.common.io_encoding import ensure_stdout_handles_unicode
 from oletools.common import codepages
 
 # monkeypatch email to fix issue #32:
@@ -4122,7 +4123,6 @@ def main(cmd_line_args=None):
     in process_args. Per default (cmd_line_args=None), sys.argv is used. Option
     mainly added for unit-testing
     """
-
     options, args = parse_args(cmd_line_args)
 
     # provide info about tool and its version
