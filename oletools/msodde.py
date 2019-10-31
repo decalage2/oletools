@@ -779,6 +779,7 @@ def process_csv(filepath):
     else:
         open_arg = dict(newline='')
     with open(filepath, **open_arg) as file_handle:
+        # TODO: here we should not assume this is a file on disk, filepath can be a file object
         results, dialect = process_csv_dialect(file_handle, CSV_DELIMITERS)
         is_small = file_handle.tell() < CSV_SMALL_THRESH
 
@@ -877,6 +878,7 @@ def process_file(filepath, field_filter_mode=None):
             return process_doc(ole)
 
     with open(filepath, 'rb') as file_handle:
+        # TODO: here we should not assume this is a file on disk, filepath can be a file object
         if file_handle.read(4) == RTF_START:
             logger.debug('Process file as rtf')
             return process_rtf(file_handle, field_filter_mode)
