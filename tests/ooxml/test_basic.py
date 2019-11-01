@@ -39,7 +39,7 @@ class TestOOXML(unittest.TestCase):
 
         # files that are neither OLE nor xml:
         except_files = 'empty', 'text'
-        except_extns = 'rtf', 'csv'
+        except_extns = 'rtf', 'csv', 'zip'
 
         # analyse all files in data dir
         for base_dir, _, files in os.walk(DATA_BASE_DIR):
