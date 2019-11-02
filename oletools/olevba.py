@@ -220,7 +220,7 @@ from __future__ import print_function
 # 2019-06-05       PL: - added VBA stomping detection
 # 2019-09-24       PL: - included DridexUrlDecode into olevba (issue #485)
 
-__version__ = '0.55.dev4'
+__version__ = '0.55.dev5'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -599,6 +599,7 @@ CTYPE_VBAPROJECT = "application/vnd.ms-office.vbaProject"
 TAG_PKGBINDATA = NS_XMLPACKAGE + 'binaryData'
 
 # Keywords to detect auto-executable macros
+# Simple strings, without regex characters:
 AUTOEXEC_KEYWORDS = {
     # MS Word:
     'Runs when the Word document is opened':
@@ -622,13 +623,23 @@ AUTOEXEC_KEYWORDS = {
         # TODO: "Auto_Ope" is temporarily here because of a bug in plugin_biff, which misses the last byte in "Auto_Open"...
     'Runs when the Excel Workbook is closed':
         ('Auto_Close', 'Workbook_Close'),
+}
 
+# Keywords to detect auto-executable macros
+# Regular expressions:
+AUTOEXEC_KEYWORDS_REGEX = {
     # any MS Office application:
     'Runs when the file is opened (using InkPicture ActiveX object)':
         # ref:https://twitter.com/joe4security/status/770691099988025345
-        (r'\w+_Painted',),
+        (r'\w+_Painted', r'\w+_Painting'),
     'Runs when the file is opened and ActiveX objects trigger events':
-        (r'\w+_(?:GotFocus|LostFocus|MouseHover)',),
+        (r'\w+_GotFocus', r'\w+_LostFocus', r'\w+_MouseHover', r'\w+_Click',
+         r'\w+_Change', r'\w+_Resize', r'\w+_BeforeNavigate2', r'\w+_BeforeScriptExecute',
+         r'\w+_DocumentComplete', r'\w+_DownloadBegin', r'\w+_DownloadComplete',
+         r'\w+_FileDownload', r'\w+_NavigateComplete2', r'\w+_NavigateError',
+         r'\w+_ProgressChange', r'\w+_PropertyChange', r'\w+_SetSecureLockIcon',
+         r'\w+_StatusTextChange', r'\w+_TitleChange', r'\w+_MouseMove', r'\w+_MouseEnter',
+         r'\w+_MouseLeave', r'\w+_Layout'),
 }
 
 # Suspicious Keywords that may be used by malware
@@ -2091,13 +2102,22 @@ def detect_autoexec(vba_code, obfuscation=None):
     obf_text = ''
     if obfuscation:
         obf_text = ' (obfuscation: %s)' % obfuscation
+    # 1) simple strings, without regex
     for description, keywords in AUTOEXEC_KEYWORDS.items():
         for keyword in keywords:
             #TODO: if keyword is already a compiled regex, use it as-is
             # search using regex to detect word boundaries:
             match = re.search(r'(?i)\b' + re.escape(keyword) + r'\b', vba_code)
             if match:
-                #if keyword.lower() in vba_code:
+                found_keyword = match.group()
+                results.append((found_keyword, description + obf_text))
+    # 2) regex
+    for description, keywords in AUTOEXEC_KEYWORDS_REGEX.items():
+        for keyword in keywords:
+            #TODO: if keyword is already a compiled regex, use it as-is
+            # search using regex to detect word boundaries:
+            match = re.search(r'(?i)\b' + keyword + r'\b', vba_code)
+            if match:
                 found_keyword = match.group()
                 results.append((found_keyword, description + obf_text))
     return results
