@@ -152,8 +152,9 @@ def run_read(filename):
         raise ValueError('Reader is not closed outside context')
     if reader.name != filename:
         raise ValueError('Wrong filename {} after context'.format(reader.name))
-    if reader.isatty():
-        raise ValueError('Reader has become a tty!')
+    # the following test raises an exception because reader is closed, so isatty cannot be called:
+    # if reader.isatty():
+    #     raise ValueError('Reader has become a tty!')
 
     # compare text
     if sys.version_info.major <= 2:      # in python2 get encoded byte string
