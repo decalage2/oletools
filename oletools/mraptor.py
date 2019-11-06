@@ -59,8 +59,9 @@ http://www.decalage.info/python/oletools
 # 2017-03-08       PL: - fixed absolute imports
 # 2018-05-25 v0.53 PL: - added Word/PowerPoint 2007+ XML (aka Flat OPC) issue #283
 # 2019-04-04 v0.54 PL: - added ExecuteExcel4Macro, ShellExecuteA, XLM keywords
+# 2019-11-06 v0.55 PL: - added SetTimer
 
-__version__ = '0.54'
+__version__ = '0.55.dev5'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -134,7 +135,7 @@ re_write = re.compile(r'(?i)\b(?:FileCopy|CopyFile|Kill|CreateTextFile|'
 RE_DECLARE_LIB = r'(?:\bDeclare\b[^\n]+\bLib\b)'
 
 re_execute = re.compile(r'(?i)\b(?:Shell|CreateObject|GetObject|SendKeys|'
-    + r'MacScript|FollowHyperlink|CreateThread|ShellExecuteA?|ExecuteExcel4Macro|EXEC|REGISTER)\b|' + RE_DECLARE_LIB)
+    + r'MacScript|FollowHyperlink|CreateThread|ShellExecuteA?|ExecuteExcel4Macro|EXEC|REGISTER|SetTimer)\b|' + RE_DECLARE_LIB)
 
 
 # === CLASSES =================================================================
