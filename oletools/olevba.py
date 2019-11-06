@@ -673,8 +673,6 @@ SUSPICIOUS_KEYWORDS = {
     # MacScript: see https://msdn.microsoft.com/en-us/library/office/gg264812.aspx
     'May run an executable file or a system command on a Mac':
         ('MacScript',),
-    'May run an executable file or a system command on a Mac (if combined with libc.dylib)':
-        ('system', 'popen', r'exec[lv][ep]?'),
     #Shell: http://msdn.microsoft.com/en-us/library/office/gg278437%28v=office.15%29.aspx
     #WScript.Shell+Run sample: http://pastebin.com/Z4TMyuq6
     'May run PowerShell commands':
@@ -698,8 +696,6 @@ SUSPICIOUS_KEYWORDS = {
     'May change which directory contains files to open at startup':
     #TODO: confirm the actual effect
         ('Application.AltStartupPath',),
-    'May use Word Document Variables to store and hide data':
-        ('.Variables',),  # Vidar sample: https://app.any.run/tasks/897f28e7-3162-4b65-b268-2655543199d6/
     'May create an OLE object':
         ('CreateObject',),
     'May create an OLE object using PowerShell':
@@ -723,11 +719,8 @@ SUSPICIOUS_KEYWORDS = {
         'VirtualAllocEx', 'RtlMoveMemory', 'WriteProcessMemory',
         'SetContextThread', 'QueueApcThread', 'WriteVirtualMemory', 'VirtualProtect',
         ),
-    # TODO: move this to _REGEX list, otherwise it won't match:
     'May run a shellcode in memory':
-        ('EnumSystemLanguageGroupsW?', # Used by Hancitor in Oct 2016
-         'EnumDateFormats(?:W|(?:Ex){1,2})?', # see https://msdn.microsoft.com/en-us/library/windows/desktop/dd317810(v=vs.85).aspx
-         'SetTimer',  # Vidar sample: https://app.any.run/tasks/897f28e7-3162-4b65-b268-2655543199d6/
+        ('SetTimer',  # Vidar sample: https://app.any.run/tasks/897f28e7-3162-4b65-b268-2655543199d6/
          ),
     'May download files from the Internet':
     #TODO: regex to find urlmon+URLDownloadToFileA on same line
@@ -792,6 +785,19 @@ SUSPICIOUS_KEYWORDS = {
         ('VBProject', 'VBComponents', 'CodeModule', 'AddFromString'),
 }
 
+# Suspicious Keywords to be searched for directly as regex, without escaping
+SUSPICIOUS_KEYWORDS_REGEX = {
+    'May use Word Document Variables to store and hide data':
+        (r'\.\s*Variables',),  # '.Variables' with optional whitespaces after the dot
+                               # Vidar sample: https://app.any.run/tasks/897f28e7-3162-4b65-b268-2655543199d6/
+    'May run a shellcode in memory':
+        (r'EnumSystemLanguageGroupsW?', # Used by Hancitor in Oct 2016
+         r'EnumDateFormats(?:W|(?:Ex){1,2})?', # see https://msdn.microsoft.com/en-us/library/windows/desktop/dd317810(v=vs.85).aspx
+         ),
+    'May run an executable file or a system command on a Mac (if combined with libc.dylib)':
+        ('system', 'popen', r'exec[lv][ep]?'),
+}
+
 # Suspicious Keywords to be searched for directly as strings, without regex
 SUSPICIOUS_KEYWORDS_NOREGEX = {
     'May use special characters such as backspace to obfuscate code when printed on the console':
@@ -847,7 +853,7 @@ re_hex_string = re.compile(r'(?:[0-9A-Fa-f]{2}){4,}')
 BASE64_RE = r'(?:[A-Za-z0-9+/]{4}){1,}(?:[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=|[A-Za-z0-9+/][AQgw]==)?'
 re_base64_string = re.compile('"' + BASE64_RE + '"')
 # white list of common strings matching the base64 regex, but which are not base64 strings (all lowercase):
-BASE64_WHITELIST = set(['thisdocument', 'thisworkbook', 'test', 'temp', 'http', 'open', 'exit'])
+BASE64_WHITELIST = set(['thisdocument', 'thisworkbook', 'test', 'temp', 'http', 'open', 'exit', 'kernel32'])
 
 # regex to detect strings encoded with a specific Dridex algorithm
 # (see https://github.com/JamesHabben/MalwareStuff)
@@ -2149,7 +2155,14 @@ def detect_suspicious(vba_code, obfuscation=None):
             # note: each keyword must be escaped if it contains special chars such as '\'
             match = re.search(r'(?i)\b' + re.escape(keyword) + r'\b', vba_code)
             if match:
-                #if keyword.lower() in vba_code:
+                found_keyword = match.group()
+                results.append((found_keyword, description + obf_text))
+    for description, keywords in SUSPICIOUS_KEYWORDS_REGEX.items():
+        for keyword in keywords:
+            # search using regex to detect word boundaries:
+            # note: each keyword must NOT be escaped because it is an actual regex
+            match = re.search(r'(?i)\b' + keyword + r'\b', vba_code)
+            if match:
                 found_keyword = match.group()
                 results.append((found_keyword, description + obf_text))
     for description, keywords in SUSPICIOUS_KEYWORDS_NOREGEX.items():
