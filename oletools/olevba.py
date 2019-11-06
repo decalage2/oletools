@@ -698,6 +698,8 @@ SUSPICIOUS_KEYWORDS = {
     'May change which directory contains files to open at startup':
     #TODO: confirm the actual effect
         ('Application.AltStartupPath',),
+    'May use Word Document Variables to store and hide data':
+        ('.Variables',),  # Vidar sample: https://app.any.run/tasks/897f28e7-3162-4b65-b268-2655543199d6/
     'May create an OLE object':
         ('CreateObject',),
     'May create an OLE object using PowerShell':
@@ -719,11 +721,14 @@ SUSPICIOUS_KEYWORDS = {
     'May inject code into another process':
         ('CreateThread', 'CreateUserThread', 'VirtualAlloc', # (issue #9) suggested by Davy Douhine - used by MSF payload
         'VirtualAllocEx', 'RtlMoveMemory', 'WriteProcessMemory',
-        'SetContextThread', 'QueueApcThread', 'WriteVirtualMemory', 'VirtualProtect'
+        'SetContextThread', 'QueueApcThread', 'WriteVirtualMemory', 'VirtualProtect',
         ),
+    # TODO: move this to _REGEX list, otherwise it won't match:
     'May run a shellcode in memory':
         ('EnumSystemLanguageGroupsW?', # Used by Hancitor in Oct 2016
-         'EnumDateFormats(?:W|(?:Ex){1,2})?'), # see https://msdn.microsoft.com/en-us/library/windows/desktop/dd317810(v=vs.85).aspx
+         'EnumDateFormats(?:W|(?:Ex){1,2})?', # see https://msdn.microsoft.com/en-us/library/windows/desktop/dd317810(v=vs.85).aspx
+         'SetTimer',  # Vidar sample: https://app.any.run/tasks/897f28e7-3162-4b65-b268-2655543199d6/
+         ),
     'May download files from the Internet':
     #TODO: regex to find urlmon+URLDownloadToFileA on same line
         ('URLDownloadToFileA', 'Msxml2.XMLHTTP', 'Microsoft.XMLHTTP',
