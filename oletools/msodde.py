@@ -926,6 +926,7 @@ def process_maybe_encrypted(filepath, passwords=None, crypto_nesting=0,
     :param kwargs: same as :py:func:`process_file`
     :returns: same as :py:func:`process_file`
     """
+    # TODO: here filepath may also be a file in memory, it's not necessarily on disk
     result = u''
     try:
         result = process_file(filepath, **kwargs)
