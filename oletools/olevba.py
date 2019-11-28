@@ -397,7 +397,7 @@ def bytes2str(bytes_string, encoding='utf8'):
     if PYTHON2:
         return bytes_string
     else:
-        return bytes_string.decode('utf8', errors='replace')
+        return bytes_string.decode(encoding, errors='replace')
 
 
 # === LOGGING =================================================================
