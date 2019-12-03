@@ -5,6 +5,7 @@ olevba.py
 olevba is a script to parse OLE and OpenXML files such as MS Office documents
 (e.g. Word, Excel), to extract VBA Macro code in clear text, deobfuscate
 and analyze malicious macros.
+XLM/Excel 4 Macros are also supported in Excel and SLK files.
 
 Supported formats:
     - Word 97-2003 (.doc, .dot), Word 2007+ (.docm, .dotm)
@@ -14,6 +15,9 @@ Supported formats:
     - Word 2003 XML (.xml)
     - Word/Excel Single File Web Page / MHTML (.mht)
     - Publisher (.pub)
+    - SYLK/SLK files (.slk)
+    - Text file containing VBA or VBScript source code
+    - Password-protected Zip archive containing any of the above
     - raises an error if run with files encrypted using MS Crypto API RC4
 
 Author: Philippe Lagadec - http://www.decalage.info
