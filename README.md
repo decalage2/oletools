@@ -26,6 +26,19 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
+- **2019-12-03 v0.55**:
+    - olevba:
+        - added support for SLK files and XLM macro extraction from SLK
+        - VBA Stomping detection
+        - integrated pcodedmp to extract and disassemble P-code
+        - detection of suspicious keywords and IOCs in P-code
+        - new option --pcode to display P-code disassembly
+        - improved detection of auto execution triggers
+    - rtfobj: added URL carver for CVE-2017-0199
+    - better handling of unicode for systems with locale that does not support UTF-8, e.g. LANG=C (PR #365)
+    - tests: 
+        - test files can now be encrypted, to avoid antivirus alerts (PR #217, issue #215)
+        - tests that trigger antivirus alerts have been temporarily disabled (issue #215)
 - **2019-05-22 v0.54.2**:
     - bugfix release: fixed several issues related to encrypted documents
       and XLM/XLF Excel 4 macros
@@ -55,12 +68,6 @@ News
     - common.clsid contains the list of known CLSIDs, and their links to CVE vulnerabilities when relevant.
     - oleid now detects encrypted OpenXML files
     - fixed bugs in oleobj, rtfobj, oleid, olevba
-- 2018-02-18 v0.52:
-    - New tool [msodde](https://github.com/decalage2/oletools/wiki/msodde) to detect and extract DDE links from MS Office files, RTF and CSV;
-    - Fixed bugs in olevba, rtfobj and olefile, to better handle malformed/obfuscated files;
-    - Performance improvements in olevba and rtfobj;
-    - VBA form parsing in olevba;
-    - Office 2007+ support in oleobj.
 
 See the [full changelog](https://github.com/decalage2/oletools/wiki/Changelog) for more information.
 
