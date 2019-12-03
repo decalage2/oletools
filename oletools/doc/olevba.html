@@ -82,23 +82,24 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 </head>
 <body>
 <h1 id="olevba">olevba</h1>
-<p>olevba is a script to parse OLE and OpenXML files such as MS Office documents (e.g. Word, Excel), to <strong>detect VBA Macros</strong>, extract their <strong>source code</strong> in clear text, and detect security-related patterns such as <strong>auto-executable macros</strong>, <strong>suspicious VBA keywords</strong> used by malware, anti-sandboxing and anti-virtualization techniques, and potential <strong>IOCs</strong> (IP addresses, URLs, executable filenames, etc). It also detects and decodes several common <strong>obfuscation methods including Hex encoding, StrReverse, Base64, Dridex, VBA expressions</strong>, and extracts IOCs from decoded strings.</p>
+<p>olevba is a script to parse OLE and OpenXML files such as MS Office documents (e.g. Word, Excel), to <strong>detect VBA Macros</strong>, extract their <strong>source code</strong> in clear text, and detect security-related patterns such as <strong>auto-executable macros</strong>, <strong>suspicious VBA keywords</strong> used by malware, anti-sandboxing and anti-virtualization techniques, and potential <strong>IOCs</strong> (IP addresses, URLs, executable filenames, etc). It also detects and decodes several common <strong>obfuscation methods including Hex encoding, StrReverse, Base64, Dridex, VBA expressions</strong>, and extracts IOCs from decoded strings. XLM/Excel 4 Macros are also supported in Excel and SLK files.</p>
 <p>It can be used either as a command-line tool, or as a python module from your own applications.</p>
 <p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
 <p>olevba is based on source code from <a href="https://github.com/unixfreak0037/officeparser">officeparser</a> by John William Davison, with significant modifications.</p>
 <h2 id="supported-formats">Supported formats</h2>
 <ul>
-<li>Word 97-2003 (.doc, .dot)</li>
-<li>Word 2007+ (.docm, .dotm)</li>
+<li>Word 97-2003 (.doc, .dot), Word 2007+ (.docm, .dotm)</li>
+<li>Excel 97-2003 (.xls), Excel 2007+ (.xlsm, .xlsb)</li>
+<li>PowerPoint 97-2003 (.ppt), PowerPoint 2007+ (.pptm, .ppsm)</li>
+<li>Word/PowerPoint 2007+ XML (aka Flat OPC)</li>
 <li>Word 2003 XML (.xml)</li>
-<li>Word/Excel MHTML, aka Single File Web Page (.mht)</li>
-<li>Excel 97-2003 (.xls)</li>
-<li>Excel 2007+ (.xlsm, .xlsb)</li>
-<li>PowerPoint 2007+ (.pptm, .ppsm)</li>
+<li>Word/Excel Single File Web Page / MHTML (.mht)</li>
+<li>Publisher (.pub)</li>
+<li>SYLK/SLK files (.slk)</li>
 <li>Text file containing VBA or VBScript source code</li>
 <li>Password-protected Zip archive containing any of the above</li>
 </ul>
-<h2 id="main-features">Main Features</h2>
+<p>S## Main Features</p>
 <ul>
 <li>Detect VBA macros in MS Office 97-2003 and 2007+ files, XML, MHT</li>
 <li>Extract VBA macro source code</li>
