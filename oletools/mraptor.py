@@ -61,7 +61,7 @@ http://www.decalage.info/python/oletools
 # 2019-04-04 v0.54 PL: - added ExecuteExcel4Macro, ShellExecuteA, XLM keywords
 # 2019-11-06 v0.55 PL: - added SetTimer
 
-__version__ = '0.55.dev5'
+__version__ = '0.55'
 
 #------------------------------------------------------------------------------
 # TODO:

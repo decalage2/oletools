@@ -103,7 +103,7 @@ from oletools.common.log_helper import log_helper
 # 2019-07-17 v0.55 CH: - fixed issue #267, unicode error on Python 2
 
 
-__version__ = '0.55.dev3'
+__version__ = '0.55'
 
 # -----------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these

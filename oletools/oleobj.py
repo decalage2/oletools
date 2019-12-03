@@ -87,7 +87,7 @@ from oletools.common.io_encoding import ensure_stdout_handles_unicode
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
 # 2018-10-30       SA: - added detection of external links (PR #317)
 
-__version__ = '0.55dev5'
+__version__ = '0.55'
 
 # -----------------------------------------------------------------------------
 # TODO:

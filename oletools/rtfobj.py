@@ -91,7 +91,7 @@ http://www.decalage.info/python/oletools
 # 2019-07-08 v0.55 MM: - added URL carver for CVE-2017-0199 (Equation Editor) PR #460
 #                      - added SCT to the list of executable file extensions PR #461
 
-__version__ = '0.55.dev3'
+__version__ = '0.55'
 
 # ------------------------------------------------------------------------------
 # TODO:
