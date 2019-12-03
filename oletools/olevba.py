@@ -2717,7 +2717,7 @@ class VBA_Parser(object):
             if rtfobj.is_rtf(data, treat_str_as_data=True):
                 # Ignore RTF since it contains no macros and methods in here will not find macros
                 # in embedded objects. run rtfobj and repeat on its output.
-                msg = '%s is RTF, need to run rtfobj.py and find VBA Macros in its output.' % self.filename
+                msg = '%s is RTF, which cannot contain VBA Macros. Please use rtfobj to analyse it.' % self.filename
                 log.info(msg)
                 raise FileOpenError(msg)
             # Check if this is a plain text VBA or VBScript file:
