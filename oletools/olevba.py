@@ -219,8 +219,9 @@ from __future__ import print_function
 # 2019-05-23 v0.55 PL: - added option --pcode to call pcodedmp and display P-code
 # 2019-06-05       PL: - added VBA stomping detection
 # 2019-09-24       PL: - included DridexUrlDecode into olevba (issue #485)
+# 2019-12-03       PL: - added support for SLK files and XLM macros in SLK
 
-__version__ = '0.55.dev5'
+__version__ = '0.55'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -560,6 +561,7 @@ TYPE_Word2003_XML = 'Word2003_XML'
 TYPE_MHTML = 'MHTML'
 TYPE_TEXT = 'Text'
 TYPE_PPT = 'PPT'
+TYPE_SLK = 'SLK'
 
 # short tag to display file types in triage mode:
 TYPE2TAG = {
@@ -569,7 +571,8 @@ TYPE2TAG = {
     TYPE_Word2003_XML: 'XML:',
     TYPE_MHTML: 'MHT:',
     TYPE_TEXT: 'TXT:',
-    TYPE_PPT: 'PPT',
+    TYPE_PPT: 'PPT:',
+    TYPE_SLK: 'SLK:',
 }
 
 
@@ -687,6 +690,8 @@ SUSPICIOUS_KEYWORDS = {
         ('Start-Process',),
     'May run an executable file or a system command using Excel 4 Macros (XLM/XLF)':
         ('EXEC',),
+    'May call a DLL using Excel 4 Macros (XLM/XLF)':
+        ('REGISTER', 'CALL'),
     'May hide the application':
         ('Application.Visible', 'ShowWindow', 'SW_HIDE'),
     'May create a directory':
@@ -702,7 +707,7 @@ SUSPICIOUS_KEYWORDS = {
         ('New-Object',),
     'May run an application (if combined with CreateObject)':
         ('Shell.Application',),
-    'May run an Excel 4 Macro (aka XLM/XLF)':
+    'May run an Excel 4 Macro (aka XLM/XLF) from VBA':
         ('ExecuteExcel4Macro',),
     'May enumerate application windows (if combined with Shell.Application object)':
         ('Windows', 'FindWindow'),
@@ -853,7 +858,8 @@ re_hex_string = re.compile(r'(?:[0-9A-Fa-f]{2}){4,}')
 BASE64_RE = r'(?:[A-Za-z0-9+/]{4}){1,}(?:[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=|[A-Za-z0-9+/][AQgw]==)?'
 re_base64_string = re.compile('"' + BASE64_RE + '"')
 # white list of common strings matching the base64 regex, but which are not base64 strings (all lowercase):
-BASE64_WHITELIST = set(['thisdocument', 'thisworkbook', 'test', 'temp', 'http', 'open', 'exit', 'kernel32'])
+BASE64_WHITELIST = set(['thisdocument', 'thisworkbook', 'test', 'temp', 'http', 'open', 'exit', 'kernel32',
+                        'virtualalloc', 'createthread'])
 
 # regex to detect strings encoded with a specific Dridex algorithm
 # (see https://github.com/JamesHabben/MalwareStuff)
@@ -2720,6 +2726,10 @@ class VBA_Parser(object):
                 msg = '%s is RTF, which cannot contain VBA Macros. Please use rtfobj to analyse it.' % self.filename
                 log.info(msg)
                 raise FileOpenError(msg)
+            # Check if it is a SLK/SYLK file - https://en.wikipedia.org/wiki/SYmbolic_LinK_(SYLK)
+            # It must start with "ID" in uppercase, no whitespace or newline allowed before by Excel:
+            if data.startswith(b'ID'):
+                self.open_slk(data)
             # Check if this is a plain text VBA or VBScript file:
             # To avoid scanning binary files, we simply check for some control chars:
             if self.type is None and b'\x00' not in data:
@@ -2998,6 +3008,40 @@ class VBA_Parser(object):
                 log.debug("File appears not to be a ppt file (%s)" % exc)
 
 
+    def open_slk(self, data):
+        """
+        Open a SLK file, which may contain XLM/Excel 4 macros
+        :param data: file contents in a bytes string
+        :return: nothing
+        """
+        # TODO: Those results should be stored as XLM macros, not VBA
+        log.info('Opening SLK file %s' % self.filename)
+        xlm_macro_found = False
+        xlm_macros = []
+        xlm_macros.append('Formulas and XLM/Excel 4 macros extracted from SLK file:')
+        for line in data.splitlines(keepends=False):
+            if line.startswith(b'O'):
+                # Option: "O;E" indicates a macro sheet, must appear before NN and C rows
+                for s in line.split(b';'):
+                    if s.startswith(b'E'):
+                        xlm_macro_found = True
+                        log.debug('SLK parser: found macro sheet')
+            elif line.startswith(b'NN') and xlm_macro_found:
+                # Name that can trigger a macro, for example "Auto_Open"
+                for s in line.split(b';'):
+                    if s.startswith(b'N') and s.strip() != b'NN':
+                        xlm_macros.append('Named cell: %s' % bytes2str(s[1:]))
+            elif line.startswith(b'C') and xlm_macro_found:
+                # Cell
+                for s in line.split(b';'):
+                    if s.startswith(b'E'):
+                        xlm_macros.append('Formula or Macro: %s' % bytes2str(s[1:]))
+        if xlm_macro_found:
+            self.contains_macros = True
+            self.xlm_macros = xlm_macros
+        self.type = TYPE_SLK
+
+
     def open_text(self, data):
         """
         Open a text file containing VBA or VBScript source code
@@ -3178,6 +3222,9 @@ class VBA_Parser(object):
         return self.contains_macros
 
     def detect_xlm_macros(self):
+        # if this is a SLK file, the analysis was done in open_slk:
+        if self.type == TYPE_SLK:
+            return self.contains_macros
         from oletools.thirdparty.oledump.plugin_biff import cBIFF
         self.xlm_macros = []
         if self.ole_file is None:
@@ -3227,6 +3274,12 @@ class VBA_Parser(object):
             if self.type == TYPE_TEXT:
                 # This is a text file, yield the full code:
                 yield (self.filename, '', self.filename, self.vba_code_all_modules)
+            elif self.type == TYPE_SLK:
+                if self.xlm_macros:
+                    vba_code = ''
+                    for line in self.xlm_macros:
+                        vba_code += "' " + line + '\n'
+                    yield ('xlm_macro', 'xlm_macro', 'xlm_macro.txt', vba_code)
             else:
                 # OpenXML/PPT: recursively yield results from each OLE subfile:
                 for ole_subfile in self.ole_subfiles:
@@ -3513,6 +3566,10 @@ class VBA_Parser(object):
         :return: VBA P-code disassembly
         :rtype: str
         """
+        # Only run on OLE files
+        if self.type != TYPE_OLE:
+            self.pcodedmp_output = ''
+            return ''
         # only run it once:
         if self.pcodedmp_output is None:
             log.debug('Calling pcodedmp to extract and disassemble the VBA P-code')
@@ -3571,6 +3628,10 @@ class VBA_Parser(object):
         :return: True if VBA stomping detected, False otherwise
         :rtype: bool
         """
+        # Only run on OLE files
+        if self.type != TYPE_OLE:
+            self.vba_stomping_detected = False
+            return False
         # only run it once:
         if self.vba_stomping_detected is None:
             log.debug('Analysing the P-code to detect VBA stomping')
@@ -3840,6 +3901,18 @@ class VBA_Parser_CLI(VBA_Parser):
                     print('P-CODE disassembly:')
                     pcode = self.extract_pcode()
                     print(pcode)
+                # if self.type == TYPE_SLK:
+                #     # TODO: clean up this code
+                #     slk_output = self.vba_code_all_modules
+                #     try:
+                #         # Colorize the interesting keywords in the output:
+                #         # (unless the output is redirected to a file)
+                #         if sys.stdout.isatty():
+                #             slk_output = colorclass.Color(self.colorize_keywords(slk_output))
+                #     except UnicodeError:
+                #         # TODO better handling of Unicode
+                #         log.debug('Unicode conversion to be fixed before colorizing the output')
+                #     print(slk_output)
 
                 if not vba_code_only:
                     # analyse the code from all modules at once:
