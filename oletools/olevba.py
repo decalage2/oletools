@@ -3611,7 +3611,11 @@ class VBA_Parser(object):
             try:
                 # TODO: handle files in memory too
                 log.debug('before pcodedmp')
+                # TODO: we just ignore pcodedmp errors
+                stderr = sys.stderr
+                sys.stderr = output
                 pcodedmp.processFile(self.filename, args, output_file=output)
+                sys.stderr = stderr
                 log.debug('after pcodedmp')
             except Exception as e:
                 # print('Error while running pcodedmp: {}'.format(e), file=sys.stderr, flush=True)
