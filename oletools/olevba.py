@@ -225,7 +225,7 @@ from __future__ import print_function
 # 2019-09-24       PL: - included DridexUrlDecode into olevba (issue #485)
 # 2019-12-03       PL: - added support for SLK files and XLM macros in SLK
 
-__version__ = '0.55'
+__version__ = '0.55.1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -3570,8 +3570,8 @@ class VBA_Parser(object):
         :return: VBA P-code disassembly
         :rtype: str
         """
-        # Only run on OLE files
-        if self.type != TYPE_OLE:
+        # Text and SLK files cannot be stomped:
+        if self.type in (TYPE_SLK, TYPE_TEXT):
             self.pcodedmp_output = ''
             return ''
         # only run it once:
@@ -3632,8 +3632,8 @@ class VBA_Parser(object):
         :return: True if VBA stomping detected, False otherwise
         :rtype: bool
         """
-        # Only run on OLE files
-        if self.type != TYPE_OLE:
+        # Text and SLK files cannot be stomped:
+        if self.type in (TYPE_SLK, TYPE_TEXT):
             self.vba_stomping_detected = False
             return False
         # only run it once:
