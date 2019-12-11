@@ -2627,8 +2627,11 @@ class VBA_Parser(object):
             # and even whitespaces in between "MIME", "-", "Version" and ":". The version number is ignored.
             # And the line is case insensitive.
             # so we'll just check the presence of mime, version and multipart anywhere:
-            if self.type is None and b'mime' in data_lowercase and b'version' in data_lowercase \
-                and b'multipart' in data_lowercase:
+            if (self.type is None and
+                b'mime' in data_lowercase and
+                b'version' in data_lowercase and
+                b'multipart' in data_lowercase and
+                abs(data_lowercase.index(b'version') - data_lowercase.index(b'mime')) < 20):
                 self.open_mht(data)
         #TODO: handle exceptions
         #TODO: Excel 2003 XML
