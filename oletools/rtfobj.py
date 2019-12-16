@@ -90,8 +90,9 @@ http://www.decalage.info/python/oletools
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
 # 2019-07-08 v0.55 MM: - added URL carver for CVE-2017-0199 (Equation Editor) PR #460
 #                      - added SCT to the list of executable file extensions PR #461
+# 2019-12-16 v0.55.2 PL: - \rtf is not a destination control word (issue #522)
 
-__version__ = '0.55'
+__version__ = '0.55.2'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -301,7 +302,10 @@ DESTINATION_CONTROL_WORDS = frozenset((
     b"oleclsid", b"operator", b"panose", b"password", b"passwordhash", b"pgp", b"pgptbl", b"picprop", b"pict", b"pn", b"pnseclvl",
     b"pntext", b"pntxta", b"pntxtb", b"printim",
     b"propname", b"protend", b"protstart", b"protusertbl",
-    b"result", b"revtbl", b"revtim", b"rtf", b"rxe", b"shp", b"shpgrp", b"shpinst", b"shppict", b"shprslt", b"shptxt",
+    b"result", b"revtbl", b"revtim",
+    # \rtf should not be treated as a destination (issue #522)
+    #b"rtf",
+    b"rxe", b"shp", b"shpgrp", b"shpinst", b"shppict", b"shprslt", b"shptxt",
     b"sn", b"sp", b"staticval", b"stylesheet", b"subject", b"sv", b"svb", b"tc", b"template", b"themedata", b"title", b"txe", b"ud",
     b"upr", b"userprops", b"wgrffmtfilter", b"windowcaption", b"writereservation", b"writereservhash", b"xe", b"xform",
     b"xmlattrname", b"xmlattrvalue", b"xmlclose", b"xmlname", b"xmlnstbl", b"xmlopen",
