@@ -91,6 +91,7 @@ http://www.decalage.info/python/oletools
 # 2019-07-08 v0.55 MM: - added URL carver for CVE-2017-0199 (Equation Editor) PR #460
 #                      - added SCT to the list of executable file extensions PR #461
 # 2019-12-16 v0.55.2 PL: - \rtf is not a destination control word (issue #522)
+# 2019-12-17         PL: - fixed process_file to detect Equation class (issue #525)
 
 __version__ = '0.55.2'
 
@@ -554,7 +555,7 @@ class RtfParser(object):
         # TODO: according to RTF specs v1.9.1, "Destination changes are legal only immediately after an opening brace ({)"
         # (not counting the special control symbol \*, of course)
         if cword in DESTINATION_CONTROL_WORDS:
-            # log.debug('%r is a destination control word: starting a new destination' % cword)
+            log.debug('%r is a destination control word: starting a new destination at index %Xh' % (cword, self.index))
             self._open_destination(matchobject, cword)
         # call the corresponding user method for additional processing:
         self.control_word(matchobject, cword, param)
@@ -932,7 +933,7 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                     ole_column += 'URL extracted: ' + ', '.join(urls)
             # Detect Equation Editor exploit
             # https://www.kb.cert.org/vuls/id/421280/
-            elif rtfobj.class_name.lower() == b'equation.3':
+            elif rtfobj.class_name.lower().startswith(b'equation.3'):
                 ole_color = 'red'
                 ole_column += '\nPossibly an exploit for the Equation Editor vulnerability (VU#421280, CVE-2017-11882)'
         else:
