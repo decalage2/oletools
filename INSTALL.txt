@@ -23,6 +23,17 @@ run the following command in a shell:
 sudo -H pip install -U oletools
 ```
 
+*Note: if you receive an error stating:*
+
+```
+Cannot uninstall 'pyparsing'. It is a distutils installed project and thus we cannot accurately determine which files belong to it which would lead to only a partial uninstall.
+```
+
+Ignore `distutils` with the following in your shell: 
+```text
+sudo -H pip install --ignore-installed -U oletools
+```
+
 Replace `pip` by `pip3` or `pip2` to install on a specific Python version.
 
 **Important**: Since version 0.50, pip will automatically create convenient command-line scripts
