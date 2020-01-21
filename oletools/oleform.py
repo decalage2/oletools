@@ -277,9 +277,9 @@ def consume_OleSiteConcreteControl(stream):
         if (name_len > 0):
             name = stream.read(name_len)
         # Consume 2 null bytes between name and tag.
-        if ((tag_len > 0) or (control_tip_text_len > 0)):
-            stream.read(2)
-            # Sometimes it looks like 2 extra null bytes go here whether or not there is a tag.
+        #if ((tag_len > 0) or (control_tip_text_len > 0)):
+        #    stream.read(2)
+        #    # Sometimes it looks like 2 extra null bytes go here whether or not there is a tag.
         tag = None
         if (tag_len > 0):
             tag = stream.read(tag_len)
@@ -330,6 +330,7 @@ def consume_FormControl(stream):
 
 def consume_MorphDataControl(stream):
     # MorphDataControl: [MS-OFORMS] 2.2.5.1
+    #print("Here: consume_MorphDataControl")
     stream.check_values('MorphDataControl (versions)', '<BB', 2, (0, 2))
     cbMorphData = stream.unpack('<H', 2)
     with stream.will_jump_to(cbMorphData):
@@ -364,6 +365,9 @@ def consume_MorphDataControl(stream):
                 group_name_size = 0
         # MorphDataExtraDataBlock: [MS-OFORMS] 2.2.5.4
         # Discard Size
+        #print("ValueSize: " + str(value_size))
+        #print("CaptionSize: " + str(caption_size))
+        #print("GroupNameSize: " + str(group_name_size))
         stream.read(8)
         value = stream.read(value_size)
         caption = ""
