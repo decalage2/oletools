@@ -350,20 +350,36 @@ def consume_MorphDataControl(stream):
                 value_size = consume_CountOfBytesWithCompressionFlag(stream)
             else:
                 value_size = 0
-            propmask.consume(stream, [('fCaption', 4), ('fPicturePosition', 4),
+            if propmask.fCaption:
+                caption_size = consume_CountOfBytesWithCompressionFlag(stream)
+            else:
+                caption_size = 0
+            propmask.consume(stream, [('fPicturePosition', 4),
                                       ('fBorderColor', 4), ('fSpecialEffect', 4),
                                       ('fMouseIcon', 2), ('fPicture', 2),
-                                      ('fAccelerator', 2), ('fGroupName', 4)])
+                                      ('fAccelerator', 2)])
+            if propmask.fGroupName:
+                group_name_size = consume_CountOfBytesWithCompressionFlag(stream)
+            else:
+                group_name_size = 0
         # MorphDataExtraDataBlock: [MS-OFORMS] 2.2.5.4
+        # Discard Size
         stream.read(8)
         value = stream.read(value_size)
+        caption = ""
+        if (caption_size > 0):
+            caption = stream.read(caption_size)
+        group_name = ""
+        if (group_name_size > 0):
+            group_name = stream.read(group_name_size)
+            
     # MorphDataStreamData: [MS-OFORMS] 2.2.5.5
     if propmask.fMouseIcon:
         consume_GuidAndPicture(stream)
     if propmask.fPicture:
         consume_GuidAndPicture(stream)
     consume_TextProps(stream)
-    return value
+    return (value, caption, group_name)
 
 def consume_ImageControl(stream):
     # ImageControl: [MS-OFORMS] 2.2.3.1
@@ -484,7 +500,7 @@ def extract_OleFormVariables(ole_file, stream_dir):
         elif var['ClsidCacheIndex'] == 14:
             consume_FormControl(data)
         elif var['ClsidCacheIndex'] in [15, 23, 24, 25, 26, 27, 28]:
-            var['value'] = consume_MorphDataControl(data)
+            var['value'], var['caption'], var['group_name'] = consume_MorphDataControl(data)
         elif var['ClsidCacheIndex'] == 16:
             consume_SpinButtonControl(data)
         elif var['ClsidCacheIndex'] == 17:
