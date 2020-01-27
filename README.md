@@ -112,6 +112,7 @@ including
 [FAME](https://certsocietegenerale.github.io/fame/),
 [FLARE-VM](https://github.com/fireeye/flare-vm),
 [Hybrid-analysis.com](https://www.hybrid-analysis.com/),
+[IntelOwl](https://github.com/certego/IntelOwl),
 [Joe Sandbox](https://www.document-analyzer.net/),
 [Laika BOSS](https://github.com/lmco/laikaboss),
 [MacroMilter](https://github.com/sbidy/MacroMilter),
