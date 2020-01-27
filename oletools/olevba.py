@@ -646,7 +646,7 @@ AUTOEXEC_KEYWORDS_REGEX = {
          r'\w+_FileDownload', r'\w+_NavigateComplete2', r'\w+_NavigateError',
          r'\w+_ProgressChange', r'\w+_PropertyChange', r'\w+_SetSecureLockIcon',
          r'\w+_StatusTextChange', r'\w+_TitleChange', r'\w+_MouseMove', r'\w+_MouseEnter',
-         r'\w+_MouseLeave', r'\w+_Layout'),
+         r'\w+_MouseLeave', r'\w+_Layout', r'\w+_OnConnecting'),
 }
 
 # Suspicious Keywords that may be used by malware
