@@ -61,7 +61,7 @@ http://www.decalage.info/python/oletools
 # 2019-04-04 v0.54 PL: - added ExecuteExcel4Macro, ShellExecuteA, XLM keywords
 # 2019-11-06 v0.55 PL: - added SetTimer
 
-__version__ = '0.55'
+__version__ = '0.55.2'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -121,7 +121,7 @@ re_autoexec = re.compile(r'(?i)\b(?:Auto(?:Exec|_?Open|_?Close|Exit|New)' +
                          r'|DocumentComplete|DownloadBegin|DownloadComplete|FileDownload' +
                          r'|NavigateComplete2|NavigateError|ProgressChange|PropertyChange' +
                          r'|SetSecureLockIcon|StatusTextChange|TitleChange|MouseMove' +
-                         r'|MouseEnter|MouseLeave))|Auto_Ope\b')
+                         r'|MouseEnter|MouseLeave|OnConnecting))|Auto_Ope\b')
 # TODO: "Auto_Ope" is temporarily here because of a bug in plugin_biff, which misses the last byte in "Auto_Open"...
 
 # MS-VBAL 5.4.5.1 Open Statement:
