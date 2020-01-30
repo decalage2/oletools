@@ -94,7 +94,7 @@ http://www.decalage.info/python/oletools
 # 2019-04-01 v0.54 PL: - fixed bug in is_encrypted_ole
 # 2019-05-23       PL: - added DEFAULT_PASSWORDS list
 
-__version__ = '0.54.2'
+__version__ = '0.55'
 
 import sys
 import struct
@@ -219,7 +219,8 @@ def is_encrypted(some_file):
             return msoffcrypto.OfficeFile(file_handle).is_encrypted()
 
         except Exception as exc:
-            log.warning('msoffcrypto failed to interpret file {} or determine '
+            # TODO: this triggers unnecessary warnings for non OLE files
+            log.info('msoffcrypto failed to interpret file {} or determine '
                         'whether it is encrypted: {}'
                         .format(file_handle.name, exc))
 
@@ -242,7 +243,8 @@ def is_encrypted(some_file):
         with OleFileIO(some_file) as ole:
             return _is_encrypted_ole(ole)
     except Exception as exc:
-        log.warning('Failed to check {} for encryption ({}); assume it is not '
+        # TODO: this triggers unnecessary warnings for non OLE files
+        log.info('Failed to check {} for encryption ({}); assume it is not '
                     'encrypted.'.format(some_file, exc))
 
     return False

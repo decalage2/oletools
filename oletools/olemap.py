@@ -54,7 +54,7 @@ http://www.decalage.info/python/oletools
 # 2018-08-28 v0.54 PL: - olefile is now a dependency
 # 2019-07-10 v0.55 PL: - fixed display of OLE header CLSID (issue #394)
 
-__version__ = '0.55.dev3'
+__version__ = '0.55'
 
 #------------------------------------------------------------------------------
 # TODO:

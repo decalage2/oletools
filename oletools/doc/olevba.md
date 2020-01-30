@@ -8,6 +8,7 @@ VBA keywords** used by malware, anti-sandboxing and anti-virtualization techniqu
 and potential **IOCs** (IP addresses, URLs, executable filenames, etc). 
 It also detects and decodes several common **obfuscation methods including Hex encoding,
 StrReverse, Base64, Dridex, VBA expressions**, and extracts IOCs from decoded strings.
+XLM/Excel 4 Macros are also supported in Excel and SLK files.
 
 It can be used either as a command-line tool, or as a python module from your own applications.
 
@@ -18,17 +19,18 @@ by John William Davison, with significant modifications.
 
 ## Supported formats
 
-- Word 97-2003 (.doc, .dot)
-- Word 2007+ (.docm, .dotm)
+- Word 97-2003 (.doc, .dot), Word 2007+ (.docm, .dotm)
+- Excel 97-2003 (.xls), Excel 2007+ (.xlsm, .xlsb)
+- PowerPoint 97-2003 (.ppt), PowerPoint 2007+ (.pptm, .ppsm)
+- Word/PowerPoint 2007+ XML (aka Flat OPC)
 - Word 2003 XML (.xml)
-- Word/Excel MHTML, aka Single File Web Page (.mht)
-- Excel 97-2003 (.xls)
-- Excel 2007+ (.xlsm, .xlsb)
-- PowerPoint 2007+ (.pptm, .ppsm)
+- Word/Excel Single File Web Page / MHTML (.mht)
+- Publisher (.pub)
+- SYLK/SLK files (.slk)
 - Text file containing VBA or VBScript source code
 - Password-protected Zip archive containing any of the above
 
-## Main Features
+S## Main Features
 
 - Detect VBA macros in MS Office 97-2003 and 2007+ files, XML, MHT
 - Extract VBA macro source code

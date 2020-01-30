@@ -74,6 +74,7 @@ from oletools import xls_parser
 from oletools import rtfobj
 from oletools.ppt_record_parser import is_ppt
 from oletools import crypto
+from oletools.common.io_encoding import ensure_stdout_handles_unicode
 from oletools.common.log_helper import log_helper
 
 # -----------------------------------------------------------------------------
@@ -102,7 +103,7 @@ from oletools.common.log_helper import log_helper
 # 2019-07-17 v0.55 CH: - fixed issue #267, unicode error on Python 2
 
 
-__version__ = '0.55.dev3'
+__version__ = '0.55'
 
 # -----------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these
@@ -234,57 +235,6 @@ DEFAULT_LOG_LEVEL = "warning"  # Default log level
 
 # a global logger object used for debugging:
 logger = log_helper.get_or_create_silent_logger('msodde')
-
-
-# === UNICODE IN PY2 =========================================================
-
-def ensure_stdout_handles_unicode():
-    """ Ensure stdout can handle unicode by wrapping it if necessary
-
-    Required e.g. if output of this script is piped or redirected in a linux
-    shell, since then sys.stdout.encoding is ascii and cannot handle
-    print(unicode). In that case we need to find some compatible encoding and
-    wrap sys.stdout into a encoder following (many thanks!)
-    https://stackoverflow.com/a/1819009 or https://stackoverflow.com/a/20447935
-
-    Can be undone by setting sys.stdout = sys.__stdout__
-    """
-    import codecs
-    import locale
-
-    # do not re-wrap
-    if isinstance(sys.stdout, codecs.StreamWriter):
-        return
-
-    # try to find encoding for sys.stdout
-    encoding = None
-    try:
-        encoding = sys.stdout.encoding
-    except AttributeError:              # variable "encoding" might not exist
-        pass
-
-    if encoding not in (None, '', 'ascii'):
-        return   # no need to wrap
-
-    # try to find an encoding that can handle unicode
-    try:
-        encoding = locale.getpreferredencoding()
-    except Exception:
-        pass
-
-    # fallback if still no encoding available
-    if encoding in (None, '', 'ascii'):
-        encoding = 'utf8'
-
-    # logging is probably not initialized yet, but just in case
-    logger.debug('wrapping sys.stdout with encoder using {0}'.format(encoding))
-
-    wrapper = codecs.getwriter(encoding)
-    sys.stdout = wrapper(sys.stdout)
-
-
-if sys.version_info.major < 3:
-    ensure_stdout_handles_unicode()   # e.g. for print(text) in main()
 
 
 # === ARGUMENT PARSING =======================================================
@@ -820,10 +770,16 @@ def process_csv(filepath):
     chars the same way that excel does. Tested to some extend in unittests.
 
     This can only find DDE-links, no other "suspicious" constructs (yet).
-    """
 
+    Cannot deal with unicode files yet (need more than just use uopen()).
+    """
     results = []
-    with open(filepath, 'r') as file_handle:
+    if sys.version_info.major <= 2:
+        open_arg = dict(mode='rb')
+    else:
+        open_arg = dict(newline='')
+    with open(filepath, **open_arg) as file_handle:
+        # TODO: here we should not assume this is a file on disk, filepath can be a file object
         results, dialect = process_csv_dialect(file_handle, CSV_DELIMITERS)
         is_small = file_handle.tell() < CSV_SMALL_THRESH
 
@@ -854,7 +810,6 @@ def process_csv(filepath):
 
 def process_csv_dialect(file_handle, delimiters):
     """ helper for process_csv: process with a specific csv dialect """
-
     # determine dialect = delimiter chars, quote chars, ...
     dialect = csv.Sniffer().sniff(file_handle.read(CSV_SMALL_THRESH),
                                   delimiters=delimiters)
@@ -923,6 +878,7 @@ def process_file(filepath, field_filter_mode=None):
             return process_doc(ole)
 
     with open(filepath, 'rb') as file_handle:
+        # TODO: here we should not assume this is a file on disk, filepath can be a file object
         if file_handle.read(4) == RTF_START:
             logger.debug('Process file as rtf')
             return process_rtf(file_handle, field_filter_mode)
@@ -970,6 +926,7 @@ def process_maybe_encrypted(filepath, passwords=None, crypto_nesting=0,
     :param kwargs: same as :py:func:`process_file`
     :returns: same as :py:func:`process_file`
     """
+    # TODO: here filepath may also be a file in memory, it's not necessarily on disk
     result = u''
     try:
         result = process_file(filepath, **kwargs)
