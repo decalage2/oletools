@@ -368,7 +368,7 @@ def consume_MorphDataControl(stream):
         caption = ""
         if (caption_size > 0):
             caption = stream.read(caption_size)
-        # Read group name text.
+        # Read groupname text.
         group_name = ""
         if (group_name_size > 0):
             group_name = stream.read(group_name_size)
