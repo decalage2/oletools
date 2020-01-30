@@ -118,8 +118,6 @@ class ExtendedStream(object):
     @classmethod
     def open(cls, ole_file, path):
         stream = ole_file.openstream(path)
-        # print('Opening OLE stream %r - size: %d' % (path, stream.size))
-        # print('declared size: %d' % ole_file.get_size(path))
         return cls(stream, path)
 
     def _read(self, size):
@@ -330,7 +328,6 @@ def consume_FormControl(stream):
 
 def consume_MorphDataControl(stream):
     # MorphDataControl: [MS-OFORMS] 2.2.5.1
-    #print("Here: consume_MorphDataControl")
     stream.check_values('MorphDataControl (versions)', '<BB', 2, (0, 2))
     cbMorphData = stream.unpack('<H', 2)
     with stream.will_jump_to(cbMorphData):
@@ -365,14 +362,13 @@ def consume_MorphDataControl(stream):
                 group_name_size = 0
         # MorphDataExtraDataBlock: [MS-OFORMS] 2.2.5.4
         # Discard Size
-        #print("ValueSize: " + str(value_size))
-        #print("CaptionSize: " + str(caption_size))
-        #print("GroupNameSize: " + str(group_name_size))
         stream.read(8)
         value = stream.read(value_size)
+        # Read caption text.
         caption = ""
         if (caption_size > 0):
             caption = stream.read(caption_size)
+        # Read group name text.
         group_name = ""
         if (group_name_size > 0):
             group_name = stream.read(group_name_size)
