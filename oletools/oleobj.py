@@ -59,20 +59,18 @@ import olefile
 # In that case, relative imports are NOT usable.
 # And to enable Python 2+3 compatibility, we need to use absolute imports,
 # so we add the oletools parent folder to sys.path (absolute+normalized path):
-try:
-    from oletools.thirdparty import xglob
-except ImportError:
-    import os.path
-    PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__))))
-    if PARENT_DIR not in sys.path:
-        sys.path.insert(0, PARENT_DIR)
-    del PARENT_DIR
-    from oletools.thirdparty import xglob
+_thismodule_dir = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
+# print('_thismodule_dir = %r' % _thismodule_dir)
+_parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
+# print('_parent_dir = %r' % _thirdparty_dir)
+if _parent_dir not in sys.path:
+    sys.path.insert(0, _parent_dir)
 
+from oletools.thirdparty import xglob
 from oletools.ppt_record_parser import (is_ppt, PptFile,
                                         PptRecordExOleVbaActiveXAtom)
 from oletools.ooxml import XmlParser
+from oletools.common.io_encoding import ensure_stdout_handles_unicode
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:
@@ -89,7 +87,7 @@ from oletools.ooxml import XmlParser
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
 # 2018-10-30       SA: - added detection of external links (PR #317)
 
-__version__ = '0.54'
+__version__ = '0.55'
 
 # -----------------------------------------------------------------------------
 # TODO:
@@ -848,6 +846,7 @@ def main(cmd_line_args=None):
     provide other arguments.
     """
     # print banner with version
+    ensure_stdout_handles_unicode()
     print('oleobj %s - http://decalage.info/oletools' % __version__)
     print('THIS IS WORK IN PROGRESS - Check updates regularly!')
     print('Please report any issue at '

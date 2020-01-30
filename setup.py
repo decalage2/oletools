@@ -31,6 +31,8 @@ to install this package.
 # 2019-02-26       CH: - add optional dependency msoffcrypto for decryption
 # 2019-05-22       PL: - 'msoffcrypto-tool' is now a required dependency
 # 2019-05-23 v0.55 PL: - added pcodedmp as dependency
+# 2019-09-24       PL: - removed oletools.thirdparty.DridexUrlDecoder
+# 2019-11-10       PL: - changed pyparsing from 2.2.0 to 2.1.0 for issue #481
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -50,7 +52,7 @@ import os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.55.dev3'
+version      = '0.55.2'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       = "Philippe Lagadec"
@@ -77,6 +79,7 @@ classifiers=[
     "Programming Language :: Python :: 3.5",
     "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
     "Topic :: Security",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
@@ -91,7 +94,6 @@ packages=[
     'oletools.thirdparty.xxxswf',
     'oletools.thirdparty.prettytable',
     'oletools.thirdparty.xglob',
-    'oletools.thirdparty.DridexUrlDecoder',
     'oletools.thirdparty.tablestream',
     'oletools.thirdparty.oledump',
 ]
@@ -315,7 +317,7 @@ def main():
         test_suite="tests",
         # scripts=scripts,
         install_requires=[
-            "pyparsing>=2.2.0",
+            "pyparsing>=2.1.0",  # changed from 2.2.0 to 2.1.0 for issue #481
             "olefile>=0.46",
             "easygui",
             'colorclass',

@@ -79,6 +79,7 @@ if not _parent_dir in sys.path:
 import olefile
 from oletools.thirdparty import xglob
 from oletools.thirdparty.tablestream import tablestream
+from oletools.common.io_encoding import ensure_stdout_handles_unicode
 
 
 #=== MAIN =================================================================
@@ -88,13 +89,12 @@ def process_ole(ole):
     meta = ole.get_metadata()
 
     # console output with UTF8 encoding:
-    # It looks like we do not need the UTF8 codec anymore, both for Python 2 and 3
-    console_utf8 = sys.stdout #codecs.getwriter('utf8')(sys.stdout)
+    ensure_stdout_handles_unicode()
 
     # TODO: move similar code to a function
 
     print('Properties from the SummaryInformation stream:')
-    t = tablestream.TableStream([21, 30], header_row=['Property', 'Value'], outfile=console_utf8)
+    t = tablestream.TableStream([21, 30], header_row=['Property', 'Value'])
     for prop in meta.SUMMARY_ATTRIBS:
         value = getattr(meta, prop)
         if value is not None:
@@ -111,7 +111,7 @@ def process_ole(ole):
     print('')
 
     print('Properties from the DocumentSummaryInformation stream:')
-    t = tablestream.TableStream([21, 30], header_row=['Property', 'Value'], outfile=console_utf8)
+    t = tablestream.TableStream([21, 30], header_row=['Property', 'Value'])
     for prop in meta.DOCSUM_ATTRIBS:
         value = getattr(meta, prop)
         if value is not None:
