@@ -118,8 +118,6 @@ class ExtendedStream(object):
     @classmethod
     def open(cls, ole_file, path):
         stream = ole_file.openstream(path)
-        # print('Opening OLE stream %r - size: %d' % (path, stream.size))
-        # print('declared size: %d' % ole_file.get_size(path))
         return cls(stream, path)
 
     def _read(self, size):
@@ -265,13 +263,33 @@ def consume_OleSiteConcreteControl(stream):
                 tabindex = stream.unpack('<H', 2)
             if propmask.fClsidCacheIndex:
                 ClsidCacheIndex = stream.unpack('<H', 2)
-            propmask.consume(stream, [('fGroupID', 2), ('fControlTipText', 4), ('fRuntimeLicKey', 4),
-                                      ('fControlSource', 4), ('fRowSource', 4)])
+            if propmask.fGroupID:
+                stream.read(2)
+            # Get the size of the ControlTipText, if needed.
+            control_tip_text_len = 0
+            if propmask.fControlTipText:
+                control_tip_text_len = consume_CountOfBytesWithCompressionFlag(stream)
+            propmask.consume(stream, [('fRuntimeLicKey', 4), ('fControlSource', 4), ('fRowSource', 4)])
         # SiteExtraDataBlock: [MS-OFORMS] 2.2.10.12.4
-        name = stream.read(name_len)
-        tag = stream.read(tag_len)
+        name = None
+        if (name_len > 0):
+            name = stream.read(name_len)
+        # Consume 2 null bytes between name and tag.
+        #if ((tag_len > 0) or (control_tip_text_len > 0)):
+        #    stream.read(2)
+        #    # Sometimes it looks like 2 extra null bytes go here whether or not there is a tag.
+        tag = None
+        if (tag_len > 0):
+            tag = stream.read(tag_len)
+        # Skip SitePosition.
+        if propmask.fPosition:
+            stream.read(8)
+        control_tip_text = stream.read(control_tip_text_len)
+        if (len(control_tip_text) == 0):
+            control_tip_text = None
         return {'name': name, 'tag': tag, 'id': id, 'tabindex': tabindex,
-               'ClsidCacheIndex': ClsidCacheIndex, 'value': None}
+                'ClsidCacheIndex': ClsidCacheIndex, 'value': None, 'caption': None,
+                'control_tip_text':control_tip_text}
 
 def consume_FormControl(stream):
     # FormControl: [MS-OFORMS] 2.2.10.1
@@ -330,20 +348,38 @@ def consume_MorphDataControl(stream):
                 value_size = consume_CountOfBytesWithCompressionFlag(stream)
             else:
                 value_size = 0
-            propmask.consume(stream, [('fCaption', 4), ('fPicturePosition', 4),
+            if propmask.fCaption:
+                caption_size = consume_CountOfBytesWithCompressionFlag(stream)
+            else:
+                caption_size = 0
+            propmask.consume(stream, [('fPicturePosition', 4),
                                       ('fBorderColor', 4), ('fSpecialEffect', 4),
                                       ('fMouseIcon', 2), ('fPicture', 2),
-                                      ('fAccelerator', 2), ('fGroupName', 4)])
+                                      ('fAccelerator', 2)])
+            if propmask.fGroupName:
+                group_name_size = consume_CountOfBytesWithCompressionFlag(stream)
+            else:
+                group_name_size = 0
         # MorphDataExtraDataBlock: [MS-OFORMS] 2.2.5.4
+        # Discard Size
         stream.read(8)
         value = stream.read(value_size)
+        # Read caption text.
+        caption = ""
+        if (caption_size > 0):
+            caption = stream.read(caption_size)
+        # Read groupname text.
+        group_name = ""
+        if (group_name_size > 0):
+            group_name = stream.read(group_name_size)
+            
     # MorphDataStreamData: [MS-OFORMS] 2.2.5.5
     if propmask.fMouseIcon:
         consume_GuidAndPicture(stream)
     if propmask.fPicture:
         consume_GuidAndPicture(stream)
     consume_TextProps(stream)
-    return value
+    return (value, caption, group_name)
 
 def consume_ImageControl(stream):
     # ImageControl: [MS-OFORMS] 2.2.3.1
@@ -454,7 +490,6 @@ def consume_ScrollBarControl(stream):
 def extract_OleFormVariables(ole_file, stream_dir):
     control = ExtendedStream.open(ole_file, '/'.join(stream_dir + ['f']))
     variables = list(consume_FormControl(control))
-    # print('/'.join(stream_dir + ['o']))
     data = ExtendedStream.open(ole_file, '/'.join(stream_dir + ['o']))
     for var in variables:
         # See FormEmbeddedActiveXControlCached for type definition: [MS-OFORMS] 2.4.5
@@ -465,7 +500,7 @@ def extract_OleFormVariables(ole_file, stream_dir):
         elif var['ClsidCacheIndex'] == 14:
             consume_FormControl(data)
         elif var['ClsidCacheIndex'] in [15, 23, 24, 25, 26, 27, 28]:
-            var['value'] = consume_MorphDataControl(data)
+            var['value'], var['caption'], var['group_name'] = consume_MorphDataControl(data)
         elif var['ClsidCacheIndex'] == 16:
             consume_SpinButtonControl(data)
         elif var['ClsidCacheIndex'] == 17:
@@ -473,7 +508,7 @@ def extract_OleFormVariables(ole_file, stream_dir):
         elif var['ClsidCacheIndex'] == 18:
             consume_TabStripControl(data)
         elif var['ClsidCacheIndex'] == 21:
-            consume_LabelControl(data)
+            var['caption'] = consume_LabelControl(data)
         elif var['ClsidCacheIndex'] == 47:
             consume_ScrollBarControl(data)
         elif var['ClsidCacheIndex'] == 57:

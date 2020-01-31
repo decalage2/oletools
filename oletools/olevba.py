@@ -259,6 +259,7 @@ __version__ = '0.55.2'
 
 # --- IMPORTS ------------------------------------------------------------------
 
+import traceback
 import sys
 import os
 import logging
@@ -2678,11 +2679,12 @@ class VBA_Parser(object):
         #: Encoding for VBA source code and strings returned by all methods
         self.encoding = encoding
         self.xlm_macros = []
+        self.no_xlm = False
         #: Output from pcodedmp, disassembly of the VBA P-code
         self.pcodedmp_output = None
         #: Flag set to True/False if VBA stomping detected
         self.vba_stomping_detected = None
-
+        
         # if filename is None:
         #     if isinstance(_file, basestring):
         #         if len(_file) < olefile.MINIMAL_OLEFILE_SIZE:
@@ -2720,8 +2722,11 @@ class VBA_Parser(object):
             # and even whitespaces in between "MIME", "-", "Version" and ":". The version number is ignored.
             # And the line is case insensitive.
             # so we'll just check the presence of mime, version and multipart anywhere:
-            if self.type is None and b'mime' in data_lowercase and b'version' in data_lowercase \
-                and b'multipart' in data_lowercase:
+            if (self.type is None and
+                b'mime' in data_lowercase and
+                b'version' in data_lowercase and
+                b'multipart' in data_lowercase and
+                abs(data_lowercase.index(b'version') - data_lowercase.index(b'mime')) < 20):
                 self.open_mht(data)
         #TODO: handle exceptions
         #TODO: Excel 2003 XML
@@ -3181,6 +3186,7 @@ class VBA_Parser(object):
         # if OpenXML/PPT, check all the OLE subfiles:
         if self.ole_file is None:
             for ole_subfile in self.ole_subfiles:
+                ole_subfile.no_xlm = self.no_xlm
                 if ole_subfile.detect_vba_macros():
                     self.contains_macros = True
                     return True
@@ -3223,7 +3229,7 @@ class VBA_Parser(object):
                         log.debug('Trace:', exc_trace=True)
                     else:
                         raise SubstreamOpenError(self.filename, d.name, exc)
-        if self.detect_xlm_macros():
+        if (not self.no_xlm) and self.detect_xlm_macros():
             self.contains_macros = True
         return self.contains_macros
 
@@ -3829,7 +3835,7 @@ class VBA_Parser_CLI(VBA_Parser):
     def process_file(self, show_decoded_strings=False,
                      display_code=True, hide_attributes=True,
                      vba_code_only=False, show_deobfuscated_code=False,
-                     deobfuscate=False, pcode=False):
+                     deobfuscate=False, pcode=False, no_xlm=False):
         """
         Process a single file
 
@@ -3842,9 +3848,11 @@ class VBA_Parser_CLI(VBA_Parser):
         :param hide_attributes: bool, if True the first lines starting with "Attribute VB" are hidden (default)
         :param deobfuscate: bool, if True attempt to deobfuscate VBA expressions (slow)
         :param pcode bool: if True, call pcodedmp to disassemble P-code and display it
+        :param no_xlm bool: if True, don't use the BIFF plugin to extract old style XLM macros
         """
         #TODO: replace print by writing to a provided output file (sys.stdout by default)
         # fix conflicting parameters:
+        self.no_xlm = no_xlm
         if vba_code_only and not display_code:
             display_code = True
         if self.container:
@@ -3942,6 +3950,7 @@ class VBA_Parser_CLI(VBA_Parser):
         except Exception as exc:
             # display the exception with full stack trace for debugging
             log.info('Error processing file %s (%s)' % (self.filename, exc))
+            traceback.print_exc()
             log.debug('Traceback:', exc_info=True)
             raise ProcessingError(self.filename, exc)
         print('')
@@ -3950,7 +3959,7 @@ class VBA_Parser_CLI(VBA_Parser):
     def process_file_json(self, show_decoded_strings=False,
                           display_code=True, hide_attributes=True,
                           vba_code_only=False, show_deobfuscated_code=False,
-                          deobfuscate=False):
+                          deobfuscate=False, no_xlm=False):
         """
         Process a single file
 
@@ -3967,6 +3976,7 @@ class VBA_Parser_CLI(VBA_Parser):
         """
         #TODO: fix conflicting parameters (?)
 
+        self.no_xlm = no_xlm
         if vba_code_only and not display_code:
             display_code = True
 
@@ -4020,7 +4030,7 @@ class VBA_Parser_CLI(VBA_Parser):
         return result
 
 
-    def process_file_triage(self, show_decoded_strings=False, deobfuscate=False):
+    def process_file_triage(self, show_decoded_strings=False, deobfuscate=False, no_xlm=False):
         """
         Process a file in triage mode, showing only summary results on one line.
         """
@@ -4117,6 +4127,8 @@ def parse_args(cmd_line_args=None):
                             help="Do not raise errors if opening of substream fails")
     parser.add_option('--pcode', dest="pcode", action="store_true", default=False,
                             help="Disassemble and display the P-code (using pcodedmp)")
+    parser.add_option('--no-xlm', dest="no_xlm", action="store_true", default=False,
+                            help="Do not extract XLM Excel macros. This may speed up analysis of large files.")
 
     (options, args) = parser.parse_args(cmd_line_args)
 
@@ -4154,18 +4166,18 @@ def process_file(filename, data, container, options, crypto_nesting=0):
                          display_code=options.display_code,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
                          show_deobfuscated_code=options.show_deobfuscated_code,
-                         deobfuscate=options.deobfuscate, pcode=options.pcode)
+                                    deobfuscate=options.deobfuscate, pcode=options.pcode, no_xlm=options.no_xlm)
         elif options.output_mode == 'triage':
             # summarized output for triage:
             vba_parser.process_file_triage(show_decoded_strings=options.show_decoded_strings,
-                                           deobfuscate=options.deobfuscate)
+                                           deobfuscate=options.deobfuscate, no_xlm=options.no_xlm)
         elif options.output_mode == 'json':
             print_json(
                 vba_parser.process_file_json(show_decoded_strings=options.show_decoded_strings,
                          display_code=options.display_code,
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
                          show_deobfuscated_code=options.show_deobfuscated_code,
-                         deobfuscate=options.deobfuscate))
+                         deobfuscate=options.deobfuscate, no_xlm=options.no_xlm))
         else:  # (should be impossible)
             raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
 
