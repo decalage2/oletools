@@ -32,7 +32,7 @@ https://github.com/unixfreak0037/officeparser
 
 # === LICENSE ==================================================================
 
-# olevba is copyright (c) 2014-2019 Philippe Lagadec (http://www.decalage.info)
+# olevba is copyright (c) 2014-2020 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -224,8 +224,9 @@ from __future__ import print_function
 # 2019-06-05       PL: - added VBA stomping detection
 # 2019-09-24       PL: - included DridexUrlDecode into olevba (issue #485)
 # 2019-12-03       PL: - added support for SLK files and XLM macros in SLK
+# 2020-01-31 v0.56 KS: - added option --no-xlm, improved MHT detection
 
-__version__ = '0.55.2'
+__version__ = '0.56dev1'
 
 #------------------------------------------------------------------------------
 # TODO:
