@@ -105,6 +105,7 @@ including
 [Anlyz.io](https://sandbox.anlyz.io/),
 [AssemblyLine](https://www.cse-cst.gc.ca/en/assemblyline),
 [CAPE](https://github.com/ctxis/CAPE),
+[CinCan](https://cincan.io),
 [Cuckoo Sandbox](https://github.com/cuckoosandbox/cuckoo),
 [DARKSURGEON](https://github.com/cryps1s/DARKSURGEON),
 [Deepviz](https://sandbox.deepviz.com/),
