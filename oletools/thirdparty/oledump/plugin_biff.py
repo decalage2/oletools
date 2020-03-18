@@ -1028,10 +1028,10 @@ class cBIFF(object):  # cPluginParent):
             if options.find.startswith('0x'):
                 options.find = binascii.a2b_hex(options.find[2:])
 
+            formatcodes = 'HH'
+            formatsize = struct.calcsize(formatcodes)
             pos = 0
             while pos < len(stream):
-                formatcodes = 'HH'
-                formatsize = struct.calcsize(formatcodes)
                 # print('formatsize=%d' % formatsize)
                 opcode, length = struct.unpack(formatcodes, stream[pos:pos+formatsize])
                 # print('opcode=%d length=%d len(stream)=%d' % (opcode, length, len(stream)))
