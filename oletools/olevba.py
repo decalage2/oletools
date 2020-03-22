@@ -225,8 +225,9 @@ from __future__ import print_function
 # 2019-09-24       PL: - included DridexUrlDecode into olevba (issue #485)
 # 2019-12-03       PL: - added support for SLK files and XLM macros in SLK
 # 2020-01-31 v0.56 KS: - added option --no-xlm, improved MHT detection
+# 2020-03-22       PL: - uses plugin_biff to display DCONN objects and their URL
 
-__version__ = '0.56dev1'
+__version__ = '0.56dev3'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -3252,6 +3253,10 @@ class VBA_Parser(object):
                     self.xlm_macros = biff_plugin.Analyze()
                     if len(self.xlm_macros)>0:
                         log.debug('Found XLM macros')
+                        # we run plugin_biff again, this time to search DCONN objects and get their URLs, if any:
+                        # ref: https://inquest.net/blog/2020/03/18/Getting-Sneakier-Hidden-Sheets-Data-Connections-and-XLM-Macros
+                        biff_plugin = cBIFF(name=[excel_stream], stream=data, options='-o 876 -s')
+                        self.xlm_macros += biff_plugin.Analyze()
                         return True
                 except:
                     log.exception('Error when running oledump.plugin_biff, please report to %s' % URL_OLEVBA_ISSUES)
