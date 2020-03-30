@@ -130,6 +130,8 @@ def process_output(meta, output):
                 t.write_row([prop, value], colors=[None, 'yellow'])
         t.close()
     else:
+        # initalize a dictionary with keys for each type of attribute
+        # update props/values like the table would
         output_dict = {"SUMMARY_ATTRIBS": {}, "DOCSUM_ATTRIBS": {}}
         for prop in meta.SUMMARY_ATTRIBS:
             value = getattr(meta, prop)
@@ -196,6 +198,7 @@ def main():
         else:
             # normal filename
             ole = olefile.OleFileIO(filename)
+        # multiple outputs need to flow differently, 
         meta = process_ole(ole)
         process_output(meta, options.output)
         ole.close()
