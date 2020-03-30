@@ -62,7 +62,7 @@ __version__ = '0.54'
 
 #=== IMPORTS =================================================================
 
-import sys, os, optparse, collections, json
+import sys, os, optparse, json
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
