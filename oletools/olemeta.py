@@ -130,35 +130,16 @@ def process_output(meta, output):
                 t.write_row([prop, value], colors=[None, 'yellow'])
         t.close()
     else:
-
-        # output_dict = defaultdict.fromkeys(["SUMMARY_ATTRIBS", "DOCSUM_ATTRIBS"], None)
-        output_dict = mydict = {"SUMMARY_ATTRIBS": {}, "DOCSUM_ATTRIBS": {}}
+        output_dict = {"SUMMARY_ATTRIBS": {}, "DOCSUM_ATTRIBS": {}}
         for prop in meta.SUMMARY_ATTRIBS:
             value = getattr(meta, prop)
             if value is not None:
-                # TODO: pretty printing for strings, dates, numbers
-                # TODO: better unicode handling
-                # print('- %s: %s' % (prop, value))
-                # if isinstance(value, unicode):
-                #     # encode to UTF8, avoiding errors
-                #     value = value.encode('utf-8', errors='replace')
-                # else:
-                #     value = str(value)
-                output_dict['SUMMARY_ATTRIBS'].update(prop = value)
+                output_dict['SUMMARY_ATTRIBS'][prop] = value
         for prop in meta.DOCSUM_ATTRIBS:
             value = getattr(meta, prop)
             if value is not None:
-                # TODO: pretty printing for strings, dates, numbers
-                # TODO: better unicode handling
-                # print('- %s: %s' % (prop, value))
-                # if isinstance(value, unicode):
-                #     # encode to UTF8, avoiding errors
-                #     value = value.encode('utf-8', errors='replace')
-                # else:
-                #     value = str(value)
                 output_dict['DOCSUM_ATTRIBS'][prop] = value
-
-        print(output_dict)
+        return output_dict
 
 
 
@@ -182,7 +163,8 @@ def main():
     parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
                       help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
     parser.add_option("-o", "--output", dest='output', type='str', default="table",
-                      help="output in 'table' or 'json' format")
+                      help="output in 'table' or 'json' format. Table output is the default and appropriate for interactive use, while json \
+                      output is suited to automation")
 
     # TODO: add logfile option
     # parser.add_option('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
