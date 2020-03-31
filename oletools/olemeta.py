@@ -62,7 +62,7 @@ __version__ = '0.54'
 
 #=== IMPORTS =================================================================
 
-import sys, os, optparse, json
+import sys, os, optparse, json, datetime
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
@@ -87,8 +87,15 @@ from oletools.common.io_encoding import ensure_stdout_handles_unicode
 def process_ole(ole):
     # parse and display metadata:
     meta = ole.get_metadata()
-
     return meta
+
+def clean_output(value):
+    if isinstance(value, bytes):
+        return value.decode()
+    elif isinstance(value, datetime.datetime):
+        return value.isoformat()
+    else:
+        return value
 
 def process_output(meta, output):
 
@@ -135,12 +142,23 @@ def process_output(meta, output):
         output_dict = {"SUMMARY_ATTRIBS": {}, "DOCSUM_ATTRIBS": {}}
         for prop in meta.SUMMARY_ATTRIBS:
             value = getattr(meta, prop)
-            if value is not None:
+            if value:
+                value = clean_output(value)
                 output_dict['SUMMARY_ATTRIBS'][prop] = value
+            else:
+                # pass for now, when logging is enabled log as warning 
+                # logger.warning("Unable to log {}: {}".format(prop, value))
+                pass
         for prop in meta.DOCSUM_ATTRIBS:
             value = getattr(meta, prop)
-            if value is not None:
+            if value:
+                value = clean_output(value)
                 output_dict['DOCSUM_ATTRIBS'][prop] = value
+            else:
+                # pass for now, when logging is enabled log as warning 
+                # logger.warning("Unable to log {}: {}".format(prop, value))
+                pass
+
         return output_dict
 
 
