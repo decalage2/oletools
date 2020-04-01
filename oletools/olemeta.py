@@ -91,7 +91,11 @@ def process_ole(ole):
 
 def clean_output(value):
     if isinstance(value, bytes):
-        return value.decode()
+        try:
+            value = value.decode('utf-8')
+        except UnicodeDecodeError:
+            value = value.decode('latin-1')
+        return value
     elif isinstance(value, datetime.datetime):
         return value.isoformat()
     else:
