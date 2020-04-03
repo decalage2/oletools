@@ -54,11 +54,11 @@ __version__ = '0.56'
 # https://justhaifei1.blogspot.nl/2017/07/bypassing-microsofts-cve-2017-0199-patch.html
 # https://github.com/nccgroup/yaml2yara/blob/master/sample_data/office_exploits/ole.yaml
 
+# Large database of known CLSIDs/UUIDs:
+# https://uuid.pirate-server.com/
+
 
 KNOWN_CLSIDS = {
-
-
-
     '00000300-0000-0000-C000-000000000046': 'StdOleLink (embedded OLE object - Known Related to CVE-2017-0199, CVE-2017-8570, CVE-2017-8759 or CVE-2018-8174)',
     '00000303-0000-0000-C000-000000000046': 'File Moniker (may trigger CVE-2017-0199 or CVE-2017-8570)',
     '00000304-0000-0000-C000-000000000046': 'Item Moniker',
