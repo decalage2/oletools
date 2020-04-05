@@ -60,7 +60,11 @@ try:
     # lxml: best performance for XML processing
     import lxml.etree as ET
 except ImportError:
-    import xml.etree.cElementTree as ET
+    # cElementTree was deprecated and removed in Python 3.9
+    try:
+        import xml.etree.cElementTree as ET
+    except ImportError:
+        import xml.etree.ElementTree as ET
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:

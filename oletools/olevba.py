@@ -288,12 +288,16 @@ except ImportError:
         import xml.etree.cElementTree as ET
     except ImportError:
         try:
-            # Python <2.5: standalone ElementTree install
-            import elementtree.cElementTree as ET
+            # cElementTree was deprecated and removed in Python 3.9
+            import xml.etree.ElementTree as ET
         except ImportError:
-            raise ImportError("lxml or ElementTree are not installed, " \
-                               + "see http://codespeak.net/lxml " \
-                               + "or http://effbot.org/zone/element-index.htm")
+            try:
+                # Python <2.5: standalone ElementTree install
+                import elementtree.cElementTree as ET
+            except ImportError:
+                raise ImportError("lxml or ElementTree are not installed, " \
+                                  + "see http://codespeak.net/lxml " \
+                                  + "or http://effbot.org/zone/element-index.htm")
 
 import colorclass
 
