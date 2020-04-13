@@ -227,7 +227,7 @@ from __future__ import print_function
 # 2020-01-31 v0.56 KS: - added option --no-xlm, improved MHT detection
 # 2020-03-22       PL: - uses plugin_biff to display DCONN objects and their URL
 
-__version__ = '0.56dev3'
+__version__ = '0.56dev4'
 
 #------------------------------------------------------------------------------
 # TODO:
