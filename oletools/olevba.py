@@ -402,7 +402,7 @@ def bytes2str(bytes_string, encoding='utf8'):
     :return: the string converted to str
     :rtype: str
     """
-    if PYTHON2:
+    if PYTHON2 or isinstance(bytes_string, str):
         return bytes_string
     else:
         return bytes_string.decode(encoding, errors='replace')
@@ -2277,17 +2277,17 @@ def StripCharsWithZero (input) :
 
 def DridexUrlDecode (inputText) :
     work = inputText[4:-4]
-    strKeyEnc = StripCharsWithZero(work[(len(work) / 2) - 2: (len(work) / 2)])
-    strKeySize = StripCharsWithZero(work[(len(work) / 2): (len(work) / 2) + 2])
+    strKeyEnc = StripCharsWithZero(work[(len(work) // 2) - 2: (len(work) // 2)])
+    strKeySize = StripCharsWithZero(work[(len(work) // 2): (len(work) // 2) + 2])
     nCharSize = strKeySize - strKeyEnc
-    work = work[:(len(work) / 2) - 2] + work[(len(work) / 2) + 2:]
-    strKeyEnc2 = StripChars(work[(len(work) / 2) - (nCharSize/2): (len(work) / 2) + (nCharSize/2)])
-    work = work[:(len(work) / 2) - (nCharSize/2)] + work[(len(work) / 2) + (nCharSize/2):]
+    work = work[:(len(work) // 2) - 2] + work[(len(work) // 2) + 2:]
+    strKeyEnc2 = StripChars(work[(len(work) // 2) - (nCharSize//2): (len(work) // 2) + (nCharSize//2)])
+    work = work[:(len(work) // 2) - (nCharSize//2)] + work[(len(work) // 2) + (nCharSize//2):]
     work_split = [work[i:i+nCharSize] for i in range(0, len(work), nCharSize)]
     decoded = ''
     for group in work_split:
         # sys.stdout.write(chr(StripChars(group)/strKeyEnc2))
-        decoded += chr(StripChars(group)/strKeyEnc2)
+        decoded += chr(StripChars(group)//strKeyEnc2)
     return decoded
 
 # DridexUrlDecode("C3iY1epSRGe6q8g15xStVesdG717MAlg2H4hmV1vkL6Glnf0cknj")
