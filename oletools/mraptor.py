@@ -60,8 +60,9 @@ http://www.decalage.info/python/oletools
 # 2018-05-25 v0.53 PL: - added Word/PowerPoint 2007+ XML (aka Flat OPC) issue #283
 # 2019-04-04 v0.54 PL: - added ExecuteExcel4Macro, ShellExecuteA, XLM keywords
 # 2019-11-06 v0.55 PL: - added SetTimer
+# 2020-04-20 v0.56 PL: - added keywords RUN and CALL for XLM macros (issue #562)
 
-__version__ = '0.55.2'
+__version__ = '0.56dev5'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -134,7 +135,7 @@ re_write = re.compile(r'(?i)\b(?:FileCopy|CopyFile|Kill|CreateTextFile|'
 # MS-VBAL 5.2.3.5 External Procedure Declaration
 RE_DECLARE_LIB = r'(?:\bDeclare\b[^\n]+\bLib\b)'
 
-re_execute = re.compile(r'(?i)\b(?:Shell|CreateObject|GetObject|SendKeys|'
+re_execute = re.compile(r'(?i)\b(?:Shell|CreateObject|GetObject|SendKeys|RUN|CALL|'
     + r'MacScript|FollowHyperlink|CreateThread|ShellExecuteA?|ExecuteExcel4Macro|EXEC|REGISTER|SetTimer)\b|' + RE_DECLARE_LIB)
 
 
