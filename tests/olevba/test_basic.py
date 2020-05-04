@@ -43,7 +43,10 @@ class TestOlevbaBasic(unittest.TestCase):
             elif 'warn' in line.lower():
                 raise self.fail('Found "warn" in output line: "{}"'
                                 .format(line.rstrip()))
-        self.assertIn('not encrypted', output)
+        # TODO: I disabled this test because we do not log "not encrypted" as warning anymore
+        # to avoid other issues.
+        # If we really want to test this, then the test should be run with log level INFO:
+        # self.assertIn('not encrypted', output)
 
     def test_rtf_behaviour(self):
         """Test behaviour of olevba when presented with an rtf file."""
@@ -58,7 +61,10 @@ class TestOlevbaBasic(unittest.TestCase):
         self.assertIn('FileOpenError', output)
         self.assertIn('is RTF', output)
         self.assertIn('rtfobj.py', output)
-        self.assertIn('not encrypted', output)
+        # TODO: I disabled this test because we do not log "not encrypted" as warning anymore
+        # to avoid other issues.
+        # If we really want to test this, then the test should be run with log level INFO:
+        # self.assertIn('not encrypted', output)
 
         # check warnings
         for line in output.splitlines():
