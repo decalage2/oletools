@@ -1,4 +1,4 @@
-pyparsing>=2.1.0
+pyparsing>=2.1.0,<3
 olefile>=0.46
 easygui
 colorclass
