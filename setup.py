@@ -317,7 +317,7 @@ def main():
         test_suite="tests",
         # scripts=scripts,
         install_requires=[
-            "pyparsing>=2.1.0",  # changed from 2.2.0 to 2.1.0 for issue #481
+            "pyparsing>=2.1.0,<3",  # changed from 2.2.0 to 2.1.0 for issue #481
             "olefile>=0.46",
             "easygui",
             'colorclass',
