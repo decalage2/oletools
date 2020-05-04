@@ -60,7 +60,7 @@ class TestOlevbaBasic(unittest.TestCase):
         # check output:
         self.assertIn('FileOpenError', output)
         self.assertIn('is RTF', output)
-        self.assertIn('rtfobj.py', output)
+        self.assertIn('rtfobj', output)
         # TODO: I disabled this test because we do not log "not encrypted" as warning anymore
         # to avoid other issues.
         # If we really want to test this, then the test should be run with log level INFO:
