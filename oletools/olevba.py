@@ -2686,6 +2686,7 @@ class VBA_Parser(object):
         self.pcodedmp_output = None
         #: Flag set to True/False if VBA stomping detected
         self.vba_stomping_detected = None
+        self.is_encrypted = None # will be set to True or False by detect_is_encrypted
         
         # if filename is None:
         #     if isinstance(_file, basestring):
@@ -3262,6 +3263,17 @@ class VBA_Parser(object):
                     log.exception('Error when running oledump.plugin_biff, please report to %s' % URL_OLEVBA_ISSUES)
         return False
 
+    def detect_is_encrypted(self):
+        self.is_encrypted = crypto.is_encrypted(self.ole_file)
+        return self.is_encrypted
+
+    def decrypt_file(self):
+        decrypted_file = None
+        if self.detect_is_encrypted():
+            passwords = crypto.DEFAULT_PASSWORDS
+            decrypted_file = crypto.decrypt(self.filename, passwords)
+
+        return decrypted_file
 
     def encode_string(self, unicode_str):
         """
