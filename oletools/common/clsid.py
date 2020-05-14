@@ -79,6 +79,7 @@ KNOWN_CLSIDS = {
     '00020833-0000-0000-C000-000000000046': 'Microsoft Excel binary sheet with macro enabled (Excel.SheetBinaryMacroEnabled.12)',
     '00020900-0000-0000-C000-000000000046': 'Microsoft Word 6.0-7.0 Document (Word.Document.6)',
     '00020906-0000-0000-C000-000000000046': 'Microsoft Word 97-2003 Document (Word.Document.8)',
+    '00020907-0000-0000-c000-000000000046': 'Microsoft Word Picture (Word.Picture.8)',
     '00020C01-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
     '00021401-0000-0000-C000-000000000046': 'Windows LNK Shortcut file', # ref: https://github.com/libyal/liblnk/blob/master/documentation/Windows%20Shortcut%20File%20(LNK)%20format.asciidoc
     '00021700-0000-0000-C000-000000000046': 'Microsoft Equation 2.0 (Known Related to CVE-2017-11882 or CVE-2018-0802)',
