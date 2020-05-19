@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 __description__ = 'BIFF plugin for oledump.py'
 __author__ = 'Didier Stevens'
 __version__ = '0.0.11'
@@ -1124,7 +1126,7 @@ def ParseExpression(expression):
                 result += '0x%08x ' % (struct.unpack('<I', expression[0:4]))
                 expression = expression[4:]
             elif ptgid == 0x1f:
-                result += 'FLOAT '
+                result += '%f ' % (struct.unpack('d', expression[:8]))
                 expression = expression[8:]
             elif ptgid == 0x26:
                 ## expression = expression[4:]
