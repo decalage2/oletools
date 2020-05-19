@@ -227,7 +227,7 @@ from __future__ import print_function
 # 2020-01-31 v0.56 KS: - added option --no-xlm, improved MHT detection
 # 2020-03-22       PL: - uses plugin_biff to display DCONN objects and their URL
 
-__version__ = '0.56dev4'
+__version__ = '0.56dev5'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -795,6 +795,8 @@ SUSPICIOUS_KEYWORDS = {
          'DisableUnsafeLocationsInPV', 'blockcontentexecutionfrominternet'),
     'May attempt to modify the VBA code (self-modification)':
         ('VBProject', 'VBComponents', 'CodeModule', 'AddFromString'),
+    'May modify Excel 4 Macro formulas at runtime (XLM/XLF)':
+        ('FORMULA.FILL',),
 }
 
 # Suspicious Keywords to be searched for directly as regex, without escaping
@@ -3249,13 +3251,21 @@ class VBA_Parser(object):
                 data = self.ole_file.openstream(excel_stream).read()
                 log.debug('Running BIFF plugin from oledump')
                 try:
-                    biff_plugin = cBIFF(name=[excel_stream], stream=data, options='-x')
+                    # starting from plugin_biff 0.0.12, we use the CSV output (-c) instead of -x
+                    # biff_plugin = cBIFF(name=[excel_stream], stream=data, options='-x')
+                    # First let's get the list of boundsheets, and check if there are Excel 4 macros:
+                    biff_plugin = cBIFF(name=[excel_stream], stream=data, options='-o BOUNDSHEET')
                     self.xlm_macros = biff_plugin.Analyze()
-                    if len(self.xlm_macros)>0:
+                    if "Excel 4.0 macro sheet" in '\n'.join(self.xlm_macros):
                         log.debug('Found XLM macros')
+                        # get the list of labels, which may contain the "Auto_Open" trigger
+                        biff_plugin = cBIFF(name=[excel_stream], stream=data, options='-o LABEL')
+                        self.xlm_macros += biff_plugin.Analyze()
+                        biff_plugin = cBIFF(name=[excel_stream], stream=data, options='-c -r LN')
+                        self.xlm_macros += biff_plugin.Analyze()
                         # we run plugin_biff again, this time to search DCONN objects and get their URLs, if any:
                         # ref: https://inquest.net/blog/2020/03/18/Getting-Sneakier-Hidden-Sheets-Data-Connections-and-XLM-Macros
-                        biff_plugin = cBIFF(name=[excel_stream], stream=data, options='-o 876 -s')
+                        biff_plugin = cBIFF(name=[excel_stream], stream=data, options='-o DCONN -s')
                         self.xlm_macros += biff_plugin.Analyze()
                         return True
                 except:
