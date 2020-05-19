@@ -837,6 +837,9 @@ URL_PATH = r'(?:/[a-zA-Z0-9\-\._\?\,\'/\\\+&%\$#\=~]*)?'  # [^\.\,\)\(\s"]
 URL_RE = SCHEME + r'\://' + SERVER_PORT + URL_PATH
 re_url = re.compile(URL_RE)
 
+EXCLUDE_URLS_PATTERNS = ["http://schemas.openxmlformats.org/",
+                         "http://schemas.microsoft.com/",
+                         ]
 
 # Patterns to be extracted (IP addresses, URLs, etc)
 # From patterns.py in balbuzard
@@ -2203,7 +2206,11 @@ def detect_patterns(vba_code, obfuscation=None):
     for pattern_type, pattern_re in RE_PATTERNS:
         for match in pattern_re.finditer(vba_code):
             value = match.group()
-            if value not in found:
+            exclude_pattern_found = False
+            for url_exclude_pattern in EXCLUDE_URLS_PATTERNS:
+                if value.startswith(url_exclude_pattern):
+                    exclude_pattern_found = True
+            if value not in found and not exclude_pattern_found:
                 results.append((pattern_type + obf_text, value))
                 found.add(value)
     return results
@@ -2771,7 +2778,6 @@ class VBA_Parser(object):
             log.info('Failed OLE parsing for file %r (%s)' % (self.filename, exc))
             log.debug('Trace:', exc_info=True)
 
-
     def open_openxml(self, _file):
         """
         Open an OpenXML file
@@ -2789,9 +2795,23 @@ class VBA_Parser(object):
             #TODO: if the zip file is encrypted, suggest to use the -z option, or try '-z infected' automatically
             # check each file within the zip if it is an OLE file, by reading its magic:
             for subfile in z.namelist():
+                log.debug("subfile {}".format(subfile))
                 with z.open(subfile) as file_handle:
+                    found_ole = False
+                    xml_macrosheet_found = False
                     magic = file_handle.read(len(olefile.MAGIC))
-                if magic == olefile.MAGIC:
+                    if magic == olefile.MAGIC:
+                        found_ole = True
+                    # in case we did not find an OLE file, there could be a XLM macrosheet
+                    if not found_ole:
+                        macro_sheet_footer = b"</xm:macrosheet>"
+                        len_macro_sheet_footer = len(macro_sheet_footer)
+                        read_all_file = file_handle.read()
+                        last_bytes_to_check = read_all_file[-len_macro_sheet_footer:]
+                        if last_bytes_to_check == macro_sheet_footer:
+                            log.info("Found XLM Macro in subfile: {}".format(subfile))
+                            xml_macrosheet_found = True
+                if found_ole or xml_macrosheet_found:
                     log.debug('Opening OLE file %s within zip' % subfile)
                     with z.open(subfile) as file_handle:
                         ole_data = file_handle.read()
@@ -3181,6 +3201,7 @@ class VBA_Parser(object):
 
         :return: bool, True if at least one VBA project has been found, False otherwise
         """
+        log.debug("detect vba macros")
         #TODO: return None or raise exception if format not supported
         #TODO: return the number of VBA projects found instead of True/False?
         # if this method was already called, return the previous result:
@@ -3189,6 +3210,7 @@ class VBA_Parser(object):
         # if OpenXML/PPT, check all the OLE subfiles:
         if self.ole_file is None:
             for ole_subfile in self.ole_subfiles:
+                log.debug("ole subfile {}".format(ole_subfile))
                 ole_subfile.no_xlm = self.no_xlm
                 if ole_subfile.detect_vba_macros():
                     self.contains_macros = True
@@ -3237,6 +3259,7 @@ class VBA_Parser(object):
         return self.contains_macros
 
     def detect_xlm_macros(self):
+        log.debug("detect xlm macros")
         # if this is a SLK file, the analysis was done in open_slk:
         if self.type == TYPE_SLK:
             return self.contains_macros
