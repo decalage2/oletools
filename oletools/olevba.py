@@ -3259,7 +3259,7 @@ class VBA_Parser(object):
                     if "Excel 4.0 macro sheet" in '\n'.join(self.xlm_macros):
                         log.debug('Found XLM macros')
                         # get the list of labels, which may contain the "Auto_Open" trigger
-                        biff_plugin = cBIFF(name=[excel_stream], stream=data, options='-o LABEL')
+                        biff_plugin = cBIFF(name=[excel_stream], stream=data, options='-o LABEL -r LN')
                         self.xlm_macros += biff_plugin.Analyze()
                         biff_plugin = cBIFF(name=[excel_stream], stream=data, options='-c -r LN')
                         self.xlm_macros += biff_plugin.Analyze()
