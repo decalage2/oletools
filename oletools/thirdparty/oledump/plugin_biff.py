@@ -2,8 +2,8 @@
 
 __description__ = 'BIFF plugin for oledump.py'
 __author__ = 'Didier Stevens'
-__version__ = '0.0.12'
-__date__ = '2020/05/18'
+__version__ = '0.0.15'
+__date__ = '2020/05/22'
 
 # Slightly modified version by Philippe Lagadec to be imported into olevba
 
@@ -39,6 +39,10 @@ History:
   2020/05/16: 0.0.12 option -c
   2020/05/17: option -r
   2020/05/18: continue
+  2020/05/20: 0.0.13 option -j
+  2020/05/21: 0.0.14 improved parsing for a83890bbc081b9ec839c9a32ec06eae6f549a0f85fe0a30751ef229a58e440af, bc39d3bb128f329d95393bf0a4f6ec813356e847a00794c18258bfa48df6937f, 002a8371570487bc81eec4aeea9fdfb7
+  2020/05/22: Python 3 fix STRING record 0x207
+
 
 Todo:
 """
@@ -46,6 +50,7 @@ Todo:
 import struct
 import re
 import optparse
+import json
 
 # Modifications for olevba:
 import sys
@@ -236,9 +241,12 @@ def StackFunction(stack, function, arity):
         arguments = []
         for i in range(arity):
             arguments.insert(0, stack.pop())
+        if function == 'User Defined Function':
+            function = arguments[0]
+            arguments = arguments[1:]
         stack.append('%s(%s)' % (function, ','.join(arguments)))
 
-def ParseExpression(expression, cellrefformat):
+def ParseExpression(expression, definesNames, sheetNames, cellrefformat):
     dTokens = {
 0x01: 'ptgExp',
 0x02: 'ptgTbl',
@@ -371,7 +379,7 @@ def ParseExpression(expression, cellrefformat):
 0x001C: 'LOOKUP',
 0x001D: 'INDEX',
 0x001E: 'REPT',
-0x001F: 'MID',
+0x001F: ['MID', 3],
 0x0020: 'LEN',
 0x0021: 'VALUE',
 0x0022: 'TRUE',
@@ -414,7 +422,7 @@ def ParseExpression(expression, cellrefformat):
 0x0047: 'HOUR',
 0x0048: 'MINUTE',
 0x0049: 'SECOND',
-0x004A: 'NOW',
+0x004A: ['NOW', 0],
 0x004B: 'AREAS',
 0x004C: 'ROWS',
 0x004D: 'COLUMNS',
@@ -434,7 +442,7 @@ def ParseExpression(expression, cellrefformat):
 0x005B: 'WINDOWS',
 0x005C: 'SERIES',
 0x005D: 'DOCUMENTS',
-0x005E: 'ACTIVE.CELL',
+0x005E: ['ACTIVE.CELL', 0],
 0x005F: 'SELECTION',
 0x0060: 'RESULT',
 0x0061: 'ATAN2',
@@ -514,7 +522,7 @@ def ParseExpression(expression, cellrefformat):
 0x00AB: 'FOR',
 0x00AC: 'WHILE',
 0x00AD: 'BREAK',
-0x00AE: 'NEXT',
+0x00AE: ['NEXT', 0],
 0x00AF: 'INITIATE',
 0x00B0: 'REQUEST',
 0x00B1: 'POKE',
@@ -1160,18 +1168,24 @@ def ParseExpression(expression, cellrefformat):
                 StackBinary(stack, '>')
             elif ptgid == 0x0E: # ptgNE
                 StackBinary(stack, '<>')
+            elif ptgid == 0x15: # ptgParen
+                operand1 = stack.pop()
+                stack.append('(' + operand1 + ')')
             elif ptgid == 0x17: # ptgStr https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-xls/87c2a057-705c-4473-a168-6d5fac4a9eba
                 length = P23Ord(expression[0])
                 expression = expression[1:]
                 if P23Ord(expression[0]) == 0: # probably BIFF8 -> UNICODE (compressed)
                     expression = expression[1:]
-                    result += '"%s" ' % P23Decode(expression[:length])
+                    stringValue = P23Decode(expression[:length])
+                    result += '"%s" ' % stringValue
                     expression = expression[length:]
                 elif P23Ord(expression[0]) == 1: # if 1, then double byte chars
                     # doublebyte check: https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-xls/05162858-0ca9-44cb-bb07-a720928f63f8
                     expression = expression[1:]
-                    result += '"%s" ' % P23Decode(expression[:length*2])
+                    stringValue = P23Decode(expression[:length*2])
+                    result += '"%s" ' % stringValue
                     expression = expression[length*2:]
+                stack.append('"' + stringValue + '"')
             elif ptgid == 0x19:
                 grbit = P23Ord(expression[0])
                 expression = expression[1:]
@@ -1180,17 +1194,19 @@ def ParseExpression(expression, cellrefformat):
                     break
                 else:
                     expression = expression[2:]
-            elif ptgid == 0x16 or ptgid == 0x0e:
-                pass
+            elif ptgid == 0x16: #ptgMissArg
+                stack.append('')
             elif ptgid == 0x1d: # ptgBool https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-xls/d59e28db-4d6f-4c86-bcc9-c8a783e352ec
-                result += '%s ' % (IFF(P23Ord(expression[0]), 'TRUE', 'FALSE'))
+                boolValue = IFF(P23Ord(expression[0]), 'TRUE', 'FALSE')
+                result += '%s ' % (boolValue)
                 expression = expression[1:]
+                stack.append(boolValue)
             elif ptgid == 0x1e: #ptgInt
                 value = P23Ord(expression[0]) + P23Ord(expression[1]) * 0x100
                 result += '%d ' % (value)
                 expression = expression[2:]
                 stack.append(str(value))
-            elif ptgid == 0x41:
+            elif ptgid == 0x41: #ptgFuncV
                 functionid = P23Ord(expression[0]) + P23Ord(expression[1]) * 0x100
                 result += '%s (0x%04x) ' % (GetFunctionName(functionid), functionid)
                 expression = expression[2:]
@@ -1204,8 +1220,13 @@ def ParseExpression(expression, cellrefformat):
                     expression = expression[9:]
                 StackFunction(stack, GetFunctionName(functionid), numberOfArguments)
             elif ptgid == 0x23: # ptgName https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-xls/5f05c166-dfe3-4bbf-85aa-31c09c0258c0
-                result += '0x%08x ' % (struct.unpack('<I', expression[0:4]))
+                nameValue = struct.unpack('<I', expression[0:4])[0]
+                result += '0x%08x ' % (nameValue)
                 expression = expression[4:]
+                if nameValue <= len(definesNames):
+                    stack.append(definesNames[nameValue - 1])
+                else:
+                    stack.append('ptgName:0x%08x' % (nameValue))
             elif ptgid == 0x1f:
                 value = struct.unpack('<d', expression[:8])[0]
                 result += 'FLOAT %f ' % value
@@ -1226,14 +1247,22 @@ def ParseExpression(expression, cellrefformat):
             elif ptgid == 0x11: # ptgRange
                 pass
             elif ptgid == 0x25: # ptgArea
-                result += '%s ' % ParseArea(expression[0:8])
+                arearef = ParseArea(expression[0:8])
+                result += '%s ' % arearef
                 expression = expression[8:]
+                stack.append(arearef)
             elif ptgid == 0x3A or ptgid == 0x5A: # ptgRef3d ptgRef3dV
-                #a# parse sheet reference: expression[:2]
-                expression = expression[2:]
-                cellref, expression = ParseLoc(expression, cellrefformat)
-                result += '!%s ' % cellref
-                stack.append(cellref)
+                formatcodes = 'H'
+                formatsize = struct.calcsize(formatcodes)
+                sheetindex = struct.unpack(formatcodes, expression[0:formatsize])[0]
+                expression = expression[formatsize:]
+                cellref, expression = ParseLoc(expression, cellrefformat, True)
+                if sheetindex < len(sheetNames):
+                    cellref3d = '%s!%s' % (sheetNames[sheetindex], cellref)
+                else:
+                    cellref3d = '%d!%s' % (sheetindex, cellref)
+                result += '%s ' % cellref3d
+                stack.append(cellref3d)
             elif ptgid == 0x39: # PtgNameX
                 expression = expression[2:]
                 formatcodes = 'H'
@@ -1245,6 +1274,7 @@ def ParseExpression(expression, cellrefformat):
                 functionid = P23Ord(expression[0]) + P23Ord(expression[1]) * 0x100
                 result += '%s ' % GetFunctionName(functionid)
                 expression = expression[2:]
+                StackFunction(stack, GetFunctionName(functionid), GetFunctionArity(functionid))
             elif ptgid == 0x61 or ptgid == 0x62: # ptgFuncVar  ptgFuncVarA
                 params_count = P23Ord(expression[0])
                 functionid = P23Ord(expression[1]) + P23Ord(expression[2]) * 0x100
@@ -1575,6 +1605,7 @@ class cBIFF(cPluginParent):
             oParser.add_option('-o', '--opcode', type=str, default='', help='Opcode to filter for')
             oParser.add_option('-f', '--find', type=str, default='', help='Content to search for')
             oParser.add_option('-c', '--csv', action='store_true', default=False, help='Produce CSV')
+            oParser.add_option('-j', '--json', action='store_true', default=False, help='Produce JSON')
             oParser.add_option('-r', '--cellrefformat', type=str, default='rc', help='Cell reference format (RC, LN)')
             (options, args) = oParser.parse_args(self.options.split(' '))
 
@@ -1585,6 +1616,8 @@ class cBIFF(cPluginParent):
             macros4Found = False
             filepassFound = False
             dSheetNames = {}
+            sheetNames = []
+            definesNames = []
             currentSheetname = ''
             while position < len(stream):
                 formatcodes = 'HH'
@@ -1611,7 +1644,7 @@ class cBIFF(cPluginParent):
                     formatsize = struct.calcsize(formatcodes)
                     length = struct.unpack(formatcodes, data[20:20 + formatsize])[0]
                     expression = data[22:]
-                    parsedExpression, stack = ParseExpression(expression, options.cellrefformat)
+                    parsedExpression, stack = ParseExpression(expression, definesNames, sheetNames, options.cellrefformat)
                     line += ' - %s len=%d %s' % (cellref, length, parsedExpression)
                     if len(stack) == 1:
                         csvrow = [currentSheetname, cellref, stack[0], '']
@@ -1622,7 +1655,7 @@ class cBIFF(cPluginParent):
                         spaced_data_hex = ' '.join(a+b for a,b in zip(data_hex[::2], data_hex[1::2]))
                         line += '\nFORMULA BYTES: %s' % spaced_data_hex
 
-                # FORMULA record #a# difference BIFF4 and BIFF5+
+                # LABEL record #a# difference BIFF4 and BIFF5+
                 if opcode == 0x18 and len(data) >= 16:
                     flags = P23Ord(data[0])
                     lnName = P23Ord(data[3])
@@ -1633,12 +1666,15 @@ class cBIFF(cPluginParent):
                     if flags & 0x20:
                         dBuildInNames = {1: 'Auto_Open', 2: 'Auto_Close'}
                         code = P23Ord(data[offset])
-                        line += ' - build-in-name %d %s' % (code, dBuildInNames.get(code, '?'))
+                        name = dBuildInNames.get(code, '?')
+                        line += ' - built-in-name %d %s' % (code, name)
                     else:
-                        line += ' - %s' % (P23Decode(data[offset:offset+lnName]))
+                        name = P23Decode(data[offset:offset+lnName])
+                        line += ' - %s' % (name)
+                    definesNames.append(name)
                     if flags & 0x01:
                         line += ' hidden'
-                    parsedExpression, stack = ParseExpression(data[offset+lnName:offset+lnName+szFormula], options.cellrefformat)
+                    parsedExpression, stack = ParseExpression(data[offset+lnName:offset+lnName+szFormula], definesNames, sheetNames, options.cellrefformat)
                     line += ' len=%d %s' % (szFormula, parsedExpression)
 
                 # FILEPASS record
@@ -1656,6 +1692,7 @@ class cBIFF(cPluginParent):
                     dSheetState = {0: 'visible', 1: 'hidden', 2: 'very hidden'}
                     sheetName = ShortXLUnicodeString(data[6:])
                     dSheetNames[positionBOF] = sheetName
+                    sheetNames.append(sheetName)
                     line += ' - %s, %s - %s' % (dSheetType.get(sheetType, '%02x' % sheetType), dSheetState.get(sheetState, '%02x' % sheetState), sheetName)
 
                 # BOF record
@@ -1672,13 +1709,14 @@ class cBIFF(cPluginParent):
                 # STRING record
                 if opcode == 0x207 and len(data) >= 4:
                     values = list(Strings(data[3:]).values())
-                    strings = b''
+                    strings = ''
                     if values[0] != []:
                         strings = values[0][0].encode()
                     if values[1] != []:
-                        if strings != b'':
-                            strings += b' '
-                        strings += b' '.join(values[1])
+                        if strings != '':
+                            strings += ' '
+                        print(values)
+                        strings += ' '.join(values[1])
                     line += ' - %s' % strings
 
                 # number record
@@ -1702,7 +1740,7 @@ class cBIFF(cPluginParent):
 
                 if options.find == '' and options.opcode == '' and not options.xlm or options.opcode != '' and options.opcode.lower() in line.lower() or options.find != '' and options.find in data or options.xlm and opcode in [0x06, 0x18, 0x85, 0x207]:
                     if not options.hex and not options.dump:
-                        if options.csv:
+                        if options.csv or options.json:
                             if csvrow != None:
                                 result.append(csvrow)
                         else:
@@ -1727,6 +1765,8 @@ class cBIFF(cPluginParent):
                 result = []
             elif options.csv:
                 result = [MakeCSVLine(row, DEFAULT_SEPARATOR, QUOTE) for row in [['Sheet', 'Reference', 'Formula', 'Value']] + result]
+            elif options.json:
+                result = json.dumps(result)
 
         return result
 
