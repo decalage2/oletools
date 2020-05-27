@@ -3287,13 +3287,16 @@ class VBA_Parser(object):
         return False
 
     def detect_is_encrypted(self):
-        self.is_encrypted = crypto.is_encrypted(self.ole_file)
+        if self.ole_file:
+            self.is_encrypted = crypto.is_encrypted(self.ole_file)
         return self.is_encrypted
 
-    def decrypt_file(self):
+    def decrypt_file(self, passwords_list=None):
         decrypted_file = None
         if self.detect_is_encrypted():
             passwords = crypto.DEFAULT_PASSWORDS
+            if passwords_list and isinstance(passwords_list, list):
+                passwords.extend(passwords_list)
             decrypted_file = crypto.decrypt(self.filename, passwords)
 
         return decrypted_file
