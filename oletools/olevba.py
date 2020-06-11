@@ -226,8 +226,9 @@ from __future__ import print_function
 # 2019-12-03       PL: - added support for SLK files and XLM macros in SLK
 # 2020-01-31 v0.56 KS: - added option --no-xlm, improved MHT detection
 # 2020-03-22       PL: - uses plugin_biff to display DCONN objects and their URL
+# 2020-06-11       PL: - fixed issue #575 when decompressing raw chunks in VBA
 
-__version__ = '0.56dev5'
+__version__ = '0.56dev6'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -1369,7 +1370,7 @@ def decompress_stream(compressed_container):
             # MS-OVBA 2.4.1.3.3 Decompressing a RawChunk
             # uncompressed chunk: read the next 4096 bytes as-is
             #TODO: check if there are at least 4096 bytes left
-            decompressed_container.extend([compressed_container[compressed_current:compressed_current + 4096]])
+            decompressed_container.extend(compressed_container[compressed_current:compressed_current + 4096])
             compressed_current += 4096
         else:
             # MS-OVBA 2.4.1.3.2 Decompressing a CompressedChunk
@@ -2702,6 +2703,7 @@ class VBA_Parser(object):
             self.open_ole(_file)
 
             # if this worked, try whether it is a ppt file (special ole file)
+            # TODO: instead of this we should have a function to test if it is a PPT
             self.open_ppt()
         if self.type is None and zipfile.is_zipfile(_file):
             # Zip file, which may be an OpenXML document
