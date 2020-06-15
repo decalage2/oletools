@@ -306,6 +306,8 @@ DESTINATION_CONTROL_WORDS = frozenset((
     b"result", b"revtbl", b"revtim",
     # \rtf should not be treated as a destination (issue #522)
     #b"rtf",
+    # \rtf and \rt are special and can be both destination and non-destination (issue #567)
+    b"rtf", b"rt",
     b"rxe", b"shp", b"shpgrp", b"shpinst", b"shppict", b"shprslt", b"shptxt",
     b"sn", b"sp", b"staticval", b"stylesheet", b"subject", b"sv", b"svb", b"tc", b"template", b"themedata", b"title", b"txe", b"ud",
     b"upr", b"userprops", b"wgrffmtfilter", b"windowcaption", b"writereservation", b"writereservhash", b"xe", b"xform",
@@ -554,7 +556,12 @@ class RtfParser(object):
         #log.debug('control word %r at index %Xh' % (matchobject.group(), self.index))
         # TODO: according to RTF specs v1.9.1, "Destination changes are legal only immediately after an opening brace ({)"
         # (not counting the special control symbol \*, of course)
-        if cword in DESTINATION_CONTROL_WORDS:
+        control_word_len = 1+len(cword)
+        if param:
+            control_word_len += len(param)
+        next_char = self.data[self.index+control_word_len]
+
+        if cword in DESTINATION_CONTROL_WORDS and not (cword[:2] == "rt" and (next_char == b'\\' or next_char == b'{')):
             log.debug('%r is a destination control word: starting a new destination at index %Xh' % (cword, self.index))
             self._open_destination(matchobject, cword)
         # call the corresponding user method for additional processing:
