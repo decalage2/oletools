@@ -2693,7 +2693,8 @@ class VBA_Parser(object):
         self.pcodedmp_output = None
         #: Flag set to True/False if VBA stomping detected
         self.vba_stomping_detected = None
-        self.is_encrypted = None # will be set to True or False by detect_is_encrypted
+        # will be set to True or False by detect_is_encrypted method
+        self.is_encrypted = None
         
         # if filename is None:
         #     if isinstance(_file, basestring):
@@ -2798,20 +2799,37 @@ class VBA_Parser(object):
                 log.debug("subfile {}".format(subfile))
                 with z.open(subfile) as file_handle:
                     found_ole = False
+                    template_injection_detected = False
                     xml_macrosheet_found = False
                     magic = file_handle.read(len(olefile.MAGIC))
                     if magic == olefile.MAGIC:
                         found_ole = True
-                    # in case we did not find an OLE file, there could be a XLM macrosheet
+                    # in case we did not find an OLE file,
+                    # there could be a XLM macrosheet or a template injection attempt
                     if not found_ole:
+                        read_all_file = file_handle.read()
+                        # try to detect template injection attempt
+                        # https://ired.team/offensive-security/initial-access/phishing-with-ms-office/inject-macros-from-a-remote-dotm-template-docx-with-macros
+                        subfile_that_can_contain_templates = "word/_rels/settings.xml.rels"
+                        if subfile == subfile_that_can_contain_templates:
+                            regex_template = b"Type=\"http://schemas\.openxmlformats\.org/officeDocument/\d{4}/relationships/attachedTemplate\"\s+Target=\"(.+?)\""
+                            template_injection_found = re.search(regex_template, read_all_file)
+                            if template_injection_found:
+                                injected_template_url = template_injection_found.group(1).decode()
+                                message = "Found injected template in subfile {}. Template URL: {}"\
+                                          "".format(subfile_that_can_contain_templates, injected_template_url)
+                                log.info(message)
+                                template_injection_detected = True
+                        # try to find a XML macrosheet
                         macro_sheet_footer = b"</xm:macrosheet>"
                         len_macro_sheet_footer = len(macro_sheet_footer)
-                        read_all_file = file_handle.read()
                         last_bytes_to_check = read_all_file[-len_macro_sheet_footer:]
                         if last_bytes_to_check == macro_sheet_footer:
-                            log.info("Found XLM Macro in subfile: {}".format(subfile))
+                            message = "Found XLM Macro in subfile: {}".format(subfile)
+                            log.info(message)
                             xml_macrosheet_found = True
-                if found_ole or xml_macrosheet_found:
+
+                if found_ole or xml_macrosheet_found or template_injection_detected:
                     log.debug('Opening OLE file %s within zip' % subfile)
                     with z.open(subfile) as file_handle:
                         ole_data = file_handle.read()
