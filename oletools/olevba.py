@@ -2695,6 +2695,8 @@ class VBA_Parser(object):
         self.vba_stomping_detected = None
         # will be set to True or False by detect_is_encrypted method
         self.is_encrypted = None
+        self.xlm_macrosheet_found = False
+        self.template_injection_found = False
         
         # if filename is None:
         #     if isinstance(_file, basestring):
@@ -2820,6 +2822,7 @@ class VBA_Parser(object):
                                           "".format(subfile_that_can_contain_templates, injected_template_url)
                                 log.info(message)
                                 template_injection_detected = True
+                                self.template_injection_found = True
                         # try to find a XML macrosheet
                         macro_sheet_footer = b"</xm:macrosheet>"
                         len_macro_sheet_footer = len(macro_sheet_footer)
@@ -2828,6 +2831,7 @@ class VBA_Parser(object):
                             message = "Found XLM Macro in subfile: {}".format(subfile)
                             log.info(message)
                             xml_macrosheet_found = True
+                            self.xlm_macrosheet_found = True
 
                 if found_ole or xml_macrosheet_found or template_injection_detected:
                     log.debug('Opening OLE file %s within zip' % subfile)
@@ -3465,6 +3469,19 @@ class VBA_Parser(object):
                 keyword = 'VBA Stomping'
                 description = 'VBA Stomping was detected: the VBA source code and P-code are different, '\
                     'this may have been used to hide malicious code'
+                scanner.suspicious_keywords.append((keyword, description))
+                scanner.results.append(('Suspicious', keyword, description))
+            if self.xlm_macrosheet_found:
+                log.debug('adding XLM macrosheet found to suspicious keywords')
+                keyword = 'XLM macrosheet'
+                description = 'XLM macrosheet found. It could contain malicious code'
+                scanner.suspicious_keywords.append((keyword, description))
+                scanner.results.append(('Suspicious', keyword, description))
+            if self.template_injection_found:
+                log.debug('adding Template Injection to suspicious keywords')
+                keyword = 'Template Injection'
+                description = 'Template injection found. A malicious template could have been uploaded ' \
+                    'from a remote location'
                 scanner.suspicious_keywords.append((keyword, description))
                 scanner.results.append(('Suspicious', keyword, description))
             autoexec, suspicious, iocs, hexstrings, base64strings, dridex, vbastrings = scanner.scan_summary()
