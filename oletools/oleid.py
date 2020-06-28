@@ -342,8 +342,8 @@ class OleID(object):
                 if macro_ind:
                     macro_ind.value = True
                 else:
-                    self.indicators.append('vba_macros', True,
-                                           name='VBA Macros')
+                    macros = Indicator('vba_macros', True, name='VBA Macros')
+                    self.indicators.append(macros)
         return excel
 
     def check_powerpoint(self):
