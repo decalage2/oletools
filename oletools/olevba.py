@@ -633,6 +633,9 @@ AUTOEXEC_KEYWORDS = {
         # TODO: "Auto_Ope" is temporarily here because of a bug in plugin_biff, which misses the last byte in "Auto_Open"...
     'Runs when the Excel Workbook is closed':
         ('Auto_Close', 'Workbook_Close'),
+        #Worksheet_Calculate to Autoexec: see http://www.certego.net/en/news/advanced-vba-macros/
+    'May runs when an Excel WorkSheet is open':
+        ('Worksheet_Calculate',),
 }
 
 # Keywords to detect auto-executable macros
@@ -649,15 +652,17 @@ AUTOEXEC_KEYWORDS_REGEX = {
          r'\w+_FileDownload', r'\w+_NavigateComplete2', r'\w+_NavigateError',
          r'\w+_ProgressChange', r'\w+_PropertyChange', r'\w+_SetSecureLockIcon',
          r'\w+_StatusTextChange', r'\w+_TitleChange', r'\w+_MouseMove', r'\w+_MouseEnter',
-         r'\w+_MouseLeave', r'\w+_Layout', r'\w+_OnConnecting'),
+         r'\w+_MouseLeave', r'\w+_Layout', r'\w+_OnConnecting', r'\w+_FollowHyperlink', r'\w+_ContentControlOnEnter'),
 }
 
 # Suspicious Keywords that may be used by malware
 # See VBA language reference: http://msdn.microsoft.com/en-us/library/office/jj692818%28v=office.15%29.aspx
 SUSPICIOUS_KEYWORDS = {
     #TODO: use regex to support variable whitespaces
+    #http://www.certego.net/en/news/advanced-vba-macros/
     'May read system environment variables':
-        ('Environ',),
+        ('Environ','Win32_Environment','Environment','ExpandEnvironmentStrings','HKCU\Environment',
+        'HKEY_CURRENT_USER\Environment'),
     'May open a file':
         ('Open',),
     'May write to a file (if combined with Open)':
@@ -667,22 +672,35 @@ SUSPICIOUS_KEYWORDS = {
     #TODO: regex to find Open+Binary on same line
         ('Binary',),
     'May copy a file':
-        ('FileCopy', 'CopyFile'),
+        ('FileCopy', 'CopyFile','CopyHere','CopyFolder'),
     #FileCopy: http://msdn.microsoft.com/en-us/library/office/gg264390%28v=office.15%29.aspx
     #CopyFile: http://msdn.microsoft.com/en-us/library/office/gg264089%28v=office.15%29.aspx
+    #CopyHere, MoveHere, MoveHere and MoveFolder exploitation: see http://www.certego.net/en/news/advanced-vba-macros/
+    'May move a file':
+        ('MoveHere', 'MoveFile', 'MoveFolder'),
     'May delete a file':
         ('Kill',),
     'May create a text file':
         ('CreateTextFile', 'ADODB.Stream', 'WriteText', 'SaveToFile'),
     #CreateTextFile: http://msdn.microsoft.com/en-us/library/office/gg264617%28v=office.15%29.aspx
     #ADODB.Stream sample: http://pastebin.com/Z4TMyuq6
-    # ShellExecute: https://twitter.com/StanHacked/status/1075088449768693762
+    #ShellExecute: https://twitter.com/StanHacked/status/1075088449768693762
+    #InvokeVerb, InvokeVerbEx, DoIt and ControlPanelItem: see http://www.certego.net/en/news/advanced-vba-macros/
+
     'May run an executable file or a system command':
         ('Shell', 'vbNormal', 'vbNormalFocus', 'vbHide', 'vbMinimizedFocus', 'vbMaximizedFocus', 'vbNormalNoFocus',
-         'vbMinimizedNoFocus', 'WScript.Shell', 'Run', 'ShellExecute', 'ShellExecuteA', 'shell32'),
+         'vbMinimizedNoFocus', 'WScript.Shell', 'Run', 'ShellExecute', 'ShellExecuteA', 'shell32','InvokeVerb','InvokeVerbEx',
+         'DoIt'),
+    'May run a dll':
+        ('ControlPanelItem',),
+    # Win32_Process.Create https://docs.microsoft.com/en-us/windows/win32/cimwin32prov/create-method-in-class-win32-process
+    'May execute file or a system command through WMI':
+        ('Create',),
+    # WMI https://docs.microsoft.com/en-us/windows/win32/cimwin32prov/create-method-in-class-win32-process
     # MacScript: see https://msdn.microsoft.com/en-us/library/office/gg264812.aspx
+    # AppleScript: see https://docs.microsoft.com/en-us/office/vba/office-mac/applescripttask
     'May run an executable file or a system command on a Mac':
-        ('MacScript',),
+        ('MacScript','AppleScript'),
     #Shell: http://msdn.microsoft.com/en-us/library/office/gg278437%28v=office.15%29.aspx
     #WScript.Shell+Run sample: http://pastebin.com/Z4TMyuq6
     'May run PowerShell commands':
@@ -710,6 +728,9 @@ SUSPICIOUS_KEYWORDS = {
         ('Application.AltStartupPath',),
     'May create an OLE object':
         ('CreateObject',),
+    #bypass CreateObject http://www.certego.net/en/news/advanced-vba-macros/
+    'May get an OLE object with a running instance':
+        ('GetObject',),
     'May create an OLE object using PowerShell':
         ('New-Object',),
     'May run an application (if combined with CreateObject)':
