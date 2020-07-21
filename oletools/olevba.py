@@ -634,7 +634,7 @@ AUTOEXEC_KEYWORDS = {
     'Runs when the Excel Workbook is closed':
         ('Auto_Close', 'Workbook_Close'),
         #Worksheet_Calculate to Autoexec: see http://www.certego.net/en/news/advanced-vba-macros/
-    'May runs when an Excel WorkSheet is open':
+    'May run when an Excel WorkSheet is opened':
         ('Worksheet_Calculate',),
 }
 
@@ -713,10 +713,8 @@ SUSPICIOUS_KEYWORDS = {
          'invoke-command', 'scriptblock', 'Invoke-Expression', 'AuthorizationManager'),
     'May run an executable file or a system command using PowerShell':
         ('Start-Process',),
-    'May run an executable file or a system command using Excel 4 Macros (XLM/XLF)':
-        ('EXEC',),
     'May call a DLL using Excel 4 Macros (XLM/XLF)':
-        ('REGISTER', 'CALL'),
+        ('CALL',),
     'May hide the application':
         ('Application.Visible', 'ShowWindow', 'SW_HIDE'),
     'May create a directory':
@@ -745,8 +743,6 @@ SUSPICIOUS_KEYWORDS = {
     'May run code from a library on a Mac':
     #TODO: regex to find declare+lib on same line - see mraptor
         ('libc.dylib', 'dylib'),
-    'May run code from a DLL using Excel 4 Macros (XLM/XLF)':
-        ('REGISTER',),
     'May inject code into another process':
         ('CreateThread', 'CreateUserThread', 'VirtualAlloc', # (issue #9) suggested by Davy Douhine - used by MSF payload
         'VirtualAllocEx', 'RtlMoveMemory', 'WriteProcessMemory',
@@ -829,6 +825,14 @@ SUSPICIOUS_KEYWORDS_REGEX = {
          ),
     'May run an executable file or a system command on a Mac (if combined with libc.dylib)':
         ('system', 'popen', r'exec[lv][ep]?'),
+    'May run an executable file or a system command using Excel 4 Macros (XLM/XLF)':
+        (r'(?<!Could contain following functions: )EXEC',),
+    'Could contain a function that allows to run an executable file or a system command using Excel 4 Macros (XLM/XLF)':
+        (r'Could contain following functions: EXEC',),
+    'May call a DLL using Excel 4 Macros (XLM/XLF)':
+        (r'(?<!Could contain following functions: )REGISTER',),
+    'Could contain a function that allows to call a DLL using Excel 4 Macros (XLM/XLF)':
+        (r'Could contain following functions: REGISTER',),
 }
 
 # Suspicious Keywords to be searched for directly as strings, without regex
