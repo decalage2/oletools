@@ -264,7 +264,7 @@ DELIMITER = b'[ \\t\\r\\n\\f\\v]'
 DELIMITERS_ZeroOrMore = b'[ \\t\\r\\n\\f\\v]*'
 BACKSLASH_BIN = b'\\\\bin'
 # According to my tests, Word accepts up to 250 digits (leading zeroes)
-DECIMAL_GROUP = b'(\d{1,250})'
+DECIMAL_GROUP = b'(\\d{1,250})'
 
 re_delims_bin_decimal = re.compile(DELIMITERS_ZeroOrMore + BACKSLASH_BIN
                                    + DECIMAL_GROUP + DELIMITER)
