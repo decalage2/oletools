@@ -2719,7 +2719,7 @@ class VBA_Parser(object):
         #: Flag set to True/False if VBA stomping detected
         self.vba_stomping_detected = None
         # will be set to True or False by detect_is_encrypted method
-        self.is_encrypted = None
+        self.is_encrypted = False
         self.xlm_macrosheet_found = False
         self.template_injection_found = False
         
