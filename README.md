@@ -110,6 +110,7 @@ including
 [DARKSURGEON](https://github.com/cryps1s/DARKSURGEON),
 [Deepviz](https://sandbox.deepviz.com/),
 [dridex.malwareconfig.com](https://dridex.malwareconfig.com),
+[EML Analyzer](https://github.com/ninoseki/eml_analyzer),
 [FAME](https://certsocietegenerale.github.io/fame/),
 [FLARE-VM](https://github.com/fireeye/flare-vm),
 [Hybrid-analysis.com](https://www.hybrid-analysis.com/),
