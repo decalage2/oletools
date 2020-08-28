@@ -129,6 +129,7 @@ including
 [REMnux](https://remnux.org/),
 [Snake](https://github.com/countercept/snake),
 [SNDBOX](https://app.sndbox.com),
+[SpuriousEmu](https://github.com/ldbo/SpuriousEmu),
 [Strelka](https://github.com/target/strelka),
 [stoQ](https://stoq.punchcyber.com/),
 [TheHive/Cortex](https://github.com/TheHive-Project/Cortex-Analyzers),
