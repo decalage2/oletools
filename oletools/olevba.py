@@ -267,6 +267,7 @@ import sys
 import os
 import logging
 import struct
+from copy import copy
 from io import BytesIO, StringIO
 import math
 import zipfile
@@ -276,6 +277,7 @@ import binascii
 import base64
 import zlib
 import email  # for MHTML parsing
+import email.feedparser
 import string  # for printable
 import json   # for json output mode (argument --json)
 
@@ -329,11 +331,6 @@ from oletools import rtfobj
 from oletools import crypto
 from oletools.common.io_encoding import ensure_stdout_handles_unicode
 from oletools.common import codepages
-
-# monkeypatch email to fix issue #32:
-# allow header lines without ":"
-import email.feedparser
-email.feedparser.headerRE = re.compile(r'^(From |[\041-\071\073-\176]{1,}:?|[\t ])')
 
 # === PYTHON 2+3 SUPPORT ======================================================
 
@@ -2946,11 +2943,17 @@ class VBA_Parser(object):
             elif content_offset > -1:
                 stripped_data = stripped_data[content_offset:]
             # TODO: quick and dirty fix: insert a standard line with MIME-Version header?
+            # monkeypatch email to fix issue #32:
+            # allow header lines without ":"
+            oldHeaderRE = copy(email.feedparser.headerRE)
+            loosyHeaderRE = re.compile(r'^(From |[\041-\071\073-\176]{1,}:?|[\t ])')
+            email.feedparser.headerRE = loosyHeaderRE
             if PYTHON2:
                 mhtml = email.message_from_string(stripped_data)
             else:
                 # on Python 3, need to use message_from_bytes instead:
                 mhtml = email.message_from_bytes(stripped_data)
+            email.feedparser.headerRE = oldHeaderRE
             # find all the attached files:
             for part in mhtml.walk():
                 content_type = part.get_content_type()  # always returns a value
