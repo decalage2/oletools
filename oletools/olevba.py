@@ -267,7 +267,6 @@ import sys
 import os
 import logging
 import struct
-from copy import copy
 from io import BytesIO, StringIO
 import math
 import zipfile
@@ -2945,15 +2944,17 @@ class VBA_Parser(object):
             # TODO: quick and dirty fix: insert a standard line with MIME-Version header?
             # monkeypatch email to fix issue #32:
             # allow header lines without ":"
-            oldHeaderRE = copy(email.feedparser.headerRE)
+            oldHeaderRE = email.feedparser.headerRE
             loosyHeaderRE = re.compile(r'^(From |[\041-\071\073-\176]{1,}:?|[\t ])')
             email.feedparser.headerRE = loosyHeaderRE
-            if PYTHON2:
-                mhtml = email.message_from_string(stripped_data)
-            else:
-                # on Python 3, need to use message_from_bytes instead:
-                mhtml = email.message_from_bytes(stripped_data)
-            email.feedparser.headerRE = oldHeaderRE
+            try:
+                if PYTHON2:
+                    mhtml = email.message_from_string(stripped_data)
+                else:
+                    # on Python 3, need to use message_from_bytes instead:
+                    mhtml = email.message_from_bytes(stripped_data)
+            finally:
+                email.feedparser.headerRE = oldHeaderRE
             # find all the attached files:
             for part in mhtml.walk():
                 content_type = part.get_content_type()  # always returns a value
