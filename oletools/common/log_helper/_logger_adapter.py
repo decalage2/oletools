@@ -54,4 +54,9 @@ class OletoolsLoggerAdapter(logging.LoggerAdapter):
         self._json_enabled = json_enabled
 
     def level(self):
+        """Return current level of logger."""
         return self.logger.level
+
+    def setLevel(self, new_level):
+        """Set level of underlying logger. Required only for python < 3.2."""
+        return self.logger.setLevel(new_level)
