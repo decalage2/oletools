@@ -229,7 +229,7 @@ from __future__ import print_function
 # 2020-06-11       PL: - fixed issue #575 when decompressing raw chunks in VBA
 # 2020-09-03       MX: - fixed issue #602 monkeypatch in email package
 
-__version__ = '0.56dev7'
+__version__ = '0.56dev9'
 
 #------------------------------------------------------------------------------
 # TODO:
