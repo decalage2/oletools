@@ -2059,7 +2059,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
     """
     log.debug('relaxed is %s' % relaxed)
 
-    project = VBA_Project(ole, vba_root, project_path, dir_path, relaxed=False)
+    project = VBA_Project(ole, vba_root, project_path, dir_path, relaxed)
     project.parse_project_stream()
 
     for code_path, filename, code_data in project.parse_modules():
