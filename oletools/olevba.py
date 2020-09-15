@@ -2621,8 +2621,9 @@ class VBA_Parser(object):
     """
     Class to parse MS Office files, to detect VBA macros and extract VBA source code
     """
+    # TODO: relaxed is enabled by default temporarily, until a solution is found for issue #593
 
-    def __init__(self, filename, data=None, container=None, relaxed=False, encoding=DEFAULT_API_ENCODING):
+    def __init__(self, filename, data=None, container=None, relaxed=True, encoding=DEFAULT_API_ENCODING):
         """
         Constructor for VBA_Parser
 
@@ -4150,7 +4151,8 @@ def parse_args(cmd_line_args=None):
                             help="logging level debug/info/warning/error/critical (default=%default)")
     parser.add_option('--deobf', dest="deobfuscate", action="store_true", default=False,
                             help="Attempt to deobfuscate VBA expressions (slow)")
-    parser.add_option('--relaxed', dest="relaxed", action="store_true", default=False,
+    # TODO: --relaxed is enabled temporarily until a solution to issue #593 is found
+    parser.add_option('--relaxed', dest="relaxed", action="store_true", default=True,
                             help="Do not raise errors if opening of substream fails")
     parser.add_option('--pcode', dest="pcode", action="store_true", default=False,
                             help="Disassemble and display the P-code (using pcodedmp)")
