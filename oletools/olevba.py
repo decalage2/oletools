@@ -228,8 +228,11 @@ from __future__ import print_function
 # 2020-03-22       PL: - uses plugin_biff to display DCONN objects and their URL
 # 2020-06-11       PL: - fixed issue #575 when decompressing raw chunks in VBA
 # 2020-09-03       MX: - fixed issue #602 monkeypatch in email package
+# 2020-09-16       PL: - enabled relaxed mode by default (issues #477, #593)
+#                      - fixed detect_vba_macros to always return VBA code as
+#                        unicode on Python 3 (issues  #455, #477, #587, #593)
 
-__version__ = '0.56dev9'
+__version__ = '0.56dev10'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -1626,7 +1629,7 @@ class VBA_Project(object):
     metadata and VBA modules.
     """
 
-    def __init__(self, ole, vba_root, project_path, dir_path, relaxed=False):
+    def __init__(self, ole, vba_root, project_path, dir_path, relaxed=True):
         """
         Extract VBA macros from an OleFileIO object.
 
@@ -2046,7 +2049,7 @@ class VBA_Project(object):
 
 
 
-def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=False):
+def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=True):
     """
     Extract VBA macros from an OleFileIO object.
     Internal function, do not call directly.
@@ -3361,9 +3364,16 @@ class VBA_Parser(object):
                         log.debug('Found VBA compressed code at index %X' % start)
                         compressed_code = data[start:]
                         try:
-                            vba_code = decompress_stream(bytearray(compressed_code))
-                            # TODO vba_code = self.encode_string(vba_code)
-                            yield (self.filename, d.name, d.name, vba_code)
+                            vba_code_bytes = decompress_stream(bytearray(compressed_code))
+                            # vba_code_bytes is in bytes, we need to convert it to str
+                            # but here we don't know the encoding of the VBA project
+                            # (for example code page 1252 or 1251), because it's in the
+                            # VBA_Project class and if we're here it may be because
+                            # the VBA project parsing failed (e.g. issue #593).
+                            # So let's convert using cp1252 as a guess
+                            # TODO get the actual encoding from the VBA_Project
+                            vba_code_str = bytes2str(vba_code_bytes, encoding='cp1252')
+                            yield (self.filename, d.name, d.name, vba_code_str)
                         except Exception as exc:
                             # display the exception with full stack trace for debugging
                             log.debug('Error processing stream %r in file %r (%s)' % (d.name, self.filename, exc))
