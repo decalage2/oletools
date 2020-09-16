@@ -3947,7 +3947,7 @@ class VBA_Parser_CLI(VBA_Parser):
                     # display the exception with full stack trace for debugging
                     log.info('Error parsing form: %s' % exc)
                     log.debug('Traceback:', exc_info=True)
-                if pcode:
+                if pcode or self.detect_vba_stomping():
                     print('-' * 79)
                     print('P-CODE disassembly:')
                     pcode = self.extract_pcode()
