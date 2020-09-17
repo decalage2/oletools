@@ -109,6 +109,7 @@ including
 [Cuckoo Sandbox](https://github.com/cuckoosandbox/cuckoo),
 [DARKSURGEON](https://github.com/cryps1s/DARKSURGEON),
 [Deepviz](https://sandbox.deepviz.com/),
+[DIARIO](https://diario.elevenpaths.com/),
 [dridex.malwareconfig.com](https://dridex.malwareconfig.com),
 [EML Analyzer](https://github.com/ninoseki/eml_analyzer),
 [FAME](https://certsocietegenerale.github.io/fame/),
