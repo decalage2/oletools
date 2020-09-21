@@ -232,7 +232,7 @@ from __future__ import print_function
 #                      - fixed detect_vba_macros to always return VBA code as
 #                        unicode on Python 3 (issues  #455, #477, #587, #593)
 
-__version__ = '0.56dev10'
+__version__ = '0.56dev11'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -4246,7 +4246,7 @@ def process_file(filename, data, container, options, crypto_nesting=0):
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
                          show_deobfuscated_code=options.show_deobfuscated_code,
                          deobfuscate=options.deobfuscate, show_pcode=options.show_pcode,
-                         no_xlm=options.no_xlm)
+                                    no_xlm=options.no_xlm)
         elif options.output_mode == 'triage':
             # summarized output for triage:
             vba_parser.process_file_triage(show_decoded_strings=options.show_decoded_strings,
@@ -4258,7 +4258,7 @@ def process_file(filename, data, container, options, crypto_nesting=0):
                          hide_attributes=options.hide_attributes, vba_code_only=options.vba_code_only,
                          show_deobfuscated_code=options.show_deobfuscated_code,
                          deobfuscate=options.deobfuscate, show_pcode=options.show_pcode,
-                         no_xlm=options.no_xlm))
+                                             no_xlm=options.no_xlm))
         else:  # (should be impossible)
             raise ValueError('unexpected output mode: "{0}"!'.format(options.output_mode))
 
