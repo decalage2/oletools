@@ -280,7 +280,8 @@ def main():
             column_width=[10, 5, 4, 56])
 
     exitcode = -1
-    global_result = None
+    # show error when no result was found in loop
+    global_result = Result_Error
     # TODO: handle errors in xglob, to continue processing the next files
     for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
                                                       zip_password=options.zip_password, zip_fname=options.zip_fname):
@@ -314,34 +315,34 @@ def main():
                             colors=[result.color, None, None, None])
                 t.write_row(['', '', '', str(e)],
                             colors=[None, None, None, result.color])
-                continue
-            if vba_parser.detect_vba_macros():
-                vba_code_all_modules = ''
-                try:
-                    for (subfilename, stream_path, vba_filename, vba_code) in vba_parser.extract_all_macros():
-                        vba_code_all_modules += vba_code + '\n'
-                except Exception as e:
-                    # log.error('Error when parsing VBA macros from file %r' % full_name)
-                    result = Result_Error
-                    t.write_row([result.name, '', TYPE2TAG[vba_parser.type], full_name],
-                                colors=[result.color, None, None, None])
-                    t.write_row(['', '', '', str(e)],
-                                colors=[None, None, None, result.color])
-                    continue
-                mraptor = MacroRaptor(vba_code_all_modules)
-                mraptor.scan()
-                if mraptor.suspicious:
-                    result = Result_Suspicious
-                else:
-                    result = Result_MacroOK
-                t.write_row([result.name, mraptor.get_flags(), filetype, full_name],
-                            colors=[result.color, None, None, None])
-                if mraptor.matches and options.show_matches:
-                    t.write_row(['', '', '', 'Matches: %r' % mraptor.matches])
             else:
-                result = Result_NoMacro
-                t.write_row([result.name, '', filetype, full_name],
-                            colors=[result.color, None, None, None])
+                if vba_parser.detect_vba_macros():
+                    vba_code_all_modules = ''
+                    try:
+                        for (subfilename, stream_path, vba_filename, vba_code) in vba_parser.extract_all_macros():
+                            vba_code_all_modules += vba_code + '\n'
+                    except Exception as e:
+                        # log.error('Error when parsing VBA macros from file %r' % full_name)
+                        result = Result_Error
+                        t.write_row([result.name, '', TYPE2TAG[vba_parser.type], full_name],
+                                    colors=[result.color, None, None, None])
+                        t.write_row(['', '', '', str(e)],
+                                    colors=[None, None, None, result.color])
+                    else:
+                      mraptor = MacroRaptor(vba_code_all_modules)
+                      mraptor.scan()
+                      if mraptor.suspicious:
+                          result = Result_Suspicious
+                      else:
+                          result = Result_MacroOK
+                      t.write_row([result.name, mraptor.get_flags(), filetype, full_name],
+                                  colors=[result.color, None, None, None])
+                      if mraptor.matches and options.show_matches:
+                          t.write_row(['', '', '', 'Matches: %r' % mraptor.matches])
+                else:
+                    result = Result_NoMacro
+                    t.write_row([result.name, '', filetype, full_name],
+                              colors=[result.color, None, None, None])
         if result.exit_code > exitcode:
             global_result = result
             exitcode = result.exit_code
