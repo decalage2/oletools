@@ -636,6 +636,9 @@ AUTOEXEC_KEYWORDS = {
         # TODO: "Auto_Ope" is temporarily here because of a bug in plugin_biff, which misses the last byte in "Auto_Open"...
     'Runs when the Excel Workbook is closed':
         ('Auto_Close', 'Workbook_Close'),
+        #Worksheet_Calculate to Autoexec: see http://www.certego.net/en/news/advanced-vba-macros/
+    'May run when an Excel WorkSheet is opened':
+        ('Worksheet_Calculate',),
 }
 
 # Keywords to detect auto-executable macros
@@ -652,15 +655,17 @@ AUTOEXEC_KEYWORDS_REGEX = {
          r'\w+_FileDownload', r'\w+_NavigateComplete2', r'\w+_NavigateError',
          r'\w+_ProgressChange', r'\w+_PropertyChange', r'\w+_SetSecureLockIcon',
          r'\w+_StatusTextChange', r'\w+_TitleChange', r'\w+_MouseMove', r'\w+_MouseEnter',
-         r'\w+_MouseLeave', r'\w+_Layout', r'\w+_OnConnecting'),
+         r'\w+_MouseLeave', r'\w+_Layout', r'\w+_OnConnecting', r'\w+_FollowHyperlink', r'\w+_ContentControlOnEnter'),
 }
 
 # Suspicious Keywords that may be used by malware
 # See VBA language reference: http://msdn.microsoft.com/en-us/library/office/jj692818%28v=office.15%29.aspx
 SUSPICIOUS_KEYWORDS = {
     #TODO: use regex to support variable whitespaces
+    #http://www.certego.net/en/news/advanced-vba-macros/
     'May read system environment variables':
-        ('Environ',),
+        ('Environ','Win32_Environment','Environment','ExpandEnvironmentStrings','HKCU\Environment',
+        'HKEY_CURRENT_USER\Environment'),
     'May open a file':
         ('Open',),
     'May write to a file (if combined with Open)':
@@ -670,22 +675,35 @@ SUSPICIOUS_KEYWORDS = {
     #TODO: regex to find Open+Binary on same line
         ('Binary',),
     'May copy a file':
-        ('FileCopy', 'CopyFile'),
+        ('FileCopy', 'CopyFile','CopyHere','CopyFolder'),
     #FileCopy: http://msdn.microsoft.com/en-us/library/office/gg264390%28v=office.15%29.aspx
     #CopyFile: http://msdn.microsoft.com/en-us/library/office/gg264089%28v=office.15%29.aspx
+    #CopyHere, MoveHere, MoveHere and MoveFolder exploitation: see http://www.certego.net/en/news/advanced-vba-macros/
+    'May move a file':
+        ('MoveHere', 'MoveFile', 'MoveFolder'),
     'May delete a file':
         ('Kill',),
     'May create a text file':
         ('CreateTextFile', 'ADODB.Stream', 'WriteText', 'SaveToFile'),
     #CreateTextFile: http://msdn.microsoft.com/en-us/library/office/gg264617%28v=office.15%29.aspx
     #ADODB.Stream sample: http://pastebin.com/Z4TMyuq6
-    # ShellExecute: https://twitter.com/StanHacked/status/1075088449768693762
+    #ShellExecute: https://twitter.com/StanHacked/status/1075088449768693762
+    #InvokeVerb, InvokeVerbEx, DoIt and ControlPanelItem: see http://www.certego.net/en/news/advanced-vba-macros/
+
     'May run an executable file or a system command':
         ('Shell', 'vbNormal', 'vbNormalFocus', 'vbHide', 'vbMinimizedFocus', 'vbMaximizedFocus', 'vbNormalNoFocus',
-         'vbMinimizedNoFocus', 'WScript.Shell', 'Run', 'ShellExecute', 'ShellExecuteA', 'shell32'),
+         'vbMinimizedNoFocus', 'WScript.Shell', 'Run', 'ShellExecute', 'ShellExecuteA', 'shell32','InvokeVerb','InvokeVerbEx',
+         'DoIt'),
+    'May run a dll':
+        ('ControlPanelItem',),
+    # Win32_Process.Create https://docs.microsoft.com/en-us/windows/win32/cimwin32prov/create-method-in-class-win32-process
+    'May execute file or a system command through WMI':
+        ('Create',),
+    # WMI https://docs.microsoft.com/en-us/windows/win32/cimwin32prov/create-method-in-class-win32-process
     # MacScript: see https://msdn.microsoft.com/en-us/library/office/gg264812.aspx
+    # AppleScript: see https://docs.microsoft.com/en-us/office/vba/office-mac/applescripttask
     'May run an executable file or a system command on a Mac':
-        ('MacScript',),
+        ('MacScript','AppleScript'),
     #Shell: http://msdn.microsoft.com/en-us/library/office/gg278437%28v=office.15%29.aspx
     #WScript.Shell+Run sample: http://pastebin.com/Z4TMyuq6
     'May run PowerShell commands':
@@ -698,10 +716,8 @@ SUSPICIOUS_KEYWORDS = {
          'invoke-command', 'scriptblock', 'Invoke-Expression', 'AuthorizationManager'),
     'May run an executable file or a system command using PowerShell':
         ('Start-Process',),
-    'May run an executable file or a system command using Excel 4 Macros (XLM/XLF)':
-        ('EXEC',),
     'May call a DLL using Excel 4 Macros (XLM/XLF)':
-        ('REGISTER', 'CALL'),
+        ('CALL',),
     'May hide the application':
         ('Application.Visible', 'ShowWindow', 'SW_HIDE'),
     'May create a directory':
@@ -713,6 +729,9 @@ SUSPICIOUS_KEYWORDS = {
         ('Application.AltStartupPath',),
     'May create an OLE object':
         ('CreateObject',),
+    #bypass CreateObject http://www.certego.net/en/news/advanced-vba-macros/
+    'May get an OLE object with a running instance':
+        ('GetObject',),
     'May create an OLE object using PowerShell':
         ('New-Object',),
     'May run an application (if combined with CreateObject)':
@@ -727,8 +746,6 @@ SUSPICIOUS_KEYWORDS = {
     'May run code from a library on a Mac':
     #TODO: regex to find declare+lib on same line - see mraptor
         ('libc.dylib', 'dylib'),
-    'May run code from a DLL using Excel 4 Macros (XLM/XLF)':
-        ('REGISTER',),
     'May inject code into another process':
         ('CreateThread', 'CreateUserThread', 'VirtualAlloc', # (issue #9) suggested by Davy Douhine - used by MSF payload
         'VirtualAllocEx', 'RtlMoveMemory', 'WriteProcessMemory',
@@ -813,6 +830,14 @@ SUSPICIOUS_KEYWORDS_REGEX = {
          ),
     'May run an executable file or a system command on a Mac (if combined with libc.dylib)':
         ('system', 'popen', r'exec[lv][ep]?'),
+    'May run an executable file or a system command using Excel 4 Macros (XLM/XLF)':
+        (r'(?<!Could contain following functions: )EXEC',),
+    'Could contain a function that allows to run an executable file or a system command using Excel 4 Macros (XLM/XLF)':
+        (r'Could contain following functions: EXEC',),
+    'May call a DLL using Excel 4 Macros (XLM/XLF)':
+        (r'(?<!Could contain following functions: )REGISTER',),
+    'Could contain a function that allows to call a DLL using Excel 4 Macros (XLM/XLF)':
+        (r'Could contain following functions: REGISTER',),
 }
 
 # Suspicious Keywords to be searched for directly as strings, without regex
@@ -842,6 +867,9 @@ URL_PATH = r'(?:/[a-zA-Z0-9\-\._\?\,\'/\\\+&%\$#\=~]*)?'  # [^\.\,\)\(\s"]
 URL_RE = SCHEME + r'\://' + SERVER_PORT + URL_PATH
 re_url = re.compile(URL_RE)
 
+EXCLUDE_URLS_PATTERNS = ["http://schemas.openxmlformats.org/",
+                         "http://schemas.microsoft.com/",
+                         ]
 
 # Patterns to be extracted (IP addresses, URLs, etc)
 # From patterns.py in balbuzard
@@ -2208,7 +2236,11 @@ def detect_patterns(vba_code, obfuscation=None):
     for pattern_type, pattern_re in RE_PATTERNS:
         for match in pattern_re.finditer(vba_code):
             value = match.group()
-            if value not in found:
+            exclude_pattern_found = False
+            for url_exclude_pattern in EXCLUDE_URLS_PATTERNS:
+                if value.startswith(url_exclude_pattern):
+                    exclude_pattern_found = True
+            if value not in found and not exclude_pattern_found:
                 results.append((pattern_type + obf_text, value))
                 found.add(value)
     return results
@@ -2694,6 +2726,10 @@ class VBA_Parser(object):
         self.pcodedmp_output = None
         #: Flag set to True/False if VBA stomping detected
         self.vba_stomping_detected = None
+        # will be set to True or False by detect_is_encrypted method
+        self.is_encrypted = False
+        self.xlm_macrosheet_found = False
+        self.template_injection_found = False
 
         # if filename is None:
         #     if isinstance(_file, basestring):
@@ -2779,7 +2815,6 @@ class VBA_Parser(object):
             log.info('Failed OLE parsing for file %r (%s)' % (self.filename, exc))
             log.debug('Trace:', exc_info=True)
 
-
     def open_openxml(self, _file):
         """
         Open an OpenXML file
@@ -2797,9 +2832,42 @@ class VBA_Parser(object):
             #TODO: if the zip file is encrypted, suggest to use the -z option, or try '-z infected' automatically
             # check each file within the zip if it is an OLE file, by reading its magic:
             for subfile in z.namelist():
+                log.debug("subfile {}".format(subfile))
                 with z.open(subfile) as file_handle:
+                    found_ole = False
+                    template_injection_detected = False
+                    xml_macrosheet_found = False
                     magic = file_handle.read(len(olefile.MAGIC))
-                if magic == olefile.MAGIC:
+                    if magic == olefile.MAGIC:
+                        found_ole = True
+                    # in case we did not find an OLE file,
+                    # there could be a XLM macrosheet or a template injection attempt
+                    if not found_ole:
+                        read_all_file = file_handle.read()
+                        # try to detect template injection attempt
+                        # https://ired.team/offensive-security/initial-access/phishing-with-ms-office/inject-macros-from-a-remote-dotm-template-docx-with-macros
+                        subfile_that_can_contain_templates = "word/_rels/settings.xml.rels"
+                        if subfile == subfile_that_can_contain_templates:
+                            regex_template = b"Type=\"http://schemas\.openxmlformats\.org/officeDocument/\d{4}/relationships/attachedTemplate\"\s+Target=\"(.+?)\""
+                            template_injection_found = re.search(regex_template, read_all_file)
+                            if template_injection_found:
+                                injected_template_url = template_injection_found.group(1).decode()
+                                message = "Found injected template in subfile {}. Template URL: {}"\
+                                          "".format(subfile_that_can_contain_templates, injected_template_url)
+                                log.info(message)
+                                template_injection_detected = True
+                                self.template_injection_found = True
+                        # try to find a XML macrosheet
+                        macro_sheet_footer = b"</xm:macrosheet>"
+                        len_macro_sheet_footer = len(macro_sheet_footer)
+                        last_bytes_to_check = read_all_file[-len_macro_sheet_footer:]
+                        if last_bytes_to_check == macro_sheet_footer:
+                            message = "Found XLM Macro in subfile: {}".format(subfile)
+                            log.info(message)
+                            xml_macrosheet_found = True
+                            self.xlm_macrosheet_found = True
+
+                if found_ole or xml_macrosheet_found or template_injection_detected:
                     log.debug('Opening OLE file %s within zip' % subfile)
                     with z.open(subfile) as file_handle:
                         ole_data = file_handle.read()
@@ -3196,6 +3264,7 @@ class VBA_Parser(object):
 
         :return: bool, True if at least one VBA project has been found, False otherwise
         """
+        log.debug("detect vba macros")
         #TODO: return None or raise exception if format not supported
         #TODO: return the number of VBA projects found instead of True/False?
         # if this method was already called, return the previous result:
@@ -3204,6 +3273,7 @@ class VBA_Parser(object):
         # if OpenXML/PPT, check all the OLE subfiles:
         if self.ole_file is None:
             for ole_subfile in self.ole_subfiles:
+                log.debug("ole subfile {}".format(ole_subfile))
                 ole_subfile.no_xlm = self.no_xlm
                 if ole_subfile.detect_vba_macros():
                     self.contains_macros = True
@@ -3252,6 +3322,7 @@ class VBA_Parser(object):
         return self.contains_macros
 
     def detect_xlm_macros(self):
+        log.debug("detect xlm macros")
         # if this is a SLK file, the analysis was done in open_slk:
         if self.type == TYPE_SLK:
             return self.contains_macros
@@ -3286,6 +3357,20 @@ class VBA_Parser(object):
                     log.exception('Error when running oledump.plugin_biff, please report to %s' % URL_OLEVBA_ISSUES)
         return False
 
+    def detect_is_encrypted(self):
+        if self.ole_file:
+            self.is_encrypted = crypto.is_encrypted(self.ole_file)
+        return self.is_encrypted
+
+    def decrypt_file(self, passwords_list=None):
+        decrypted_file = None
+        if self.detect_is_encrypted():
+            passwords = crypto.DEFAULT_PASSWORDS
+            if passwords_list and isinstance(passwords_list, list):
+                passwords.extend(passwords_list)
+            decrypted_file = crypto.decrypt(self.filename, passwords)
+
+        return decrypted_file
 
     def encode_string(self, unicode_str):
         """
@@ -3455,6 +3540,19 @@ class VBA_Parser(object):
                 keyword = 'VBA Stomping'
                 description = 'VBA Stomping was detected: the VBA source code and P-code are different, '\
                     'this may have been used to hide malicious code'
+                scanner.suspicious_keywords.append((keyword, description))
+                scanner.results.append(('Suspicious', keyword, description))
+            if self.xlm_macrosheet_found:
+                log.debug('adding XLM macrosheet found to suspicious keywords')
+                keyword = 'XLM macrosheet'
+                description = 'XLM macrosheet found. It could contain malicious code'
+                scanner.suspicious_keywords.append((keyword, description))
+                scanner.results.append(('Suspicious', keyword, description))
+            if self.template_injection_found:
+                log.debug('adding Template Injection to suspicious keywords')
+                keyword = 'Template Injection'
+                description = 'Template injection found. A malicious template could have been uploaded ' \
+                    'from a remote location'
                 scanner.suspicious_keywords.append((keyword, description))
                 scanner.results.append(('Suspicious', keyword, description))
             autoexec, suspicious, iocs, hexstrings, base64strings, dridex, vbastrings = scanner.scan_summary()
