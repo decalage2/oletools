@@ -7,6 +7,7 @@ include oletools/README.html
 include oletools/LICENSE.txt
 include oletools/DocVarDump.vba
 recursive-include oletools/thirdparty *.*
+prune oletools/thirdparty/oledump/old
 recursive-include cheatsheet *.*
 global-exclude *.pyc
 

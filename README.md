@@ -26,6 +26,28 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
+- **2020-09-28 v0.56**:
+    - olevba/mraptor:
+        - added detection of trigger _OnConnecting
+    - olevba:
+        - updated plugin_biff to v0.0.17 to improve Excel 4/XLM macros parsing
+        - added simple analysis of Excel 4/XLM macros in XLSM files (PR #569)
+        - added detection of template injection (PR #569)
+        - added detection of many suspicious keywords (PR #591 and #569, see https://www.certego.net/en/news/advanced-vba-macros/)
+        - improved MHT detection (PR #532)
+        - added --no-xlm option to disable Excel 4/XLM macros parsing (PR #532)
+        - fixed bug when decompressing raw chunks in VBA (issue #575)
+        - fixed bug with email package due to monkeypatch for MHT parsing (issue #602, PR #604)
+        - fixed option --relaxed (issue #596, PR #595)
+        - enabled relaxed mode by default (issues #477, #593)
+        - fixed detect_vba_macros to always return VBA code as
+          unicode on Python 3 (issues  #455, #477, #587, #593)
+        - replaced option --pcode by --show-pcode and --no-pcode,
+          replaced optparse by argparse (PR #479)
+    - oleform: improved form parsing (PR #532)
+    - oleobj: "Ole10Native" is now case insensitive (issue #541)
+    - clsid: added PDF (issue #552), Microsoft Word Picture (issue #571)
+    - ppt_parser: fixed bug on Python 3 (issues #177, #607, PR #450)
 - **2019-12-03 v0.55**:
     - olevba:
         - added support for SLK files and XLM macro extraction from SLK
@@ -39,35 +61,6 @@ News
     - tests: 
         - test files can now be encrypted, to avoid antivirus alerts (PR #217, issue #215)
         - tests that trigger antivirus alerts have been temporarily disabled (issue #215)
-- **2019-05-22 v0.54.2**:
-    - bugfix release: fixed several issues related to encrypted documents
-      and XLM/XLF Excel 4 macros
-    - msoffcrypto-tool is now installed by default to handle encrypted documents
-    - olevba and msodde now handle documents encrypted with common passwords such
-      as 123, 1234, 4321, 12345, 123456, VelvetSweatShop automatically.
-- **2019-04-04 v0.54**:
-    - olevba, msodde: added support for encrypted MS Office files 
-    - olevba: added detection and extraction of XLM/XLF Excel 4 macros (thanks to plugin_biff from Didier Stevens' oledump)
-    - olevba, mraptor: added detection of VBA running Excel 4 macros
-    - olevba: detect and display special characters such as backspace
-    - olevba: colorized output showing suspicious keywords in the VBA code
-    - olevba, mraptor: full Python 3 compatibility, no separate olevba3/mraptor3 anymore
-    - olevba: improved handling of code pages and unicode
-    - olevba: fixed a false-positive in VBA macro detection
-    - rtfobj: improved OLE Package handling, improved Equation object detection
-    - oleobj: added detection of external links to objects in OpenXML
-    - replaced third party packages by PyPI dependencies
-- 2018-05-30 v0.53:
-    - olevba and mraptor can now parse Word/PowerPoint 2007+ pure XML files (aka Flat OPC format)
-    - improved support for VBA forms in olevba (oleform)
-    - rtfobj now displays the CLSID of OLE objects, which is the best way to identify them. Known-bad CLSIDs such as MS Equation Editor are highlighted in red.
-    - Updated rtfobj to handle obfuscated RTF samples.
-    - rtfobj now handles the "\\'" obfuscation trick seen in recent samples such as https://twitter.com/buffaloverflow/status/989798880295444480, by emulating the MS Word bug described in https://securelist.com/disappearing-bytes/84017/
-    - msodde: improved detection of DDE formulas in CSV files
-    - oledir now displays the tree of storage/streams, along with CLSIDs and their meaning.
-    - common.clsid contains the list of known CLSIDs, and their links to CVE vulnerabilities when relevant.
-    - oleid now detects encrypted OpenXML files
-    - fixed bugs in oleobj, rtfobj, oleid, olevba
 
 See the [full changelog](https://github.com/decalage2/oletools/wiki/Changelog) for more information.
 
@@ -193,7 +186,7 @@ License
 This license applies to the python-oletools package, apart from the thirdparty folder which contains third-party files 
 published with their own license.
 
-The python-oletools package is copyright (c) 2012-2019 Philippe Lagadec (http://www.decalage.info)
+The python-oletools package is copyright (c) 2012-2020 Philippe Lagadec (http://www.decalage.info)
 
 All rights reserved.
 

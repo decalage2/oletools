@@ -88,7 +88,7 @@ from oletools.common.io_encoding import ensure_stdout_handles_unicode
 # 2018-10-30       SA: - added detection of external links (PR #317)
 # 2020-03-03 v0.56 PL: - fixed bug #541, "Ole10Native" is case-insensitive
 
-__version__ = '0.56dev2'
+__version__ = '0.56'
 
 # -----------------------------------------------------------------------------
 # TODO:

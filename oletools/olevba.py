@@ -234,7 +234,7 @@ from __future__ import print_function
 # 2020-09-28       PL: - added VBA_Parser.get_vba_code_all_modules (partial fix
 #                        for issue #619)
 
-__version__ = '0.56dev12'
+__version__ = '0.56'
 
 #------------------------------------------------------------------------------
 # TODO:

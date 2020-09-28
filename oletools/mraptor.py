@@ -23,7 +23,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE ==================================================================
 
-# MacroRaptor is copyright (c) 2016-2019 Philippe Lagadec (http://www.decalage.info)
+# MacroRaptor is copyright (c) 2016-2020 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -62,7 +62,7 @@ http://www.decalage.info/python/oletools
 # 2019-11-06 v0.55 PL: - added SetTimer
 # 2020-04-20 v0.56 PL: - added keywords RUN and CALL for XLM macros (issue #562)
 
-__version__ = '0.56dev12'
+__version__ = '0.56'
 
 #------------------------------------------------------------------------------
 # TODO:

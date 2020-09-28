@@ -23,6 +23,32 @@
 <p>Note: python-oletools is not related to OLETools published by BeCubed Software.</p>
 <h2 id="news">News</h2>
 <ul>
+<li><strong>2020-09-28 v0.56</strong>:
+<ul>
+<li>olevba/mraptor:
+<ul>
+<li>added detection of trigger _OnConnecting</li>
+</ul></li>
+<li>olevba:
+<ul>
+<li>updated plugin_biff to v0.0.17 to improve Excel 4/XLM macros parsing</li>
+<li>added simple analysis of Excel 4/XLM macros in XLSM files (PR #569)</li>
+<li>added detection of template injection (PR #569)</li>
+<li>added detection of many suspicious keywords (PR #591 and #569, see https://www.certego.net/en/news/advanced-vba-macros/)</li>
+<li>improved MHT detection (PR #532)</li>
+<li>added --no-xlm option to disable Excel 4/XLM macros parsing (PR #532)</li>
+<li>fixed bug when decompressing raw chunks in VBA (issue #575)</li>
+<li>fixed bug with email package due to monkeypatch for MHT parsing (issue #602, PR #604)</li>
+<li>fixed option --relaxed (issue #596, PR #595)</li>
+<li>enabled relaxed mode by default (issues #477, #593)</li>
+<li>fixed detect_vba_macros to always return VBA code as unicode on Python 3 (issues #455, #477, #587, #593)</li>
+<li>replaced option --pcode by --show-pcode and --no-pcode, replaced optparse by argparse (PR #479)</li>
+</ul></li>
+<li>oleform: improved form parsing (PR #532)</li>
+<li>oleobj: &quot;Ole10Native&quot; is now case insensitive (issue #541)</li>
+<li>clsid: added PDF (issue #552), Microsoft Word Picture (issue #571)</li>
+<li>ppt_parser: fixed bug on Python 3 (issues #177, #607, PR #450)</li>
+</ul></li>
 <li><strong>2019-12-03 v0.55</strong>:
 <ul>
 <li>olevba:
@@ -41,39 +67,6 @@
 <li>test files can now be encrypted, to avoid antivirus alerts (PR #217, issue #215)</li>
 <li>tests that trigger antivirus alerts have been temporarily disabled (issue #215)</li>
 </ul></li>
-</ul></li>
-<li><strong>2019-05-22 v0.54.2</strong>:
-<ul>
-<li>bugfix release: fixed several issues related to encrypted documents and XLM/XLF Excel 4 macros</li>
-<li>msoffcrypto-tool is now installed by default to handle encrypted documents</li>
-<li>olevba and msodde now handle documents encrypted with common passwords such as 123, 1234, 4321, 12345, 123456, VelvetSweatShop automatically.</li>
-</ul></li>
-<li><strong>2019-04-04 v0.54</strong>:
-<ul>
-<li>olevba, msodde: added support for encrypted MS Office files</li>
-<li>olevba: added detection and extraction of XLM/XLF Excel 4 macros (thanks to plugin_biff from Didier Stevens' oledump)</li>
-<li>olevba, mraptor: added detection of VBA running Excel 4 macros</li>
-<li>olevba: detect and display special characters such as backspace</li>
-<li>olevba: colorized output showing suspicious keywords in the VBA code</li>
-<li>olevba, mraptor: full Python 3 compatibility, no separate olevba3/mraptor3 anymore</li>
-<li>olevba: improved handling of code pages and unicode</li>
-<li>olevba: fixed a false-positive in VBA macro detection</li>
-<li>rtfobj: improved OLE Package handling, improved Equation object detection</li>
-<li>oleobj: added detection of external links to objects in OpenXML</li>
-<li>replaced third party packages by PyPI dependencies</li>
-</ul></li>
-<li>2018-05-30 v0.53:
-<ul>
-<li>olevba and mraptor can now parse Word/PowerPoint 2007+ pure XML files (aka Flat OPC format)</li>
-<li>improved support for VBA forms in olevba (oleform)</li>
-<li>rtfobj now displays the CLSID of OLE objects, which is the best way to identify them. Known-bad CLSIDs such as MS Equation Editor are highlighted in red.</li>
-<li>Updated rtfobj to handle obfuscated RTF samples.</li>
-<li>rtfobj now handles the &quot;\'&quot; obfuscation trick seen in recent samples such as https://twitter.com/buffaloverflow/status/989798880295444480, by emulating the MS Word bug described in https://securelist.com/disappearing-bytes/84017/</li>
-<li>msodde: improved detection of DDE formulas in CSV files</li>
-<li>oledir now displays the tree of storage/streams, along with CLSIDs and their meaning.</li>
-<li>common.clsid contains the list of known CLSIDs, and their links to CVE vulnerabilities when relevant.</li>
-<li>oleid now detects encrypted OpenXML files</li>
-<li>fixed bugs in oleobj, rtfobj, oleid, olevba</li>
 </ul></li>
 </ul>
 <p>See the <a href="https://github.com/decalage2/oletools/wiki/Changelog">full changelog</a> for more information.</p>
@@ -97,7 +90,7 @@
 <li><a href="https://github.com/decalage2/oletools/wiki/olemap">olemap</a>: to display a map of all the sectors in an OLE file.</li>
 </ul>
 <h2 id="projects-using-oletools">Projects using oletools:</h2>
-<p>oletools are used by a number of projects and online malware analysis services, including <a href="https://github.com/IntegralDefense/ACE">ACE</a>, <a href="https://sandbox.anlyz.io/">Anlyz.io</a>, <a href="https://www.cse-cst.gc.ca/en/assemblyline">AssemblyLine</a>, <a href="https://github.com/ctxis/CAPE">CAPE</a>, <a href="https://github.com/cuckoosandbox/cuckoo">Cuckoo Sandbox</a>, <a href="https://github.com/cryps1s/DARKSURGEON">DARKSURGEON</a>, <a href="https://sandbox.deepviz.com/">Deepviz</a>, <a href="https://dridex.malwareconfig.com">dridex.malwareconfig.com</a>, <a href="https://certsocietegenerale.github.io/fame/">FAME</a>, <a href="https://github.com/fireeye/flare-vm">FLARE-VM</a>, <a href="https://www.hybrid-analysis.com/">Hybrid-analysis.com</a>, <a href="https://www.document-analyzer.net/">Joe Sandbox</a>, <a href="https://github.com/lmco/laikaboss">Laika BOSS</a>, <a href="https://github.com/sbidy/MacroMilter">MacroMilter</a>, <a href="https://mailcow.email/">mailcow</a>, <a href="https://malshare.io">malshare.io</a>, <a href="https://github.com/Tigzy/malware-repo">malware-repo</a>, <a href="https://www.adlice.com/download/mrf/">Malware Repository Framework (MRF)</a>, <a href="https://github.com/HeinleinSupport/olefy">olefy</a>, <a href="https://github.com/scVENUS/PeekabooAV">PeekabooAV</a>, <a href="https://github.com/bontchev/pcodedmp">pcodedmp</a>, <a href="https://github.com/CIRCL/PyCIRCLean">PyCIRCLean</a>, <a href="https://remnux.org/">REMnux</a>, <a href="https://github.com/countercept/snake">Snake</a>, <a href="https://app.sndbox.com">SNDBOX</a>, <a href="https://github.com/target/strelka">Strelka</a>, <a href="https://stoq.punchcyber.com/">stoQ</a>, <a href="https://github.com/TheHive-Project/Cortex-Analyzers">TheHive/Cortex</a>, <a href="https://tsurugi-linux.org/">TSUGURI Linux</a>, <a href="https://github.com/MalwareCantFly/Vba2Graph">Vba2Graph</a>, <a href="http://viper.li/">Viper</a>, <a href="https://github.com/decalage2/ViperMonkey">ViperMonkey</a>, <a href="https://yomi.yoroi.company">YOMI</a>, and probably <a href="https://www.virustotal.com">VirusTotal</a>. And quite a few <a href="https://github.com/search?q=oletools&amp;type=Repositories">other projects on GitHub</a>. (Please <a href="(http://decalage.info/contact)">contact me</a> if you have or know a project using oletools)</p>
+<p>oletools are used by a number of projects and online malware analysis services, including <a href="https://github.com/IntegralDefense/ACE">ACE</a>, <a href="https://sandbox.anlyz.io/">Anlyz.io</a>, <a href="https://www.cse-cst.gc.ca/en/assemblyline">AssemblyLine</a>, <a href="https://github.com/ctxis/CAPE">CAPE</a>, <a href="https://cincan.io">CinCan</a>, <a href="https://github.com/cuckoosandbox/cuckoo">Cuckoo Sandbox</a>, <a href="https://github.com/cryps1s/DARKSURGEON">DARKSURGEON</a>, <a href="https://sandbox.deepviz.com/">Deepviz</a>, <a href="https://diario.elevenpaths.com/">DIARIO</a>, <a href="https://dridex.malwareconfig.com">dridex.malwareconfig.com</a>, <a href="https://github.com/ninoseki/eml_analyzer">EML Analyzer</a>, <a href="https://certsocietegenerale.github.io/fame/">FAME</a>, <a href="https://github.com/fireeye/flare-vm">FLARE-VM</a>, <a href="https://www.hybrid-analysis.com/">Hybrid-analysis.com</a>, <a href="https://github.com/certego/IntelOwl">IntelOwl</a>, <a href="https://www.document-analyzer.net/">Joe Sandbox</a>, <a href="https://github.com/lmco/laikaboss">Laika BOSS</a>, <a href="https://github.com/sbidy/MacroMilter">MacroMilter</a>, <a href="https://mailcow.email/">mailcow</a>, <a href="https://malshare.io">malshare.io</a>, <a href="https://github.com/Tigzy/malware-repo">malware-repo</a>, <a href="https://www.adlice.com/download/mrf/">Malware Repository Framework (MRF)</a>, <a href="https://github.com/HeinleinSupport/olefy">olefy</a>, <a href="https://github.com/scVENUS/PeekabooAV">PeekabooAV</a>, <a href="https://github.com/bontchev/pcodedmp">pcodedmp</a>, <a href="https://github.com/CIRCL/PyCIRCLean">PyCIRCLean</a>, <a href="https://remnux.org/">REMnux</a>, <a href="https://github.com/countercept/snake">Snake</a>, <a href="https://app.sndbox.com">SNDBOX</a>, <a href="https://github.com/ldbo/SpuriousEmu">SpuriousEmu</a>, <a href="https://github.com/target/strelka">Strelka</a>, <a href="https://stoq.punchcyber.com/">stoQ</a>, <a href="https://github.com/TheHive-Project/Cortex-Analyzers">TheHive/Cortex</a>, <a href="https://tsurugi-linux.org/">TSUGURI Linux</a>, <a href="https://github.com/MalwareCantFly/Vba2Graph">Vba2Graph</a>, <a href="http://viper.li/">Viper</a>, <a href="https://github.com/decalage2/ViperMonkey">ViperMonkey</a>, <a href="https://yomi.yoroi.company">YOMI</a>, and probably <a href="https://www.virustotal.com">VirusTotal</a>. And quite a few <a href="https://github.com/search?q=oletools&amp;type=Repositories">other projects on GitHub</a>. (Please <a href="(http://decalage.info/contact)">contact me</a> if you have or know a project using oletools)</p>
 <h2 id="download-and-install">Download and Install:</h2>
 <p>The recommended way to download and install/update the <strong>latest stable release</strong> of oletools is to use <a href="https://pip.pypa.io/en/stable/installing/">pip</a>:</p>
 <ul>
@@ -120,7 +113,7 @@
 <p>The code is available in <a href="https://github.com/decalage2/oletools">a GitHub repository</a>. You may use it to submit enhancements using forks and pull requests.</p>
 <h2 id="license">License</h2>
 <p>This license applies to the python-oletools package, apart from the thirdparty folder which contains third-party files published with their own license.</p>
-<p>The python-oletools package is copyright (c) 2012-2019 Philippe Lagadec (http://www.decalage.info)</p>
+<p>The python-oletools package is copyright (c) 2012-2020 Philippe Lagadec (http://www.decalage.info)</p>
 <p>All rights reserved.</p>
 <p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
 <ul>
