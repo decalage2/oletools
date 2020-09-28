@@ -4309,7 +4309,7 @@ def parse_args(cmd_line_args=None):
     parser.add_argument('--relaxed', dest="relaxed", action="store_true",
                         default=True,
                         help='Do not raise errors if opening of substream '
-                             'fails')
+                             'fails (this option is now deprecated, enabled by default)')
     parser.add_argument('--show-pcode', dest="show_pcode", action="store_true",
                         default=False,
                         help="Show disassembled P-code (using pcodedmp)")
