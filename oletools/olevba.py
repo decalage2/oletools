@@ -664,8 +664,8 @@ SUSPICIOUS_KEYWORDS = {
     #TODO: use regex to support variable whitespaces
     #http://www.certego.net/en/news/advanced-vba-macros/
     'May read system environment variables':
-        ('Environ','Win32_Environment','Environment','ExpandEnvironmentStrings','HKCU\Environment',
-        'HKEY_CURRENT_USER\Environment'),
+        ('Environ','Win32_Environment','Environment','ExpandEnvironmentStrings','HKCU\\Environment',
+        'HKEY_CURRENT_USER\\Environment'),
     'May open a file':
         ('Open',),
     'May write to a file (if combined with Open)':
