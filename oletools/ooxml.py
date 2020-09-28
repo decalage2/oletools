@@ -1,27 +1,22 @@
 #!/usr/bin/env python3
 
-""" Common operations for OpenOffice XML (docx, xlsx, pptx, ...) files
+""" Common operations for OpenXML files (docx, xlsx, pptx, ...)
 
 This is mostly based on ECMA-376 (5th edition, Part 1)
 http://www.ecma-international.org/publications/standards/Ecma-376.htm
 
 See also: Notes on Microsoft's implementation of ECMA-376: [MS-0E376]
 
-TODO: may have to tell apart single xml types: office2003 looks much different
-      than 2006+ --> DOCTYPE_*_XML2003
-TODO: check what is duplicate here with oleid, maybe merge some day?
-TODO: "xml2003" == "flatopc"?
-
 .. codeauthor:: Intra2net AG <info@intra2net>
 License: BSD, see source code or documentation
 
-msodde is part of the python-oletools package:
+ooxml is part of the python-oletools package:
 http://www.decalage.info/python/oletools
 """
 
 # === LICENSE =================================================================
 
-# msodde is copyright (c) 2017-2019 Philippe Lagadec (http://www.decalage.info)
+# ooxml is copyright (c) 2017-2020 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -45,6 +40,20 @@ http://www.decalage.info/python/oletools
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+# -----------------------------------------------------------------------------
+# CHANGELOG:
+# 2018-12-06       CH: - ensure stdout can handle unicode
+
+__version__ = '0.54.2'
+
+# -- TODO ---------------------------------------------------------------------
+
+# TODO: may have to tell apart single xml types: office2003 looks much different
+#       than 2006+ --> DOCTYPE_*_XML2003
+# TODO: check what is duplicate here with oleid, maybe merge some day?
+# TODO: "xml2003" == "flatopc"? (No)
+
+
 # -- IMPORTS ------------------------------------------------------------------
 
 import sys
@@ -61,13 +70,6 @@ try:
     import lxml.etree as ET
 except ImportError:
     import xml.etree.cElementTree as ET
-
-# -----------------------------------------------------------------------------
-# CHANGELOG:
-# 2018-12-06       CH: - ensure stdout can handle unicode
-
-__version__ = '0.54.2'
-
 
 ###############################################################################
 # CONSTANTS
