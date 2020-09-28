@@ -231,8 +231,10 @@ from __future__ import print_function
 # 2020-09-16       PL: - enabled relaxed mode by default (issues #477, #593)
 #                      - fixed detect_vba_macros to always return VBA code as
 #                        unicode on Python 3 (issues  #455, #477, #587, #593)
+# 2020-09-28       PL: - added VBA_Parser.get_vba_code_all_modules (partial fix
+#                        for issue #619)
 
-__version__ = '0.56dev11'
+__version__ = '0.56dev12'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -3401,6 +3403,7 @@ class VBA_Parser(object):
         by calling extract_macros(), store the results as a list of tuples
         (filename, stream_path, vba_filename, vba_code) in self.modules.
         See extract_macros for details.
+        :returns: list of tuples (filename, stream_path, vba_filename, vba_code)
         """
         if self.modules is None:
             self.modules = []
@@ -3409,6 +3412,23 @@ class VBA_Parser(object):
         self.nb_macros = len(self.modules)
         return self.modules
 
+
+    def get_vba_code_all_modules(self):
+        """
+        Extract the VBA macro source code from all modules, and return it
+        as a single string (str) with all modules concatenated.
+        If an exception is triggered when decompressing a VBA module, it
+        will not be included. The error is logged but the exception is not
+        raised further.
+        :return: str
+        """
+        vba_code_all_modules = ''
+        for (_, _, _, vba_code) in self.extract_all_macros():
+            if not isinstance(vba_code, str):
+                log.error('VBA code returned by extract_all_macros is not a string')
+            else:
+                vba_code_all_modules += vba_code + '\n'
+        return vba_code_all_modules
 
 
     def analyze_macros(self, show_decoded_strings=False, deobfuscate=False):
@@ -3424,10 +3444,7 @@ class VBA_Parser(object):
                 return self.analysis_results
             # variable to merge source code from all modules:
             if self.vba_code_all_modules is None:
-                self.vba_code_all_modules = ''
-                for (_, _, _, vba_code) in self.extract_all_macros():
-                    #TODO: filter code? (each module)
-                    self.vba_code_all_modules += vba_code + '\n'
+                self.vba_code_all_modules = self.get_vba_code_all_modules()
                 for (_, _, form_string) in self.extract_form_strings():
                     self.vba_code_all_modules += form_string + '\n'
             # Analyze the whole code at once:
@@ -3749,10 +3766,8 @@ class VBA_Parser(object):
                         keywords.add(s)
             log.debug('Keywords extracted from P-code: ' + repr(sorted(keywords)))
             self.vba_stomping_detected = False
-            # TODO: add a method to get all VBA code as one string
-            vba_code_all_modules = ''
-            for (_, _, _, vba_code) in self.extract_all_macros():
-                vba_code_all_modules += vba_code + '\n'
+            # get all VBA code as one string
+            vba_code_all_modules = self.get_vba_code_all_modules()
             for keyword in keywords:
                 if keyword not in vba_code_all_modules:
                     log.debug('Keyword {!r} not found in VBA code'.format(keyword))

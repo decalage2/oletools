@@ -62,7 +62,7 @@ http://www.decalage.info/python/oletools
 # 2019-11-06 v0.55 PL: - added SetTimer
 # 2020-04-20 v0.56 PL: - added keywords RUN and CALL for XLM macros (issue #562)
 
-__version__ = '0.56dev5'
+__version__ = '0.56dev12'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -318,8 +318,7 @@ def main():
             if vba_parser.detect_vba_macros():
                 vba_code_all_modules = ''
                 try:
-                    for (subfilename, stream_path, vba_filename, vba_code) in vba_parser.extract_all_macros():
-                        vba_code_all_modules += vba_code + '\n'
+                    vba_code_all_modules = vba_parser.get_vba_code_all_modules()
                 except Exception as e:
                     # log.error('Error when parsing VBA macros from file %r' % full_name)
                     result = Result_Error
