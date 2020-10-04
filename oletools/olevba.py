@@ -234,7 +234,7 @@ from __future__ import print_function
 # 2020-09-28       PL: - added VBA_Parser.get_vba_code_all_modules (partial fix
 #                        for issue #619)
 
-__version__ = '0.56'
+__version__ = '0.56.1dev1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -1986,7 +1986,10 @@ class VBA_Project(object):
     def check_value(self, name, expected, value):
         if expected != value:
             if self.relaxed:
-                log.error("invalid value for {0} expected {1:04X} got {2:04X}"
+                # It happens quite often that some values do not strictly follow
+                # the MS-OVBA specifications, and this does not prevent the VBA
+                # code from being extracted, so here we only raise a warning:
+                log.warning("invalid value for {0} expected {1:04X} got {2:04X}"
                           .format(name, expected, value))
             else:
                 raise UnexpectedDataError(self.dir_path, name, expected, value)
