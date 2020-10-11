@@ -1384,9 +1384,9 @@ def decompress_stream(compressed_container):
         # in chunk header before adding 3.
         # Also the first test is not useful since a 12 bits value cannot be larger than 4095.
         if chunk_flag == 1 and chunk_size > 4098:
-            raise ValueError('CompressedChunkSize > 4098 but CompressedChunkFlag == 1')
+            raise ValueError('CompressedChunkSize=%d > 4098 but CompressedChunkFlag == 1' % chunk_size)
         if chunk_flag == 0 and chunk_size != 4098:
-            raise ValueError('CompressedChunkSize != 4098 but CompressedChunkFlag == 0')
+            raise ValueError('CompressedChunkSize=%d != 4098 but CompressedChunkFlag == 0' % chunk_size)
 
         # check if chunk_size goes beyond the compressed data, instead of silently cutting it:
         #TODO: raise an exception?
@@ -3423,6 +3423,8 @@ class VBA_Parser(object):
             for vba_root, project_path, dir_path in self.vba_projects:
                 # extract all VBA macros from that VBA root storage:
                 # The function _extract_vba may fail on some files (issue #132)
+                # TODO: refactor this loop, because if one module fails it stops parsing,
+                #  and the error is only logged, not stored for reporting anomalies
                 try:
                     for stream_path, vba_filename, vba_code in \
                             _extract_vba(self.ole_file, vba_root, project_path,
