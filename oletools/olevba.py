@@ -234,7 +234,7 @@ from __future__ import print_function
 # 2020-09-28       PL: - added VBA_Parser.get_vba_code_all_modules (partial fix
 #                        for issue #619)
 
-__version__ = '0.56.1dev1'
+__version__ = '0.56.1.dev2'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -1351,6 +1351,7 @@ def decompress_stream(compressed_container):
     if not isinstance(compressed_container, bytearray):
         compressed_container = bytearray(compressed_container)
         # raise TypeError('decompress_stream requires a bytearray as input')
+    log.debug('decompress_stream: compressed size = {} bytes'.format(len(compressed_container)))
     decompressed_container = bytearray()  # result
     compressed_current = 0
 
@@ -1376,7 +1377,7 @@ def decompress_stream(compressed_container):
             raise ValueError('Invalid CompressedChunkSignature in VBA compressed stream')
         # chunk flag = next bit - 1 == compressed, 0 == uncompressed
         chunk_flag = (compressed_chunk_header >> 15) & 0x01
-        log.debug("chunk size = {0}, compressed flag = {1}".format(chunk_size, chunk_flag))
+        log.debug("chunk size = {}, offset = {}, compressed flag = {}".format(chunk_size, compressed_chunk_start, chunk_flag))
 
         #MS-OVBA 2.4.1.3.12: the maximum size of a chunk including its header is 4098 bytes (header 2 + data 4096)
         # The minimum size is 3 bytes
@@ -1649,8 +1650,11 @@ class VBA_Module(object):
             log.info('Error parsing module {0} of {1}:'
                      .format(module_index, project.modules_count),
                      exc_info=True)
-            if not project.relaxed:
-                raise
+            # TODO: here if we don't raise the exception it causes other issues because the module
+            #       is not properly initialised (e.g. self.code_str=None causing issue #629)
+            raise
+            # if not project.relaxed:
+            #     raise
 
 
 class VBA_Project(object):
