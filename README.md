@@ -116,6 +116,7 @@ including
 [malshare.io](https://malshare.io),
 [malware-repo](https://github.com/Tigzy/malware-repo),
 [Malware Repository Framework (MRF)](https://www.adlice.com/download/mrf/),
+[MalwareBazaar](https://bazaar.abuse.ch/),
 [olefy](https://github.com/HeinleinSupport/olefy),
 [PeekabooAV](https://github.com/scVENUS/PeekabooAV),
 [pcodedmp](https://github.com/bontchev/pcodedmp),
