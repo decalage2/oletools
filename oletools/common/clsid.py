@@ -102,6 +102,7 @@ KNOWN_CLSIDS = {
     '0E59F1D5-1FBE-11D0-8FF2-00A0D10038BC': 'MSScriptControl.ScriptControl (may trigger CVE-2015-0097)',
     '1461A561-24E8-4BA3-8D4A-FFEEF980556B': 'BCSAddin.Connect (potential exploit CVE-2016-0042 / MS16-014)',
     '14CE31DC-ABC2-484C-B061-CF3416AED8FF': 'Loads WUAEXT.DLL (Known Related to CVE-2015-6128)',
+    '18A06B6B-2F3F-4E2B-A611-52BE631B2D22': 'Word.DocumentMacroEnabled.12 (DOCM)',
     '1D8A9B47-3A28-4CE2-8A4B-BD34E45BCEEB': 'UPnP.DescriptionDocument',
     '1EFB6596-857C-11D1-B16A-00C0F0283628': 'MSCOMCTL.TabStrip (may trigger CVE-2012-1856, CVE-2013-3906 - often used for heap spray)',
     '233C1507-6A77-46A4-9443-F871F945D258': 'Shockwave Control Objects',
