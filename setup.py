@@ -321,7 +321,9 @@ def main():
             "olefile>=0.46",
             "easygui",
             'colorclass',
-            'msoffcrypto-tool',
+            # msoffcrypto-tool is not installable on PyPy+Windows (see issue #473),
+            # so we only require it if the platform is not Windows or not PyPy:
+            'msoffcrypto-tool; platform_python_implementation!="PyPy" or platform_system!="Windows"',
             'pcodedmp>=1.2.5',
         ],
     )
