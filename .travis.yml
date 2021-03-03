@@ -12,8 +12,9 @@ matrix:
     - python: pypy
     - python: pypy3
 
-install:
-  - pip install msoffcrypto-tool
+# msoffcrypto-tool causes issues on PyPy
+#install:
+#  - pip install msoffcrypto-tool
 
 script:
   - python setup.py test
