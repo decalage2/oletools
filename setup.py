@@ -323,7 +323,7 @@ def main():
             'colorclass',
             # msoffcrypto-tool is not installable on PyPy+Windows (see issue #473),
             # so we only require it if the platform is not Windows or not PyPy:
-            'msoffcrypto-tool; platform_python_implementation!="PyPy" or platform_system!="Windows"',
+            'msoffcrypto-tool; platform_python_implementation!="PyPy" or (python_version>="3" and platform_system!="Windows" and platform_system!="Darwin")',
             'pcodedmp>=1.2.5',
         ],
     )
