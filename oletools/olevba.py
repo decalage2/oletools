@@ -388,10 +388,11 @@ def unicode2str(unicode_string):
     :return: the string converted to str
     :rtype: str
     """
-    if PYTHON2:
-        return unicode_string.encode('utf8', errors='replace')
-    else:
-        return unicode_string
+    # Unicode conversion does nasty things to VBA extended ASCII
+    # characters. VBA payload decode routines work correctly with the
+    # raw byte values in payload strings in the decompressed VBA, so leave
+    # strings alone.
+    return unicode_string
 
 
 def bytes2str(bytes_string, encoding='utf8'):
@@ -2082,9 +2083,23 @@ class VBA_Project(object):
         :param errors: str, mode to handle unicode conversion errors
         :return: str/unicode, decoded string
         """
-        return bytes_string.decode(self.codec, errors=errors)
 
-
+        # Unicode conversion does nasty things to VBA extended ASCII
+        # characters. VBA payload decode routines work correctly with the
+        # raw byte values in payload strings in the decompressed VBA, so leave
+        # strings alone.
+        s = ""
+        in_str = False
+        for b in bytes_string:
+            # Track if we are in a string.
+            if (b == '"'):
+                in_str = not in_str
+            # Empirically looks like '\n' may be escaped in strings like this.
+            if ((b == "\n") and in_str):
+                s += chr(0x85)
+                continue
+            s += b
+        return s
 
 def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=True):
     """
@@ -4589,6 +4604,7 @@ def main(cmd_line_args=None):
     sys.exit(return_code)
 
 if __name__ == '__main__':
+    print("MODIFIED!!")
     main()
 
 # This was coded while listening to "Dust" from I Love You But I've Chosen Darkness
