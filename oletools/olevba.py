@@ -388,11 +388,10 @@ def unicode2str(unicode_string):
     :return: the string converted to str
     :rtype: str
     """
-    # Unicode conversion does nasty things to VBA extended ASCII
-    # characters. VBA payload decode routines work correctly with the
-    # raw byte values in payload strings in the decompressed VBA, so leave
-    # strings alone.
-    return unicode_string
+    if PYTHON2:
+        return unicode_string.encode('utf8', errors='replace')
+    else:
+        return unicode_string
 
 
 def bytes2str(bytes_string, encoding='utf8'):
@@ -1634,10 +1633,12 @@ class VBA_Module(object):
                 code_data = decompress_stream(bytearray(code_data))
                 # store the raw code encoded as bytes with the project's code page:
                 self.code_raw = code_data
-                # decode it to unicode:
-                self.code = project.decode_bytes(code_data)
-                # also store a native str version:
-                self.code_str = unicode2str(self.code)
+                # Unicode conversion does nasty things to VBA extended ASCII
+                # characters. VBA payload decode routines work correctly with the
+                # raw byte values in payload strings in the decompressed VBA, so leave
+                # strings alone.
+                self.code = project.fix_bytes(code_data)
+                self.code_str = self.code
                 # case-insensitive search in the code_modules dict to find the file extension:
                 filext = self.project.module_ext.get(self.name.lower(), 'vba')
                 self.filename = u'{0}.{1}'.format(self.name, filext)
@@ -2083,11 +2084,14 @@ class VBA_Project(object):
         :param errors: str, mode to handle unicode conversion errors
         :return: str/unicode, decoded string
         """
-
-        # Unicode conversion does nasty things to VBA extended ASCII
-        # characters. VBA payload decode routines work correctly with the
-        # raw byte values in payload strings in the decompressed VBA, so leave
-        # strings alone.
+        return bytes_string.decode(self.codec, errors=errors)
+    
+    def fix_bytes(self, bytes_string):
+        """
+        Change the escaping (value) of a few characters in decompressed VBA code.
+        :param bytes_string: bytes, bytes string to be fixed
+        :return: bytes, fixed string
+        """
         s = ""
         in_str = False
         for b in bytes_string:
