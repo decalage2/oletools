@@ -4608,7 +4608,6 @@ def main(cmd_line_args=None):
     sys.exit(return_code)
 
 if __name__ == '__main__':
-    print("MODIFIED!!")
     main()
 
 # This was coded while listening to "Dust" from I Love You But I've Chosen Darkness
