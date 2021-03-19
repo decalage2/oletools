@@ -2092,6 +2092,8 @@ class VBA_Project(object):
         :param bytes_string: bytes, bytes string to be fixed
         :return: bytes, fixed string
         """
+        if ('"' not in bytes_string):
+            return bytes_string
         s = ""
         in_str = False
         for b in bytes_string:
@@ -2103,6 +2105,7 @@ class VBA_Project(object):
                 s += chr(0x85)
                 continue
             s += b
+        s = s.replace("\n" + chr(0x85), "\n")
         return s
 
 def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=True):
