@@ -212,8 +212,8 @@ BLACKLISTED_RELATIONSHIP_TYPES = [
     'attachedTemplate',
     'externalLink',
     'externalLinkPath',
-    'externalReference'
-    'frame'
+    'externalReference',
+    'frame',
     'hyperlink',
     'officeDocument',
     'oleObject',
