@@ -14,7 +14,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE =================================================================
 
-# oleobj is copyright (c) 2015-2020 Philippe Lagadec (http://www.decalage.info)
+# oleobj is copyright (c) 2015-2021 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -88,7 +88,7 @@ from oletools.common.io_encoding import ensure_stdout_handles_unicode
 # 2018-10-30       SA: - added detection of external links (PR #317)
 # 2020-03-03 v0.56 PL: - fixed bug #541, "Ole10Native" is case-insensitive
 
-__version__ = '0.56'
+__version__ = '0.56.1'
 
 # -----------------------------------------------------------------------------
 # TODO:
