@@ -32,7 +32,7 @@ https://github.com/unixfreak0037/officeparser
 
 # === LICENSE ==================================================================
 
-# olevba is copyright (c) 2014-2020 Philippe Lagadec (http://www.decalage.info)
+# olevba is copyright (c) 2014-2021 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -234,7 +234,7 @@ from __future__ import print_function
 # 2020-09-28       PL: - added VBA_Parser.get_vba_code_all_modules (partial fix
 #                        for issue #619)
 
-__version__ = '0.56.1.dev2'
+__version__ = '0.56.1'
 
 #------------------------------------------------------------------------------
 # TODO:
