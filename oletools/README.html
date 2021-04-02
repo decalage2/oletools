@@ -23,6 +23,22 @@
 <p>Note: python-oletools is not related to OLETools published by BeCubed Software.</p>
 <h2 id="news">News</h2>
 <ul>
+<li><strong>2021-04-02 v0.56.1</strong>:
+<ul>
+<li>olevba:
+<ul>
+<li>fixed bug when parsing some malformed files (issue #629)</li>
+</ul></li>
+<li>oleobj:
+<ul>
+<li>fixed bug preventing detection of links 'externalReference', 'frame', 'hyperlink' (issue #641, PR #670)</li>
+</ul></li>
+<li>setup:
+<ul>
+<li>avoid installing msoffcrypto-tool when platform is PyPy+Windows (issue #473)</li>
+<li>PyPI version is now a wheel package to improve installation and avoid antivirus false positives due to test files (issues #215, #398)</li>
+</ul></li>
+</ul></li>
 <li><strong>2020-09-28 v0.56</strong>:
 <ul>
 <li>olevba/mraptor:
@@ -90,7 +106,7 @@
 <li><a href="https://github.com/decalage2/oletools/wiki/olemap">olemap</a>: to display a map of all the sectors in an OLE file.</li>
 </ul>
 <h2 id="projects-using-oletools">Projects using oletools:</h2>
-<p>oletools are used by a number of projects and online malware analysis services, including <a href="https://github.com/IntegralDefense/ACE">ACE</a>, <a href="https://sandbox.anlyz.io/">Anlyz.io</a>, <a href="https://www.cse-cst.gc.ca/en/assemblyline">AssemblyLine</a>, <a href="https://github.com/ctxis/CAPE">CAPE</a>, <a href="https://cincan.io">CinCan</a>, <a href="https://github.com/cuckoosandbox/cuckoo">Cuckoo Sandbox</a>, <a href="https://github.com/cryps1s/DARKSURGEON">DARKSURGEON</a>, <a href="https://sandbox.deepviz.com/">Deepviz</a>, <a href="https://diario.elevenpaths.com/">DIARIO</a>, <a href="https://dridex.malwareconfig.com">dridex.malwareconfig.com</a>, <a href="https://github.com/ninoseki/eml_analyzer">EML Analyzer</a>, <a href="https://certsocietegenerale.github.io/fame/">FAME</a>, <a href="https://github.com/fireeye/flare-vm">FLARE-VM</a>, <a href="https://www.hybrid-analysis.com/">Hybrid-analysis.com</a>, <a href="https://github.com/certego/IntelOwl">IntelOwl</a>, <a href="https://www.document-analyzer.net/">Joe Sandbox</a>, <a href="https://github.com/lmco/laikaboss">Laika BOSS</a>, <a href="https://github.com/sbidy/MacroMilter">MacroMilter</a>, <a href="https://mailcow.email/">mailcow</a>, <a href="https://malshare.io">malshare.io</a>, <a href="https://github.com/Tigzy/malware-repo">malware-repo</a>, <a href="https://www.adlice.com/download/mrf/">Malware Repository Framework (MRF)</a>, <a href="https://github.com/HeinleinSupport/olefy">olefy</a>, <a href="https://github.com/scVENUS/PeekabooAV">PeekabooAV</a>, <a href="https://github.com/bontchev/pcodedmp">pcodedmp</a>, <a href="https://github.com/CIRCL/PyCIRCLean">PyCIRCLean</a>, <a href="https://remnux.org/">REMnux</a>, <a href="https://github.com/countercept/snake">Snake</a>, <a href="https://app.sndbox.com">SNDBOX</a>, <a href="https://github.com/ldbo/SpuriousEmu">SpuriousEmu</a>, <a href="https://github.com/target/strelka">Strelka</a>, <a href="https://stoq.punchcyber.com/">stoQ</a>, <a href="https://github.com/TheHive-Project/Cortex-Analyzers">TheHive/Cortex</a>, <a href="https://tsurugi-linux.org/">TSUGURI Linux</a>, <a href="https://github.com/MalwareCantFly/Vba2Graph">Vba2Graph</a>, <a href="http://viper.li/">Viper</a>, <a href="https://github.com/decalage2/ViperMonkey">ViperMonkey</a>, <a href="https://yomi.yoroi.company">YOMI</a>, and probably <a href="https://www.virustotal.com">VirusTotal</a>. And quite a few <a href="https://github.com/search?q=oletools&amp;type=Repositories">other projects on GitHub</a>. (Please <a href="(http://decalage.info/contact)">contact me</a> if you have or know a project using oletools)</p>
+<p>oletools are used by a number of projects and online malware analysis services, including <a href="https://github.com/IntegralDefense/ACE">ACE</a>, <a href="https://sandbox.anlyz.io/">Anlyz.io</a>, <a href="https://www.cse-cst.gc.ca/en/assemblyline">AssemblyLine</a>, <a href="https://github.com/ctxis/CAPE">CAPE</a>, <a href="https://cincan.io">CinCan</a>, <a href="https://github.com/cuckoosandbox/cuckoo">Cuckoo Sandbox</a>, <a href="https://github.com/cryps1s/DARKSURGEON">DARKSURGEON</a>, <a href="https://sandbox.deepviz.com/">Deepviz</a>, <a href="https://diario.elevenpaths.com/">DIARIO</a>, <a href="https://dridex.malwareconfig.com">dridex.malwareconfig.com</a>, <a href="https://github.com/ninoseki/eml_analyzer">EML Analyzer</a>, <a href="https://certsocietegenerale.github.io/fame/">FAME</a>, <a href="https://github.com/fireeye/flare-vm">FLARE-VM</a>, <a href="https://www.hybrid-analysis.com/">Hybrid-analysis.com</a>, <a href="https://github.com/certego/IntelOwl">IntelOwl</a>, <a href="https://www.document-analyzer.net/">Joe Sandbox</a>, <a href="https://github.com/lmco/laikaboss">Laika BOSS</a>, <a href="https://github.com/sbidy/MacroMilter">MacroMilter</a>, <a href="https://mailcow.email/">mailcow</a>, <a href="https://malshare.io">malshare.io</a>, <a href="https://github.com/Tigzy/malware-repo">malware-repo</a>, <a href="https://www.adlice.com/download/mrf/">Malware Repository Framework (MRF)</a>, <a href="https://bazaar.abuse.ch/">MalwareBazaar</a>, <a href="https://github.com/HeinleinSupport/olefy">olefy</a>, <a href="https://github.com/scVENUS/PeekabooAV">PeekabooAV</a>, <a href="https://github.com/bontchev/pcodedmp">pcodedmp</a>, <a href="https://github.com/CIRCL/PyCIRCLean">PyCIRCLean</a>, <a href="https://remnux.org/">REMnux</a>, <a href="https://github.com/countercept/snake">Snake</a>, <a href="https://app.sndbox.com">SNDBOX</a>, <a href="https://github.com/ldbo/SpuriousEmu">SpuriousEmu</a>, <a href="https://github.com/target/strelka">Strelka</a>, <a href="https://stoq.punchcyber.com/">stoQ</a>, <a href="https://github.com/TheHive-Project/Cortex-Analyzers">TheHive/Cortex</a>, <a href="https://tsurugi-linux.org/">TSUGURI Linux</a>, <a href="https://github.com/MalwareCantFly/Vba2Graph">Vba2Graph</a>, <a href="http://viper.li/">Viper</a>, <a href="https://github.com/decalage2/ViperMonkey">ViperMonkey</a>, <a href="https://yomi.yoroi.company">YOMI</a>, and probably <a href="https://www.virustotal.com">VirusTotal</a>. And quite a few <a href="https://github.com/search?q=oletools&amp;type=Repositories">other projects on GitHub</a>. (Please <a href="(http://decalage.info/contact)">contact me</a> if you have or know a project using oletools)</p>
 <h2 id="download-and-install">Download and Install:</h2>
 <p>The recommended way to download and install/update the <strong>latest stable release</strong> of oletools is to use <a href="https://pip.pypa.io/en/stable/installing/">pip</a>:</p>
 <ul>
@@ -113,7 +129,7 @@
 <p>The code is available in <a href="https://github.com/decalage2/oletools">a GitHub repository</a>. You may use it to submit enhancements using forks and pull requests.</p>
 <h2 id="license">License</h2>
 <p>This license applies to the python-oletools package, apart from the thirdparty folder which contains third-party files published with their own license.</p>
-<p>The python-oletools package is copyright (c) 2012-2020 Philippe Lagadec (http://www.decalage.info)</p>
+<p>The python-oletools package is copyright (c) 2012-2021 Philippe Lagadec (http://www.decalage.info)</p>
 <p>All rights reserved.</p>
 <p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
 <ul>

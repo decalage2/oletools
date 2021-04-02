@@ -29,6 +29,25 @@ Software.
 News
 ----
 
+-  **2021-04-02 v0.56.1**:
+
+   -  olevba:
+
+      -  fixed bug when parsing some malformed files (issue #629)
+
+   -  oleobj:
+
+      -  fixed bug preventing detection of links 'externalReference',
+         'frame', 'hyperlink' (issue #641, PR #670)
+
+   -  setup:
+
+      -  avoid installing msoffcrypto-tool when platform is PyPy+Windows
+         (issue #473)
+      -  PyPI version is now a wheel package to improve installation and
+         avoid antivirus false positives due to test files (issues #215,
+         #398)
+
 -  **2020-09-28 v0.56**:
 
    -  olevba/mraptor:
@@ -156,6 +175,7 @@ BOSS <https://github.com/lmco/laikaboss>`__,
 `malshare.io <https://malshare.io>`__,
 `malware-repo <https://github.com/Tigzy/malware-repo>`__, `Malware
 Repository Framework (MRF) <https://www.adlice.com/download/mrf/>`__,
+`MalwareBazaar <https://bazaar.abuse.ch/>`__,
 `olefy <https://github.com/HeinleinSupport/olefy>`__,
 `PeekabooAV <https://github.com/scVENUS/PeekabooAV>`__,
 `pcodedmp <https://github.com/bontchev/pcodedmp>`__,
@@ -233,7 +253,7 @@ This license applies to the python-oletools package, apart from the
 thirdparty folder which contains third-party files published with their
 own license.
 
-The python-oletools package is copyright (c) 2012-2020 Philippe Lagadec
+The python-oletools package is copyright (c) 2012-2021 Philippe Lagadec
 (http://www.decalage.info)
 
 All rights reserved.
