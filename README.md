@@ -134,6 +134,7 @@ including
 [REMnux](https://remnux.org/),
 [Snake](https://github.com/countercept/snake),
 [SNDBOX](https://app.sndbox.com),
+[Splunk add-on for MS O365 Email](https://splunkbase.splunk.com/app/5365/),
 [SpuriousEmu](https://github.com/ldbo/SpuriousEmu),
 [Strelka](https://github.com/target/strelka),
 [stoQ](https://stoq.punchcyber.com/),
