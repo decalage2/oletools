@@ -233,8 +233,9 @@ from __future__ import print_function
 #                        unicode on Python 3 (issues  #455, #477, #587, #593)
 # 2020-09-28       PL: - added VBA_Parser.get_vba_code_all_modules (partial fix
 #                        for issue #619)
+# 2021-04-14       PL: - added detection of Workbook_BeforeClose (issue #518)
 
-__version__ = '0.56.1'
+__version__ = '0.56.2.dev1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -635,7 +636,7 @@ AUTOEXEC_KEYWORDS = {
         ('Auto_Open', 'Workbook_Open', 'Workbook_Activate', 'Auto_Ope'),
         # TODO: "Auto_Ope" is temporarily here because of a bug in plugin_biff, which misses the last byte in "Auto_Open"...
     'Runs when the Excel Workbook is closed':
-        ('Auto_Close', 'Workbook_Close'),
+        ('Auto_Close', 'Workbook_Close', 'Workbook_BeforeClose'),
         #Worksheet_Calculate to Autoexec: see http://www.certego.net/en/news/advanced-vba-macros/
     'May run when an Excel WorkSheet is opened':
         ('Worksheet_Calculate',),

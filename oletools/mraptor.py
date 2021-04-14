@@ -23,7 +23,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE ==================================================================
 
-# MacroRaptor is copyright (c) 2016-2020 Philippe Lagadec (http://www.decalage.info)
+# MacroRaptor is copyright (c) 2016-2021 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -61,8 +61,9 @@ http://www.decalage.info/python/oletools
 # 2019-04-04 v0.54 PL: - added ExecuteExcel4Macro, ShellExecuteA, XLM keywords
 # 2019-11-06 v0.55 PL: - added SetTimer
 # 2020-04-20 v0.56 PL: - added keywords RUN and CALL for XLM macros (issue #562)
+# 2021-04-14       PL: - added Workbook_BeforeClose (issue #518)
 
-__version__ = '0.56'
+__version__ = '0.56.2.dev1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -116,7 +117,7 @@ MSG_ISSUES = 'Please report this issue on %s' % URL_ISSUES
 # TODO: check if line also contains Sub or Function
 re_autoexec = re.compile(r'(?i)\b(?:Auto(?:Exec|_?Open|_?Close|Exit|New)' +
                          r'|Document(?:_?Open|_Close|_?BeforeClose|Change|_New)' +
-                         r'|NewDocument|Workbook(?:_Open|_Activate|_Close)' +
+                         r'|NewDocument|Workbook(?:_Open|_Activate|_Close|_BeforeClose)' +
                          r'|\w+_(?:Painted|Painting|GotFocus|LostFocus|MouseHover' +
                          r'|Layout|Click|Change|Resize|BeforeNavigate2|BeforeScriptExecute' +
                          r'|DocumentComplete|DownloadBegin|DownloadComplete|FileDownload' +
