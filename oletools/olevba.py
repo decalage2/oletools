@@ -1594,13 +1594,13 @@ class VBA_Module(object):
                 section_id = None
             if section_id != None:
                 log.warning('unknown or invalid module section id {0:04X}'.format(section_id))
-        
+
             log.debug("Module Name = {0}".format(self.name_str))
             # log.debug("Module Name Unicode = {0}".format(self._name_unicode))
             log.debug("Stream Name = {0}".format(self.streamname_str))
             # log.debug("Stream Name Unicode = {0}".format(self._streamname_unicode))
             log.debug("TextOffset = {0}".format(self.textoffset))
-        
+
             code_data = None
             # let's try the different names we have, just in case some are missing:
             try_names = (self.streamname, self._streamname_unicode, self.name, self._name_unicode)
@@ -1616,7 +1616,7 @@ class VBA_Module(object):
                     except IOError as ioe:
                         log.debug('failed to open stream VBA/%r (%r), try other name'
                                   % (stream_name, ioe))
-        
+
             if code_data is None:
                 log.info("Could not open stream %d of %d ('VBA/' + one of %r)!"
                          % (module_index, project.modules_count,
@@ -1626,7 +1626,7 @@ class VBA_Module(object):
                     return  # ... continue with next submodule
                 else:
                     raise SubstreamOpenError('[BASE]', 'VBA/' + self.name)
-        
+
             log.debug("length of code_data = {0}".format(len(code_data)))
             log.debug("offset of code_data = {0}".format(self.textoffset))
             code_data = code_data[self.textoffset:]
@@ -2856,7 +2856,7 @@ class VBA_Parser(object):
                         # https://ired.team/offensive-security/initial-access/phishing-with-ms-office/inject-macros-from-a-remote-dotm-template-docx-with-macros
                         subfile_that_can_contain_templates = "word/_rels/settings.xml.rels"
                         if subfile == subfile_that_can_contain_templates:
-                            regex_template = b"Type=\"http://schemas\.openxmlformats\.org/officeDocument/\d{4}/relationships/attachedTemplate\"\s+Target=\"(.+?)\""
+                            regex_template = b"Type=\"http://schemas\.openxmlformats\.org/officeDocument/\d{4}/relationships/attachedTemplate\"\s+Target=[\'\"](.+?)[\'\"]"
                             template_injection_found = re.search(regex_template, read_all_file)
                             if template_injection_found:
                                 injected_template_url = template_injection_found.group(1).decode()
