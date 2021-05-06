@@ -125,8 +125,9 @@ def sid_display(sid):
         return sid
 
 def clsid_display(clsid):
-    if clsid in KNOWN_CLSIDS:
-        clsid += '\n%s' % KNOWN_CLSIDS[clsid]
+    clsid_upper = clsid.upper()
+    if clsid_upper in KNOWN_CLSIDS:
+        clsid += '\n%s' % KNOWN_CLSIDS[clsid_upper]
     color = 'yellow'
     if 'CVE' in clsid:
         color = 'red'

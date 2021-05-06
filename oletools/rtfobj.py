@@ -710,7 +710,7 @@ class RtfObjParser(RtfParser):
                     if olefile.isOleFile(obj.data):
                         ole = olefile.OleFileIO(obj.data)
                         rtfobj.clsid = ole.root.clsid
-                        rtfobj.clsid_desc = clsid.KNOWN_CLSIDS.get(rtfobj.clsid,
+                        rtfobj.clsid_desc = clsid.KNOWN_CLSIDS.get(rtfobj.clsid.upper(),
                             'unknown CLSID (please report at https://github.com/decalage2/oletools/issues)')
             except:
                 pass
