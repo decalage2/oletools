@@ -92,7 +92,6 @@ packages=[
     "oletools.common.log_helper",
     'oletools.thirdparty',
     'oletools.thirdparty.xxxswf',
-    'oletools.thirdparty.prettytable',
     'oletools.thirdparty.xglob',
     'oletools.thirdparty.tablestream',
     'oletools.thirdparty.oledump',
@@ -176,9 +175,6 @@ package_data={
         ],
     'oletools.thirdparty.xxxswf': [
         'LICENSE.txt',
-        ],
-    'oletools.thirdparty.prettytable': [
-        'CHANGELOG', 'COPYING', 'README'
         ],
     'oletools.thirdparty.DridexUrlDecoder': [
         'LICENSE.txt',
