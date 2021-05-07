@@ -62,7 +62,7 @@ __version__ = '0.54'
 
 #=== IMPORTS =================================================================
 
-import sys, os, optparse
+import sys, os, optparse, json, datetime
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
@@ -87,44 +87,87 @@ from oletools.common.io_encoding import ensure_stdout_handles_unicode
 def process_ole(ole):
     # parse and display metadata:
     meta = ole.get_metadata()
+    return meta
+
+def clean_output(value):
+    if isinstance(value, bytes):
+        try:
+            value = value.decode('utf-8')
+        except UnicodeDecodeError:
+            value = value.decode('latin-1')
+        return value
+    elif isinstance(value, datetime.datetime):
+        return value.isoformat()
+    else:
+        return value
+
+def process_output(meta, output):
 
     # console output with UTF8 encoding:
     ensure_stdout_handles_unicode()
 
     # TODO: move similar code to a function
+    if output == 'table':
+        print('Properties from the SummaryInformation stream:')
+        t = tablestream.TableStream([21, 30], header_row=['Property', 'Value'])
+        for prop in meta.SUMMARY_ATTRIBS:
+            value = getattr(meta, prop)
+            if value is not None:
+                # TODO: pretty printing for strings, dates, numbers
+                # TODO: better unicode handling
+                # print('- %s: %s' % (prop, value))
+                # if isinstance(value, unicode):
+                #     # encode to UTF8, avoiding errors
+                #     value = value.encode('utf-8', errors='replace')
+                # else:
+                #     value = str(value)
+                t.write_row([prop, value], colors=[None, 'yellow'])
+        t.close()
+        print('')
 
-    print('Properties from the SummaryInformation stream:')
-    t = tablestream.TableStream([21, 30], header_row=['Property', 'Value'])
-    for prop in meta.SUMMARY_ATTRIBS:
-        value = getattr(meta, prop)
-        if value is not None:
-            # TODO: pretty printing for strings, dates, numbers
-            # TODO: better unicode handling
-            # print('- %s: %s' % (prop, value))
-            # if isinstance(value, unicode):
-            #     # encode to UTF8, avoiding errors
-            #     value = value.encode('utf-8', errors='replace')
-            # else:
-            #     value = str(value)
-            t.write_row([prop, value], colors=[None, 'yellow'])
-    t.close()
-    print('')
+        print('Properties from the DocumentSummaryInformation stream:')
+        t = tablestream.TableStream([21, 30], header_row=['Property', 'Value'])
+        for prop in meta.DOCSUM_ATTRIBS:
+            value = getattr(meta, prop)
+            if value is not None:
+                # TODO: pretty printing for strings, dates, numbers
+                # TODO: better unicode handling
+                # print('- %s: %s' % (prop, value))
+                # if isinstance(value, unicode):
+                #     # encode to UTF8, avoiding errors
+                #     value = value.encode('utf-8', errors='replace')
+                # else:
+                #     value = str(value)
+                t.write_row([prop, value], colors=[None, 'yellow'])
+        t.close()
+    else:
+        # initalize a dictionary with keys for each type of attribute
+        # update props/values like the table would
+        output_dict = {"SUMMARY_ATTRIBS": {}, "DOCSUM_ATTRIBS": {}}
+        for prop in meta.SUMMARY_ATTRIBS:
+            value = getattr(meta, prop)
+            if value:
+                value = clean_output(value)
+                output_dict['SUMMARY_ATTRIBS'][prop] = value
+            else:
+                # pass for now, when logging is enabled log as warning 
+                # logger.warning("Unable to log {}: {}".format(prop, value))
+                pass
+        for prop in meta.DOCSUM_ATTRIBS:
+            value = getattr(meta, prop)
+            if value:
+                value = clean_output(value)
+                output_dict['DOCSUM_ATTRIBS'][prop] = value
+            else:
+                # pass for now, when logging is enabled log as warning 
+                # logger.warning("Unable to log {}: {}".format(prop, value))
+                pass
 
-    print('Properties from the DocumentSummaryInformation stream:')
-    t = tablestream.TableStream([21, 30], header_row=['Property', 'Value'])
-    for prop in meta.DOCSUM_ATTRIBS:
-        value = getattr(meta, prop)
-        if value is not None:
-            # TODO: pretty printing for strings, dates, numbers
-            # TODO: better unicode handling
-            # print('- %s: %s' % (prop, value))
-            # if isinstance(value, unicode):
-            #     # encode to UTF8, avoiding errors
-            #     value = value.encode('utf-8', errors='replace')
-            # else:
-            #     value = str(value)
-            t.write_row([prop, value], colors=[None, 'yellow'])
-    t.close()
+        return output_dict
+
+
+
+
 
 
 # === MAIN ===================================================================
@@ -143,12 +186,18 @@ def main():
                       help='if the file is a zip archive, open all files from it, using the provided password (requires Python 2.6+)')
     parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
                       help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
+    parser.add_option("-o", "--output", dest='output', type='str', default="table",
+                      help="output in 'table' or 'json' format. Table output is the default and appropriate for interactive use, while json \
+                      output is suited to automation")
 
     # TODO: add logfile option
     # parser.add_option('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
     #                         help="logging level debug/info/warning/error/critical (default=%default)")
 
     (options, args) = parser.parse_args()
+
+    if options.output not in ('json', 'table'):
+        parser.error("Allowed options are 'json' or 'table'")
 
     # Print help if no arguments are passed
     if len(args) == 0:
@@ -171,7 +220,9 @@ def main():
         else:
             # normal filename
             ole = olefile.OleFileIO(filename)
-        process_ole(ole)
+        # multiple outputs need to flow differently, 
+        meta = process_ole(ole)
+        process_output(meta, options.output)
         ole.close()
 
 if __name__ == '__main__':
