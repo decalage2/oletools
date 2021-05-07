@@ -17,7 +17,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# rtfobj is copyright (c) 2012-2019, Philippe Lagadec (http://www.decalage.info)
+# rtfobj is copyright (c) 2012-2021, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -92,8 +92,10 @@ http://www.decalage.info/python/oletools
 #                      - added SCT to the list of executable file extensions PR #461
 # 2019-12-16 v0.55.2 PL: - \rtf is not a destination control word (issue #522)
 # 2019-12-17         PL: - fixed process_file to detect Equation class (issue #525)
+# 2021-05-06 v0.56.2 DD: - fixed bug when OLE package class name ends with null
+#                          characters (issue #507, PR #648)
 
-__version__ = '0.55.2'
+__version__ = '0.56.2.dev3'
 
 # ------------------------------------------------------------------------------
 # TODO:
