@@ -71,6 +71,7 @@ from oletools.ppt_record_parser import (is_ppt, PptFile,
                                         PptRecordExOleVbaActiveXAtom)
 from oletools.ooxml import XmlParser
 from oletools.common.io_encoding import ensure_stdout_handles_unicode
+from oletools import crypto
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:
@@ -160,13 +161,21 @@ def get_logger(name, level=logging.CRITICAL+1):
 log = get_logger('oleobj')     # pylint: disable=invalid-name
 
 
-def enable_logging():
+def enable_logging(olefile_logging=False):
     """
     Enable logging for this module (disabled by default).
+
     This will set the module-specific logger level to NOTSET, which
     means the main application controls the actual logging level.
+
+    Also enables logging in crypto and optionally in olefile with param
+    `olefile_logging`.
     """
     log.setLevel(logging.NOTSET)
+    crypto.enable_logging()
+    # todo: enable logging in ooxml and ppt_record_parser as well
+    if olefile_logging:
+        olefile.enable_logging()
 
 
 # === CONSTANTS ===============================================================
@@ -490,72 +499,6 @@ class OleObject(object):
             self.extra_data = data[index+self.data_size:]
 
 
-def sanitize_filename(filename, replacement='_', max_length=200):
-    """compute basename of filename. Replaces all non-whitelisted characters.
-       The returned filename is always a ascii basename of the file."""
-    basepath = os.path.basename(filename).strip()
-    sane_fname = re.sub(u'[^a-zA-Z0-9.\\-_ ]', replacement, basepath)
-    sane_fname = str(sane_fname)    # py3: does nothing;   py2: unicode --> str
-
-    while ".." in sane_fname:
-        sane_fname = sane_fname.replace('..', '.')
-
-    while "  " in sane_fname:
-        sane_fname = sane_fname.replace('  ', ' ')
-
-    if not filename:
-        sane_fname = 'NONAME'
-
-    # limit filename length
-    if max_length:
-        sane_fname = sane_fname[:max_length]
-
-    return sane_fname
-
-
-def find_ole_in_ppt(filename):
-    """ find ole streams in ppt
-
-    This may be a bit confusing: we get an ole file (or its name) as input and
-    as output we produce possibly several ole files. This is because the
-    data structure can be pretty nested:
-    A ppt file has many streams that consist of records. Some of these records
-    can contain data which contains data for another complete ole file (which
-    we yield). This embedded ole file can have several streams, one of which
-    can contain the actual embedded file we are looking for (caller will check
-    for these).
-    """
-    ppt_file = None
-    try:
-        ppt_file = PptFile(filename)
-        for stream in ppt_file.iter_streams():
-            for record_idx, record in enumerate(stream.iter_records()):
-                if isinstance(record, PptRecordExOleVbaActiveXAtom):
-                    ole = None
-                    try:
-                        data_start = next(record.iter_uncompressed())
-                        if data_start[:len(olefile.MAGIC)] != olefile.MAGIC:
-                            continue   # could be ActiveX control / VBA Storage
-
-                        # otherwise, this should be an OLE object
-                        log.debug('Found record with embedded ole object in '
-                                  'ppt (stream "{0}", record no {1})'
-                                  .format(stream.name, record_idx))
-                        ole = record.get_data_as_olefile()
-                        yield ole
-                    except IOError:
-                        log.warning('Error reading data from {0} stream or '
-                                    'interpreting it as OLE object'
-                                    .format(stream.name))
-                        log.debug('', exc_info=True)
-                    finally:
-                        if ole is not None:
-                            ole.close()
-    finally:
-        if ppt_file is not None:
-            ppt_file.close()
-
-
 class FakeFile(io.RawIOBase):
     """ create file-like object from data without copying it
 
@@ -622,6 +565,75 @@ class FakeFile(io.RawIOBase):
     def tell(self):
         """ tell where in file we are positioned """
         return self.pos
+
+
+# === FUNCTIONS ===============================================================
+
+
+def sanitize_filename(filename, replacement='_', max_length=200):
+    """compute basename of filename. Replaces all non-whitelisted characters.
+       The returned filename is always a ascii basename of the file."""
+    basepath = os.path.basename(filename).strip()
+    sane_fname = re.sub(u'[^a-zA-Z0-9.\\-_ ]', replacement, basepath)
+    sane_fname = str(sane_fname)    # py3: does nothing;   py2: unicode --> str
+
+    while ".." in sane_fname:
+        sane_fname = sane_fname.replace('..', '.')
+
+    while "  " in sane_fname:
+        sane_fname = sane_fname.replace('  ', ' ')
+
+    if not filename:
+        sane_fname = 'NONAME'
+
+    # limit filename length
+    if max_length:
+        sane_fname = sane_fname[:max_length]
+
+    return sane_fname
+
+
+def find_ole_in_ppt(filename):
+    """ find ole streams in ppt
+
+    This may be a bit confusing: we get an ole file (or its name) as input and
+    as output we produce possibly several ole files. This is because the
+    data structure can be pretty nested:
+    A ppt file has many streams that consist of records. Some of these records
+    can contain data which contains data for another complete ole file (which
+    we yield). This embedded ole file can have several streams, one of which
+    can contain the actual embedded file we are looking for (caller will check
+    for these).
+    """
+    ppt_file = None
+    try:
+        ppt_file = PptFile(filename)
+        for stream in ppt_file.iter_streams():
+            for record_idx, record in enumerate(stream.iter_records()):
+                if isinstance(record, PptRecordExOleVbaActiveXAtom):
+                    ole = None
+                    try:
+                        data_start = next(record.iter_uncompressed())
+                        if data_start[:len(olefile.MAGIC)] != olefile.MAGIC:
+                            continue   # could be ActiveX control / VBA Storage
+
+                        # otherwise, this should be an OLE object
+                        log.debug('Found record with embedded ole object in '
+                                  'ppt (stream "{0}", record no {1})'
+                                  .format(stream.name, record_idx))
+                        ole = record.get_data_as_olefile()
+                        yield ole
+                    except IOError:
+                        log.warning('Error reading data from {0} stream or '
+                                    'interpreting it as OLE object'
+                                    .format(stream.name))
+                        log.debug('', exc_info=True)
+                    finally:
+                        if ole is not None:
+                            ole.close()
+    finally:
+        if ppt_file is not None:
+            ppt_file.close()
 
 
 def find_ole(filename, data, xml_parser=None):
@@ -721,31 +733,25 @@ def find_external_relationships(xml_parser):
             pass
 
 
-def process_file(filename, data, output_dir=None):
+def process_file(filename, data, output_dir):
     """ find embedded objects in given file
 
     if data is given (from xglob for encrypted zip files), then filename is
     not used for reading. If not (usual case), then data is read from filename
     on demand.
 
-    If output_dir is given and does not exist, it is created. If it is not
-    given, data is saved to same directory as the input file.
+    If an error occurs, it is caught locally so analysis on the file can
+    proceed. Return values incidate whether there was any error.
+
+    `output_dir` is created on demand.
+
+    :returns: err_stream, err_dumping, did_dump (all three booleans)
     """
-    if output_dir:
-        if not os.path.isdir(output_dir):
-            log.info('creating output directory %s', output_dir)
-            os.mkdir(output_dir)
-
-        fname_prefix = os.path.join(output_dir,
-                                    sanitize_filename(filename))
-    else:
-        base_dir = os.path.dirname(filename)
-        sane_fname = sanitize_filename(filename)
-        fname_prefix = os.path.join(base_dir, sane_fname)
-
     # TODO: option to extract objects to files (false by default)
     print('-'*79)
     print('File: %r' % filename)
+
+    fname_prefix = os.path.join(output_dir, sanitize_filename(filename))
     index = 1
 
     # do not throw errors but remember them and try continue with other streams
@@ -802,6 +808,11 @@ def process_file(filename, data, output_dir=None):
                 else:
                     fname = '%s_object_%03d.noname' % (fname_prefix, index)
 
+                # create output dir
+                if not os.path.isdir(output_dir):
+                    log.info('creating output directory %s', output_dir)
+                    os.mkdir(output_dir)
+
                 # dump
                 try:
                     print('saving to file %s' % fname)
@@ -830,6 +841,67 @@ def process_file(filename, data, output_dir=None):
     return err_stream, err_dumping, did_dump
 
 
+def process_crypto_wrapper(filename, data, output_dir, passwords=None,
+                           crypto_nesting=0):
+    """
+    Wrapper around `process_file`, that also tries to decrypt file.
+
+    Args `filename`, `data` and `output_dir` same as for
+    :py:func:`process_file`. Arg `passwords` is forwarded to
+    :py:func:`crypt.decrypt_file`, param `crypto_nesting` prevents too deep
+    recursions into decrypted files.
+
+    Returns `(err_stream, err_dumping, did_dump)` just like `process_file`.
+
+    Failure to decrypt an encrypted file is treated like a `err_stream`.
+    Successfull decryption like `did_dump`, decrypted file is named and treated
+    like other dumps from :py:func:`process_file`.
+    """
+    err_stream = False
+    err_dumping = False
+    did_dump = False
+    try:
+        err_stream, err_dumping, did_dump = \
+            process_file(filename, data, output_dir)
+        log.debug('Checking for encryption')
+        if not crypto.is_encrypted(filename):
+            log.debug('No encryption found')
+            return err_stream, err_dumping, did_dump
+    except Exception:
+        log.debug('Checking for encryption (after exception)')
+        if not crypto.is_encrypted(filename):
+            raise
+    # we reach this point only if file is encrypted
+    # check if this is an encrypted file in an encrypted file in an ...
+    if crypto_nesting >= crypto.MAX_NESTING_DEPTH:
+        raise crypto.MaxCryptoNestingReached(crypto_nesting, filename)
+
+    # decrypt
+    if not os.path.isdir(output_dir):
+        log.info('creating output directory %s', output_dir)
+        os.mkdir(output_dir)
+    prefix = '{}_decrypt-{}'.format(sanitize_filename(filename),
+                                   crypto_nesting or '')   # (avoid the '0')
+    log.debug('Checking encryption passwords {}'.format(passwords))
+    decrypted_file = crypto.decrypt(filename, passwords,
+                                    dir=output_dir, prefix=prefix)
+    if decrypted_file is None:
+        log.error('Decrypt failed, run with debug output to get details')
+        err_stream = True
+        return err_stream, err_dumping, did_dump
+
+    # might still be encrypted, so call this again recursively
+    log.info('Working on decrypted file')
+    new_err_stream, new_err_dumping, new_did_dump = \
+        process_crypto_wrapper(decrypted_file, data, output_dir, passwords,
+                               crypto_nesting+1)
+    err_stream |= new_err_stream
+    err_dumping |= new_err_dumping
+    did_dump = True        # we treat the decrypted result like we did dump
+
+    return err_stream, err_dumping, did_dump
+
+
 # === MAIN ====================================================================
 
 
@@ -840,20 +912,8 @@ def existing_file(filename):
     return filename
 
 
-def main(cmd_line_args=None):
-    """ main function, called when running this as script
-
-    Per default (cmd_line_args=None) uses sys.argv. For testing, however, can
-    provide other arguments.
-    """
-    # print banner with version
-    ensure_stdout_handles_unicode()
-    print('oleobj %s - http://decalage.info/oletools' % __version__)
-    print('THIS IS WORK IN PROGRESS - Check updates regularly!')
-    print('Please report any issue at '
-          'https://github.com/decalage2/oletools/issues')
-    print('')
-
+def parse_args(cmd_line_args=None):
+    """Parse command line arguments."""
     usage = 'usage: %(prog)s [options] <filename> [filename2 ...]'
     parser = argparse.ArgumentParser(usage=usage)
     # parser.add_argument('-o', '--outfile', dest='outfile',
@@ -878,6 +938,8 @@ def main(cmd_line_args=None):
                         default=DEFAULT_LOG_LEVEL,
                         help='logging level debug/info/warning/error/critical '
                              '(default=%(default)s)')
+    parser.add_argument('-p', '--passwords', type=str, nargs='*',
+                        help='Passwords to try when encryption is found.')
     parser.add_argument('input', nargs='*', type=existing_file, metavar='FILE',
                         help='Office files to parse (same as -i)')
 
@@ -895,10 +957,31 @@ def main(cmd_line_args=None):
     if options.verbose:
         options.loglevel = 'debug'
 
-    # Print help if no arguments are passed
+    # Print help and return fail status if no input files were given
     if not options.input:
         parser.print_help()
-        return RETURN_ERR_ARGS
+        sys.exit(RETURN_ERR_ARGS)
+
+    return options
+
+
+def main(cmd_line_args=None):
+    """
+    Main function, called when running this as script
+
+    Per default (cmd_line_args=None) uses sys.argv. For testing, however, can
+    provide other arguments.
+    """
+    # print banner with version
+    ensure_stdout_handles_unicode()
+    print('oleobj %s - http://decalage.info/oletools' % __version__)
+    print('THIS IS WORK IN PROGRESS - Check updates regularly!')
+    print('Please report any issue at '
+          'https://github.com/decalage2/oletools/issues')
+    print('')
+
+    # parse command line arguments
+    options = parse_args(cmd_line_args)
 
     # Setup logging to the console:
     # here we use stdout instead of stderr by default, so that the output
@@ -906,9 +989,7 @@ def main(cmd_line_args=None):
     logging.basicConfig(level=LOG_LEVELS[options.loglevel], stream=sys.stdout,
                         format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
-    log.setLevel(logging.NOTSET)
-    if options.loglevel == 'debug-olefile':
-        olefile.enable_logging()
+    enable_logging(options.loglevel == 'debug-olefile')
 
     # remember if there was a problem and continue with other data
     any_err_stream = False
@@ -922,8 +1003,14 @@ def main(cmd_line_args=None):
         # ignore directory names stored in zip files:
         if container and filename.endswith('/'):
             continue
+
+        if options.output_dir:
+            output_dir = options.output_dir
+        else:
+            output_dir = os.path.dirname(filename)
         err_stream, err_dumping, did_dump = \
-            process_file(filename, data, options.output_dir)
+            process_crypto_wrapper(filename, data, output_dir,
+                                   options.passwords)
         any_err_stream |= err_stream
         any_err_dumping |= err_dumping
         any_did_dump |= did_dump

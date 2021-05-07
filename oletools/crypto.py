@@ -200,7 +200,7 @@ def is_encrypted(some_file):
     :type some_file: :py:class:`olefile.OleFileIO` or `str`
     :returns: True if (and only if) the file contains encrypted content
     """
-    log.debug('is_encrypted')
+    log.debug('In function is_encrypted')
 
     # ask msoffcrypto if possible
     if check_msoffcrypto():
@@ -342,7 +342,7 @@ def decrypt(filename, passwords=None, **temp_file_args):
                       None
     :type passwords: iterable or str or None
     :param temp_file_args: arguments for :py:func:`tempfile.mkstemp` e.g.,
-                           `dirname` or `prefix`. `suffix` will default to
+                           `dir` or `prefix`. `suffix` will default to
                            suffix of input `filename`, `prefix` defaults to
                            `oletools-decrypt-`; `text` will be ignored
     :returns: name of the decrypted temporary file (type str) or `None`
@@ -399,6 +399,7 @@ def decrypt(filename, passwords=None, **temp_file_args):
                 crypto_file.decrypt(write_handle)
 
                 # decryption was successfull; clean up and return
+                log.debug('Decrypt successfull')
                 write_handle.close()
                 write_handle = None
                 break
@@ -413,6 +414,6 @@ def decrypt(filename, passwords=None, **temp_file_args):
                 if decrypt_file and isfile(decrypt_file):
                     os.unlink(decrypt_file)
                 decrypt_file = None
-    # if we reach this, all passwords were tried without success
-    log.debug('All passwords failed')
+    if decrypt_file is None:
+        log.debug('All passwords failed')
     return decrypt_file
