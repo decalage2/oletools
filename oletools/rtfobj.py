@@ -697,7 +697,7 @@ class RtfObjParser(RtfParser):
                 rtfobj.oledata = obj.data
                 rtfobj.oledata_md5 = hashlib.md5(obj.data).hexdigest()         
                 rtfobj.is_ole = True
-                if obj.class_name.lower() == b'package':
+                if obj.class_name.lower().rstrip(b'\0') == b'package':
                     opkg = oleobj.OleNativeStream(bindata=obj.data,
                                                   package=True)
                     rtfobj.filename = opkg.filename
