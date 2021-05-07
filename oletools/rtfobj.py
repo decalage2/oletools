@@ -95,7 +95,7 @@ http://www.decalage.info/python/oletools
 # 2021-05-06 v0.56.2 DD: - fixed bug when OLE package class name ends with null
 #                          characters (issue #507, PR #648)
 
-__version__ = '0.56.2.dev3'
+__version__ = '0.56.2'
 
 # ------------------------------------------------------------------------------
 # TODO:

@@ -43,7 +43,7 @@ http://www.decalage.info/python/oletools
 # 2018-04-18       PL: - added known-bad CLSIDs from Cuckoo sandbox (issue #290)
 # 2018-05-08       PL: - added more CLSIDs (issues #299, #304), merged and sorted
 
-__version__ = '0.56'
+__version__ = '0.56.2'
 
 
 # REFERENCES:

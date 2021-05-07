@@ -63,7 +63,7 @@ http://www.decalage.info/python/oletools
 # 2020-04-20 v0.56 PL: - added keywords RUN and CALL for XLM macros (issue #562)
 # 2021-04-14       PL: - added Workbook_BeforeClose (issue #518)
 
-__version__ = '0.56.2.dev1'
+__version__ = '0.56.2'
 
 #------------------------------------------------------------------------------
 # TODO:

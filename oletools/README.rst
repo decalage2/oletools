@@ -29,6 +29,31 @@ Software.
 News
 ----
 
+-  **2021-05-07 v0.56.2**:
+
+   -  olevba:
+
+      -  updated plugin_biff to v0.0.22 to fix a bug (issues #647, #674)
+
+   -  olevba, mraptor:
+
+      -  added detection of Workbook_BeforeClose (issue #518)
+
+   -  rtfobj:
+
+      -  fixed bug when OLE package class name ends with null characters
+         (issue #507, PR #648)
+
+   -  oleid:
+
+      -  fixed bug in check_excel (issue #584, PR #585)
+
+   -  clsid:
+
+      -  added several CLSIDs related to MS Office click-to-run issue
+         CVE-2021-27058
+      -  added checks to ensure that all CLSIDs are uppercase (PR #678)
+
 -  **2021-04-02 v0.56.1**:
 
    -  olevba:
@@ -182,7 +207,8 @@ Repository Framework (MRF) <https://www.adlice.com/download/mrf/>`__,
 `PyCIRCLean <https://github.com/CIRCL/PyCIRCLean>`__,
 `REMnux <https://remnux.org/>`__,
 `Snake <https://github.com/countercept/snake>`__,
-`SNDBOX <https://app.sndbox.com>`__,
+`SNDBOX <https://app.sndbox.com>`__, `Splunk add-on for MS O365
+Email <https://splunkbase.splunk.com/app/5365/>`__,
 `SpuriousEmu <https://github.com/ldbo/SpuriousEmu>`__,
 `Strelka <https://github.com/target/strelka>`__,
 `stoQ <https://stoq.punchcyber.com/>`__,
