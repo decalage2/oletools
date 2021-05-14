@@ -156,8 +156,9 @@ class FTYPE(object):
     WORD6 = 'Word6'
     EXCEL97 = 'Excel97'
     EXCEL2007 = 'Excel2007'
+    EXCEL2007_MACRO = 'Excel2007_XLSM'
     EXCEL5 = 'Excel5'
-    # TODO: XLSM, XLSB, DOCM, PPTM, PPSX, PPSM, ...
+    # TODO: XLSB, DOCM, PPTM, PPSX, PPSM, ...
     RTF = 'RTF'
     HTML = 'HTML'
     PDF = 'PDF'
@@ -309,8 +310,6 @@ class FType_Generic_OLE(FType_Base):
             return False
 
 
-# TODO: use a dictionary to map CLSIDs to Ftypes, instead of this class
-
 class FType_OLE_CLSID_Base(FType_Generic_OLE):
     """
     Base class to recognize OLE files based on CLSID or stream names
@@ -320,6 +319,7 @@ class FType_OLE_CLSID_Base(FType_Generic_OLE):
 
     @classmethod
     def recognize(cls, ftg):
+        # TODO: refactor, this is not used anymore
         if ftg.root_clsid is not None:
             # First, attempt to identify the root storage CLSID:
             if ftg.root_clsid in cls.CLSIDS:
@@ -518,8 +518,19 @@ class FType_Excel2007_Workbook(FType_Generic_OpenXML):
     application = APP.MSEXCEL
     filetype = FTYPE.EXCEL2007
     name = 'MS Excel 2007+ Workbook'
-    longname = 'MS Excel 2007+ Workbook or Template'
+    longname = 'MS Excel 2007+ Workbook (.xlsx)'
     extensions = ['xlsx']
+    content_types = ('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',)
+    PUID = 'fmt/214'
+
+class FType_Excel2007_Workbook_MacroEnabled(FType_Generic_OpenXML):
+    application = APP.MSEXCEL
+    filetype = FTYPE.EXCEL2007_MACRO
+    name = 'MS Excel 2007+ Macro-Enabled Workbook'
+    longname = 'MS Excel 2007+ Macro-Enabled Workbook (.xlsm)'
+    extensions = ['xlsm']
+    content_types = ('application/vnd.ms-excel.sheet.macroEnabled.12',)
+    PUID = 'fmt/445'
 
 clsid_ftypes = {
     # mapping from CLSID of root storage to FType classes:
@@ -540,6 +551,7 @@ openxml_ftypes = {
     'application/vnd.ms-word.template.macroEnabledTemplate.main+xml': FType_Word2007_Template_Macro,
     # EXCEL
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml': FType_Excel2007_Workbook,
+    'application/vnd.ms-excel.sheet.macroEnabled.main+xml': FType_Excel2007_Workbook_MacroEnabled,
     'application/vnd.ms-excel.sheet.binary.macroEnabled.main': None,
 }
 
@@ -629,7 +641,8 @@ def process_file(container, filename, data):
     print('Description: %s' % ftg.ftype.longname)
     print('Application: %s' % ftg.ftype.application)
     print('Container  : %s' % ftg.container)
-    print('Root CLSID : %s - %s' % (ftg.root_clsid, ftg.root_clsid_name))
+    if ftg.root_clsid is not None:
+        print('Root CLSID : %s - %s' % (ftg.root_clsid, ftg.root_clsid_name))
     print('Content-type(s) : %s' % ','.join(ftg.ftype.content_types))
     print('PUID       : %s' % ftg.ftype.PUID)
     print()
