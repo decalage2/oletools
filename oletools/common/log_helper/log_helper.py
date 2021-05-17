@@ -3,10 +3,13 @@ log_helper.py
 
 General logging helpers
 
-.. codeauthor:: Intra2net AG <info@intra2net>
+.. codeauthor:: Intra2net AG <info@intra2net>, Philippe Lagadec
 """
 
 # === LICENSE =================================================================
+
+# oletools is copyright (c) 2012-2021, Philippe Lagadec (http://www.decalage.info)
+# All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -36,6 +39,7 @@ General logging helpers
 # 2018-02-06 v0.03 SA: - refactored code to deal with NullHandlers
 # 2018-02-07 v0.04 SA: - fixed control of handlers propagation
 # 2018-04-23 v0.05 SA: - refactored the whole logger to use an OOP approach
+# 2021-05-17 v0.60 PL: - added default values for enable_logging parameters
 
 # -----------------------------------------------------------------------------
 # TODO:
@@ -78,7 +82,7 @@ class LogHelper:
         """
         return self._get_or_create_logger(name, level, logging.NullHandler())
 
-    def enable_logging(self, use_json, level, log_format=DEFAULT_MESSAGE_FORMAT, stream=None):
+    def enable_logging(self, use_json=False, level='warning', log_format=DEFAULT_MESSAGE_FORMAT, stream=None):
         """
         This function initializes the root logger and enables logging.
         We set the level of the root logger to the one passed by calling logging.basicConfig.
