@@ -229,6 +229,17 @@ class TableStyleSlim(TableStyle):
     bottom_middle = u'+'
     bottom_right = u''
 
+class TableStyleSlimSep(TableStyleSlim):
+    """
+    Style for a TableStream: slim with separator between all rows
+    Example:
+    ------+---
+    Header|
+    ------+---
+          |
+    ------+---
+    """
+    sep = True
 
 
 class TableStream(object):
@@ -351,7 +362,8 @@ class TableStream(object):
     def write_header(self):
         if self.style.header_top:
             self.write_header_top()
-        self.write_row(self.header_row)
+        self.write_row(self.header_row, last=True)
+        # here we use last=True just to avoid an extra separator if style.sep=True
         if self.style.header_sep:
             self.write_header_sep()
 
@@ -369,9 +381,12 @@ class TableStream(object):
 
     def write_bottom(self):
         s = self.style
-        line = self.make_line(left=s.bottom_left, horiz=s.bottom_horiz,
-                              middle=s.bottom_middle, right=s.bottom_right)
-        self.write(line)
+        # TODO: usually for the caller it's difficult to determine when to use last=True,
+        # so the last row will have already a separator if sep=True
+        if not s.sep:
+            line = self.make_line(left=s.bottom_left, horiz=s.bottom_horiz,
+                                  middle=s.bottom_middle, right=s.bottom_right)
+            self.write(line)
 
     def close(self):
         self.write_bottom()
