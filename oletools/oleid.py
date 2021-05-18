@@ -60,7 +60,7 @@ from __future__ import print_function
 #                        improve encryption detection for ppt
 # 2021-05-07 v0.56.2 MN: - fixed bug in check_excel (issue #584, PR #585)
 
-__version__ = '0.56.2'
+__version__ = '0.60.dev1'
 
 
 #------------------------------------------------------------------------------
@@ -81,8 +81,7 @@ __version__ = '0.56.2'
 
 #=== IMPORTS =================================================================
 
-import argparse, sys, re, zlib, struct, os
-from os.path import dirname, abspath
+import argparse, sys, re, zlib, struct, os, io
 
 import olefile
 
@@ -98,10 +97,37 @@ _parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
 if _parent_dir not in sys.path:
     sys.path.insert(0, _parent_dir)
 
-from oletools.thirdparty.prettytable import prettytable
-from oletools import crypto
+from oletools.thirdparty.tablestream import tablestream
+from oletools import crypto, ftguess, olevba, mraptor
+from oletools.common.log_helper import log_helper
 
+# === LOGGING =================================================================
 
+log = log_helper.get_or_create_silent_logger('oleid')
+
+# === CONSTANTS ===============================================================
+
+class RISK(object):
+    """
+    Constants for risk levels
+    """
+    HIGH = 'HIGH'
+    MEDIUM = 'Medium'
+    LOW = 'low'
+    NONE = 'none'
+    INFO = 'info'
+    UNKNOWN = 'Unknown'
+    ERROR = 'Error'  # if a check triggered an unexpected error
+
+risk_color = {
+    RISK.HIGH: 'red',
+    RISK.MEDIUM: 'yellow',
+    RISK.LOW: 'white',
+    RISK.NONE: 'green',
+    RISK.INFO: 'cyan',
+    RISK.UNKNOWN: None,
+    RISK.ERROR: None
+}
 
 #=== FUNCTIONS ===============================================================
 
@@ -166,7 +192,7 @@ class Indicator(object):
     """
 
     def __init__(self, _id, value=None, _type=bool, name=None,
-                 description=None):
+                 description=None, risk=RISK.UNKNOWN, hide_if_false=True):
         self.id = _id
         self.value = value
         self.type = _type
@@ -174,17 +200,19 @@ class Indicator(object):
         if name == None:
             self.name = _id
         self.description = description
+        self.risk = risk
+        self.hide_if_false = hide_if_false
 
 
 class OleID(object):
     """
-    Summary of information about an OLE file
+    Summary of information about an OLE file (and a few other MS Office formats)
 
     Call :py:meth:`OleID.check` to gather all info on a given file or run one
     of the `check_` functions to just get a specific piece of info.
     """
 
-    def __init__(self, input_file):
+    def __init__(self, filename=None, data=None):
         """
         Create an OleID object
 
@@ -199,11 +227,17 @@ class OleID(object):
         If filename is given, only :py:meth:`OleID.check` opens the file. Other
         functions will return None
         """
-        if isinstance(input_file, olefile.OleFileIO):
-            self.ole = input_file
+        if filename is None and data is None:
+            raise ValueError('OleID requires either a file path or file data, or both')
+        if data is None:
+            with open(filename, 'rb') as f:
+                self.data = f.read()
+        self.data_bytesio = io.BytesIO(self.data)
+        if isinstance(filename, olefile.OleFileIO):
+            self.ole = filename
             self.filename = None
         else:
-            self.filename = input_file
+            self.filename = filename
             self.ole = None
         self.indicators = []
         self.suminfo_data = None
@@ -214,24 +248,37 @@ class OleID(object):
 
         :returns: list of all :py:class:`Indicator`s created
         """
+        self.ftg = ftguess.FileTypeGuesser(filepath=self.filename, data=self.data)
+        ftype = self.ftg.ftype
+        ft = Indicator('ftype', value=ftype.longname, _type=str, name='File format', risk=RISK.INFO)
+        self.indicators.append(ft)
+        ct = Indicator('container', value=ftype.container, _type=str, name='Container format', risk=RISK.INFO)
+        self.indicators.append(ct)
+
         # check if it is actually an OLE file:
-        oleformat = Indicator('ole_format', True, name='OLE format')
-        self.indicators.append(oleformat)
-        if self.ole:
-            oleformat.value = True
-        elif not olefile.isOleFile(self.filename):
-            oleformat.value = False
-            return self.indicators
-        else:
-            # parse file:
-            self.ole = olefile.OleFileIO(self.filename)
+        if self.ftg.container == ftguess.CONTAINER.OLE:
+            # reuse olefile already opened by ftguess
+            self.ole = self.ftg.olefile
+        # oleformat = Indicator('ole_format', True, name='OLE format')
+        # self.indicators.append(oleformat)
+        # if self.ole:
+        #     oleformat.value = True
+        # elif not olefile.isOleFile(self.filename):
+        #     oleformat.value = False
+        #     return self.indicators
+        # else:
+        #     # parse file:
+        #     self.ole = olefile.OleFileIO(self.filename)
+
         # checks:
+        # TODO: add try/except around each check
         self.check_properties()
         self.check_encrypted()
-        self.check_word()
-        self.check_excel()
-        self.check_powerpoint()
-        self.check_visio()
+        # self.check_word()
+        # self.check_excel()
+        # self.check_powerpoint()
+        # self.check_visio()
+        self.check_macros()
         self.check_object_pool()
         self.check_flash()
         self.ole.close()
@@ -244,6 +291,7 @@ class OleID(object):
         :returns: 2 :py:class:`Indicator`s (for presence of summary info and
                     application name) or None if file was not opened
         """
+        # TODO: use get_metadata
         suminfo = Indicator('has_suminfo', False,
                             name='Has SummaryInformation stream')
         self.indicators.append(suminfo)
@@ -280,11 +328,17 @@ class OleID(object):
                   opened
         """
         # we keep the pointer to the indicator, can be modified by other checks:
-        encrypted = Indicator('encrypted', False, name='Encrypted')
+        encrypted = Indicator('encrypted', False, name='Encrypted',
+                              risk=RISK.NONE,
+                              description='The file is not encrypted',
+                              hide_if_false=False)
         self.indicators.append(encrypted)
         if not self.ole:
             return None
-        encrypted.value = crypto.is_encrypted(self.ole)
+        if crypto.is_encrypted(self.ole):
+            encrypted.value = True
+            encrypted.risk = RISK.LOW
+            encrypted.description = 'The file is encrypted. It may be decrypted with msoffcrypto-tool'
         return encrypted
 
     def check_word(self):
@@ -302,7 +356,7 @@ class OleID(object):
             description='Contains a WordDocument stream, very likely to be a '
                         'Microsoft Word Document.')
         self.indicators.append(word)
-        macros = Indicator('vba_macros', False, name='VBA Macros')
+        macros = Indicator('vba_macros', False, name='VBA Macros', risk=RISK.MEDIUM)
         self.indicators.append(macros)
         if not self.ole:
             return None, None
@@ -400,6 +454,36 @@ class OleID(object):
             objpool.value = True
         return objpool
 
+    def check_macros(self):
+        """
+        Check whether this file contains macros (VBA and XLM/Excel 4).
+
+        :returns: :py:class:`Indicator`
+        """
+        vba_indicator = Indicator(_id='vba', value='No', _type=str, name='VBA Macros',
+                                  description='This file does not contain VBA macros.',
+                                  risk=RISK.NONE)
+        try:
+            vba_parser = olevba.VBA_Parser(filename=self.filename, data=self.data)
+            if vba_parser.detect_vba_macros():
+                vba_indicator.value = 'Yes'
+                vba_indicator.risk = RISK.MEDIUM
+                vba_indicator.description = 'This file contains VBA macros. No suspicious keyword was found. Use olevba and mraptor for more info.'
+                # check code with mraptor
+                vba_code = vba_parser.get_vba_code_all_modules()
+                m = mraptor.MacroRaptor(vba_code)
+                m.scan()
+                if m.suspicious:
+                    vba_indicator.value = 'Yes, suspicious'
+                    vba_indicator.risk = RISK.HIGH
+                    vba_indicator.description = 'This file contains VBA macros. Suspicious keywords were found. Use olevba and mraptor for more info.'
+        except Exception as e:
+            vba_indicator.risk = RISK.ERROR
+            vba_indicator.value = 'Error'
+            vba_indicator.description = 'Error while checking VBA macros: %s' % str(e)
+        self.indicators.append(vba_indicator)
+        return vba_indicator
+
     def check_flash(self):
         """
         Check whether this file contains flash objects
@@ -407,11 +491,13 @@ class OleID(object):
         :returns: :py:class:`Indicator` for count of flash objects or None if
                   file was not opened
         """
+        # TODO: add support for RTF and OpenXML formats
         flash = Indicator(
             'flash', 0, _type=int, name='Flash objects',
             description='Number of embedded Flash objects (SWF files) detected '
                         'in OLE streams. Not 100% accurate, there may be false '
-                        'positives.')
+                        'positives.',
+            risk=RISK.NONE)
         self.indicators.append(flash)
         if not self.ole:
             return None
@@ -421,6 +507,8 @@ class OleID(object):
             # just add to the count of Flash objects:
             flash.value += len(found)
             #print stream, found
+        if flash.value > 0:
+            flash.risk = RISK.MEDIUM
         return flash
 
 
@@ -449,6 +537,8 @@ def main():
         parser.print_help()
         return
 
+    log_helper.enable_logging()
+
     for filename in args.input:
         print('Filename:', filename)
         oleid = OleID(filename)
@@ -456,17 +546,16 @@ def main():
 
         #TODO: add description
         #TODO: highlight suspicious indicators
-        table = prettytable.PrettyTable(['Indicator', 'Value'])
-        table.align = 'l'
-        table.max_width = 39
-        table.border = False
-
+        table = tablestream.TableStream([20, 20, 10, 26],
+                                        header_row=['Indicator', 'Value', 'Risk', 'Description'],
+                                        style=tablestream.TableStyleSlimSep)
         for indicator in indicators:
-            #print '%s: %s' % (indicator.name, indicator.value)
-            table.add_row((indicator.name, indicator.value))
-
-        print(table)
-        print('')
+            if not (indicator.hide_if_false and not indicator.value):
+                #print '%s: %s' % (indicator.name, indicator.value)
+                color = risk_color.get(indicator.risk, None)
+                table.write_row((indicator.name, indicator.value, indicator.risk, indicator.description),
+                                colors=(color, color, color, None))
+        table.close()
 
 if __name__ == '__main__':
     main()
