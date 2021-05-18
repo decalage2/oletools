@@ -10,7 +10,7 @@ ppt_record_parser.py .
 
 # === LICENSE ==================================================================
 
-# record_base is copyright (c) 2014-2019 Philippe Lagadec (http://www.decalage.info)
+# record_base is copyright (c) 2014-2021 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@ from __future__ import print_function
 # 2019-01-30       PL: - fixed import to avoid mixing installed oletools
 #                        and dev version
 
-__version__ = '0.54'
+__version__ = '0.60.dev1'
 
 # -----------------------------------------------------------------------------
 # TODO:
@@ -74,7 +74,6 @@ PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
 if PARENT_DIR not in sys.path:
     sys.path.insert(0, PARENT_DIR)
 del PARENT_DIR
-from oletools import oleid
 
 
 ###############################################################################
