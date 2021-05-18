@@ -98,10 +98,10 @@ _parent_dir = os.path.normpath(os.path.join(_thismodule_dir, '..'))
 if _parent_dir not in sys.path:
     sys.path.insert(0, _parent_dir)
 
-from oletools.thirdparty.prettytable import prettytable
 from oletools import crypto
 
-
+import colorclass
+from oletools.thirdparty.tablestream import tablestream
 
 #=== FUNCTIONS ===============================================================
 
@@ -456,16 +456,12 @@ def main():
 
         #TODO: add description
         #TODO: highlight suspicious indicators
-        table = prettytable.PrettyTable(['Indicator', 'Value'])
-        table.align = 'l'
-        table.max_width = 39
-        table.border = False
-
+        table = tablestream.TableStream(column_width=[39, 39],
+            header_row=('Indicator', 'Value'),
+            style=tablestream.TableStyleSlim)
         for indicator in indicators:
-            #print '%s: %s' % (indicator.name, indicator.value)
-            table.add_row((indicator.name, indicator.value))
-
-        print(table)
+            table.write_row([indicator.name, indicator.value])
+        table.close()
         print('')
 
 if __name__ == '__main__':
