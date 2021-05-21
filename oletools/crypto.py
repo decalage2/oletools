@@ -314,7 +314,7 @@ def _is_encrypted_ole(ole):
 WRITE_PROTECT_ENCRYPTION_PASSWORD = 'VelvetSweatshop'
 
 #: list of common passwords to be tried by default, used by malware
-DEFAULT_PASSWORDS = [WRITE_PROTECT_ENCRYPTION_PASSWORD, '123', '1234', '12345', '123456', '4321']
+DEFAULT_PASSWORDS = [WRITE_PROTECT_ENCRYPTION_PASSWORD, '123', '1234', '12345', '123456', '4321', '555']
 
 
 def _check_msoffcrypto():
