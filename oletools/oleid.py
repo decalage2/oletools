@@ -100,6 +100,7 @@ if _parent_dir not in sys.path:
 from oletools.thirdparty.tablestream import tablestream
 from oletools import crypto, ftguess, olevba, mraptor
 from oletools.common.log_helper import log_helper
+from oletools.common.codepages import get_codepage_name
 
 # === LOGGING =================================================================
 
@@ -300,23 +301,25 @@ class OleID(object):
         :returns: 2 :py:class:`Indicator`s (for presence of summary info and
                     application name) or None if file was not opened
         """
-        # TODO: use get_metadata
-        suminfo = Indicator('has_suminfo', False,
-                            name='Has SummaryInformation stream')
-        self.indicators.append(suminfo)
-        appname = Indicator('appname', 'unknown', _type=str,
-                            name='Application name')
-        self.indicators.append(appname)
         if not self.ole:
-            return None, None
-        self.suminfo_data = {}
-        # check stream SummaryInformation (not present e.g. in encrypted ppt)
-        if self.ole.exists("\x05SummaryInformation"):
-            suminfo.value = True
-            self.suminfo_data = self.ole.getproperties("\x05SummaryInformation")
-            # check application name:
-            appname.value = self.suminfo_data.get(0x12, 'unknown')
-        return suminfo, appname
+            return None
+        meta = self.ole.get_metadata()
+        appname = Indicator('appname', meta.creating_application, _type=str,
+                            name='Application name', description='Application name declared in properties',
+                            risk=RISK.INFO)
+        self.indicators.append(appname)
+        codepage_name = None
+        if meta.codepage is not None:
+            codepage_name = '{}: {}'.format(meta.codepage, get_codepage_name(meta.codepage))
+        codepage = Indicator('codepage', codepage_name, _type=str,
+                      name='Properties code page', description='Code page used for properties',
+                      risk=RISK.INFO)
+        self.indicators.append(codepage)
+        author = Indicator('author', meta.author, _type=str,
+                      name='Author', description='Author declared in properties',
+                      risk=RISK.INFO)
+        self.indicators.append(author)
+        return appname, codepage, author
 
     def get_indicator(self, indicator_id):
         """Helper function: returns an indicator if present (or None)"""
@@ -471,7 +474,12 @@ class OleID(object):
         """
         vba_indicator = Indicator(_id='vba', value='No', _type=str, name='VBA Macros',
                                   description='This file does not contain VBA macros.',
-                                  risk=RISK.NONE)
+                                  risk=RISK.NONE, hide_if_false=False)
+        if self.ftg.filetype == ftguess.FTYPE.RTF:
+            # For RTF we don't call olevba otherwise it triggers an error
+            vba_indicator.description = 'RTF files cannot contain VBA macros'
+            self.indicators.append(vba_indicator)
+            return vba_indicator
         try:
             vba_parser = olevba.VBA_Parser(filename=self.filename, data=self.data)
             if vba_parser.detect_vba_macros():

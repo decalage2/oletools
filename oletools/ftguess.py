@@ -518,14 +518,14 @@ class FTYpe_Excel(FType_Base):
     name = 'MS Excel (generic)'
     longname = 'MS Excel Workbook or Template (generic)'
 
-class FType_Excel97(FTYpe_Excel):
+class FType_Excel97(FTYpe_Excel, FType_Generic_OLE):
     filetype = FTYPE.EXCEL97
     name = 'MS Excel 97 Workbook'
     longname = 'MS Excel 97-2003 Workbook or Template'
     CLSIDS = ('00020820-0000-0000-C000-000000000046',)
     extensions = ['xls', 'xlt', 'xla']
 
-class FType_Excel5(FTYpe_Excel):
+class FType_Excel5(FTYpe_Excel, FType_Generic_OLE):
     filetype = FTYPE.EXCEL5
     name = 'MS Excel 5.0/95 Workbook'
     longname = 'MS Excel 5.0/95 Workbook, Template or Add-in'
@@ -533,7 +533,7 @@ class FType_Excel5(FTYpe_Excel):
     extensions = ['xls', 'xlt', 'xla']
     # TODO: this CLSID is also used in Excel addins (.xla) saved by MS Excel 365
 
-class FTYpe_Excel2007(FTYpe_Excel):
+class FTYpe_Excel2007(FTYpe_Excel, FType_Generic_OpenXML):
     'Base class for all MS Excel 2007 file types'
     name = 'MS Excel 2007+ (generic)'
     longname = 'MS Excel 2007+ Workbook or Template (generic)'
