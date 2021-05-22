@@ -33,6 +33,7 @@ to install this package.
 # 2019-05-23 v0.55 PL: - added pcodedmp as dependency
 # 2019-09-24       PL: - removed oletools.thirdparty.DridexUrlDecoder
 # 2019-11-10       PL: - changed pyparsing from 2.2.0 to 2.1.0 for issue #481
+# 2021-05-22 v0.60 PL: - entry points: added ftguess, removed olevba3/mraptor3
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -52,7 +53,7 @@ import os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.56.2'
+version      = '0.60.dev2'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       = "Philippe Lagadec"
@@ -268,8 +269,9 @@ package_data={
 entry_points = {
     'console_scripts': [
         'ezhexviewer=oletools.ezhexviewer:main',
+        'ftguess=oletools.ftguess:main',
         'mraptor=oletools.mraptor:main',
-        'mraptor3=oletools.mraptor3:main',
+        'msodde=oletools.msodde:main',
         'olebrowse=oletools.olebrowse:main',
         'oledir=oletools.oledir:main',
         'oleid=oletools.oleid:main',
@@ -277,11 +279,9 @@ entry_points = {
         'olemeta=oletools.olemeta:main',
         'oletimes=oletools.oletimes:main',
         'olevba=oletools.olevba:main',
-        'olevba3=oletools.olevba3:main',
         'pyxswf=oletools.pyxswf:main',
         'rtfobj=oletools.rtfobj:main',
         'oleobj=oletools.oleobj:main',
-        'msodde=oletools.msodde:main',
         'olefile=olefile.olefile:main',
     ],
 }
