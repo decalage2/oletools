@@ -289,7 +289,8 @@ class OleID(object):
         self.check_macros()
         self.check_object_pool()
         self.check_flash()
-        self.ole.close()
+        if self.ole is not None:
+            self.ole.close()
         return self.indicators
 
     def check_properties(self):
