@@ -148,16 +148,23 @@ class FTYPE(object):
     Constants for file types
     """
     ZIP = 'Zip'
+    WORD = 'Word'
+    WORD6 = 'Word6'
     WORD97 = 'Word97'
     WORD2007 = 'Word2007'
-    WORD2007_TEMPLATE = 'Word2007T'
-    WORD2007_MACRO = 'Word2007M'
-    WORD2007_TEMPLATE_MACRO = 'Word2007TM'
-    WORD6 = 'Word6'
+    WORD2007_DOCX = 'Word2007_DOCX'
+    WORD2007_DOTX = 'Word2007_DOTX'
+    WORD2007_DOCM = 'Word2007_DOCM'
+    WORD2007_DOTM = 'Word2007_DOTM'
+    EXCEL = 'Excel'
+    EXCEL5 = 'Excel5'
     EXCEL97 = 'Excel97'
     EXCEL2007 = 'Excel2007'
-    EXCEL2007_MACRO = 'Excel2007_XLSM'
-    EXCEL5 = 'Excel5'
+    EXCEL2007_XLSX = 'Excel2007_XLSX'
+    EXCEL2007_XLSM = 'Excel2007_XLSM'
+    EXCEL2007_XLTX = 'Excel2007_XLTX'
+    EXCEL2007_XLTM = 'Excel2007_XLTM'
+    EXCEL2007_XLSB = 'Excel2007_XLSB'
     # TODO: XLSB, DOCM, PPTM, PPSX, PPSM, ...
     RTF = 'RTF'
     HTML = 'HTML'
@@ -444,6 +451,14 @@ class FType_Generic_OpenXML(FType_Base):
 
 # --- WORD Formats ---
 
+class FTYpe_Word(FType_Base):
+    'Base class for all MS Word file types'
+    application = APP.MSWORD
+    name = 'MS Word (generic)'
+    longname = 'MS Word Document or Template (generic)'
+
+# TODO: all word FTypes should inherit from FType_Word
+
 class FType_Word97(FType_OLE_CLSID_Base):
     application = APP.MSWORD
     filetype = FTYPE.WORD97
@@ -469,44 +484,48 @@ class FType_Word6(FType_OLE_CLSID_Base):
 
 class FType_Word2007(FType_Generic_OpenXML):
     application = APP.MSWORD
-    filetype = FTYPE.WORD2007
+    filetype = FTYPE.WORD2007_DOCX
     name = 'MS Word 2007+ Document'
     longname = 'MS Word 2007+ Document (.docx)'
     extensions = ['docx']
 
 class FType_Word2007_Macro(FType_Generic_OpenXML):
     application = APP.MSWORD
-    filetype = FTYPE.WORD2007_MACRO
+    filetype = FTYPE.WORD2007_DOCM
     name = 'MS Word 2007+ Macro-Enabled Document'
     longname = 'MS Word 2007+ Macro-Enabled Document (.docm)'
     extensions = ['docm']
 
 class FType_Word2007_Template(FType_Generic_OpenXML):
     application = APP.MSWORD
-    filetype = FTYPE.WORD2007_TEMPLATE
+    filetype = FTYPE.WORD2007_DOTX
     name = 'MS Word 2007+ Template'
     longname = 'MS Word 2007+ Template (.dotx)'
     extensions = ['dotx']
 
 class FType_Word2007_Template_Macro(FType_Generic_OpenXML):
     application = APP.MSWORD
-    filetype = FTYPE.WORD2007_TEMPLATE_MACRO
+    filetype = FTYPE.WORD2007_DOTM
     name = 'MS Word 2007+ Macro-Enabled Template'
     longname = 'MS Word 2007+ Macro-Enabled Template (.dotm)'
     extensions = ['dotm']
 
 # --- EXCEL Formats ---
 
-class FType_Excel97(FType_OLE_CLSID_Base):
+class FTYpe_Excel(FType_Base):
+    'Base class for all MS Excel file types'
     application = APP.MSEXCEL
+    name = 'MS Excel (generic)'
+    longname = 'MS Excel Workbook or Template (generic)'
+
+class FType_Excel97(FTYpe_Excel):
     filetype = FTYPE.EXCEL97
     name = 'MS Excel 97 Workbook'
     longname = 'MS Excel 97-2003 Workbook or Template'
     CLSIDS = ('00020820-0000-0000-C000-000000000046',)
     extensions = ['xls', 'xlt', 'xla']
 
-class FType_Excel5(FType_OLE_CLSID_Base):
-    application = APP.MSEXCEL
+class FType_Excel5(FTYpe_Excel):
     filetype = FTYPE.EXCEL5
     name = 'MS Excel 5.0/95 Workbook'
     longname = 'MS Excel 5.0/95 Workbook, Template or Add-in'
@@ -514,18 +533,21 @@ class FType_Excel5(FType_OLE_CLSID_Base):
     extensions = ['xls', 'xlt', 'xla']
     # TODO: this CLSID is also used in Excel addins (.xla) saved by MS Excel 365
 
-class FType_Excel2007_Workbook(FType_Generic_OpenXML):
-    application = APP.MSEXCEL
-    filetype = FTYPE.EXCEL2007
+class FTYpe_Excel2007(FTYpe_Excel):
+    'Base class for all MS Excel 2007 file types'
+    name = 'MS Excel 2007+ (generic)'
+    longname = 'MS Excel 2007+ Workbook or Template (generic)'
+
+class FType_Excel2007_XLSX (FTYpe_Excel2007):
+    filetype = FTYPE.EXCEL2007_XLSX
     name = 'MS Excel 2007+ Workbook'
     longname = 'MS Excel 2007+ Workbook (.xlsx)'
     extensions = ['xlsx']
     content_types = ('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',)
     PUID = 'fmt/214'
 
-class FType_Excel2007_Workbook_MacroEnabled(FType_Generic_OpenXML):
-    application = APP.MSEXCEL
-    filetype = FTYPE.EXCEL2007_MACRO
+class FType_Excel2007_XLSM (FTYpe_Excel2007):
+    filetype = FTYPE.EXCEL2007_XLSM
     name = 'MS Excel 2007+ Macro-Enabled Workbook'
     longname = 'MS Excel 2007+ Macro-Enabled Workbook (.xlsm)'
     extensions = ['xlsm']
@@ -550,8 +572,8 @@ openxml_ftypes = {
     'application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml': FType_Word2007_Template,
     'application/vnd.ms-word.template.macroEnabledTemplate.main+xml': FType_Word2007_Template_Macro,
     # EXCEL
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml': FType_Excel2007_Workbook,
-    'application/vnd.ms-excel.sheet.macroEnabled.main+xml': FType_Excel2007_Workbook_MacroEnabled,
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml': FType_Excel2007_XLSX,
+    'application/vnd.ms-excel.sheet.macroEnabled.main+xml': FType_Excel2007_XLSM,
     'application/vnd.ms-excel.sheet.binary.macroEnabled.main': None,
 }
 
@@ -627,6 +649,20 @@ class FileTypeGuesser(object):
         # TODO: only close self.olefile if it was opened by ftguess
         if self.zipfile is not None:
             self.zipfile.close()
+
+    def is_word(self):
+        """
+        Shortcut to check if a file is an Excel workbook, template or add-in
+        :return: bool
+        """
+        return issubclass(self.ftype, FTYpe_Word)
+
+    def is_excel(self):
+        """
+        Shortcut to check if a file is an Excel workbook, template or add-in
+        :return: bool
+        """
+        return issubclass(self.ftype, FTYpe_Excel)
 
 
 # === FUNCTIONS ==============================================================
