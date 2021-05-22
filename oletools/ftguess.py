@@ -650,6 +650,20 @@ class FileTypeGuesser(object):
         if self.zipfile is not None:
             self.zipfile.close()
 
+    def is_ole(self):
+        """
+        Shortcut to check if the container is OLE
+        :return: bool
+        """
+        return issubclass(self.ftype, FType_Generic_OLE) or self.container == CONTAINER.OLE
+
+    def is_openxml(self):
+        """
+        Shortcut to check if the container is OpenXML
+        :return: bool
+        """
+        return issubclass(self.ftype, FType_Generic_OpenXML) or self.container == CONTAINER.OpenXML
+
     def is_word(self):
         """
         Shortcut to check if a file is an Excel workbook, template or add-in
