@@ -98,7 +98,7 @@ if _parent_dir not in sys.path:
     sys.path.insert(0, _parent_dir)
 
 from oletools.thirdparty.tablestream import tablestream
-from oletools import crypto, ftguess, olevba, mraptor
+from oletools import crypto, ftguess, olevba, mraptor, oleobj, ooxml
 from oletools.common.log_helper import log_helper
 from oletools.common.codepages import get_codepage_name
 
@@ -243,6 +243,15 @@ class OleID(object):
         self.indicators = []
         self.suminfo_data = None
 
+    def get_indicator(self, indicator_id):
+        """Helper function: returns an indicator if present (or None)"""
+        result = [indicator for indicator in self.indicators
+                  if indicator.id == indicator_id]
+        if result:
+            return result[0]
+        else:
+            return None
+
     def check(self):
         """
         Open file and run all checks on it.
@@ -288,6 +297,7 @@ class OleID(object):
         # self.check_powerpoint()
         # self.check_visio()
         self.check_macros()
+        self.check_external_relationships()
         self.check_object_pool()
         self.check_flash()
         if self.ole is not None:
@@ -321,20 +331,9 @@ class OleID(object):
         self.indicators.append(author)
         return appname, codepage, author
 
-    def get_indicator(self, indicator_id):
-        """Helper function: returns an indicator if present (or None)"""
-        result = [indicator for indicator in self.indicators
-                  if indicator.id == indicator_id]
-        if result:
-            return result[0]
-        else:
-            return None
-
     def check_encrypted(self):
         """
         Check whether this file is encrypted.
-
-        Might call check_properties.
 
         :returns: :py:class:`Indicator` for encryption or None if file was not
                   opened
@@ -352,6 +351,34 @@ class OleID(object):
             encrypted.risk = RISK.LOW
             encrypted.description = 'The file is encrypted. It may be decrypted with msoffcrypto-tool'
         return encrypted
+
+    def check_external_relationships(self):
+        """
+        Check whether this file has external relationships (remote template, OLE object, etc).
+
+        :returns: :py:class:`Indicator`
+        """
+        ext_rels = Indicator('ext_rels', 0, name='External Relationships', _type=int,
+                              risk=RISK.NONE,
+                              description='External relationships such as remote templates, remote OLE objects, etc',
+                              hide_if_false=False)
+        self.indicators.append(ext_rels)
+        # this check only works for OpenXML files
+        if not self.ftg.is_openxml():
+            return ext_rels
+        # to collect relationship types:
+        rel_types = set()
+        # open an XmlParser, using a BytesIO instead of filename (to work in memory)
+        xmlparser = ooxml.XmlParser(self.data_bytesio)
+        for rel_type, target in oleobj.find_external_relationships(xmlparser):
+            log.debug('External relationship: type={} target={}'.format(rel_type, target))
+            rel_types.add(rel_type)
+            ext_rels.value += 1
+        if ext_rels.value > 0:
+            ext_rels.description = 'External relationships found: {} - use oleobj for details'.format(
+                ', '.join(rel_types))
+            ext_rels.risk = RISK.HIGH
+        return ext_rels
 
     def check_word(self):
         """
