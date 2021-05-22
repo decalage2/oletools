@@ -250,9 +250,17 @@ class OleID(object):
         """
         self.ftg = ftguess.FileTypeGuesser(filepath=self.filename, data=self.data)
         ftype = self.ftg.ftype
-        ft = Indicator('ftype', value=ftype.longname, _type=str, name='File format', risk=RISK.INFO)
+        # if it's an unrecognized OLE file, display the root CLSID in description:
+        if self.ftg.filetype == ftguess.FTYPE.GENERIC_OLE:
+            description = 'Unrecognized OLE file. Root CLSID: {} - {}'.format(
+                self.ftg.root_clsid, self.ftg.root_clsid_name)
+        else:
+            description = ''
+        ft = Indicator('ftype', value=ftype.longname, _type=str, name='File format', risk=RISK.INFO,
+                       description=description)
         self.indicators.append(ft)
-        ct = Indicator('container', value=ftype.container, _type=str, name='Container format', risk=RISK.INFO)
+        ct = Indicator('container', value=ftype.container, _type=str, name='Container format', risk=RISK.INFO,
+                       description='Container type')
         self.indicators.append(ct)
 
         # check if it is actually an OLE file:
