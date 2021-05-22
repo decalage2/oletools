@@ -235,7 +235,7 @@ from __future__ import print_function
 #                        for issue #619)
 # 2021-04-14       PL: - added detection of Workbook_BeforeClose (issue #518)
 
-__version__ = '0.56.2'
+__version__ = '0.60.dev2'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -310,6 +310,18 @@ import colorclass
 if os.name == 'nt':
     colorclass.Windows.enable(auto_colors=True)
 
+from pyparsing import \
+        CaselessKeyword, CaselessLiteral, Combine, Forward, Literal, \
+        Optional, QuotedString,Regex, Suppress, Word, WordStart, \
+        alphanums, alphas, hexnums,nums, opAssoc, srange, \
+        infixNotation, ParserElement
+
+# attempt to import XLMMacroDeobfuscator (optional)
+try:
+    from XLMMacroDeobfuscator import deobfuscator as xlmdeobfuscator
+    XLMDEOBFUSCATOR = True
+except ImportError:
+    XLMDEOBFUSCATOR = False
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
@@ -326,17 +338,14 @@ if _parent_dir not in sys.path:
 import olefile
 from oletools.thirdparty.tablestream import tablestream
 from oletools.thirdparty.xglob import xglob, PathNotFoundException
-from pyparsing import \
-        CaselessKeyword, CaselessLiteral, Combine, Forward, Literal, \
-        Optional, QuotedString,Regex, Suppress, Word, WordStart, \
-        alphanums, alphas, hexnums,nums, opAssoc, srange, \
-        infixNotation, ParserElement
+from oletools.thirdparty.oledump.plugin_biff import cBIFF
 from oletools import ppt_parser
 from oletools import oleform
 from oletools import rtfobj
 from oletools import crypto
 from oletools.common.io_encoding import ensure_stdout_handles_unicode
 from oletools.common import codepages
+from oletools import ftguess
 
 # === PYTHON 2+3 SUPPORT ======================================================
 
@@ -2710,7 +2719,8 @@ class VBA_Parser(object):
         self.type = None
         self.vba_projects = None
         self.vba_forms = None
-        self.contains_macros = None # will be set to True or False by detect_macros
+        self.contains_vba_macros = None # will be set to True or False by detect_vba_macros
+        self.contains_xlm_macros = None # will be set to True or False by detect_xlm_macros
         self.vba_code_all_modules = None # to store the source code of all modules
         # list of tuples for each module: (subfilename, stream_path, vba_filename, vba_code)
         self.modules = None
@@ -2736,9 +2746,13 @@ class VBA_Parser(object):
         self.vba_stomping_detected = None
         # will be set to True or False by detect_is_encrypted method
         self.is_encrypted = False
+        # TODO: those are disabled for now:
         self.xlm_macrosheet_found = False
         self.template_injection_found = False
 
+        # call ftguess to identify file type:
+        self.ftg = ftguess.FileTypeGuesser(self.filename, data=data)
+        log.debug('ftguess: file type=%s - container=%s' % (self.ftg.ftype.name, self.ftg.container))
         # if filename is None:
         #     if isinstance(_file, basestring):
         #         if len(_file) < olefile.MINIMAL_OLEFILE_SIZE:
@@ -2752,7 +2766,7 @@ class VBA_Parser(object):
             self.open_ole(_file)
 
             # if this worked, try whether it is a ppt file (special ole file)
-            # TODO: instead of this we should have a function to test if it is a PPT
+            # TODO: instead of this we should have a function to test if it is a PPT (e.g. using ftguess)
             self.open_ppt()
         if self.type is None and zipfile.is_zipfile(_file):
             # Zip file, which may be an OpenXML document
@@ -2840,55 +2854,55 @@ class VBA_Parser(object):
             #TODO: if the zip file is encrypted, suggest to use the -z option, or try '-z infected' automatically
             # check each file within the zip if it is an OLE file, by reading its magic:
             for subfile in z.namelist():
-                log.debug("subfile {}".format(subfile))
+                log.debug("OpenXML subfile {}".format(subfile))
                 with z.open(subfile) as file_handle:
-                    found_ole = False
-                    template_injection_detected = False
-                    xml_macrosheet_found = False
+                    # found_ole = False
+                    # template_injection_detected = False
+                    # xml_macrosheet_found = False
                     magic = file_handle.read(len(olefile.MAGIC))
                     if magic == olefile.MAGIC:
-                        found_ole = True
-                    # in case we did not find an OLE file,
-                    # there could be a XLM macrosheet or a template injection attempt
-                    if not found_ole:
-                        read_all_file = file_handle.read()
-                        # try to detect template injection attempt
-                        # https://ired.team/offensive-security/initial-access/phishing-with-ms-office/inject-macros-from-a-remote-dotm-template-docx-with-macros
-                        subfile_that_can_contain_templates = "word/_rels/settings.xml.rels"
-                        if subfile == subfile_that_can_contain_templates:
-                            regex_template = b"Type=\"http://schemas\.openxmlformats\.org/officeDocument/\d{4}/relationships/attachedTemplate\"\s+Target=\"(.+?)\""
-                            template_injection_found = re.search(regex_template, read_all_file)
-                            if template_injection_found:
-                                injected_template_url = template_injection_found.group(1).decode()
-                                message = "Found injected template in subfile {}. Template URL: {}"\
-                                          "".format(subfile_that_can_contain_templates, injected_template_url)
-                                log.info(message)
-                                template_injection_detected = True
-                                self.template_injection_found = True
-                        # try to find a XML macrosheet
-                        macro_sheet_footer = b"</xm:macrosheet>"
-                        len_macro_sheet_footer = len(macro_sheet_footer)
-                        last_bytes_to_check = read_all_file[-len_macro_sheet_footer:]
-                        if last_bytes_to_check == macro_sheet_footer:
-                            message = "Found XLM Macro in subfile: {}".format(subfile)
-                            log.info(message)
-                            xml_macrosheet_found = True
-                            self.xlm_macrosheet_found = True
-
-                if found_ole or xml_macrosheet_found or template_injection_detected:
-                    log.debug('Opening OLE file %s within zip' % subfile)
-                    with z.open(subfile) as file_handle:
-                        ole_data = file_handle.read()
-                    try:
-                        self.append_subfile(filename=subfile, data=ole_data)
-                    except OlevbaBaseException as exc:
-                        if self.relaxed:
-                            log.info('%s is not a valid OLE file (%s)' % (subfile, exc))
-                            log.debug('Trace:', exc_info=True)
-                            continue
-                        else:
-                            raise SubstreamOpenError(self.filename, subfile,
-                                                     exc)
+                #         found_ole = True
+                #     # in case we did not find an OLE file,
+                #     # there could be a XLM macrosheet or a template injection attempt
+                #     if not found_ole:
+                #         read_all_file = file_handle.read()
+                #         # try to detect template injection attempt
+                #         # https://ired.team/offensive-security/initial-access/phishing-with-ms-office/inject-macros-from-a-remote-dotm-template-docx-with-macros
+                #         subfile_that_can_contain_templates = "word/_rels/settings.xml.rels"
+                #         if subfile == subfile_that_can_contain_templates:
+                #             regex_template = b"Type=\"http://schemas\.openxmlformats\.org/officeDocument/\d{4}/relationships/attachedTemplate\"\s+Target=\"(.+?)\""
+                #             template_injection_found = re.search(regex_template, read_all_file)
+                #             if template_injection_found:
+                #                 injected_template_url = template_injection_found.group(1).decode()
+                #                 message = "Found injected template in subfile {}. Template URL: {}"\
+                #                           "".format(subfile_that_can_contain_templates, injected_template_url)
+                #                 log.info(message)
+                #                 template_injection_detected = True
+                #                 self.template_injection_found = True
+                #         # try to find a XML macrosheet
+                #         macro_sheet_footer = b"</xm:macrosheet>"
+                #         len_macro_sheet_footer = len(macro_sheet_footer)
+                #         last_bytes_to_check = read_all_file[-len_macro_sheet_footer:]
+                #         if last_bytes_to_check == macro_sheet_footer:
+                #             message = "Found XLM Macro in subfile: {}".format(subfile)
+                #             log.info(message)
+                #             xml_macrosheet_found = True
+                #             self.xlm_macrosheet_found = True
+                #
+                # if found_ole or xml_macrosheet_found or template_injection_detected:
+                        log.debug('Opening OLE file %s within zip' % subfile)
+                        with z.open(subfile) as file_handle:
+                            ole_data = file_handle.read()
+                        try:
+                            self.append_subfile(filename=subfile, data=ole_data)
+                        except OlevbaBaseException as exc:
+                            if self.relaxed:
+                                log.info('%s is not a valid OLE file (%s)' % (subfile, exc))
+                                log.debug('Trace:', exc_info=True)
+                                continue
+                            else:
+                                raise SubstreamOpenError(self.filename, subfile,
+                                                         exc)
             z.close()
             # set type only if parsing succeeds
             self.type = TYPE_OpenXML
@@ -3134,7 +3148,7 @@ class VBA_Parser(object):
                     if s.startswith(b'E'):
                         xlm_macros.append('Formula or Macro: %s' % bytes2str(s[1:]))
         if xlm_macro_found:
-            self.contains_macros = True
+            self.contains_xlm_macros = True
             self.xlm_macros = xlm_macros
         self.type = TYPE_SLK
 
@@ -3150,7 +3164,7 @@ class VBA_Parser(object):
         # On Python 2, store it as a raw bytes string
         # On Python 3, convert it to unicode assuming it was encoded with UTF-8
         self.vba_code_all_modules = bytes2str(data)
-        self.contains_macros = True
+        self.contains_vba_macros = True
         # set type only if parsing succeeds
         self.type = TYPE_TEXT
 
@@ -3257,6 +3271,20 @@ class VBA_Parser(object):
                 self.vba_projects.append((vba_root, project_path, dir_path))
         return self.vba_projects
 
+    def detect_macros(self):
+        """
+        Detect the potential presence of VBA or Excel4/XLM macros in the file,
+        by calling detect_vba_macros and detect_xlm_macros.
+        (if the no_xlm option is set, XLM macros are not checked)
+
+        :return: bool, True if at least one VBA project has been found, False otherwise
+        """
+        vba = self.detect_vba_macros()
+        xlm = False
+        if not self.no_xlm:
+            xlm = self.detect_xlm_macros()
+        return (vba or xlm)
+
     def detect_vba_macros(self):
         """
         Detect the potential presence of VBA macros in the file, by checking
@@ -3273,28 +3301,28 @@ class VBA_Parser(object):
         :return: bool, True if at least one VBA project has been found, False otherwise
         """
         log.debug("detect vba macros")
-        #TODO: return None or raise exception if format not supported
-        #TODO: return the number of VBA projects found instead of True/False?
+        # TODO: return None or raise exception if format not supported
+        # TODO: return the number of VBA projects found instead of True/False?
         # if this method was already called, return the previous result:
-        if self.contains_macros is not None:
-            return self.contains_macros
+        if self.contains_vba_macros is not None:
+            return self.contains_vba_macros
         # if OpenXML/PPT, check all the OLE subfiles:
         if self.ole_file is None:
             for ole_subfile in self.ole_subfiles:
                 log.debug("ole subfile {}".format(ole_subfile))
                 ole_subfile.no_xlm = self.no_xlm
                 if ole_subfile.detect_vba_macros():
-                    self.contains_macros = True
+                    self.contains_vba_macros = True
                     return True
             # otherwise, no macro found:
-            self.contains_macros = False
+            self.contains_vba_macros = False
             return False
         # otherwise it's an OLE file, find VBA projects:
         vba_projects = self.find_vba_projects()
         if len(vba_projects) == 0:
-            self.contains_macros = False
+            self.contains_vba_macros = False
         else:
-            self.contains_macros = True
+            self.contains_vba_macros = True
         # Also look for VBA code in any stream including orphans
         # (happens in some malformed files)
         ole = self.ole_file
@@ -3318,26 +3346,100 @@ class VBA_Parser(object):
                         log.debug(repr(data))
                     if b'Attribut\x00' in data:
                         log.debug('Found VBA compressed code')
-                        self.contains_macros = True
+                        self.contains_vba_macros = True
                 except IOError as exc:
                     if self.relaxed:
                         log.info('Error when reading OLE Stream %r' % d.name)
                         log.debug('Trace:', exc_trace=True)
                     else:
                         raise SubstreamOpenError(self.filename, d.name, exc)
-        if (not self.no_xlm) and self.detect_xlm_macros():
-            self.contains_macros = True
-        return self.contains_macros
+        return self.contains_vba_macros
 
     def detect_xlm_macros(self):
+        """
+        Detect the potential presence of Excel 4/XLM macros in the file, by checking
+        if it contains a macro worksheet. Both OLE and OpenXML files are supported.
+        Only Excel files may contain XLM macros, and also SLK and CSV files.
+
+        If XLMMacroDeobfuscator is available, it will be used. Otherwise plugin_biff
+        is used as fallback (plugin_biff only supports OLE files, not XLSX or XLSB)
+
+        :return: bool, True if at least one macro worksheet has been found, False otherwise
+        """
         log.debug("detect xlm macros")
+        # if this method was already called, return the previous result:
+        if self.contains_xlm_macros is not None:
+            return self.contains_xlm_macros
         # if this is a SLK file, the analysis was done in open_slk:
         if self.type == TYPE_SLK:
-            return self.contains_macros
-        from oletools.thirdparty.oledump.plugin_biff import cBIFF
+            return self.contains_xlm_macros
+        # TODO: check also CSV files for formulas?
         self.xlm_macros = []
-        if self.ole_file is None:
+        # check if the file is Excel, otherwise return False
+        if not self.ftg.is_excel():
+            self.contains_xlm_macros = False
             return False
+        if XLMDEOBFUSCATOR:
+            # XLMMacroDeobfuscator is available, use it:
+            # But it only works with files on disk for now
+            if not self.file_on_disk:
+                log.warning('XLMMacroDeobfuscator only works with files on disk, not in memory. Analysis might be less complete.')
+            else:
+                try:
+                    return self._extract_xlm_xlmdeobf()
+                except Exception:
+                    log.error('Error when running XLMMacroDeobfuscator')
+        # fall back to plugin_biff:
+        if self.ole_file is None:
+            # TODO: handle OpenXML here
+            return False
+        return self._extract_xlm_plugin_biff()
+
+    def _extract_xlm_xlmdeobf(self):
+        """
+        Run XLMMacroDeobfuscator to detect and extract XLM macros
+        :return: bool, True if at least one macro worksheet has been found, False otherwise
+        """
+        log.debug('Calling XLMMacroDeobfuscator to detect and extract XLM macros')
+        xlmdeobfuscator.SILENT = True
+        # we build the output as a list of strings:
+        xlm = ["RAW EXCEL4/XLM MACRO FORMULAS:"]
+        # First, extract only formulas without emulation
+        result = xlmdeobfuscator.process_file(file=self.filename,
+                                           noninteractive=True,
+                                           noindent=True,
+                                           # output_formula_format='CELL:[[CELL_ADDR]], [[INT-FORMULA]]',
+                                           return_deobfuscated=True,
+                                           timeout=30,
+                                           extract_only=True,
+                                           )
+        if len(result) == 0:
+            # no XLM macro was found
+            self.contains_xlm_macros = False
+            return False
+        xlm += result
+        xlm.append('- ' * 38)
+        xlm.append('EMULATION - DEOBFUSCATED EXCEL4/XLM MACRO FORMULAS:')
+        result = xlmdeobfuscator.process_file(file=sys.argv[1],
+                                           noninteractive=True,
+                                           noindent=True,
+                                           # output_formula_format='CELL:[[CELL_ADDR]], [[INT-FORMULA]]',
+                                           return_deobfuscated=True,
+                                           timeout=30,
+                                           )
+        xlm += result
+        log.debug(xlm)
+        self.xlm_macros = xlm
+        self.contains_xlm_macros = True
+        return True
+
+
+    def _extract_xlm_plugin_biff(self):
+        """
+        Run plugin_biff to detect and extract XLM macros
+        :return: bool, True if at least one macro worksheet has been found, False otherwise
+        """
+        log.debug('_extract_xlm_plugin_biff')
         for excel_stream in ('Workbook', 'Book'):
             if self.ole_file.exists(excel_stream):
                 log.debug('Found Excel stream %r' % excel_stream)
@@ -3360,9 +3462,11 @@ class VBA_Parser(object):
                         # ref: https://inquest.net/blog/2020/03/18/Getting-Sneakier-Hidden-Sheets-Data-Connections-and-XLM-Macros
                         biff_plugin = cBIFF(name=[excel_stream], stream=data, options='-o DCONN -s')
                         self.xlm_macros += biff_plugin.Analyze()
+                        self.contains_xlm_macros = True
                         return True
                 except:
                     log.exception('Error when running oledump.plugin_biff, please report to %s' % URL_OLEVBA_ISSUES)
+        self.contains_xlm_macros = False
         return False
 
     def detect_is_encrypted(self):
@@ -3420,6 +3524,12 @@ class VBA_Parser(object):
                 for ole_subfile in self.ole_subfiles:
                     for results in ole_subfile.extract_macros():
                         yield results
+                # we also need to yield XLM macros
+                if self.xlm_macros:
+                    vba_code = ''
+                    for line in self.xlm_macros:
+                        vba_code += "' " + line + '\n'
+                    yield ('xlm_macro', 'xlm_macro', 'xlm_macro.txt', vba_code)
         else:
             # This is an OLE file:
             self.find_vba_projects()
@@ -3528,12 +3638,16 @@ class VBA_Parser(object):
 
     def analyze_macros(self, show_decoded_strings=False, deobfuscate=False):
         """
-        runs extract_macros and analyze the source code of all VBA macros
+        runs extract_macros and analyze the source code of all VBA+XLM macros
         found in the file.
         All results are stored in self.analysis_results.
         If called more than once, simply returns the previous results.
+
+        :return: list of tuples (type, keyword, description)
+        (type = 'AutoExec', 'Suspicious', 'IOC', 'Hex String', 'Base64 String' or 'Dridex String')
         """
-        if self.detect_vba_macros():
+        # Check if there are VBA or XLM macros:
+        if self.detect_macros():
             # if the analysis was already done, avoid doing it twice:
             if self.analysis_results is not None:
                 return self.analysis_results
@@ -3552,12 +3666,13 @@ class VBA_Parser(object):
                     'this may have been used to hide malicious code'
                 scanner.suspicious_keywords.append((keyword, description))
                 scanner.results.append(('Suspicious', keyword, description))
-            if self.xlm_macrosheet_found:
+            if self.contains_xlm_macros:
                 log.debug('adding XLM macrosheet found to suspicious keywords')
-                keyword = 'XLM macrosheet'
-                description = 'XLM macrosheet found. It could contain malicious code'
+                keyword = 'XLM macro'
+                description = 'XLM macro found. It may contain malicious code'
                 scanner.suspicious_keywords.append((keyword, description))
                 scanner.results.append(('Suspicious', keyword, description))
+            # TODO: this has been temporarily disabled
             if self.template_injection_found:
                 log.debug('adding Template Injection to suspicious keywords')
                 keyword = 'Template Injection'
@@ -4029,7 +4144,7 @@ class VBA_Parser_CLI(VBA_Parser):
         try:
             #TODO: handle olefile errors, when an OLE file is malformed
             print('Type: %s'% self.type)
-            if self.detect_vba_macros():
+            if self.detect_macros():
                 # run analysis before displaying VBA code, in order to colorize found keywords
                 self.run_analysis(show_decoded_strings=show_decoded_strings, deobfuscate=deobfuscate)
                 #print 'Contains VBA Macros:'
@@ -4109,7 +4224,7 @@ class VBA_Parser_CLI(VBA_Parser):
                     print('MACRO SOURCE CODE WITH DEOBFUSCATED VBA STRINGS (EXPERIMENTAL):\n\n')
                     print(self.reveal())
             else:
-                print('No VBA macros found.')
+                print('No VBA or XLM macros found.')
         except OlevbaBaseException:
             raise
         except Exception as exc:
@@ -4164,7 +4279,7 @@ class VBA_Parser_CLI(VBA_Parser):
             #TODO: handle olefile errors, when an OLE file is malformed
             result['type'] = self.type
             macros = []
-            if self.detect_vba_macros():
+            if self.detect_macros():
                 for (subfilename, stream_path, vba_filename, vba_code) in self.extract_all_macros():
                     curr_macro = {}
                     if hide_attributes:
@@ -4207,7 +4322,7 @@ class VBA_Parser_CLI(VBA_Parser):
         #TODO: replace print by writing to a provided output file (sys.stdout by default)
         try:
             #TODO: handle olefile errors, when an OLE file is malformed
-            if self.detect_vba_macros():
+            if self.detect_macros():
                 # print a waiting message only if the output is not redirected to a file:
                 if sys.stdout.isatty():
                     print('Analysis...\r', end='')
@@ -4216,7 +4331,7 @@ class VBA_Parser_CLI(VBA_Parser):
                                     deobfuscate=deobfuscate)
             flags = TYPE2TAG[self.type]
             macros = autoexec = suspicious = iocs = hexstrings = base64obf = dridex = vba_obf = '-'
-            if self.contains_macros: macros = 'M'
+            if self.contains_vba_macros: macros = 'M'
             if self.nb_autoexec: autoexec = 'A'
             if self.nb_suspicious: suspicious = 'S'
             if self.nb_iocs: iocs = 'I'
@@ -4351,6 +4466,7 @@ def parse_args(cmd_line_args=None):
 def process_file(filename, data, container, options, crypto_nesting=0):
     """
     Part of main function that processes a single file.
+    This is meant to be used only for the command-line interface of olevba
 
     This handles exceptions and encryption.
 
