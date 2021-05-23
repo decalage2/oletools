@@ -387,16 +387,20 @@ class OleID(object):
         :returns: :py:class:`Indicator` for ObjectPool stream or None if file
                   was not opened
         """
-        # TODO: replace this by a call to oleobj
+        # TODO: replace this by a call to oleobj + add support for OpenXML
         objpool = Indicator(
             'ObjectPool', False, name='ObjectPool',
             description='Contains an ObjectPool stream, very likely to contain '
-                        'embedded OLE objects or files. Use oleobj to check it.')
+                        'embedded OLE objects or files. Use oleobj to check it.',
+            risk=RISK.NONE)
         self.indicators.append(objpool)
         if not self.ole:
             return None
         if self.ole.exists('ObjectPool'):
             objpool.value = True
+            objpool.risk = RISK.LOW
+            # TODO: set risk to medium for OLE package if not executable
+            # TODO: set risk to high for Package executable or object with CVE in CLSID
         return objpool
 
     def check_macros(self):
