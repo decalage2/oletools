@@ -2931,7 +2931,7 @@ class VBA_Parser(object):
             # TODO: handle XML parsing exceptions
             et = ET.fromstring(data)
             # find all the binData elements:
-            for bindata in et.getiterator(TAG_BINDATA):
+            for bindata in et.iter(TAG_BINDATA):
                 # the binData content is an OLE container for the VBA project, compressed
                 # using the ActiveMime/MSO format (zlib-compressed), and Base64 encoded.
                 # get the filename:
