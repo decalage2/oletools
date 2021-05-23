@@ -502,11 +502,17 @@ class OleID(object):
         vba_indicator = Indicator(_id='vba', value='No', _type=str, name='VBA Macros',
                                   description='This file does not contain VBA macros.',
                                   risk=RISK.NONE, hide_if_false=False)
+        self.indicators.append(vba_indicator)
+        xlm_indicator = Indicator(_id='xlm', value='No', _type=str, name='XLM Macros',
+                                  description='This file does not contain Excel 4/XLM macros.',
+                                  risk=RISK.NONE, hide_if_false=False)
+        self.indicators.append(xlm_indicator)
         if self.ftg.filetype == ftguess.FTYPE.RTF:
             # For RTF we don't call olevba otherwise it triggers an error
             vba_indicator.description = 'RTF files cannot contain VBA macros'
-            self.indicators.append(vba_indicator)
-            return vba_indicator
+            xlm_indicator.description = 'RTF files cannot contain XLM macros'
+            return vba_indicator, xlm_indicator
+        vba_parser = None  # flag in case olevba fails
         try:
             vba_parser = olevba.VBA_Parser(filename=self.filename, data=self.data)
             if vba_parser.detect_vba_macros():
@@ -525,8 +531,17 @@ class OleID(object):
             vba_indicator.risk = RISK.ERROR
             vba_indicator.value = 'Error'
             vba_indicator.description = 'Error while checking VBA macros: %s' % str(e)
-        self.indicators.append(vba_indicator)
-        return vba_indicator
+        if vba_parser is not None:
+            try:
+                if vba_parser.detect_xlm_macros():
+                    xlm_indicator.value = 'Yes'
+                    xlm_indicator.risk = RISK.MEDIUM
+                    xlm_indicator.description = 'This file contains XLM macros. Use olevba to analyse them.'
+            except Exception as e:
+                xlm_indicator.risk = RISK.ERROR
+                xlm_indicator.value = 'Error'
+                xlm_indicator.description = 'Error while checking XLM macros: %s' % str(e)
+        return vba_indicator, xlm_indicator
 
     def check_flash(self):
         """
