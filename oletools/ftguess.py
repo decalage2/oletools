@@ -171,6 +171,7 @@ class FTYPE(object):
     PDF = 'PDF'
     MHTML = 'MHTML'
     TEXT = 'TEXT'
+    EXE_PE = 'EXE_PE'
     GENERIC_OLE = 'OLE' # Generic OLE file
     GENERIC_XML = 'XML' # Generic XML file
     GENERIC_OPENXML = 'OpenXML' # Generic OpenXML file
@@ -187,6 +188,7 @@ class CONTAINER(object):
     FlatOPC = 'FlatOPC'
     OpenDocument = 'OpenDocument'
     MIME = 'MIME'
+    BINARY = 'Binary'  # Generic binary file without container
     UNKNOWN = 'Unknown Container'
 
 class APP(object):
@@ -201,6 +203,7 @@ class APP(object):
     MSPROJECT = 'MS Project'
     MSOFFICE = 'MS Office'  # when the exact app is unknown
     ZIP_ARCHIVER = 'Any Zip Archiver'
+    WINDOWS = 'Windows'  # for Windows executables
     UNKNOWN = 'Unknown Application'
 
 # FTYPE_NAME = {
@@ -578,6 +581,21 @@ openxml_ftypes = {
 }
 
 
+class FType_EXE_PE (FType_Base):
+    filetype = FTYPE.EXE_PE
+    container = CONTAINER.BINARY
+    application = APP.WINDOWS
+    name = "Windows PE Executable"
+    longname = "Windows Portable Executable (EXE)"
+    extensions = ('exe', 'dll', 'sys', 'scr')  # TODO: add more from https://en.wikipedia.org/wiki/Portable_Executable
+    content_types = ('application/vnd.microsoft.portable-executable',)
+    PUID = 'fmt/899'
+
+    @classmethod
+    def recognize(cls, ftg):
+        return True if ftg.data.startswith(b'MZ') else False
+        # TODO: make this more accurate by checking the PE header, e.g. using pefile or directly
+
 class FileTypeGuesser(object):
     """
     A class to guess the type of a file, focused on MS Office, RTF and ZIP.
@@ -637,6 +655,11 @@ class FileTypeGuesser(object):
                 ft = openxml_ftypes.get(self.main_part_content_type, None)
                 if ft is not None:
                     self.ftype = ft
+
+        # TODO: use a mapping from magic to file types
+        if self.container == CONTAINER.UNKNOWN:
+            if FType_EXE_PE.recognize(self):
+                self.ftype = FType_EXE_PE
 
         self.container = self.ftype.container
         self.filetype = self.ftype.filetype
