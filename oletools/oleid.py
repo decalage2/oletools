@@ -230,7 +230,9 @@ class OleID(object):
         """
         if filename is None and data is None:
             raise ValueError('OleID requires either a file path or file data, or both')
+        self.file_on_disk = False  # True = file on disk / False = file in memory
         if data is None:
+            self.file_on_disk = True  # useful for some check that don't work in memory
             with open(filename, 'rb') as f:
                 self.data = f.read()
         self.data_bytesio = io.BytesIO(self.data)
@@ -531,16 +533,26 @@ class OleID(object):
             vba_indicator.risk = RISK.ERROR
             vba_indicator.value = 'Error'
             vba_indicator.description = 'Error while checking VBA macros: %s' % str(e)
-        if vba_parser is not None:
-            try:
-                if vba_parser.detect_xlm_macros():
-                    xlm_indicator.value = 'Yes'
-                    xlm_indicator.risk = RISK.MEDIUM
-                    xlm_indicator.description = 'This file contains XLM macros. Use olevba to analyse them.'
-            except Exception as e:
-                xlm_indicator.risk = RISK.ERROR
-                xlm_indicator.value = 'Error'
-                xlm_indicator.description = 'Error while checking XLM macros: %s' % str(e)
+        # Check XLM macros only for Excel file types:
+        if self.ftg.is_excel():
+            # TODO: for now XLM detection only works for files on disk... So we need to reload VBA_Parser from the filename
+            #       To be improved once XLMMacroDeobfuscator can work on files in memory
+            if self.file_on_disk:
+                try:
+                    vba_parser = olevba.VBA_Parser(filename=self.filename)
+                    if vba_parser.detect_xlm_macros():
+                        xlm_indicator.value = 'Yes'
+                        xlm_indicator.risk = RISK.MEDIUM
+                        xlm_indicator.description = 'This file contains XLM macros. Use olevba to analyse them.'
+                except Exception as e:
+                    xlm_indicator.risk = RISK.ERROR
+                    xlm_indicator.value = 'Error'
+                    xlm_indicator.description = 'Error while checking XLM macros: %s' % str(e)
+            else:
+                xlm_indicator.risk = RISK.UNKNOWN
+                xlm_indicator.value = 'Unknown'
+                xlm_indicator.description = 'For now, XLM macros can only be detected for files on disk, not in memory'
+
         return vba_indicator, xlm_indicator
 
     def check_flash(self):
