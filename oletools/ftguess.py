@@ -473,6 +473,7 @@ class FType_Word97(FType_OLE_CLSID_Base):
     PUID = 'fmt/40'
     may_contain_vba = True
     may_contain_ole = True
+    # TODO: if no CLSID, check stream 'WordDocument'
 
 class FType_Word6(FType_OLE_CLSID_Base):
     application = APP.MSWORD
@@ -527,6 +528,7 @@ class FType_Excel97(FTYpe_Excel, FType_Generic_OLE):
     longname = 'MS Excel 97-2003 Workbook or Template'
     CLSIDS = ('00020820-0000-0000-C000-000000000046',)
     extensions = ['xls', 'xlt', 'xla']
+    # TODO: if no CLSID, check stream 'Workbook' or 'Book' (maybe Excel 5)
 
 class FType_Excel5(FTYpe_Excel, FType_Generic_OLE):
     filetype = FTYPE.EXCEL5
@@ -556,6 +558,9 @@ class FType_Excel2007_XLSM (FTYpe_Excel2007):
     extensions = ['xlsm']
     content_types = ('application/vnd.ms-excel.sheet.macroEnabled.12',)
     PUID = 'fmt/445'
+
+# TODO: for PPT, check for stream 'PowerPoint Document'
+# TODO: for Visio, check for stream 'VisioDocument'
 
 clsid_ftypes = {
     # mapping from CLSID of root storage to FType classes:

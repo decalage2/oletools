@@ -294,10 +294,6 @@ class OleID(object):
         # TODO: add try/except around each check
         self.check_properties()
         self.check_encrypted()
-        # self.check_word()
-        # self.check_excel()
-        # self.check_powerpoint()
-        # self.check_visio()
         self.check_macros()
         self.check_external_relationships()
         self.check_object_pool()
@@ -382,99 +378,6 @@ class OleID(object):
             ext_rels.risk = RISK.HIGH
         return ext_rels
 
-    def check_word(self):
-        """
-        Check whether this file is a word document
-
-        If this finds evidence of encryption, will correct/add encryption
-        indicator.
-
-        :returns: 2 :py:class:`Indicator`s (for word and vba_macro) or None if
-                  file was not opened
-        """
-        word = Indicator(
-            'word', False, name='Word Document',
-            description='Contains a WordDocument stream, very likely to be a '
-                        'Microsoft Word Document.')
-        self.indicators.append(word)
-        macros = Indicator('vba_macros', False, name='VBA Macros', risk=RISK.MEDIUM)
-        self.indicators.append(macros)
-        if not self.ole:
-            return None, None
-        if self.ole.exists('WordDocument'):
-            word.value = True
-
-            # check for VBA macros:
-            if self.ole.exists('Macros'):
-                macros.value = True
-        return word, macros
-
-    def check_excel(self):
-        """
-        Check whether this file is an excel workbook.
-
-        If this finds macros, will add/correct macro indicator.
-
-        see also: :py:func:`xls_parser.is_xls`
-
-        :returns: :py:class:`Indicator` for excel or (None, None) if file was
-                  not opened
-        """
-        excel = Indicator(
-            'excel', False, name='Excel Workbook',
-            description='Contains a Workbook or Book stream, very likely to be '
-                        'a Microsoft Excel Workbook.')
-        self.indicators.append(excel)
-        if not self.ole:
-            return None
-        #self.macros = Indicator('vba_macros', False, name='VBA Macros')
-        #self.indicators.append(self.macros)
-        if self.ole.exists('Workbook') or self.ole.exists('Book'):
-            excel.value = True
-            # check for VBA macros:
-            if self.ole.exists('_VBA_PROJECT_CUR'):
-                # correct macro indicator if present or add one
-                macro_ind = self.get_indicator('vba_macros')
-                if macro_ind:
-                    macro_ind.value = True
-                else:
-                    macros = Indicator('vba_macros', True, name='VBA Macros')
-                    self.indicators.append(macros)
-        return excel
-
-    def check_powerpoint(self):
-        """
-        Check whether this file is a powerpoint presentation
-
-        see also: :py:func:`ppt_record_parser.is_ppt`
-
-        :returns: :py:class:`Indicator` for whether this is a powerpoint
-                  presentation or not or None if file was not opened
-        """
-        ppt = Indicator(
-            'ppt', False, name='PowerPoint Presentation',
-            description='Contains a PowerPoint Document stream, very likely to '
-                        'be a Microsoft PowerPoint Presentation.')
-        self.indicators.append(ppt)
-        if not self.ole:
-            return None
-        if self.ole.exists('PowerPoint Document'):
-            ppt.value = True
-        return ppt
-
-    def check_visio(self):
-        """Check whether this file is a visio drawing"""
-        visio = Indicator(
-            'visio', False, name='Visio Drawing',
-            description='Contains a VisioDocument stream, very likely to be a '
-                        'Microsoft Visio Drawing.')
-        self.indicators.append(visio)
-        if not self.ole:
-            return None
-        if self.ole.exists('VisioDocument'):
-            visio.value = True
-        return visio
-
     def check_object_pool(self):
         """
         Check whether this file contains an ObjectPool stream.
@@ -484,10 +387,11 @@ class OleID(object):
         :returns: :py:class:`Indicator` for ObjectPool stream or None if file
                   was not opened
         """
+        # TODO: replace this by a call to oleobj
         objpool = Indicator(
             'ObjectPool', False, name='ObjectPool',
             description='Contains an ObjectPool stream, very likely to contain '
-                        'embedded OLE objects or files.')
+                        'embedded OLE objects or files. Use oleobj to check it.')
         self.indicators.append(objpool)
         if not self.ole:
             return None
@@ -615,8 +519,6 @@ def main():
         oleid = OleID(filename)
         indicators = oleid.check()
 
-        #TODO: add description
-        #TODO: highlight suspicious indicators
         table = tablestream.TableStream([20, 20, 10, 26],
                                         header_row=['Indicator', 'Value', 'Risk', 'Description'],
                                         style=tablestream.TableStyleSlimSep)
