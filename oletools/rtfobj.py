@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-from __future__ import print_function
-
 """
 rtfobj.py
 
@@ -94,8 +92,12 @@ http://www.decalage.info/python/oletools
 # 2019-12-17         PL: - fixed process_file to detect Equation class (issue #525)
 # 2021-05-06 v0.56.2 DD: - fixed bug when OLE package class name ends with null
 #                          characters (issue #507, PR #648)
+# 2021-05-23 v0.60   PL: - use ftguess to identify file type of OLE Package
+#                        - fixed bug in re_executable_extensions
 
-__version__ = '0.56.2'
+from __future__ import print_function
+
+__version__ = '0.60.dev2'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -127,7 +129,7 @@ if not _parent_dir in sys.path:
 
 from oletools.thirdparty.xglob import xglob
 from oletools.thirdparty.tablestream import tablestream
-from oletools import oleobj
+from oletools import oleobj, ftguess
 import olefile
 from oletools.common import clsid
 
@@ -274,7 +276,7 @@ re_delim_hexblock = re.compile(DELIMITER + PATTERN)
 
 # TODO: use a frozenset instead of a regex?
 re_executable_extensions = re.compile(
-    r"(?i)\.(BAT|CLASS|CMD|CPL|DLL|EXECOM|GADGET|HTA|INF|JAR|JS|JSE|LNK|MSC|MSI|MSP|PIF|PS1|PS1XML|PS2|PS2XML|PSC1|PSC2|REG|SCF|SCR|SCT|VB|VBE|VBS|WS|WSC|WSF|WSH)\b")
+    r"(?i)\.(BAT|CLASS|CMD|CPL|DLL|EXE|COM|GADGET|HTA|INF|JAR|JS|JSE|LNK|MSC|MSI|MSP|PIF|PS1|PS1XML|PS2|PS2XML|PSC1|PSC2|REG|SCF|SCR|SCT|VB|VBE|VBS|WS|WSC|WSF|WSH)\b")
 
 # Destination Control Words, according to MS RTF Specifications v1.9.1:
 DESTINATION_CONTROL_WORDS = frozenset((
@@ -643,6 +645,7 @@ class RtfObject(object):
         self.filename = None
         self.src_path = None
         self.temp_path = None
+        self.ftg = None  # ftguess.FileTypeGuesser to identify file type
         # Additional OLE object data
         self.clsid = None
         self.clsid_desc = None
@@ -706,7 +709,9 @@ class RtfObjParser(RtfParser):
                     rtfobj.src_path = opkg.src_path
                     rtfobj.temp_path = opkg.temp_path
                     rtfobj.olepkgdata = opkg.data
-                    rtfobj.olepkgdata_md5 = hashlib.md5(opkg.data).hexdigest()     
+                    rtfobj.olepkgdata_md5 = hashlib.md5(opkg.data).hexdigest()
+                    # use ftguess to identify file type from content:
+                    rtfobj.ftg = ftguess.FileTypeGuesser(data=rtfobj.olepkgdata)
                     rtfobj.is_package = True
                 else:
                     if olefile.isOleFile(obj.data):
@@ -905,6 +910,7 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                 if re_executable_extensions.match(temp_ext) or re_executable_extensions.match(file_ext):
                     ole_color = 'red'
                     ole_column += '\nEXECUTABLE FILE'
+                ole_column += '\nFile Type: {}'.format(rtfobj.ftg.ftype.name)
             else:
                 ole_column += '\nMD5 = %r' % rtfobj.oledata_md5
             if rtfobj.clsid is not None:
