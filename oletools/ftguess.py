@@ -590,8 +590,8 @@ class FType_EXE_PE (FType_Base):
     filetype = FTYPE.EXE_PE
     container = CONTAINER.BINARY
     application = APP.WINDOWS
-    name = "Windows PE Executable"
-    longname = "Windows Portable Executable (EXE)"
+    name = "Windows PE Executable or DLL"
+    longname = "Windows Portable Executable or DLL (EXE,DLL)"
     extensions = ('exe', 'dll', 'sys', 'scr')  # TODO: add more from https://en.wikipedia.org/wiki/Portable_Executable
     content_types = ('application/vnd.microsoft.portable-executable',)
     PUID = 'fmt/899'
