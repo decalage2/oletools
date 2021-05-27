@@ -222,9 +222,11 @@ def is_encrypted(some_file):
 
         except Exception as exc:
             # TODO: this triggers unnecessary warnings for non OLE files
-            log.info('msoffcrypto failed to interpret file {} or determine '
+            log.info('msoffcrypto failed to parse file or determine '
                         'whether it is encrypted: {}'
-                        .format(file_handle.name, exc))
+                        .format(exc))
+            # TODO: here we are ignoring some exceptions that should be raised, for example
+            #       "unknown file format" for Excel 5.0/95 files
 
         finally:
             try:
