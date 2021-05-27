@@ -342,12 +342,19 @@ class OleID(object):
                               description='The file is not encrypted',
                               hide_if_false=False)
         self.indicators.append(encrypted)
+        # Only OLE files can be encrypted (OpenXML files are encrypted in an OLE container):
         if not self.ole:
             return None
-        if crypto.is_encrypted(self.ole):
-            encrypted.value = True
-            encrypted.risk = RISK.LOW
-            encrypted.description = 'The file is encrypted. It may be decrypted with msoffcrypto-tool'
+        try:
+            if crypto.is_encrypted(self.ole):
+                encrypted.value = True
+                encrypted.risk = RISK.LOW
+                encrypted.description = 'The file is encrypted. It may be decrypted with msoffcrypto-tool'
+        except Exception as exception:
+            # msoffcrypto-tool can trigger exceptions, such as "Unknown file format" for Excel 5.0/95
+            encrypted.value = 'Error'
+            encrypted.risk = RISK.ERROR
+            encrypted.description = 'msoffcrypto-tool raised an error when checking if the file is encrypted: {}'.format(exception)
         return encrypted
 
     def check_external_relationships(self):
