@@ -34,6 +34,8 @@ to install this package.
 # 2019-09-24       PL: - removed oletools.thirdparty.DridexUrlDecoder
 # 2019-11-10       PL: - changed pyparsing from 2.2.0 to 2.1.0 for issue #481
 # 2021-05-22 v0.60 PL: - entry points: added ftguess, removed olevba3/mraptor3
+# 2021-06-02           - added XLMMacroDeobfuscator dependencies as optional
+
 
 #--- TODO ---------------------------------------------------------------------
 
@@ -53,7 +55,7 @@ import os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.60.dev2'
+version      = '0.60'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       = "Philippe Lagadec"
@@ -326,6 +328,16 @@ def main():
             'msoffcrypto-tool; platform_python_implementation!="PyPy" or (python_version>="3" and platform_system!="Windows" and platform_system!="Darwin")',
             'pcodedmp>=1.2.5',
         ],
+        extras_require={
+            # Optional packages - to be installed with pip install -U oletools[full]
+            'full': [
+                # For XLMMacroDeobfuscator, the release on PyPI is quite old compared
+                # to the github version, so for now we have to install from github:
+                'https://github.com/DissectMalware/xlrd2/archive/master.zip',
+                'https://github.com/DissectMalware/pyxlsb2/archive/master.zip',
+                'https://github.com/DissectMalware/XLMMacroDeobfuscator/archive/master.zip',
+            ]
+        }
     )
 
 
