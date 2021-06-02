@@ -333,9 +333,10 @@ def main():
             'full': [
                 # For XLMMacroDeobfuscator, the release on PyPI is quite old compared
                 # to the github version, so for now we have to install from github:
-                'https://github.com/DissectMalware/xlrd2/archive/master.zip',
-                'https://github.com/DissectMalware/pyxlsb2/archive/master.zip',
-                'https://github.com/DissectMalware/XLMMacroDeobfuscator/archive/master.zip',
+                # 'https://github.com/DissectMalware/xlrd2/archive/master.zip',
+                # 'https://github.com/DissectMalware/pyxlsb2/archive/master.zip',
+                # 'https://github.com/DissectMalware/XLMMacroDeobfuscator/archive/master.zip',
+                'XLMMacroDeobfuscator',
             ]
         }
     )
