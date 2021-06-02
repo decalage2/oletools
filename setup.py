@@ -336,6 +336,9 @@ def main():
                 'xlrd2@https://github.com/DissectMalware/xlrd2/archive/master.zip',
                 'pyxlsb2@https://github.com/DissectMalware/pyxlsb2/archive/master.zip',
                 'XLMMacroDeobfuscator@https://github.com/DissectMalware/XLMMacroDeobfuscator/archive/master.zip',
+                # References for the syntax:
+                # https://github.com/decalage2/oletools/issues/690
+                # https://stackoverflow.com/questions/30239152/specify-extras-require-with-pip-install-e
                 # 'XLMMacroDeobfuscator',
             ]
         }
