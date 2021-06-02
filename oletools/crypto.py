@@ -96,7 +96,7 @@ http://www.decalage.info/python/oletools
 # 2021-05-22 v0.60 PL: - added PowerPoint transparent password
 #                        '/01Hannes Ruescher/01' (issue #627)
 
-__version__ = '0.60.dev2'
+__version__ = '0.60'
 
 import sys
 import struct

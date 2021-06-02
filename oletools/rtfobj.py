@@ -97,7 +97,7 @@ http://www.decalage.info/python/oletools
 
 from __future__ import print_function
 
-__version__ = '0.60.dev2'
+__version__ = '0.60'
 
 # ------------------------------------------------------------------------------
 # TODO:
