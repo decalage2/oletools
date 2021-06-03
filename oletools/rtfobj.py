@@ -94,10 +94,11 @@ http://www.decalage.info/python/oletools
 #                          characters (issue #507, PR #648)
 # 2021-05-23 v0.60   PL: - use ftguess to identify file type of OLE Package
 #                        - fixed bug in re_executable_extensions
+# 2021-06-03 v0.60.1 PL: - fixed code to find URLs in OLE2Link objects for Py3 (issue #692)
 
 from __future__ import print_function
 
-__version__ = '0.60'
+__version__ = '0.60.1.dev1'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -924,18 +925,16 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                 ole_color = 'red'
                 ole_column += '\nPossibly an exploit for the OLE2Link vulnerability (VU#921560, CVE-2017-0199)\n'
                 # https://bitbucket.org/snippets/Alexander_Hanel/7Adpp
-                found_list =  re.findall(r'[a-fA-F0-9\x0D\x0A]{128,}',data)
                 urls = []
-                for item in found_list:
-                    try:
-                        temp = item.replace("\x0D\x0A","").decode("hex")
-                    except:
-                        continue
-                    pat = re.compile(r'(?:[\x20-\x7E][\x00]){3,}')
-                    words = [w.decode('utf-16le') for w in pat.findall(temp)]
-                    for w in words:
-                        if "http" in w:
-                            urls.append(w)
+                # We look for unicode strings of 3+ chars in the OLE object data:
+                # Here the regex must be a bytes string (issue #692)
+                # but Python 2.7 does not support rb'...' so we use b'...' and escape backslashes
+                pat = re.compile(b'(?:[\\x20-\\x7E][\\x00]){3,}')
+                words = [w.decode('utf-16le') for w in pat.findall(rtfobj.oledata)]
+                for w in words:
+                    # TODO: we could use the URL_RE regex from olevba to be more precise
+                    if "http" in w:
+                        urls.append(w)
                 urls = sorted(set(urls))
                 if urls:
                     ole_column += 'URL extracted: ' + ', '.join(urls)
