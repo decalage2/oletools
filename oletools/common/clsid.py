@@ -43,7 +43,7 @@ http://www.decalage.info/python/oletools
 # 2018-04-18       PL: - added known-bad CLSIDs from Cuckoo sandbox (issue #290)
 # 2018-05-08       PL: - added more CLSIDs (issues #299, #304), merged and sorted
 
-__version__ = '0.56.2'
+__version__ = '0.60.1.dev1'
 
 
 # REFERENCES:
@@ -154,6 +154,7 @@ KNOWN_CLSIDS = {
     '88D969EA-F192-11D4-A65F-0040963251E5': 'Msxml2.XMLHTTP.5.0',
     '88D969E7-F192-11D4-A65F-0040963251E5': 'Msxml2.XMLSchemaCache.5.0',
     '88D969E8-F192-11D4-A65F-0040963251E5': 'Msxml2.XSLTemplate.5.0',
+    '88D96A0C-F192-11D4-A65F-0040963251E5': 'SAX XML Reader 6.0 (msxml6.dll)',
     '8E75D913-3D21-11D2-85C4-080009A0C626': 'AutoCAD 2004-2006 Document',
     '9181DC5F-E07D-418A-ACA6-8EEA1ECB8E9E': 'MSCOMCTL.TreeCtrl (may trigger CVE-2012-0158)',
     '975797FC-4E2A-11D0-B702-00C04FD8DBF7': 'Loads ELSEXT.DLL (Known Related to CVE-2015-6128)',
