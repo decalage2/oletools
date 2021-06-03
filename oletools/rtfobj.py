@@ -924,7 +924,7 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                 ole_color = 'red'
                 ole_column += '\nPossibly an exploit for the OLE2Link vulnerability (VU#921560, CVE-2017-0199)\n'
                 # https://bitbucket.org/snippets/Alexander_Hanel/7Adpp
-                found_list =  re.findall(r'[a-fA-F0-9\x0D\x0A]{128,}',data)
+                found_list =  re.findall(br'[a-fA-F0-9\x0D\x0A]{128,}',data)
                 urls = []
                 for item in found_list:
                     try:
