@@ -235,6 +235,8 @@ class OleID(object):
             self.file_on_disk = True  # useful for some check that don't work in memory
             with open(filename, 'rb') as f:
                 self.data = f.read()
+        else:
+            self.data = data
         self.data_bytesio = io.BytesIO(self.data)
         if isinstance(filename, olefile.OleFileIO):
             self.ole = filename
