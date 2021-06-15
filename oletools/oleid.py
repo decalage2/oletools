@@ -60,7 +60,7 @@ from __future__ import print_function
 #                        improve encryption detection for ppt
 # 2021-05-07 v0.56.2 MN: - fixed bug in check_excel (issue #584, PR #585)
 
-__version__ = '0.60.dev1'
+__version__ = '0.60.1.dev2'
 
 
 #------------------------------------------------------------------------------
