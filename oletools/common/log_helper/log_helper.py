@@ -3,6 +3,26 @@ log_helper.py
 
 General logging helpers
 
+Use as follows:
+
+    # at the start of your file:
+    # import logging   <-- replace this with next line
+    from oletools.common.log_helper import log_helper
+
+    logger = log_helper.get_or_create_silent_logger("module_name")
+    def enable_logging():
+        '''Enable logging in this module; for use by importing scripts'''
+        logger.setLevel(log_helper.NOTSET)
+        imported_oletool_module.enable_logging()
+        other_imported_oletool_module.enable_logging()
+
+    # ... your code; use logger instead of logging ...
+
+    def main():
+        log_helper.enable_logging(level=...)   # instead of logging.basicConfig
+        # ... your main code ...
+        log_helper.end_logging()
+
 .. codeauthor:: Intra2net AG <info@intra2net>, Philippe Lagadec
 """
 
@@ -71,6 +91,9 @@ DEFAULT_MESSAGE_FORMAT = '%(levelname)-8s %(message)s'
 
 
 class LogHelper:
+    """
+    Single helper class that creates and remembers loggers.
+    """
 
     #: for convenience: here again (see also :py:data:`log_helper.NOTSET`)
     NOTSET = logging.NOTSET
