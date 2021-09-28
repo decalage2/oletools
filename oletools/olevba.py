@@ -239,7 +239,6 @@ __version__ = '0.60.1.dev6'
 
 #------------------------------------------------------------------------------
 # TODO:
-# + setup logging (common with other oletools)
 # + add xor bruteforcing like bbharvest
 # + options -a and -c should imply -d
 
@@ -272,7 +271,6 @@ __version__ = '0.60.1.dev6'
 import traceback
 import sys
 import os
-import logging
 import struct
 from io import BytesIO, StringIO
 import math
@@ -346,6 +344,7 @@ from oletools import crypto
 from oletools.common.io_encoding import ensure_stdout_handles_unicode
 from oletools.common import codepages
 from oletools import ftguess
+from oletools.common.log_helper import log_helper
 
 # === PYTHON 2+3 SUPPORT ======================================================
 
@@ -423,47 +422,29 @@ def bytes2str(bytes_string, encoding='utf8'):
 
 # === LOGGING =================================================================
 
-def get_logger(name, level=logging.CRITICAL+1):
-    """
-    Create a suitable logger object for this module.
-    The goal is not to change settings of the root logger, to avoid getting
-    other modules' logs on the screen.
-    If a logger exists with same name, reuse it. (Else it would have duplicate
-    handlers and messages would be doubled.)
-    The level is set to CRITICAL+1 by default, to avoid any logging.
-    """
-    # First, test if there is already a logger with the same name, else it
-    # will generate duplicate messages (due to duplicate handlers):
-    if name in logging.Logger.manager.loggerDict:
-        # NOTE: another less intrusive but more "hackish" solution would be to
-        # use getLogger then test if its effective level is not default.
-        logger = logging.getLogger(name)
-        # make sure level is OK:
-        logger.setLevel(level)
-        return logger
-    # get a new logger:
-    logger = logging.getLogger(name)
-    # only add a NullHandler for this logger, it is up to the application
-    # to configure its own logging:
-    logger.addHandler(logging.NullHandler())
-    logger.setLevel(level)
-    return logger
 
 # a global logger object used for debugging:
-log = get_logger('olevba')
+log = log_helper.get_or_create_silent_logger('olevba')
 
 
 def enable_logging():
     """
     Enable logging for this module (disabled by default).
-    This will set the module-specific logger level to NOTSET, which
+
+    For use by third-party libraries that import `olevba` as module.
+
+    This will set the module-specific logger level to `NOTSET`, which
     means the main application controls the actual logging level.
+
+    This also enables logging for the modules used by us, but not the global
+    common logging mechanism (:py:mod:`oletools.common.log_helper.log_helper`).
+    Use :py:func:`oletools.common.log_helper.log_helper.enable_logging` for
+    that.
     """
-    log.setLevel(logging.NOTSET)
-    # Also enable logging in the ppt_parser module:
+    log.setLevel(log_helper.NOTSET)
     ppt_parser.enable_logging()
     crypto.enable_logging()
-
+    # TODO: do not have enable_logging yet: oleform, rtfobj
 
 
 #=== EXCEPTIONS ==============================================================
@@ -2462,18 +2443,18 @@ def json2ascii(json_obj, encoding='utf8', errors='replace'):
     return json_obj
 
 
-def print_json(json_dict=None, _json_is_first=False, _json_is_last=False,
-               **json_parts):
+def print_json(json_dict=None, _json_is_first=False, **json_parts):
     """ line-wise print of json.dumps(json2ascii(..)) with options and indent+1
 
     can use in two ways:
     (1) print_json(some_dict)
     (2) print_json(key1=value1, key2=value2, ...)
 
-    :param bool _json_is_first: set to True only for very first entry to complete
-                                the top-level json-list
-    :param bool _json_is_last: set to True only for very last entry to complete
-                               the top-level json-list
+    This is compatible with :py:mod:`oletools.common.log_helper`: log messages
+    can be mixed if arg `use_json` was `True` in
+    :py:func:`log_helper.enable_logging` provided this function is called
+    before the first "regular" logging with `_json_is_first=True` (and
+    non-empty input) but after log_helper.enable_logging.
     """
     if json_dict and json_parts:
         raise ValueError('Invalid json argument: want either single dict or '
@@ -2485,18 +2466,18 @@ def print_json(json_dict=None, _json_is_first=False, _json_is_last=False,
     if json_parts:
         json_dict = json_parts
 
-    if _json_is_first:
-        print('[')
-
     lines = json.dumps(json2ascii(json_dict), check_circular=False,
-                           indent=4, ensure_ascii=False).splitlines()
-    for line in lines[:-1]:
-        print('    {0}'.format(line))
-    if _json_is_last:
-        print('    {0}'.format(lines[-1]))   # print last line without comma
-        print(']')
+                       indent=4, ensure_ascii=False).splitlines()
+    if not lines:
+        return
+
+    if _json_is_first:
+        print('      ' + lines[0])
     else:
-        print('    {0},'.format(lines[-1]))   # print last line with comma
+        print(',     ' + lines[0])
+
+    for line in lines[1:]:
+        print('      ' + line.rstrip())
 
 
 class VBA_Scanner(object):
@@ -4358,13 +4339,6 @@ def parse_args(cmd_line_args=None):
     """ parse command line arguments (given ones or per default sys.argv) """
 
     DEFAULT_LOG_LEVEL = "warning" # Default log level
-    LOG_LEVELS = {
-        'debug':    logging.DEBUG,
-        'info':     logging.INFO,
-        'warning':  logging.WARNING,
-        'error':    logging.ERROR,
-        'critical': logging.CRITICAL
-        }
 
     usage = 'usage: olevba [options] <filename> [filename2 ...]'
     parser = argparse.ArgumentParser(usage=usage)
@@ -4458,8 +4432,6 @@ def parse_args(cmd_line_args=None):
 
     if options.show_pcode and options.no_pcode:
         parser.error('You cannot combine options --no-pcode and --show-pcode')
-
-    options.loglevel = LOG_LEVELS[options.loglevel]
 
     return options
 
@@ -4588,9 +4560,13 @@ def main(cmd_line_args=None):
     """
     options = parse_args(cmd_line_args)
 
+    # enable logging in the modules (for json, this prints the opening '['):
+    log_helper.enable_logging(options.output_mode=='json', options.loglevel,
+                              other_logger_has_first_line=True)
+
     # provide info about tool and its version
     if options.output_mode == 'json':
-        # print first json entry with meta info and opening '['
+        # print first json entry with meta info
         print_json(script_name='olevba', version=__version__,
                    python_version=sys.version_info[0:3],
                    url='http://decalage.info/python/oletools',
@@ -4600,10 +4576,6 @@ def main(cmd_line_args=None):
         python_version = '%d.%d.%d' % sys.version_info[0:3]
         print('olevba %s on Python %s - http://decalage.info/python/oletools' %
               (__version__, python_version))
-
-    logging.basicConfig(level=options.loglevel, format='%(levelname)-8s %(message)s')
-    # enable logging in the modules:
-    enable_logging()
 
     # with the option --reveal, make sure --deobf is also enabled:
     if options.show_deobfuscated_code and not options.deobfuscate:
@@ -4689,11 +4661,6 @@ def main(cmd_line_args=None):
                   'A=Auto-executable, S=Suspicious keywords, I=IOCs, H=Hex strings, ' \
                   'B=Base64 strings, D=Dridex strings, V=VBA strings, ?=Unknown)\n')
 
-        if options.output_mode == 'json':
-            # print last json entry (a last one without a comma) and closing ]
-            print_json(type='MetaInformation', return_code=return_code,
-                       n_processed=count, _json_is_last=True)
-
     except crypto.CryptoErrorBase as exc:
         log.exception('Problems with encryption in main: {}'.format(exc),
                       exc_info=True)
@@ -4711,6 +4678,7 @@ def main(cmd_line_args=None):
 
     # done. exit
     log.debug('will exit now with code %s' % return_code)
+    log_helper.end_logging()
     sys.exit(return_code)
 
 if __name__ == '__main__':
