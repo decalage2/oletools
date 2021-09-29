@@ -7,7 +7,7 @@ using them.
 """
 
 import os, sys, zipfile
-from os.path import dirname, abspath, normpath, join
+from os.path import dirname, abspath, normpath, relpath, join, basename
 from . import DATA_BASE_DIR
 
 # Passwort used to encrypt problematic test samples inside a zip container
@@ -59,3 +59,26 @@ def read_encrypted(relative_path, filename=None):
 def get_path_from_root(relative_path):
     """Convert path relative to test data base dir to an absolute path."""
     return join(DATA_BASE_DIR, relative_path)
+
+
+def loop_over_files(subdir=''):
+    """
+    Find all files, decrypting problematic files on the fly.
+
+    Does a `os.walk` through all test data or the given subdir and yields a
+    2-tuple for each sample: the path to the file relative to `DATA_BASE_DIR`
+    and the contents of the file, with the file being unzipped first if it ends
+    with .zip.
+
+    :arg str subdir: Optional subdir of test data dir that caller is interested
+                     in
+    """
+    # create temp dir to extract files into
+
+    for base_dir, _, files in os.walk(join(DATA_BASE_DIR, subdir)):
+        for filename in files:
+            relative_path = relpath(join(base_dir, filename), DATA_BASE_DIR)
+            if filename.endswith('.zip'):
+                yield relative_path, read_encrypted(relative_path)
+            else:
+                yield relative_path, read(relative_path)
