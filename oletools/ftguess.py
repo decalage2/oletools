@@ -683,6 +683,13 @@ class FileTypeGuesser(object):
         self.filetype = self.ftype.filetype
         self.application = self.ftype.application
 
+    def __str__(self):
+        """Give a short string representation of this object."""
+        return '[FileTypeGuesser for {0}: {1} from {2} in {3}]'.format(
+            "data" if self.filepath is None
+            else os.path.basename(self.filepath),
+            self.filetype, self.application, self.container)
+
     def close(self):
         """
         This method must be called at the end of processing
