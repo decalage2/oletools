@@ -34,7 +34,7 @@ class TestOOXML(unittest.TestCase):
             ppsx=ooxml.DOCTYPE_POWERPOINT, ppsm=ooxml.DOCTYPE_POWERPOINT,
             potx=ooxml.DOCTYPE_POWERPOINT, potm=ooxml.DOCTYPE_POWERPOINT,
             ods=ooxml.DOCTYPE_NONE, odt=ooxml.DOCTYPE_NONE,
-            odp=ooxml.DOCTYPE_NONE,
+            odp=ooxml.DOCTYPE_NONE, xps=ooxml.DOCTYPE_NONE,
         )
 
         # files that are neither OLE nor xml:
@@ -42,6 +42,7 @@ class TestOOXML(unittest.TestCase):
         except_extns = 'rtf', 'csv', 'zip'
 
         # analyse all files in data dir
+        # TODO: use testdata_reader to extract real data from zip files
         for base_dir, _, files in os.walk(DATA_BASE_DIR):
             for filename in files:
                 if filename in except_files:
