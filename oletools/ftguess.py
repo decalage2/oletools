@@ -166,6 +166,7 @@ class FTYPE(object):
     EXCEL2007_XLTM = 'Excel2007_XLTM'
     EXCEL2007_XLSB = 'Excel2007_XLSB'
     # TODO: XLSB, DOCM, PPTM, PPSX, PPSM, ...
+    XPS = 'XPS'
     RTF = 'RTF'
     HTML = 'HTML'
     PDF = 'PDF'
@@ -203,7 +204,7 @@ class APP(object):
     MSPROJECT = 'MS Project'
     MSOFFICE = 'MS Office'  # when the exact app is unknown
     ZIP_ARCHIVER = 'Any Zip Archiver'
-    WINDOWS = 'Windows'  # for Windows executables
+    WINDOWS = 'Windows'  # for Windows executables and XPS
     UNKNOWN = 'Unknown Application'
 
 # FTYPE_NAME = {
@@ -222,6 +223,8 @@ ATTR_REL_TARGET = 'Target'
 URL_REL_OFFICEDOC = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
 # For "strict" OpenXML formats, the URL is different:
 URL_REL_OFFICEDOC_STRICT = 'http://purl.oclc.org/ooxml/officeDocument/relationships/officeDocument'
+# Url for xps files
+URL_REL_XPS = 'http://schemas.microsoft.com/xps/2005/06/fixedrepresentation'
 # Namespaces and tags for OpenXML parsing`- Content-types file:
 NS_CONTENT_TYPES = '{http://schemas.openxmlformats.org/package/2006/content-types}'
 TAG_CTYPES_DEFAULT = NS_CONTENT_TYPES + 'Default'
@@ -395,7 +398,7 @@ class FType_Generic_OpenXML(FType_Base):
         for elem_rel in elem_rels.iter(tag=TAG_REL):
             rel_type = elem_rel.get(ATTR_REL_TYPE)
             log.debug('Relationship: type=%s target=%s' % (rel_type, elem_rel.get(ATTR_REL_TARGET)))
-            if rel_type in (URL_REL_OFFICEDOC, URL_REL_OFFICEDOC_STRICT):
+            if rel_type in (URL_REL_OFFICEDOC, URL_REL_OFFICEDOC_STRICT, URL_REL_XPS):
                 # TODO: is it useful to distinguish normal and strict OpenXML?
                 main_part = elem_rel.get(ATTR_REL_TARGET)
                 # TODO: raise anomaly if there are more than one rel with type office doc
@@ -559,6 +562,14 @@ class FType_Excel2007_XLSM (FTYpe_Excel2007):
     content_types = ('application/vnd.ms-excel.sheet.macroEnabled.12',)
     PUID = 'fmt/445'
 
+class FType_XPS(FType_Generic_OpenXML):
+    application = APP.WINDOWS
+    filetype = FTYPE.XPS
+    name = 'XPS'
+    longname = 'Fixed-Page Document (.xps)',
+    extensions = ['xps']
+
+
 # TODO: for PPT, check for stream 'PowerPoint Document'
 # TODO: for Visio, check for stream 'VisioDocument'
 
@@ -583,6 +594,8 @@ openxml_ftypes = {
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml': FType_Excel2007_XLSX,
     'application/vnd.ms-excel.sheet.macroEnabled.main+xml': FType_Excel2007_XLSM,
     'application/vnd.ms-excel.sheet.binary.macroEnabled.main': None,
+    # XPS
+    'application/vnd.ms-package.xps-fixeddocumentsequence+xml': FType_XPS,
 }
 
 
