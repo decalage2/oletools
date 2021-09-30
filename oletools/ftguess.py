@@ -165,6 +165,7 @@ class FTYPE(object):
     EXCEL2007_XLTX = 'Excel2007_XLTX'
     EXCEL2007_XLTM = 'Excel2007_XLTM'
     EXCEL2007_XLSB = 'Excel2007_XLSB'
+    EXCEL2007_XLAM = 'Excel2007_XLAM'
     # TODO: XLSB, DOCM, PPTM, PPSX, PPSM, ...
     XPS = 'XPS'
     RTF = 'RTF'
@@ -523,7 +524,7 @@ class FType_Excel(FType_Base):
     '''Base class for all MS Excel file types'''
     application = APP.MSEXCEL
     name = 'MS Excel (generic)'
-    longname = 'MS Excel Workbook or Template (generic)'
+    longname = 'MS Excel Workbook/Template/Add-in (generic)'
 
 class FType_Excel97(FType_Excel, FType_Generic_OLE):
     filetype = FTYPE.EXCEL97
@@ -545,13 +546,14 @@ class FType_Excel2007(FType_Excel, FType_Generic_OpenXML):
     '''Base class for all MS Excel 2007 file types'''
     name = 'MS Excel 2007+ (generic)'
     longname = 'MS Excel 2007+ Workbook or Template (generic)'
+    content_types = ('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',)
+      # note: content type differs only for xlsm
 
 class FType_Excel2007_XLSX (FType_Excel2007):
     filetype = FTYPE.EXCEL2007_XLSX
     name = 'MS Excel 2007+ Workbook'
     longname = 'MS Excel 2007+ Workbook (.xlsx)'
     extensions = ['xlsx']
-    content_types = ('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',)
     PUID = 'fmt/214'
 
 class FType_Excel2007_XLSM (FType_Excel2007):
@@ -561,6 +563,24 @@ class FType_Excel2007_XLSM (FType_Excel2007):
     extensions = ['xlsm']
     content_types = ('application/vnd.ms-excel.sheet.macroEnabled.12',)
     PUID = 'fmt/445'
+
+class FType_Excel2007_Template(FType_Excel2007):
+    filetype = FTYPE.EXCEL2007_XLTX
+    name = 'MS Excel 2007+ Template'
+    longname = 'MS Excel 2007+ Template (.xltx)'
+    extensions = ['xltx']
+
+class FType_Excel2007_Template_Macro(FType_Excel2007):
+    filetype = FTYPE.EXCEL2007_XLTM
+    name = 'MS Excel 2007+ Macro-Enabled Template'
+    longname = 'MS Excel 2007+ Macro-Enabled Template (.xltm)'
+    extensions = ['xltm']
+
+class FType_Excel2007_Addin_Macro(FType_Excel2007):
+    filetype = FTYPE.EXCEL2007_XLAM
+    name = 'MS Excel 2007+ Macro-Enabled Add-in'
+    longname = 'MS Excel 2007+ Macro-Enabled Add-in (.xlam)'
+    extensions = ['xlam']
 
 class FType_XPS(FType_Generic_OpenXML):
     application = APP.WINDOWS
@@ -594,6 +614,9 @@ openxml_ftypes = {
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml': FType_Excel2007_XLSX,
     'application/vnd.ms-excel.sheet.macroEnabled.main+xml': FType_Excel2007_XLSM,
     'application/vnd.ms-excel.sheet.binary.macroEnabled.main': None,
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.template.main+xml': FType_Excel2007_Template,
+    'application/vnd.ms-excel.template.macroEnabled.main+xml': FType_Excel2007_Template_Macro,
+    'application/vnd.ms-excel.addin.macroEnabled.main+xml': FType_Excel2007_Addin_Macro,
     # XPS
     'application/vnd.ms-package.xps-fixeddocumentsequence+xml': FType_XPS,
 }
