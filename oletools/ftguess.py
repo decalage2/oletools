@@ -457,8 +457,8 @@ class FType_Generic_OpenXML(FType_Base):
 
 # --- WORD Formats ---
 
-class FTYpe_Word(FType_Base):
-    'Base class for all MS Word file types'
+class FType_Word(FType_Base):
+    '''Base class for all MS Word file types'''
     application = APP.MSWORD
     name = 'MS Word (generic)'
     longname = 'MS Word Document or Template (generic)'
@@ -519,13 +519,13 @@ class FType_Word2007_Template_Macro(FType_Generic_OpenXML):
 
 # --- EXCEL Formats ---
 
-class FTYpe_Excel(FType_Base):
-    'Base class for all MS Excel file types'
+class FType_Excel(FType_Base):
+    '''Base class for all MS Excel file types'''
     application = APP.MSEXCEL
     name = 'MS Excel (generic)'
     longname = 'MS Excel Workbook or Template (generic)'
 
-class FType_Excel97(FTYpe_Excel, FType_Generic_OLE):
+class FType_Excel97(FType_Excel, FType_Generic_OLE):
     filetype = FTYPE.EXCEL97
     name = 'MS Excel 97 Workbook'
     longname = 'MS Excel 97-2003 Workbook or Template'
@@ -533,7 +533,7 @@ class FType_Excel97(FTYpe_Excel, FType_Generic_OLE):
     extensions = ['xls', 'xlt', 'xla']
     # TODO: if no CLSID, check stream 'Workbook' or 'Book' (maybe Excel 5)
 
-class FType_Excel5(FTYpe_Excel, FType_Generic_OLE):
+class FType_Excel5(FType_Excel, FType_Generic_OLE):
     filetype = FTYPE.EXCEL5
     name = 'MS Excel 5.0/95 Workbook'
     longname = 'MS Excel 5.0/95 Workbook, Template or Add-in'
@@ -541,12 +541,12 @@ class FType_Excel5(FTYpe_Excel, FType_Generic_OLE):
     extensions = ['xls', 'xlt', 'xla']
     # TODO: this CLSID is also used in Excel addins (.xla) saved by MS Excel 365
 
-class FTYpe_Excel2007(FTYpe_Excel, FType_Generic_OpenXML):
-    'Base class for all MS Excel 2007 file types'
+class FType_Excel2007(FType_Excel, FType_Generic_OpenXML):
+    '''Base class for all MS Excel 2007 file types'''
     name = 'MS Excel 2007+ (generic)'
     longname = 'MS Excel 2007+ Workbook or Template (generic)'
 
-class FType_Excel2007_XLSX (FTYpe_Excel2007):
+class FType_Excel2007_XLSX (FType_Excel2007):
     filetype = FTYPE.EXCEL2007_XLSX
     name = 'MS Excel 2007+ Workbook'
     longname = 'MS Excel 2007+ Workbook (.xlsx)'
@@ -554,7 +554,7 @@ class FType_Excel2007_XLSX (FTYpe_Excel2007):
     content_types = ('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',)
     PUID = 'fmt/214'
 
-class FType_Excel2007_XLSM (FTYpe_Excel2007):
+class FType_Excel2007_XLSM (FType_Excel2007):
     filetype = FTYPE.EXCEL2007_XLSM
     name = 'MS Excel 2007+ Macro-Enabled Workbook'
     longname = 'MS Excel 2007+ Macro-Enabled Workbook (.xlsm)'
@@ -618,6 +618,7 @@ class FileTypeGuesser(object):
     """
     A class to guess the type of a file, focused on MS Office, RTF and ZIP.
     """
+
     def __init__(self, filepath=None, data=None):
         self.filepath = filepath
         self.data = data
@@ -717,14 +718,14 @@ class FileTypeGuesser(object):
         Shortcut to check if a file is an Excel workbook, template or add-in
         :return: bool
         """
-        return issubclass(self.ftype, FTYpe_Word)
+        return issubclass(self.ftype, FType_Word)
 
     def is_excel(self):
         """
         Shortcut to check if a file is an Excel workbook, template or add-in
         :return: bool
         """
-        return issubclass(self.ftype, FTYpe_Excel)
+        return issubclass(self.ftype, FType_Excel)
 
 
 # === FUNCTIONS ==============================================================
