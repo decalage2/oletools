@@ -166,6 +166,12 @@ class FTYPE(object):
     EXCEL2007_XLTM = 'Excel2007_XLTM'
     EXCEL2007_XLSB = 'Excel2007_XLSB'
     EXCEL2007_XLAM = 'Excel2007_XLAM'
+    POWERPOINT97 = 'Powerpoint97'
+    POWERPOINT2007 = 'Powerpoint2007'
+    POWERPOINT2007_PPTX = 'Powerpoint2007_PPTX'
+    POWERPOINT2007_PPSX = 'Powerpoint2007_PPSX'
+    POWERPOINT2007_PPTM = 'Powerpoint2007_PPTM'
+    POWERPOINT2007_PPSM = 'Powerpoint2007_PPSM'
     # TODO: XLSB, DOCM, PPTM, PPSX, PPSM, ...
     XPS = 'XPS'
     RTF = 'RTF'
@@ -582,6 +588,54 @@ class FType_Excel2007_Addin_Macro(FType_Excel2007):
     longname = 'MS Excel 2007+ Macro-Enabled Add-in (.xlam)'
     extensions = ['xlam']
 
+# --- POWERPOINT Formats ---
+
+class FType_Powerpoint(FType_Base):
+    '''Base class for all MS Powerpoint file types'''
+    application = APP.MSPOWERPOINT
+    name = 'MS Powerpoint (generic)'
+    longname = 'MS Powerpoint Presentation/Slideshow/Template/Addin/... (generic)'
+
+class FType_Powerpoint97(FType_Powerpoint, FType_Generic_OLE):
+    # see also: ppt_record_parser.is_ppt
+    filetype = FTYPE.POWERPOINT97
+    name = 'MS Powerpoint 97 Presentation'
+    longname = 'MS Powerpoint 97-2003 Presentation/Slideshow/Template'
+    CLSIDS = ('64818D10-4F9B-11CF-86EA-00AA00B929E8',)
+    extensions = ['ppt', 'pps', 'pot']
+
+class FType_Powerpoint2007(FType_Powerpoint, FType_Generic_OpenXML):
+    '''Base class for all MS Powerpoint 2007 file types'''
+    filetype = FTYPE.POWERPOINT2007
+    name = 'MS Powerpoint 2007+ (generic)'
+    longname = 'MS Powerpoint 2007+ Presentation/Slideshow/Template (generic)'
+    content_types = ('application/vnd.openxmlformats-officedocument.presentationml.presentation',)
+
+class FType_Powerpoint2007_Presentation(FType_Powerpoint2007):
+    filetype = FTYPE.POWERPOINT2007_PPTX
+    name = 'MSPointpoint 2007+ Presentation'
+    longname = 'MSPointpoint 2007+ Presentation (.pptx)'
+    extensions = ['pptx']
+
+class FType_Powerpoint2007_Slideshow(FType_Powerpoint2007):
+    filetype = FTYPE.POWERPOINT2007_PPSX
+    name = 'MSPointpoint 2007+ Slideshow'
+    longname = 'MSPointpoint 2007+ Slideshow (.ppsx)'
+    extensions = ['ppsx']
+
+class FType_Powerpoint2007_Macro(FType_Powerpoint2007):
+    filetype = FTYPE.POWERPOINT2007_PPTM
+    name = 'MSPointpoint 2007+ Macro-Enabled Presentation'
+    longname = 'MSPointpoint 2007+ Macro-Enabled Presentation (.pptm)'
+    extensions = ['pptm']
+
+class FType_Powerpoint2007_Slideshow_Macro(FType_Powerpoint2007):
+    filetype = FTYPE.POWERPOINT2007_PPSM
+    name = 'MSPointpoint 2007+ Macro-Enabled Slideshow'
+    longname = 'MSPointpoint 2007+ Macro-Enabled Slideshow (.ppsm)'
+    extensions = ['ppsm']
+
+
 class FType_XPS(FType_Generic_OpenXML):
     application = APP.WINDOWS
     filetype = FTYPE.XPS
@@ -595,12 +649,15 @@ class FType_XPS(FType_Generic_OpenXML):
 
 clsid_ftypes = {
     # mapping from CLSID of root storage to FType classes:
+    # TODO: do not repeat magic numbers, import from oletools.common.clsid
     # WORD
     '00020906-0000-0000-C000-000000000046': FType_Word97,
     '00020900-0000-0000-C000-000000000046': FType_Word6,
     # EXCEL
     '00020820-0000-0000-C000-000000000046': FType_Excel97,
     '00020810-0000-0000-C000-000000000046': FType_Excel5,
+    # POWERPOINT
+    '64818D10-4F9B-11CF-86EA-00AA00B929E8': FType_Powerpoint97,
 }
 
 openxml_ftypes = {
@@ -617,6 +674,11 @@ openxml_ftypes = {
     'application/vnd.openxmlformats-officedocument.spreadsheetml.template.main+xml': FType_Excel2007_Template,
     'application/vnd.ms-excel.template.macroEnabled.main+xml': FType_Excel2007_Template_Macro,
     'application/vnd.ms-excel.addin.macroEnabled.main+xml': FType_Excel2007_Addin_Macro,
+    # POWERPOINT
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml': FType_Powerpoint2007_Presentation,
+    'application/vnd.openxmlformats-officedocument.presentationml.slideshow.main+xml': FType_Powerpoint2007_Slideshow,
+    'application/vnd.ms-powerpoint.presentation.macroEnabled.main+xml': FType_Powerpoint2007_Macro,
+    'application/vnd.ms-powerpoint.slideshow.macroEnabled.main+xml': FType_Powerpoint2007_Slideshow_Macro,
     # XPS
     'application/vnd.ms-package.xps-fixeddocumentsequence+xml': FType_XPS,
 }
@@ -749,6 +811,13 @@ class FileTypeGuesser(object):
         :return: bool
         """
         return issubclass(self.ftype, FType_Excel)
+
+    def is_powerpoint(self):
+        """
+        Shortcut to check if a file is Powerpoint file of any kind
+        :return: bool
+        """
+        return issubclass(self.ftype, FType_Powerpoint)
 
 
 # === FUNCTIONS ==============================================================
