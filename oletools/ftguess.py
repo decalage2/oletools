@@ -424,6 +424,13 @@ class FType_Generic_OpenXML(FType_Base):
         # else:
         #     # TODO: log error, raise anomaly (or maybe it's the case for XPS?)
         #     return False
+        if main_part is None:
+            # just warn but do not raise an exception. This might be just
+            # another strange data type out there that we do not understand
+            # yet. Return False so file type will stay FType_Generic_OpenXML
+            log.warning('Failed to find any known relationship in OpenXML-file')
+            return False
+
         # parse content types, find content type of main part
         try:
             content_types = ftg.zipfile.read('[Content_Types].xml')
