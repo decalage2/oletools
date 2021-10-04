@@ -91,6 +91,17 @@ class TestFTGuess(unittest.TestCase):
                                      .format(guess.application, filename,
                                              expect.application))
 
+            if expect not in (ftguess.FType_Generic_OLE, ftguess.FType_Unknown):
+                self.assertEqual(guess.is_excel(), extension.startswith('x')
+                                                   and extension != 'xml'
+                                                   and extension != 'xlsb'
+                                                   and extension != 'xps')
+                   # xlsb is excel but not handled properly yet
+                self.assertEqual(guess.is_word(), extension.startswith('d'))
+                self.assertEqual(guess.is_powerpoint(),
+                                 extension.startswith('p'))
+
+
 
 # just in case somebody calls this file as a script
 if __name__ == '__main__':
