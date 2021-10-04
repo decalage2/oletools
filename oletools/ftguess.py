@@ -477,9 +477,7 @@ class FType_Word(FType_Base):
     name = 'MS Word (generic)'
     longname = 'MS Word Document or Template (generic)'
 
-# TODO: all word FTypes should inherit from FType_Word
-
-class FType_Word97(FType_OLE_CLSID_Base):
+class FType_Word97(FType_OLE_CLSID_Base, FType_Word):
     application = APP.MSWORD
     filetype = FTYPE.WORD97
     name = 'MS Word 97 Document'
@@ -492,7 +490,7 @@ class FType_Word97(FType_OLE_CLSID_Base):
     may_contain_ole = True
     # TODO: if no CLSID, check stream 'WordDocument'
 
-class FType_Word6(FType_OLE_CLSID_Base):
+class FType_Word6(FType_OLE_CLSID_Base, FType_Word):
     application = APP.MSWORD
     filetype = FTYPE.WORD6
     name = 'MS Word 6 Document'
@@ -503,28 +501,34 @@ class FType_Word6(FType_OLE_CLSID_Base):
     PUID = 'fmt/39'
     may_contain_ole = True
 
-class FType_Word2007(FType_Generic_OpenXML):
+class FType_Word2007_Base(FType_Generic_OpenXML, FType_Word):
+    application = APP.MSWORD
+    name = 'MS Word 2007+ File'
+    longname = 'MS Word 2007+ File (.doc?)'
+
+
+class FType_Word2007(FType_Word2007_Base):
     application = APP.MSWORD
     filetype = FTYPE.WORD2007_DOCX
     name = 'MS Word 2007+ Document'
     longname = 'MS Word 2007+ Document (.docx)'
     extensions = ['docx']
 
-class FType_Word2007_Macro(FType_Generic_OpenXML):
+class FType_Word2007_Macro(FType_Word2007_Base):
     application = APP.MSWORD
     filetype = FTYPE.WORD2007_DOCM
     name = 'MS Word 2007+ Macro-Enabled Document'
     longname = 'MS Word 2007+ Macro-Enabled Document (.docm)'
     extensions = ['docm']
 
-class FType_Word2007_Template(FType_Generic_OpenXML):
+class FType_Word2007_Template(FType_Word2007_Base):
     application = APP.MSWORD
     filetype = FTYPE.WORD2007_DOTX
     name = 'MS Word 2007+ Template'
     longname = 'MS Word 2007+ Template (.dotx)'
     extensions = ['dotx']
 
-class FType_Word2007_Template_Macro(FType_Generic_OpenXML):
+class FType_Word2007_Template_Macro(FType_Word2007_Base):
     application = APP.MSWORD
     filetype = FTYPE.WORD2007_DOTM
     name = 'MS Word 2007+ Macro-Enabled Template'
