@@ -235,7 +235,7 @@ from __future__ import print_function
 #                        for issue #619)
 # 2021-04-14       PL: - added detection of Workbook_BeforeClose (issue #518)
 
-__version__ = '0.60'
+__version__ = '0.60.1.dev3'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -800,7 +800,8 @@ SUSPICIOUS_KEYWORDS = {
     # ref: http://www.syssec-project.eu/m/page-media/3/disarm-raid11.pdf
         ('GetVolumeInformationA', 'GetVolumeInformation',  # with kernel32.dll
          '1824245000', r'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProductId',
-         '76487-337-8429955-22614', 'andy', 'sample', r'C:\exec\exec.exe', 'popupkiller'
+         '76487-337-8429955-22614', 'andy', r'C:\exec\exec.exe', 'popupkiller'
+         # note: removed 'sample' as it can trigger many false positives
         ),
     'May detect Sandboxie':
     # sample: https://malwr.com/analysis/M2NjZWNmMjA0YjVjNGVhYmJlZmFhNWY4NmQxZDllZTY/
