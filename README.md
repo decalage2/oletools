@@ -156,7 +156,8 @@ including
 [Viper](http://viper.li/),
 [ViperMonkey](https://github.com/decalage2/ViperMonkey),
 [YOMI](https://yomi.yoroi.company),
-and probably [VirusTotal](https://www.virustotal.com). 
+and probably [VirusTotal](https://www.virustotal.com), 
+[FileScan.IO](https://www.filescan.io). 
 And quite a few [other projects on GitHub](https://github.com/search?q=oletools&type=Repositories).
 (Please [contact me]((http://decalage.info/contact)) if you have or know
 a project using oletools)
