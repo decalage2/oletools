@@ -761,6 +761,8 @@ def process_file(filename, data, output_dir=None):
         for relationship, target in find_external_relationships(xml_parser):
             did_dump = True
             print("Found relationship '%s' with external link %s" % (relationship, target))
+            if target.startswith('mhtml:'):
+                print("Potential exploit for CVE-2021-40444")
 
     # look for ole files inside file (e.g. unzip docx)
     # have to finish work on every ole stream inside iteration, since handles
