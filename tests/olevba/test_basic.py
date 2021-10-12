@@ -4,8 +4,9 @@ Test basic functionality of olevba[3]
 
 import unittest
 import os
-from os.path import join
+from os.path import join, splitext
 import re
+import json
 
 # Directory with test data, independent of current working directory
 from tests.test_utils import DATA_BASE_DIR, call_and_capture
@@ -106,6 +107,48 @@ class TestOlevbaBasic(unittest.TestCase):
                 # test only first file with all arg combinations, others just
                 # without arg (test takes too long otherwise
                 ADD_ARGS = ([], )
+
+    def test_xlm(self):
+        """Test that xlm macros are found."""
+        XLM_DIR = join(DATA_BASE_DIR, 'excel4-macros')
+        ADD_ARGS = ['-j']
+
+        for filename in os.listdir(XLM_DIR):
+            full_name = join(XLM_DIR, filename)
+            suffix = splitext(filename)[1]
+            out_str, ret_code = call_and_capture('olevba',
+                                                 args=[full_name, ] + ADD_ARGS,
+                                                 accept_nonzero_exit=True)
+            output = json.loads(out_str)
+            self.assertEqual(len(output), 3)
+            self.assertEqual(output[0]['type'], 'MetaInformation')
+            self.assertEqual(output[0]['script_name'], 'olevba')
+            self.assertEqual(output[-1]['type'], 'MetaInformation')
+            self.assertEqual(output[-1]['n_processed'], 1)
+            self.assertEqual(output[-1]['return_code'], 0)
+            result = output[1]
+            self.assertTrue(result['json_conversion_successful'])
+            if suffix in ('.xlsb', '.xltm', '.xlsm'):
+                # TODO: cannot extract xlm macros for these types yet
+                self.assertEqual(result['macros'], [])
+            else:
+                code = result['macros'][0]['code']
+                if suffix == '.slk':
+                    self.assertIn('Excel 4 macros extracted', code)
+                else:
+                    self.assertIn('Excel 4.0 macro sheet', code)
+                self.assertIn('Auto_Open', code)
+                if 'excel5' not in filename:    # TODO: is not found in excel5
+                    self.assertIn('ALERT(', code)
+                self.assertIn('HALT()', code)
+
+                self.assertIn(len(result['analysis']), (2, 3))
+                types = [entry['type'] for entry in result['analysis']]
+                keywords = [entry['keyword'] for entry in result['analysis']]
+                self.assertIn('Auto_Open', keywords)
+                self.assertIn('XLM macro', keywords)
+                self.assertIn('AutoExec', types)
+                self.assertIn('Suspicious', types)
 
 
 # just in case somebody calls this file as a script
