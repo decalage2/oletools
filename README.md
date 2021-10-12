@@ -26,6 +26,19 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
+- **2021-06-02 v0.60**:
+    - ftguess: new tool to identify file formats and containers (issue #680)
+    - oleid: (issue #679)
+        - each indicator now has a risk level
+        - calls ftguess to identify file formats  
+        - calls olevba+mraptor to detect and analyse VBA+XLM macros 
+    - olevba:
+        - when XLMMacroDeobfuscator is available, use it to extract and deobfuscate XLM macros
+    - rtfobj:
+        - use ftguess to identify file type of OLE Package (issue #682)
+        - fixed bug in re_executable_extensions
+    - crypto: added PowerPoint transparent password '/01Hannes Ruescher/01' (issue #627)
+    - setup: XLMMacroDeobfuscator, xlrd2 and pyxlsb2 added as optional dependencies 
 - **2021-05-07 v0.56.2**:
     - olevba:
         - updated plugin_biff to v0.0.22 to fix a bug (issues #647, #674)
