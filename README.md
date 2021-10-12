@@ -163,6 +163,7 @@ including
 [SpuriousEmu](https://github.com/ldbo/SpuriousEmu),
 [Strelka](https://github.com/target/strelka),
 [stoQ](https://stoq.punchcyber.com/),
+[Sublime Platform/MQL](https://docs.sublimesecurity.com/docs/enrichment-functions),
 [TheHive/Cortex](https://github.com/TheHive-Project/Cortex-Analyzers),
 [TSUGURI Linux](https://tsurugi-linux.org/),
 [Vba2Graph](https://github.com/MalwareCantFly/Vba2Graph),
