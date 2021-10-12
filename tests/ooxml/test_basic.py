@@ -39,7 +39,7 @@ class TestOOXML(unittest.TestCase):
 
         # files that are neither OLE nor xml:
         except_files = 'empty', 'text'
-        except_extns = 'rtf', 'csv', 'zip'
+        except_extns = 'rtf', 'csv', 'zip', 'slk'
 
         # analyse all files in data dir
         # TODO: use testdata_reader to extract real data from zip files
