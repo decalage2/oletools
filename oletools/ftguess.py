@@ -165,7 +165,15 @@ class FTYPE(object):
     EXCEL2007_XLTX = 'Excel2007_XLTX'
     EXCEL2007_XLTM = 'Excel2007_XLTM'
     EXCEL2007_XLSB = 'Excel2007_XLSB'
+    EXCEL2007_XLAM = 'Excel2007_XLAM'
+    POWERPOINT97 = 'Powerpoint97'
+    POWERPOINT2007 = 'Powerpoint2007'
+    POWERPOINT2007_PPTX = 'Powerpoint2007_PPTX'
+    POWERPOINT2007_PPSX = 'Powerpoint2007_PPSX'
+    POWERPOINT2007_PPTM = 'Powerpoint2007_PPTM'
+    POWERPOINT2007_PPSM = 'Powerpoint2007_PPSM'
     # TODO: XLSB, DOCM, PPTM, PPSX, PPSM, ...
+    XPS = 'XPS'
     RTF = 'RTF'
     HTML = 'HTML'
     PDF = 'PDF'
@@ -203,7 +211,7 @@ class APP(object):
     MSPROJECT = 'MS Project'
     MSOFFICE = 'MS Office'  # when the exact app is unknown
     ZIP_ARCHIVER = 'Any Zip Archiver'
-    WINDOWS = 'Windows'  # for Windows executables
+    WINDOWS = 'Windows'  # for Windows executables and XPS
     UNKNOWN = 'Unknown Application'
 
 # FTYPE_NAME = {
@@ -222,6 +230,8 @@ ATTR_REL_TARGET = 'Target'
 URL_REL_OFFICEDOC = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
 # For "strict" OpenXML formats, the URL is different:
 URL_REL_OFFICEDOC_STRICT = 'http://purl.oclc.org/ooxml/officeDocument/relationships/officeDocument'
+# Url for xps files
+URL_REL_XPS = 'http://schemas.microsoft.com/xps/2005/06/fixedrepresentation'
 # Namespaces and tags for OpenXML parsing`- Content-types file:
 NS_CONTENT_TYPES = '{http://schemas.openxmlformats.org/package/2006/content-types}'
 TAG_CTYPES_DEFAULT = NS_CONTENT_TYPES + 'Default'
@@ -395,7 +405,7 @@ class FType_Generic_OpenXML(FType_Base):
         for elem_rel in elem_rels.iter(tag=TAG_REL):
             rel_type = elem_rel.get(ATTR_REL_TYPE)
             log.debug('Relationship: type=%s target=%s' % (rel_type, elem_rel.get(ATTR_REL_TARGET)))
-            if rel_type in (URL_REL_OFFICEDOC, URL_REL_OFFICEDOC_STRICT):
+            if rel_type in (URL_REL_OFFICEDOC, URL_REL_OFFICEDOC_STRICT, URL_REL_XPS):
                 # TODO: is it useful to distinguish normal and strict OpenXML?
                 main_part = elem_rel.get(ATTR_REL_TARGET)
                 # TODO: raise anomaly if there are more than one rel with type office doc
@@ -414,6 +424,13 @@ class FType_Generic_OpenXML(FType_Base):
         # else:
         #     # TODO: log error, raise anomaly (or maybe it's the case for XPS?)
         #     return False
+        if main_part is None:
+            # just warn but do not raise an exception. This might be just
+            # another strange data type out there that we do not understand
+            # yet. Return False so file type will stay FType_Generic_OpenXML
+            log.warning('Failed to find any known relationship in OpenXML-file')
+            return False
+
         # parse content types, find content type of main part
         try:
             content_types = ftg.zipfile.read('[Content_Types].xml')
@@ -454,15 +471,13 @@ class FType_Generic_OpenXML(FType_Base):
 
 # --- WORD Formats ---
 
-class FTYpe_Word(FType_Base):
-    'Base class for all MS Word file types'
+class FType_Word(FType_Base):
+    '''Base class for all MS Word file types'''
     application = APP.MSWORD
     name = 'MS Word (generic)'
     longname = 'MS Word Document or Template (generic)'
 
-# TODO: all word FTypes should inherit from FType_Word
-
-class FType_Word97(FType_OLE_CLSID_Base):
+class FType_Word97(FType_OLE_CLSID_Base, FType_Word):
     application = APP.MSWORD
     filetype = FTYPE.WORD97
     name = 'MS Word 97 Document'
@@ -475,7 +490,7 @@ class FType_Word97(FType_OLE_CLSID_Base):
     may_contain_ole = True
     # TODO: if no CLSID, check stream 'WordDocument'
 
-class FType_Word6(FType_OLE_CLSID_Base):
+class FType_Word6(FType_OLE_CLSID_Base, FType_Word):
     application = APP.MSWORD
     filetype = FTYPE.WORD6
     name = 'MS Word 6 Document'
@@ -486,28 +501,34 @@ class FType_Word6(FType_OLE_CLSID_Base):
     PUID = 'fmt/39'
     may_contain_ole = True
 
-class FType_Word2007(FType_Generic_OpenXML):
+class FType_Word2007_Base(FType_Generic_OpenXML, FType_Word):
+    application = APP.MSWORD
+    name = 'MS Word 2007+ File'
+    longname = 'MS Word 2007+ File (.doc?)'
+
+
+class FType_Word2007(FType_Word2007_Base):
     application = APP.MSWORD
     filetype = FTYPE.WORD2007_DOCX
     name = 'MS Word 2007+ Document'
     longname = 'MS Word 2007+ Document (.docx)'
     extensions = ['docx']
 
-class FType_Word2007_Macro(FType_Generic_OpenXML):
+class FType_Word2007_Macro(FType_Word2007_Base):
     application = APP.MSWORD
     filetype = FTYPE.WORD2007_DOCM
     name = 'MS Word 2007+ Macro-Enabled Document'
     longname = 'MS Word 2007+ Macro-Enabled Document (.docm)'
     extensions = ['docm']
 
-class FType_Word2007_Template(FType_Generic_OpenXML):
+class FType_Word2007_Template(FType_Word2007_Base):
     application = APP.MSWORD
     filetype = FTYPE.WORD2007_DOTX
     name = 'MS Word 2007+ Template'
     longname = 'MS Word 2007+ Template (.dotx)'
     extensions = ['dotx']
 
-class FType_Word2007_Template_Macro(FType_Generic_OpenXML):
+class FType_Word2007_Template_Macro(FType_Word2007_Base):
     application = APP.MSWORD
     filetype = FTYPE.WORD2007_DOTM
     name = 'MS Word 2007+ Macro-Enabled Template'
@@ -516,13 +537,13 @@ class FType_Word2007_Template_Macro(FType_Generic_OpenXML):
 
 # --- EXCEL Formats ---
 
-class FTYpe_Excel(FType_Base):
-    'Base class for all MS Excel file types'
+class FType_Excel(FType_Base):
+    '''Base class for all MS Excel file types'''
     application = APP.MSEXCEL
     name = 'MS Excel (generic)'
-    longname = 'MS Excel Workbook or Template (generic)'
+    longname = 'MS Excel Workbook/Template/Add-in (generic)'
 
-class FType_Excel97(FTYpe_Excel, FType_Generic_OLE):
+class FType_Excel97(FType_Excel, FType_Generic_OLE):
     filetype = FTYPE.EXCEL97
     name = 'MS Excel 97 Workbook'
     longname = 'MS Excel 97-2003 Workbook or Template'
@@ -530,7 +551,7 @@ class FType_Excel97(FTYpe_Excel, FType_Generic_OLE):
     extensions = ['xls', 'xlt', 'xla']
     # TODO: if no CLSID, check stream 'Workbook' or 'Book' (maybe Excel 5)
 
-class FType_Excel5(FTYpe_Excel, FType_Generic_OLE):
+class FType_Excel5(FType_Excel, FType_Generic_OLE):
     filetype = FTYPE.EXCEL5
     name = 'MS Excel 5.0/95 Workbook'
     longname = 'MS Excel 5.0/95 Workbook, Template or Add-in'
@@ -538,20 +559,21 @@ class FType_Excel5(FTYpe_Excel, FType_Generic_OLE):
     extensions = ['xls', 'xlt', 'xla']
     # TODO: this CLSID is also used in Excel addins (.xla) saved by MS Excel 365
 
-class FTYpe_Excel2007(FTYpe_Excel, FType_Generic_OpenXML):
-    'Base class for all MS Excel 2007 file types'
+class FType_Excel2007(FType_Excel, FType_Generic_OpenXML):
+    '''Base class for all MS Excel 2007 file types'''
     name = 'MS Excel 2007+ (generic)'
     longname = 'MS Excel 2007+ Workbook or Template (generic)'
+    content_types = ('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',)
+      # note: content type differs only for xlsm
 
-class FType_Excel2007_XLSX (FTYpe_Excel2007):
+class FType_Excel2007_XLSX (FType_Excel2007):
     filetype = FTYPE.EXCEL2007_XLSX
     name = 'MS Excel 2007+ Workbook'
     longname = 'MS Excel 2007+ Workbook (.xlsx)'
     extensions = ['xlsx']
-    content_types = ('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',)
     PUID = 'fmt/214'
 
-class FType_Excel2007_XLSM (FTYpe_Excel2007):
+class FType_Excel2007_XLSM (FType_Excel2007):
     filetype = FTYPE.EXCEL2007_XLSM
     name = 'MS Excel 2007+ Macro-Enabled Workbook'
     longname = 'MS Excel 2007+ Macro-Enabled Workbook (.xlsm)'
@@ -559,17 +581,94 @@ class FType_Excel2007_XLSM (FTYpe_Excel2007):
     content_types = ('application/vnd.ms-excel.sheet.macroEnabled.12',)
     PUID = 'fmt/445'
 
+class FType_Excel2007_Template(FType_Excel2007):
+    filetype = FTYPE.EXCEL2007_XLTX
+    name = 'MS Excel 2007+ Template'
+    longname = 'MS Excel 2007+ Template (.xltx)'
+    extensions = ['xltx']
+
+class FType_Excel2007_Template_Macro(FType_Excel2007):
+    filetype = FTYPE.EXCEL2007_XLTM
+    name = 'MS Excel 2007+ Macro-Enabled Template'
+    longname = 'MS Excel 2007+ Macro-Enabled Template (.xltm)'
+    extensions = ['xltm']
+
+class FType_Excel2007_Addin_Macro(FType_Excel2007):
+    filetype = FTYPE.EXCEL2007_XLAM
+    name = 'MS Excel 2007+ Macro-Enabled Add-in'
+    longname = 'MS Excel 2007+ Macro-Enabled Add-in (.xlam)'
+    extensions = ['xlam']
+
+# --- POWERPOINT Formats ---
+
+class FType_Powerpoint(FType_Base):
+    '''Base class for all MS Powerpoint file types'''
+    application = APP.MSPOWERPOINT
+    name = 'MS Powerpoint (generic)'
+    longname = 'MS Powerpoint Presentation/Slideshow/Template/Addin/... (generic)'
+
+class FType_Powerpoint97(FType_Powerpoint, FType_Generic_OLE):
+    # see also: ppt_record_parser.is_ppt
+    filetype = FTYPE.POWERPOINT97
+    name = 'MS Powerpoint 97 Presentation'
+    longname = 'MS Powerpoint 97-2003 Presentation/Slideshow/Template'
+    CLSIDS = ('64818D10-4F9B-11CF-86EA-00AA00B929E8',)
+    extensions = ['ppt', 'pps', 'pot']
+
+class FType_Powerpoint2007(FType_Powerpoint, FType_Generic_OpenXML):
+    '''Base class for all MS Powerpoint 2007 file types'''
+    filetype = FTYPE.POWERPOINT2007
+    name = 'MS Powerpoint 2007+ (generic)'
+    longname = 'MS Powerpoint 2007+ Presentation/Slideshow/Template (generic)'
+    content_types = ('application/vnd.openxmlformats-officedocument.presentationml.presentation',)
+
+class FType_Powerpoint2007_Presentation(FType_Powerpoint2007):
+    filetype = FTYPE.POWERPOINT2007_PPTX
+    name = 'MSPointpoint 2007+ Presentation'
+    longname = 'MSPointpoint 2007+ Presentation (.pptx)'
+    extensions = ['pptx']
+
+class FType_Powerpoint2007_Slideshow(FType_Powerpoint2007):
+    filetype = FTYPE.POWERPOINT2007_PPSX
+    name = 'MSPointpoint 2007+ Slideshow'
+    longname = 'MSPointpoint 2007+ Slideshow (.ppsx)'
+    extensions = ['ppsx']
+
+class FType_Powerpoint2007_Macro(FType_Powerpoint2007):
+    filetype = FTYPE.POWERPOINT2007_PPTM
+    name = 'MSPointpoint 2007+ Macro-Enabled Presentation'
+    longname = 'MSPointpoint 2007+ Macro-Enabled Presentation (.pptm)'
+    extensions = ['pptm']
+
+class FType_Powerpoint2007_Slideshow_Macro(FType_Powerpoint2007):
+    filetype = FTYPE.POWERPOINT2007_PPSM
+    name = 'MSPointpoint 2007+ Macro-Enabled Slideshow'
+    longname = 'MSPointpoint 2007+ Macro-Enabled Slideshow (.ppsm)'
+    extensions = ['ppsm']
+
+
+class FType_XPS(FType_Generic_OpenXML):
+    application = APP.WINDOWS
+    filetype = FTYPE.XPS
+    name = 'XPS'
+    longname = 'Fixed-Page Document (.xps)',
+    extensions = ['xps']
+
+
 # TODO: for PPT, check for stream 'PowerPoint Document'
 # TODO: for Visio, check for stream 'VisioDocument'
 
 clsid_ftypes = {
     # mapping from CLSID of root storage to FType classes:
+    # TODO: do not repeat magic numbers, import from oletools.common.clsid
     # WORD
     '00020906-0000-0000-C000-000000000046': FType_Word97,
     '00020900-0000-0000-C000-000000000046': FType_Word6,
     # EXCEL
     '00020820-0000-0000-C000-000000000046': FType_Excel97,
     '00020810-0000-0000-C000-000000000046': FType_Excel5,
+    # POWERPOINT
+    '64818D10-4F9B-11CF-86EA-00AA00B929E8': FType_Powerpoint97,
 }
 
 openxml_ftypes = {
@@ -583,6 +682,16 @@ openxml_ftypes = {
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml': FType_Excel2007_XLSX,
     'application/vnd.ms-excel.sheet.macroEnabled.main+xml': FType_Excel2007_XLSM,
     'application/vnd.ms-excel.sheet.binary.macroEnabled.main': None,
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.template.main+xml': FType_Excel2007_Template,
+    'application/vnd.ms-excel.template.macroEnabled.main+xml': FType_Excel2007_Template_Macro,
+    'application/vnd.ms-excel.addin.macroEnabled.main+xml': FType_Excel2007_Addin_Macro,
+    # POWERPOINT
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml': FType_Powerpoint2007_Presentation,
+    'application/vnd.openxmlformats-officedocument.presentationml.slideshow.main+xml': FType_Powerpoint2007_Slideshow,
+    'application/vnd.ms-powerpoint.presentation.macroEnabled.main+xml': FType_Powerpoint2007_Macro,
+    'application/vnd.ms-powerpoint.slideshow.macroEnabled.main+xml': FType_Powerpoint2007_Slideshow_Macro,
+    # XPS
+    'application/vnd.ms-package.xps-fixeddocumentsequence+xml': FType_XPS,
 }
 
 
@@ -605,6 +714,7 @@ class FileTypeGuesser(object):
     """
     A class to guess the type of a file, focused on MS Office, RTF and ZIP.
     """
+
     def __init__(self, filepath=None, data=None):
         self.filepath = filepath
         self.data = data
@@ -670,6 +780,13 @@ class FileTypeGuesser(object):
         self.filetype = self.ftype.filetype
         self.application = self.ftype.application
 
+    def __str__(self):
+        """Give a short string representation of this object."""
+        return '[FileTypeGuesser for {0}: {1} from {2} in {3}]'.format(
+            "data" if self.filepath is None
+            else os.path.basename(self.filepath),
+            self.filetype, self.application, self.container)
+
     def close(self):
         """
         This method must be called at the end of processing
@@ -697,14 +814,21 @@ class FileTypeGuesser(object):
         Shortcut to check if a file is an Excel workbook, template or add-in
         :return: bool
         """
-        return issubclass(self.ftype, FTYpe_Word)
+        return issubclass(self.ftype, FType_Word)
 
     def is_excel(self):
         """
         Shortcut to check if a file is an Excel workbook, template or add-in
         :return: bool
         """
-        return issubclass(self.ftype, FTYpe_Excel)
+        return issubclass(self.ftype, FType_Excel)
+
+    def is_powerpoint(self):
+        """
+        Shortcut to check if a file is Powerpoint file of any kind
+        :return: bool
+        """
+        return issubclass(self.ftype, FType_Powerpoint)
 
 
 # === FUNCTIONS ==============================================================

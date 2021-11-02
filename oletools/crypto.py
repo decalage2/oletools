@@ -202,8 +202,6 @@ def is_encrypted(some_file):
     :type some_file: :py:class:`olefile.OleFileIO` or `str`
     :returns: True if (and only if) the file contains encrypted content
     """
-    log.debug('is_encrypted')
-
     # ask msoffcrypto if possible
     if check_msoffcrypto():
         log.debug('Checking for encryption using msoffcrypto')
