@@ -429,6 +429,7 @@ class FType_Generic_OpenXML(FType_Base):
             # another strange data type out there that we do not understand
             # yet. Return False so file type will stay FType_Generic_OpenXML
             log.warning('Failed to find any known relationship in OpenXML-file')
+            # TODO: here we should recognize a generic OpenXML type instead of returning False
             return False
 
         # parse content types, find content type of main part
