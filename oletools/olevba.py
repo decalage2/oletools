@@ -234,6 +234,7 @@ from __future__ import print_function
 # 2020-09-28       PL: - added VBA_Parser.get_vba_code_all_modules (partial fix
 #                        for issue #619)
 # 2021-04-14       PL: - added detection of Workbook_BeforeClose (issue #518)
+# 2021-11-09       KJ: - added PROJECTCOMPATVERSION Record on dir Stream
 
 __version__ = '0.60.1.dev3'
 
@@ -1720,9 +1721,25 @@ class VBA_Project(object):
         if self.syskind not in SYSKIND_NAME:
             log.error("invalid PROJECTSYSKIND_SysKind {0:04X}".format(self.syskind))
 
-        # PROJECTLCID Record
+        # PROJECTLCID Record or PROJECTCOMPATVERSION Record
+        project_id = struct.unpack("<H", dir_stream.read(2))[0]
+        if project_id == 0x004A:
+            # PROJECTCOMPATVERSION Record
+            # Specifies the VBA project’s compat version.
+            projectcompatversion_id = project_id
+            self.check_value('PROJETCOMPATVERSION_Id', 0x004A, projectcompatversion_id)
+            projectcompatversion_size = struct.unpack("<L", dir_stream.read(4))[0]
+            self.check_value('PROJECTCOMPATVERSION_Size', 0x0004, projectcompatversion_size)
+            projectcompatversion_compatversion = struct.unpack("<L", dir_stream.read(4))[0]
+            # compat version: A 32-bit number that identifies the Office Model version used by a VBA project.
+            log.debug("compat version: {compat_version}".format(compat_version=projectcompatversion_compatversion))
+
+            # PROJECTLCID Record
+            project_id = struct.unpack("<H", dir_stream.read(2))[0]
+
+        projectlcid_id = project_id
+
         # Specifies the VBA project's LCID.
-        projectlcid_id = struct.unpack("<H", dir_stream.read(2))[0]
         self.check_value('PROJECTLCID_Id', 0x0002, projectlcid_id)
         projectlcid_size = struct.unpack("<L", dir_stream.read(4))[0]
         self.check_value('PROJECTLCID_Size', 0x0004, projectlcid_size)
