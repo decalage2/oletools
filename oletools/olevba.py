@@ -1725,7 +1725,7 @@ class VBA_Project(object):
         project_id = struct.unpack("<H", dir_stream.read(2))[0]
         if project_id == 0x004A:
             # PROJECTCOMPATVERSION Record
-            # Specifies the VBA project’s compat version.
+            # Specifies the VBA project's compat version.
             projectcompatversion_id = project_id
             self.check_value('PROJETCOMPATVERSION_Id', 0x004A, projectcompatversion_id)
             projectcompatversion_size = struct.unpack("<L", dir_stream.read(4))[0]
