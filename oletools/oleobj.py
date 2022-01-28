@@ -14,7 +14,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE =================================================================
 
-# oleobj is copyright (c) 2015-2021 Philippe Lagadec (http://www.decalage.info)
+# oleobj is copyright (c) 2015-2022 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -87,8 +87,9 @@ from oletools.common.io_encoding import ensure_stdout_handles_unicode
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
 # 2018-10-30       SA: - added detection of external links (PR #317)
 # 2020-03-03 v0.56 PL: - fixed bug #541, "Ole10Native" is case-insensitive
+# 2022-01-28 v0.60 PL: - added detection of customUI tags
 
-__version__ = '0.56.1'
+__version__ = '0.60.1.dev5'
 
 # -----------------------------------------------------------------------------
 # TODO:
@@ -182,6 +183,9 @@ else:
     xrange = range    # pylint: disable=redefined-builtin, invalid-name
 
 OOXML_RELATIONSHIP_TAG = '{http://schemas.openxmlformats.org/package/2006/relationships}Relationship'
+# There are several customUI tags for different versions of Office:
+TAG_CUSTOMUI_2007 = "{http://schemas.microsoft.com/office/2006/01/customui}customUI"
+TAG_CUSTOMUI_2010 = "{http://schemas.microsoft.com/office/2009/07/customui}customUI"
 
 # === GLOBAL VARIABLES ========================================================
 
@@ -721,6 +725,19 @@ def find_external_relationships(xml_parser):
             pass
 
 
+def find_customUI(xml_parser):
+    """
+    iterate XML files looking for customUI to external objects or VBA macros
+    Examples of malicious usage, to load an external document or trigger a VBA macro:
+    https://www.trellix.com/en-us/about/newsroom/stories/threat-labs/prime-ministers-office-compromised.html
+    https://www.netero1010-securitylab.com/evasion/execution-of-remote-vba-script-in-excel
+    """
+    for _, elem, _ in xml_parser.iter_xml(None, False, (TAG_CUSTOMUI_2007, TAG_CUSTOMUI_2010)):
+       customui_onload = elem.get('onLoad')
+       if customui_onload is not None:
+            yield customui_onload
+
+
 def process_file(filename, data, output_dir=None):
     """ find embedded objects in given file
 
@@ -763,6 +780,9 @@ def process_file(filename, data, output_dir=None):
             print("Found relationship '%s' with external link %s" % (relationship, target))
             if target.startswith('mhtml:'):
                 print("Potential exploit for CVE-2021-40444")
+        for target in find_customUI(xml_parser):
+            did_dump = True
+            print("Found customUI tag with external link or VBA macro %s (possibly exploiting CVE-2021-42292)" % target)
 
     # look for ole files inside file (e.g. unzip docx)
     # have to finish work on every ole stream inside iteration, since handles
