@@ -3421,7 +3421,7 @@ class VBA_Parser(object):
         xlm += result
         xlm.append('- ' * 38)
         xlm.append('EMULATION - DEOBFUSCATED EXCEL4/XLM MACRO FORMULAS:')
-        result = xlmdeobfuscator.process_file(file=sys.argv[1],
+        result = xlmdeobfuscator.process_file(file=self.filename,
                                            noninteractive=True,
                                            noindent=True,
                                            # output_formula_format='CELL:[[CELL_ADDR]], [[INT-FORMULA]]',
