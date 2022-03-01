@@ -3655,8 +3655,10 @@ class VBA_Parser(object):
             # variable to merge source code from all modules:
             if self.vba_code_all_modules is None:
                 self.vba_code_all_modules = self.get_vba_code_all_modules()
+                strings = []
                 for (_, _, form_string) in self.extract_form_strings():
-                    self.vba_code_all_modules += form_string + '\n'
+                    strings.append(form_string)
+                self.vba_code_all_modules.join(strings)
             # Analyze the whole code at once:
             scanner = VBA_Scanner(self.vba_code_all_modules)
             self.analysis_results = scanner.scan(show_decoded_strings, deobfuscate)
