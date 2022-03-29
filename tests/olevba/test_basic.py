@@ -76,14 +76,14 @@ class TestOlevbaBasic(unittest.TestCase):
 
     def test_crypt_return(self):
         """
-        Tests that encrypted files give a certain return code.
+        Test that encrypted files give a certain return code.
 
         Currently, only the encryption applied by Office 2010 (CryptoApi RC4
         Encryption) is tested.
         """
         CRYPT_DIR = join(DATA_BASE_DIR, 'encrypted')
         CRYPT_RETURN_CODE = 9
-        ADD_ARGS = [], ['-d', ], ['-a', ], ['-j', ], ['-t', ]
+        ADD_ARGS = [], ['-d', ], ['-a', ], ['-j', ], ['-t', ]   # only 1st file
         EXCEPTIONS = ['autostart-encrypt-standardpassword.xls',   # These ...
                       'autostart-encrypt-standardpassword.xlsm',  # files ...
                       'autostart-encrypt-standardpassword.xlsb',  # are ...
@@ -102,6 +102,10 @@ class TestOlevbaBasic(unittest.TestCase):
                 self.assertEqual(ret_code, CRYPT_RETURN_CODE,
                                  msg='Wrong return code {} for args {}'\
                                      .format(ret_code, args + [filename, ]))
+
+                # test only first file with all arg combinations, others just
+                # without arg (test takes too long otherwise
+                ADD_ARGS = ([], )
 
 
 # just in case somebody calls this file as a script

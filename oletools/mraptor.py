@@ -71,7 +71,7 @@ __version__ = '0.56.2'
 
 #--- IMPORTS ------------------------------------------------------------------
 
-import sys, logging, optparse, re, os
+import sys, optparse, re, os
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
@@ -90,11 +90,12 @@ from oletools.thirdparty.tablestream import tablestream
 
 from oletools import olevba
 from oletools.olevba import TYPE2TAG
+from oletools.common.log_helper import log_helper
 
 # === LOGGING =================================================================
 
 # a global logger object used for debugging:
-log = olevba.get_logger('mraptor')
+log = log_helper.get_or_create_silent_logger('mraptor')
 
 
 #--- CONSTANTS ----------------------------------------------------------------
@@ -230,15 +231,7 @@ def main():
     """
     Main function, called when olevba is run from the command line
     """
-    global log
     DEFAULT_LOG_LEVEL = "warning" # Default log level
-    LOG_LEVELS = {
-        'debug':    logging.DEBUG,
-        'info':     logging.INFO,
-        'warning':  logging.WARNING,
-        'error':    logging.ERROR,
-        'critical': logging.CRITICAL
-        }
 
     usage = 'usage: mraptor [options] <filename> [filename2 ...]'
     parser = optparse.OptionParser(usage=usage)
@@ -272,9 +265,9 @@ def main():
     print('MacroRaptor %s - http://decalage.info/python/oletools' % __version__)
     print('This is work in progress, please report issues at %s' % URL_ISSUES)
 
-    logging.basicConfig(level=LOG_LEVELS[options.loglevel], format='%(levelname)-8s %(message)s')
+    log_helper.enable_logging(level=options.loglevel)
     # enable logging in the modules:
-    log.setLevel(logging.NOTSET)
+    olevba.enable_logging()
 
     t = tablestream.TableStream(style=tablestream.TableStyleSlim,
             header_row=['Result', 'Flags', 'Type', 'File'],
@@ -346,6 +339,7 @@ def main():
             global_result = result
             exitcode = result.exit_code
 
+    log_helper.end_logging()
     print('')
     print('Flags: A=AutoExec, W=Write, X=Execute')
     print('Exit code: %d - %s' % (exitcode, global_result.name))

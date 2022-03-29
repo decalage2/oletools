@@ -1,6 +1,7 @@
 """ Test log_helpers """
 
 import sys
+import logging
 from tests.common.log_helper import log_helper_test_imported
 from oletools.common.log_helper import log_helper
 
@@ -15,7 +16,13 @@ RESULT_TYPE = 'main: result'
 logger = log_helper.get_or_create_silent_logger('test_main')
 
 
-def init_logging_and_log(args):
+def enable_logging():
+    """Enable logging if imported by third party modules."""
+    logger.setLevel(log_helper.NOTSET)
+    log_helper_test_imported.enable_logging()
+
+
+def main(args):
     """
     Try to cover possible logging scenarios. For each scenario covered, here's the expected args and outcome:
     - Log without enabling: ['<level>']
@@ -36,13 +43,12 @@ def init_logging_and_log(args):
     throw = 'throw' in args
     percent_autoformat = '%-autoformat' in args
 
+    log_helper_test_imported.logger.setLevel(logging.ERROR)
+
     if 'enable' in args:
         log_helper.enable_logging(use_json, level, stream=sys.stdout)
 
-    _log()
-
-    if percent_autoformat:
-        logger.info('The %s is %d.', 'answer', 47)
+    do_log(percent_autoformat)
 
     if throw:
         raise Exception('An exception occurred before ending the logging')
@@ -50,7 +56,10 @@ def init_logging_and_log(args):
     log_helper.end_logging()
 
 
-def _log():
+def do_log(percent_autoformat=False):
+    if percent_autoformat:
+        logger.info('The %s is %d.', 'answer', 47)
+
     logger.debug(DEBUG_MESSAGE)
     logger.info(INFO_MESSAGE)
     logger.warning(WARNING_MESSAGE)
@@ -61,4 +70,4 @@ def _log():
 
 
 if __name__ == '__main__':
-    init_logging_and_log(sys.argv[1:])
+    main(sys.argv[1:])

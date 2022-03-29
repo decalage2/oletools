@@ -3,6 +3,26 @@ log_helper.py
 
 General logging helpers
 
+Use as follows:
+
+    # at the start of your file:
+    # import logging   <-- replace this with next line
+    from oletools.common.log_helper import log_helper
+
+    logger = log_helper.get_or_create_silent_logger("module_name")
+    def enable_logging():
+        '''Enable logging in this module; for use by importing scripts'''
+        logger.setLevel(log_helper.NOTSET)
+        imported_oletool_module.enable_logging()
+        other_imported_oletool_module.enable_logging()
+
+    # ... your code; use logger instead of logging ...
+
+    def main():
+        log_helper.enable_logging(level=...)   # instead of logging.basicConfig
+        # ... your main code ...
+        log_helper.end_logging()
+
 .. codeauthor:: Intra2net AG <info@intra2net>, Philippe Lagadec
 """
 
@@ -45,6 +65,7 @@ General logging helpers
 # TODO:
 
 
+from __future__ import print_function
 from ._json_formatter import JsonFormatter
 from ._logger_adapter import OletoolsLoggerAdapter
 from . import _root_logger_wrapper
@@ -61,15 +82,27 @@ LOG_LEVELS = {
     'critical': logging.CRITICAL
 }
 
+#: provide this constant to modules, so they do not have to import
+#: :py:mod:`logging` for themselves just for this one constant.
+NOTSET = logging.NOTSET
+
 DEFAULT_LOGGER_NAME = 'oletools'
 DEFAULT_MESSAGE_FORMAT = '%(levelname)-8s %(message)s'
 
 
 class LogHelper:
+    """
+    Single helper class that creates and remembers loggers.
+    """
+
+    #: for convenience: here again (see also :py:data:`log_helper.NOTSET`)
+    NOTSET = logging.NOTSET
+
     def __init__(self):
         self._all_names = set()  # set so we do not have duplicates
         self._use_json = False
         self._is_enabled = False
+        self._target_stream = None
 
     def get_or_create_silent_logger(self, name=DEFAULT_LOGGER_NAME, level=logging.CRITICAL + 1):
         """
@@ -82,7 +115,8 @@ class LogHelper:
         """
         return self._get_or_create_logger(name, level, logging.NullHandler())
 
-    def enable_logging(self, use_json=False, level='warning', log_format=DEFAULT_MESSAGE_FORMAT, stream=None):
+    def enable_logging(self, use_json=False, level='warning', log_format=DEFAULT_MESSAGE_FORMAT, stream=None,
+                       other_logger_has_first_line=False):
         """
         This function initializes the root logger and enables logging.
         We set the level of the root logger to the one passed by calling logging.basicConfig.
@@ -93,15 +127,26 @@ class LogHelper:
         which in turn will log to the stream set in this function.
         Since the root logger is the one doing the work, when using JSON we set its formatter
         so that every message logged is JSON-compatible.
+
+        If other code also creates json output, all items should be pre-pended
+        with a comma like the `JsonFormatter` does. Except the first; use param
+        `other_logger_has_first_line` to clarify whether our logger or the
+        other code will produce the first json item.
         """
         if self._is_enabled:
             raise ValueError('re-enabling logging. Not sure whether that is ok...')
 
-        if stream in (None, sys.stdout):
+        if stream is None:
+            self.target_stream = sys.stdout
+        else:
+            self.target_stream = stream
+
+        if self.target_stream == sys.stdout:
             ensure_stdout_handles_unicode()
 
         log_level = LOG_LEVELS[level]
-        logging.basicConfig(level=log_level, format=log_format, stream=stream)
+        logging.basicConfig(level=log_level, format=log_format,
+                            stream=self.target_stream)
         self._is_enabled = True
 
         self._use_json = use_json
@@ -115,8 +160,8 @@ class LogHelper:
 
         # add a JSON formatter to the root logger, which will be used by every logger
         if self._use_json:
-            _root_logger_wrapper.set_formatter(JsonFormatter())
-            print('[')
+            _root_logger_wrapper.set_formatter(JsonFormatter(other_logger_has_first_line))
+            print('[', file=self.target_stream)
 
     def end_logging(self):
         """
@@ -133,7 +178,7 @@ class LogHelper:
 
         # end json list
         if self._use_json:
-            print(']')
+            print(']', file=self.target_stream)
         self._use_json = False
 
     def _get_except_hook(self, old_hook):

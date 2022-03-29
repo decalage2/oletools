@@ -42,6 +42,7 @@ from __future__ import print_function
 # 2018-09-11 v0.54 PL: - olefile is now a dependency
 # 2019-01-30       PL: - fixed import to avoid mixing installed oletools
 #                        and dev version
+# 2019-05-24       CH: - use log_helper
 
 __version__ = '0.60.dev1'
 
@@ -64,7 +65,6 @@ __version__ = '0.60.dev1'
 import sys
 import os.path
 from io import SEEK_CUR
-import logging
 
 import olefile
 
@@ -74,6 +74,7 @@ PARENT_DIR = os.path.normpath(os.path.dirname(os.path.dirname(
 if PARENT_DIR not in sys.path:
     sys.path.insert(0, PARENT_DIR)
 del PARENT_DIR
+from oletools.common.log_helper import log_helper
 
 
 ###############################################################################
@@ -100,9 +101,24 @@ ENTRY_TYPE2STR = {
 }
 
 
+logger = log_helper.get_or_create_silent_logger('record_base')
+
+
 def enable_olefile_logging():
-    """ enable logging olefile e.g., to get debug info from OleFileIO """
+    """ enable logging in olefile e.g., to get debug info from OleFileIO """
     olefile.enable_logging()
+
+
+def enable_logging():
+    """
+    Enable logging for this module (disabled by default).
+
+    For use by third-party libraries that import `record_base` as module.
+
+    This will set the module-specific logger level to NOTSET, which
+    means the main application controls the actual logging level.
+    """
+    logger.setLevel(log_helper.NOTSET)
 
 
 ###############################################################################
@@ -139,7 +155,7 @@ class OleRecordFile(olefile.OleFileIO):
 
     def iter_streams(self):
         """ find all streams, including orphans """
-        logging.debug('Finding streams in ole file')
+        logger.debug('Finding streams in ole file')
 
         for sid, direntry in enumerate(self.direntries):
             is_orphan = direntry is None
@@ -147,7 +163,7 @@ class OleRecordFile(olefile.OleFileIO):
                 # this direntry is not part of the tree --> unused or orphan
                 direntry = self._load_direntry(sid)
             is_stream = direntry.entry_type == olefile.STGTY_STREAM
-            logging.debug('direntry {:2d} {}: {}'.format(
+            logger.debug('direntry {:2d} {}: {}'.format(
                 sid, '[orphan]' if is_orphan else direntry.name,
                 'is stream of size {}'.format(direntry.size) if is_stream else
                 'no stream ({})'.format(ENTRY_TYPE2STR[direntry.entry_type])))
@@ -216,8 +232,8 @@ class OleRecordStream(object):
 
             # read first few bytes, determine record type and size
             rec_type, rec_size, other = self.read_record_head()
-            # logging.debug('Record type {0} of size {1}'
-            #               .format(rec_type, rec_size))
+            # logger.debug('Record type {0} of size {1}'
+            #              .format(rec_type, rec_size))
 
             # determine what class to wrap this into
             rec_clz, force_read = self.record_class_for_type(rec_type)
@@ -237,6 +253,7 @@ class OleRecordStream(object):
             yield rec_object
 
     def close(self):
+        """Close this stream (i.e. the stream given in constructor)."""
         self.stream.close()
 
     def __str__(self):
@@ -348,25 +365,25 @@ def test(filenames, ole_file_class=OleRecordFile,
     if an error occurs while parsing a stream of type in must_parse, the error
     will be raised. Otherwise a message is printed
     """
-    logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO)
+    log_helper.enable_logging(False, 'debug' if verbose else 'info')
     if do_per_record is None:
         def do_per_record(record):         # pylint: disable=function-redefined
             pass   # do nothing
     if not filenames:
-        logging.info('need file name[s]')
+        logger.info('need file name[s]')
         return 2
     for filename in filenames:
-        logging.info('checking file {0}'.format(filename))
+        logger.info('checking file {0}'.format(filename))
         if not olefile.isOleFile(filename):
-            logging.info('not an ole file - skip')
+            logger.info('not an ole file - skip')
             continue
         ole = ole_file_class(filename)
 
         for stream in ole.iter_streams():
-            logging.info('  parse ' + str(stream))
+            logger.info('  parse ' + str(stream))
             try:
                 for record in stream.iter_records():
-                    logging.info('    ' + str(record))
+                    logger.info('    ' + str(record))
                     do_per_record(record)
             except Exception:
                 if not must_parse:
@@ -374,7 +391,9 @@ def test(filenames, ole_file_class=OleRecordFile,
                 elif isinstance(stream, must_parse):
                     raise
                 else:
-                    logging.info('  failed to parse', exc_info=True)
+                    logger.info('  failed to parse', exc_info=True)
+
+    log_helper.end_logging()
     return 0
 
 

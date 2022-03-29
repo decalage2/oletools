@@ -40,26 +40,35 @@ class OlevbaCryptoWriteProtectTest(unittest.TestCase):
                                          exclude_stderr=True)
             data = json.loads(output, object_pairs_hook=OrderedDict)
             # debug: json.dump(data, sys.stdout, indent=4)
-            self.assertEqual(len(data), 4)
+            self.assertIn(len(data), (3, 4))
+
+            # first 2 parts: general info about script and file
             self.assertIn('script_name', data[0])
             self.assertIn('version', data[0])
             self.assertEqual(data[0]['type'], 'MetaInformation')
-            self.assertIn('return_code', data[-1])
-            self.assertEqual(data[-1]['type'], 'MetaInformation')
             self.assertEqual(data[1]['container'], None)
             self.assertEqual(data[1]['file'], example_file)
             self.assertEqual(data[1]['analysis'], None)
             self.assertEqual(data[1]['macros'], [])
             self.assertEqual(data[1]['type'], 'OLE')
-            self.assertEqual(data[2]['container'], example_file)
-            self.assertNotEqual(data[2]['file'], example_file)
-            self.assertEqual(data[2]['type'], "OpenXML")
-            analysis = data[2]['analysis']
+            self.assertTrue(data[1]['json_conversion_successful'])
+
+            # possible VBA stomping warning
+            if len(data) == 4:
+                self.assertEqual(data[2]['type'], 'msg')
+                self.assertIn('VBA stomping', data[2]['msg'])
+
+            # last part is the actual result
+            self.assertEqual(data[-1]['container'], example_file)
+            self.assertNotEqual(data[-1]['file'], example_file)
+            self.assertEqual(data[-1]['type'], "OpenXML")
+            analysis = data[-1]['analysis']
             self.assertEqual(analysis[0]['type'], 'AutoExec')
             self.assertEqual(analysis[0]['keyword'], 'Auto_Open')
-            macros = data[2]['macros']
+            macros = data[-1]['macros']
             self.assertEqual(macros[0]['vba_filename'], 'Modul1.bas')
             self.assertIn('Sub Auto_Open()', macros[0]['code'])
+            self.assertTrue(data[-1]['json_conversion_successful'])
 
 
 if __name__ == '__main__':
