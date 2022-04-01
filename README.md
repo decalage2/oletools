@@ -153,6 +153,7 @@ including
 [Malware Repository Framework (MRF)](https://www.adlice.com/download/mrf/),
 [MalwareBazaar](https://bazaar.abuse.ch/),
 [olefy](https://github.com/HeinleinSupport/olefy),
+[Pandora](https://github.com/pandora-analysis/pandora),
 [PeekabooAV](https://github.com/scVENUS/PeekabooAV),
 [pcodedmp](https://github.com/bontchev/pcodedmp),
 [PyCIRCLean](https://github.com/CIRCL/PyCIRCLean),
