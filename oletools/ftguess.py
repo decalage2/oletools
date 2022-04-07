@@ -13,7 +13,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# ftguess is copyright (c) 2018-2021, Philippe Lagadec (http://www.decalage.info)
+# ftguess is copyright (c) 2018-2022, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -43,7 +43,7 @@ from __future__ import print_function
 # 2018-07-04 v0.54 PL: - first version
 # 2021-05-09 v0.60 PL: -
 
-__version__ = '0.60.1.dev4'
+__version__ = '0.60.1.dev8'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -172,7 +172,7 @@ class FTYPE(object):
     POWERPOINT2007_PPSX = 'Powerpoint2007_PPSX'
     POWERPOINT2007_PPTM = 'Powerpoint2007_PPTM'
     POWERPOINT2007_PPSM = 'Powerpoint2007_PPSM'
-    # TODO: XLSB, DOCM, PPTM, PPSX, PPSM, ...
+    # TODO: DOCM, PPTM, PPSX, PPSM, ...
     XPS = 'XPS'
     RTF = 'RTF'
     HTML = 'HTML'
@@ -582,6 +582,14 @@ class FType_Excel2007_XLSM (FType_Excel2007):
     content_types = ('application/vnd.ms-excel.sheet.macroEnabled.12',)
     PUID = 'fmt/445'
 
+class FType_Excel2007_XLSB (FType_Excel2007):
+    filetype = FTYPE.EXCEL2007_XLSB
+    name = 'MS Excel 2007+ Binary Workbook'
+    longname = 'MS Excel 2007+ Binary Workbook (.xlsb)'
+    extensions = ['xlsb']
+    content_types = ('application/vnd.ms-excel.sheet.binary.macroEnabled.12',)
+    PUID = 'fmt/595'
+
 class FType_Excel2007_Template(FType_Excel2007):
     filetype = FTYPE.EXCEL2007_XLTX
     name = 'MS Excel 2007+ Template'
@@ -682,7 +690,7 @@ openxml_ftypes = {
     # EXCEL
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml': FType_Excel2007_XLSX,
     'application/vnd.ms-excel.sheet.macroEnabled.main+xml': FType_Excel2007_XLSM,
-    'application/vnd.ms-excel.sheet.binary.macroEnabled.main': None,
+    'application/vnd.ms-excel.sheet.binary.macroEnabled.main': FType_Excel2007_XLSB,
     'application/vnd.openxmlformats-officedocument.spreadsheetml.template.main+xml': FType_Excel2007_Template,
     'application/vnd.ms-excel.template.macroEnabled.main+xml': FType_Excel2007_Template_Macro,
     'application/vnd.ms-excel.addin.macroEnabled.main+xml': FType_Excel2007_Addin_Macro,
