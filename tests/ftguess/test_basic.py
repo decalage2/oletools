@@ -54,7 +54,7 @@ class TestFTGuess(unittest.TestCase):
                           .format(filename))
             extension = extension[1:]      # remove the leading '.'
 
-            # encrypted files are mostly recognized (yet?), except .xls
+            # encrypted files are mostly not recognized (yet?), except .xls
             if filename.startswith('encrypted/'):
                 if extension == 'xls':
                     expect = ftguess.FType_Excel97
@@ -65,8 +65,17 @@ class TestFTGuess(unittest.TestCase):
                 # not really an office file type
                 expect = ftguess.FType_Unknown
 
+            elif extension == 'slk':
+                # not implemented yet
+                expect = ftguess.FType_Unknown
+
             elif filename == 'basic/encrypted.docx':
                 expect = ftguess.FType_Generic_OLE
+
+            elif 'excel5' in filename:
+                # excel5 and excel97 have the same extensions, so we did not
+                # include excel5 in "used_types" above.
+                expect = ftguess.FType_Excel5
 
             else:
                 # other files behave nicely, so extension determines the type
