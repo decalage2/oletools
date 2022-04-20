@@ -172,6 +172,25 @@ class TestLogHelper(unittest.TestCase):
         """Check that warnings are captured and printed correctly"""
         output = self._run_test(['enable', 'warn', 'warning'])
 
+        # find out which line contains the call to warnings.warn:
+        warnings_line = None
+        with open(TEST_FILE, 'rt') as reader:
+            for line_idx, line in enumerate(reader):
+                if 'warnings.warn' in line:
+                    warnings_line = line_idx + 1
+                    break
+        self.assertNotEqual(warnings_line, None)
+
+        imported_file = join(dirname(abspath(__file__)),
+                             'log_helper_test_imported.py')
+        imported_line = None
+        with open(imported_file, 'rt') as reader:
+            for line_idx, line in enumerate(reader):
+                if 'warnings.warn' in line:
+                    imported_line = line_idx + 1
+                    break
+        self.assertNotEqual(imported_line, None)
+
         expect = '\n'.join([
             'WARNING  ' + log_helper_test_main.WARNING_MESSAGE,
             'ERROR    ' + log_helper_test_main.ERROR_MESSAGE,
@@ -179,12 +198,15 @@ class TestLogHelper(unittest.TestCase):
             'WARNING  ' + log_helper_test_imported.WARNING_MESSAGE,
             'ERROR    ' + log_helper_test_imported.ERROR_MESSAGE,
             'CRITICAL ' + log_helper_test_imported.CRITICAL_MESSAGE,
-            'WARNING  ' + log_helper_test_main.ACTUAL_WARNING,
+            'WARNING  {0}:{1}: UserWarning: {2}'
+                .format(TEST_FILE, warnings_line, log_helper_test_main.ACTUAL_WARNING),
             '  warnings.warn(ACTUAL_WARNING)',   # warnings include source line
-            'WARNING  ' + log_helper_test_imported.ACTUAL_WARNING,
+            '',
+            'WARNING  {0}:{1}: UserWarning: {2}'
+                .format(imported_file, imported_line, log_helper_test_imported.ACTUAL_WARNING),
             '  warnings.warn(ACTUAL_WARNING)',   # warnings include source line
         ])
-        self.assertEqual(output, expect)
+        self.assertEqual(output.strip(), expect)
 
     def _assert_json_messages(self, output, messages):
         try:
@@ -205,7 +227,7 @@ class TestLogHelper(unittest.TestCase):
         we might get errors or false positives between sequential tests runs)
 
         When arg `run_third_party` is `True`, we do not run the `TEST_FILE` as
-        main moduel but the `TEST_FILE_3RD_PARTY` and return contents of
+        main module but the `TEST_FILE_3RD_PARTY` and return contents of
         `stderr` instead of `stdout`.
 
         TODO: use tests.utils.call_and_capture
