@@ -22,7 +22,7 @@ class TestFTGuess(unittest.TestCase):
             ftguess.FType_Word2007, ftguess.FType_Word2007_Macro,
             ftguess.FType_Word2007_Template,
             ftguess.FType_Word2007_Template_Macro, ftguess.FType_Excel97,
-            ftguess.FType_Excel2007,
+            ftguess.FType_Excel2007, ftguess.FType_Excel2007_XLSB,
             ftguess.FType_Excel2007_XLSX , ftguess.FType_Excel2007_XLSM ,
             ftguess.FType_Excel2007_Template,
             ftguess.FType_Excel2007_Template_Macro,
@@ -37,9 +37,6 @@ class TestFTGuess(unittest.TestCase):
         for ftype in used_types:
             for extension in ftype.extensions:
                 ftype_for_extension[extension] = ftype
-
-        # TODO: xlsb is not implemented yet
-        ftype_for_extension['xlsb'] = ftguess.FType_Generic_OpenXML
 
         for filename, file_contents in loop_over_files():
             # let the system guess
@@ -94,9 +91,7 @@ class TestFTGuess(unittest.TestCase):
             if expect not in (ftguess.FType_Generic_OLE, ftguess.FType_Unknown):
                 self.assertEqual(guess.is_excel(), extension.startswith('x')
                                                    and extension != 'xml'
-                                                   and extension != 'xlsb'
                                                    and extension != 'xps')
-                   # xlsb is excel but not handled properly yet
                 self.assertEqual(guess.is_word(), extension.startswith('d'))
                 self.assertEqual(guess.is_powerpoint(),
                                  extension.startswith('p'))
