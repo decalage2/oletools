@@ -29,6 +29,56 @@ Software.
 News
 ----
 
+-  **2022-05-09 v0.60.1**:
+
+   -  olevba:
+
+      -  fixed a bug when calling XLMMacroDeobfuscator (PR #737)
+      -  removed keyword "sample" causing false positives
+
+   -  oleid: fixed OleID init issue (issue #695, PR #696)
+   -  oleobj:
+
+      -  added simple detection of CVE-2021-40444 initial stage
+      -  added detection for customUI onLoad
+      -  improved handling of incorrect filenames in OLE package (PR
+         #451)
+
+   -  rtfobj: fixed code to find URLs in OLE2Link objects for Py3 (issue
+      #692)
+   -  ftguess:
+
+      -  added PowerPoint and XPS formats (PR #716)
+      -  fixed issue with XPS and malformed documents (issue #711)
+      -  added XLSB format (issue #758)
+
+   -  improved logging with common module log_helper (PR #449)
+
+-  **2021-06-02 v0.60**:
+
+   -  ftguess: new tool to identify file formats and containers (issue
+      #680)
+   -  oleid: (issue #679)
+
+      -  each indicator now has a risk level
+      -  calls ftguess to identify file formats
+      -  calls olevba+mraptor to detect and analyse VBA+XLM macros
+
+   -  olevba:
+
+      -  when XLMMacroDeobfuscator is available, use it to extract and
+         deobfuscate XLM macros
+
+   -  rtfobj:
+
+      -  use ftguess to identify file type of OLE Package (issue #682)
+      -  fixed bug in re_executable_extensions
+
+   -  crypto: added PowerPoint transparent password '/01Hannes
+      Ruescher/01' (issue #627)
+   -  setup: XLMMacroDeobfuscator, xlrd2 and pyxlsb2 added as optional
+      dependencies
+
 -  **2021-05-07 v0.56.2**:
 
    -  olevba:
@@ -202,6 +252,7 @@ BOSS <https://github.com/lmco/laikaboss>`__,
 Repository Framework (MRF) <https://www.adlice.com/download/mrf/>`__,
 `MalwareBazaar <https://bazaar.abuse.ch/>`__,
 `olefy <https://github.com/HeinleinSupport/olefy>`__,
+`Pandora <https://github.com/pandora-analysis/pandora>`__,
 `PeekabooAV <https://github.com/scVENUS/PeekabooAV>`__,
 `pcodedmp <https://github.com/bontchev/pcodedmp>`__,
 `PyCIRCLean <https://github.com/CIRCL/PyCIRCLean>`__,
@@ -211,14 +262,16 @@ Repository Framework (MRF) <https://www.adlice.com/download/mrf/>`__,
 Email <https://splunkbase.splunk.com/app/5365/>`__,
 `SpuriousEmu <https://github.com/ldbo/SpuriousEmu>`__,
 `Strelka <https://github.com/target/strelka>`__,
-`stoQ <https://stoq.punchcyber.com/>`__,
+`stoQ <https://stoq.punchcyber.com/>`__, `Sublime
+Platform/MQL <https://docs.sublimesecurity.com/docs/enrichment-functions>`__,
 `TheHive/Cortex <https://github.com/TheHive-Project/Cortex-Analyzers>`__,
 `TSUGURI Linux <https://tsurugi-linux.org/>`__,
 `Vba2Graph <https://github.com/MalwareCantFly/Vba2Graph>`__,
 `Viper <http://viper.li/>`__,
 `ViperMonkey <https://github.com/decalage2/ViperMonkey>`__,
 `YOMI <https://yomi.yoroi.company>`__, and probably
-`VirusTotal <https://www.virustotal.com>`__. And quite a few `other
+`VirusTotal <https://www.virustotal.com>`__,
+`FileScan.IO <https://www.filescan.io>`__. And quite a few `other
 projects on
 GitHub <https://github.com/search?q=oletools&type=Repositories>`__.
 (Please `contact me <(http://decalage.info/contact)>`__ if you have or
@@ -231,11 +284,16 @@ The recommended way to download and install/update the **latest stable
 release** of oletools is to use
 `pip <https://pip.pypa.io/en/stable/installing/>`__:
 
--  On Linux/Mac: ``sudo -H pip install -U oletools``
--  On Windows: ``pip install -U oletools``
+-  On Linux/Mac: ``sudo -H pip install -U oletools[full]``
+-  On Windows: ``pip install -U oletools[full]``
 
 This should automatically create command-line scripts to run each tool
 from any directory: ``olevba``, ``mraptor``, ``rtfobj``, etc.
+
+The keyword ``[full]`` means that all optional dependencies will be
+installed, such as XLMMacroDeobfuscator. If you prefer a lighter version
+without optional dependencies, just remove ``[full]`` from the command
+line.
 
 To get the **latest development version** instead:
 
@@ -279,7 +337,7 @@ This license applies to the python-oletools package, apart from the
 thirdparty folder which contains third-party files published with their
 own license.
 
-The python-oletools package is copyright (c) 2012-2021 Philippe Lagadec
+The python-oletools package is copyright (c) 2012-2022 Philippe Lagadec
 (http://www.decalage.info)
 
 All rights reserved.
