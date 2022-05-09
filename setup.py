@@ -332,15 +332,16 @@ def main():
         extras_require={
             # Optional packages - to be installed with pip install -U oletools[full]
             'full': [
+                'XLMMacroDeobfuscator',
+                # Disabled the direct links to GitHub as it's now refused by PyPI:
                 # For XLMMacroDeobfuscator, the release on PyPI is quite old compared
                 # to the github version, so for now we have to install from github:
-                'xlrd2@https://github.com/DissectMalware/xlrd2/archive/master.zip',
-                'pyxlsb2@https://github.com/DissectMalware/pyxlsb2/archive/master.zip',
-                'XLMMacroDeobfuscator@https://github.com/DissectMalware/XLMMacroDeobfuscator/archive/master.zip',
+                # 'xlrd2@https://github.com/DissectMalware/xlrd2/archive/master.zip',
+                # 'pyxlsb2@https://github.com/DissectMalware/pyxlsb2/archive/master.zip',
+                # 'XLMMacroDeobfuscator@https://github.com/DissectMalware/XLMMacroDeobfuscator/archive/master.zip',
                 # References for the syntax:
                 # https://github.com/decalage2/oletools/issues/690
                 # https://stackoverflow.com/questions/30239152/specify-extras-require-with-pip-install-e
-                # 'XLMMacroDeobfuscator',
             ]
         }
     )
