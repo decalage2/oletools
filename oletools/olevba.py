@@ -235,7 +235,7 @@ from __future__ import print_function
 #                        for issue #619)
 # 2021-04-14       PL: - added detection of Workbook_BeforeClose (issue #518)
 
-__version__ = '0.60.1.dev6'
+__version__ = '0.60.1'
 
 #------------------------------------------------------------------------------
 # TODO:

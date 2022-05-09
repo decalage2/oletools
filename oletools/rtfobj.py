@@ -15,7 +15,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# rtfobj is copyright (c) 2012-2021, Philippe Lagadec (http://www.decalage.info)
+# rtfobj is copyright (c) 2012-2022, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -98,7 +98,7 @@ http://www.decalage.info/python/oletools
 
 from __future__ import print_function
 
-__version__ = '0.60.1.dev1'
+__version__ = '0.60.1'
 
 # ------------------------------------------------------------------------------
 # TODO:

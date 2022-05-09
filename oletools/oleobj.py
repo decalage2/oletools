@@ -90,7 +90,7 @@ from oletools.common.io_encoding import ensure_stdout_handles_unicode
 # 2020-03-03 v0.56 PL: - fixed bug #541, "Ole10Native" is case-insensitive
 # 2022-01-28 v0.60 PL: - added detection of customUI tags
 
-__version__ = '0.60.1.dev5'
+__version__ = '0.60.1'
 
 # -----------------------------------------------------------------------------
 # TODO:

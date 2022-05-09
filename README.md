@@ -26,6 +26,21 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
+- **2022-05-09 v0.60.1**:
+    - olevba: 
+      - fixed a bug when calling XLMMacroDeobfuscator (PR #737)
+      - removed keyword "sample" causing false positives
+    - oleid: fixed OleID init issue (issue #695, PR #696)
+    - oleobj: 
+      - added simple detection of CVE-2021-40444 initial stage
+      - added detection for customUI onLoad
+      - improved handling of incorrect filenames in OLE package (PR #451)
+    - rtfobj: fixed code to find URLs in OLE2Link objects for Py3 (issue #692)
+    - ftguess: 
+      - added PowerPoint and XPS formats (PR #716)
+      - fixed issue with XPS and malformed documents (issue #711)
+      - added XLSB format (issue #758)
+    - improved logging with common module log_helper (PR #449)
 - **2021-06-02 v0.60**:
     - ftguess: new tool to identify file formats and containers (issue #680)
     - oleid: (issue #679)
@@ -184,11 +199,15 @@ Download and Install:
 The recommended way to download and install/update the **latest stable release**
 of oletools is to use [pip](https://pip.pypa.io/en/stable/installing/):
 
-- On Linux/Mac: `sudo -H pip install -U oletools`
-- On Windows: `pip install -U oletools`
+- On Linux/Mac: `sudo -H pip install -U oletools[full]`
+- On Windows: `pip install -U oletools[full]`
 
 This should automatically create command-line scripts to run each tool from
 any directory: `olevba`, `mraptor`, `rtfobj`, etc.
+
+The keyword `[full]` means that all optional dependencies will be installed, such as XLMMacroDeobfuscator.
+If you prefer a lighter version without optional dependencies, just remove `[full]` from the command line.
+ 
 
 To get the **latest development version** instead:
 

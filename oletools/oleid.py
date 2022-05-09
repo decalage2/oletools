@@ -17,7 +17,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# oleid is copyright (c) 2012-2021, Philippe Lagadec (http://www.decalage.info)
+# oleid is copyright (c) 2012-2022, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -60,7 +60,7 @@ from __future__ import print_function
 #                        improve encryption detection for ppt
 # 2021-05-07 v0.56.2 MN: - fixed bug in check_excel (issue #584, PR #585)
 
-__version__ = '0.60.1.dev2'
+__version__ = '0.60.1'
 
 
 #------------------------------------------------------------------------------
