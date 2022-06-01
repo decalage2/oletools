@@ -7,7 +7,7 @@ Helpers to run smoothly in unicode-unfriendly environments like output redirect
 or unusual language settings.
 
 In such settings, output to console falls back to ASCII-only. Also open()
-suddenly fails to interprete non-ASCII characters.
+suddenly fails to interpret non-ASCII characters.
 
 Therefore, at start of scripts can run :py:meth:`ensure_stdout_handles_unicode`
 and when opening text files use :py:meth:`uopen` to replace :py:meth:`open`.
@@ -18,7 +18,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE =================================================================
 
-# msodde is copyright (c) 2017-2018 Philippe Lagadec (http://www.decalage.info)
+# io_encoding is copyright (c) 2017-2018 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
