@@ -958,6 +958,8 @@ def main(cmd_line_args=None):
                         default=DEFAULT_LOG_LEVEL,
                         help='logging level debug/info/warning/error/critical '
                              '(default=%(default)s)')
+    parser.add_argument('-j', '--json', action='store_true',
+                        help='Convert all output to json format')
     parser.add_argument('input', nargs='*', type=existing_file_or_glob, metavar='FILE',
                         help='Office files to parse (same as -i)')
 
@@ -979,9 +981,12 @@ def main(cmd_line_args=None):
     # here we use stdout instead of stderr by default, so that the output
     # can be redirected properly.
     if options.loglevel == 'debug-olefile':
+        if options.json:
+            raise argparse.ArgumentTypeError('log-level "debug-olefile" cannot be combined with "--json"')
         olefile.enable_logging()
         options.loglevel = 'debug'
-    log_helper.enable_logging(level=options.loglevel, stream=sys.stdout)
+    log_helper.enable_logging(level=options.loglevel, use_json=options.json,
+                              stream=sys.stdout)
 
     # first thing after enabling logging: print banner
     log.print_str(BANNER)
