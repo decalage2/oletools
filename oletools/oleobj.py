@@ -951,10 +951,10 @@ def process_file(filename, data, output_dir=None):
 # === MAIN ====================================================================
 
 
-def existing_file(filename):
-    """ called by argument parser to see whether given file exists """
-    if not os.path.isfile(filename):
-        raise argparse.ArgumentTypeError('{0} is not a file.'.format(filename))
+def existing_file_or_glob(filename):
+    """ called by argument parser to see whether given file[s] exists """
+    if not os.path.isfile(filename) and not xglob.is_glob(filename):
+        raise argparse.ArgumentTypeError('{0} does not specify existing file[s]'.format(filename))
     return filename
 
 
@@ -979,7 +979,8 @@ def main(cmd_line_args=None):
     # parser.add_argument('-c', '--csv', dest='csv',
     #     help='export results to a CSV file')
     parser.add_argument("-r", action="store_true", dest="recursive",
-                        help='find files recursively in subdirectories.')
+                        help='find files recursively in subdirectories. '
+                             'Input arg must still be file or glob.')
     parser.add_argument("-d", type=str, dest="output_dir", default=None,
                         help='use specified directory to output files.')
     parser.add_argument("-z", "--zip", dest='zip_password', type=str,
@@ -996,11 +997,11 @@ def main(cmd_line_args=None):
                         default=DEFAULT_LOG_LEVEL,
                         help='logging level debug/info/warning/error/critical '
                              '(default=%(default)s)')
-    parser.add_argument('input', nargs='*', type=existing_file, metavar='FILE',
+    parser.add_argument('input', nargs='*', type=existing_file_or_glob, metavar='FILE',
                         help='Office files to parse (same as -i)')
 
     # options for compatibility with ripOLE
-    parser.add_argument('-i', '--more-input', type=str, metavar='FILE',
+    parser.add_argument('-i', '--more-input', type=existing_file_or_glob, metavar='FILE',
                         help='Additional file to parse (same as positional '
                              'arguments)')
     parser.add_argument('-v', '--verbose', action='store_true',
