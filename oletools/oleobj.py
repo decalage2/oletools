@@ -43,7 +43,6 @@ http://www.decalage.info/python/oletools
 
 from __future__ import print_function
 
-import logging
 import struct
 import argparse
 import os
@@ -68,10 +67,11 @@ if _parent_dir not in sys.path:
     sys.path.insert(0, _parent_dir)
 
 from oletools.thirdparty import xglob
+from oletools import record_base
 from oletools.ppt_record_parser import (is_ppt, PptFile,
                                         PptRecordExOleVbaActiveXAtom)
-from oletools.ooxml import XmlParser
-from oletools.common.io_encoding import ensure_stdout_handles_unicode
+from oletools import ooxml
+from oletools.common.log_helper import log_helper
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:
@@ -94,7 +94,6 @@ __version__ = '0.60.1'
 
 # -----------------------------------------------------------------------------
 # TODO:
-# + setup logging (common with other oletools)
 
 
 # -----------------------------------------------------------------------------
@@ -111,64 +110,18 @@ __version__ = '0.60.1'
 # === LOGGING =================================================================
 
 DEFAULT_LOG_LEVEL = "warning"
-LOG_LEVELS = {'debug':    logging.DEBUG,
-              'info':     logging.INFO,
-              'warning':  logging.WARNING,
-              'error':    logging.ERROR,
-              'critical': logging.CRITICAL,
-              'debug-olefile': logging.DEBUG}
-
-
-class NullHandler(logging.Handler):
-    """
-    Log Handler without output, to avoid printing messages if logging is not
-    configured by the main application.
-    Python 2.7 has logging.NullHandler, but this is necessary for 2.6:
-    see https://docs.python.org/2.6/library/logging.html section
-    configuring-logging-for-a-library
-    """
-    def emit(self, record):
-        pass
-
-
-def get_logger(name, level=logging.CRITICAL+1):
-    """
-    Create a suitable logger object for this module.
-    The goal is not to change settings of the root logger, to avoid getting
-    other modules' logs on the screen.
-    If a logger exists with same name, reuse it. (Else it would have duplicate
-    handlers and messages would be doubled.)
-    The level is set to CRITICAL+1 by default, to avoid any logging.
-    """
-    # First, test if there is already a logger with the same name, else it
-    # will generate duplicate messages (due to duplicate handlers):
-    if name in logging.Logger.manager.loggerDict:
-        # NOTE: another less intrusive but more "hackish" solution would be to
-        # use getLogger then test if its effective level is not default.
-        logger = logging.getLogger(name)
-        # make sure level is OK:
-        logger.setLevel(level)
-        return logger
-    # get a new logger:
-    logger = logging.getLogger(name)
-    # only add a NullHandler for this logger, it is up to the application
-    # to configure its own logging:
-    logger.addHandler(NullHandler())
-    logger.setLevel(level)
-    return logger
-
 
 # a global logger object used for debugging:
-log = get_logger('oleobj')     # pylint: disable=invalid-name
+log = log_helper.get_or_create_silent_logger("oleobj")
 
 
 def enable_logging():
-    """
-    Enable logging for this module (disabled by default).
-    This will set the module-specific logger level to NOTSET, which
-    means the main application controls the actual logging level.
-    """
-    log.setLevel(logging.NOTSET)
+    """Enable logging in this module; for use by importing scripts"""
+    log.setLevel(log_helper.NOTSET)
+    ooxml.enable_logging()
+    record_base.enable_logging()     # for ppt_record_parser
+
+    # do not enable logging for olefile, have extra logging value "debug-olefile" for that
 
 
 # === CONSTANTS ===============================================================
@@ -757,7 +710,7 @@ def find_ole(filename, data, xml_parser=None):
             # keep compatibility with 3rd-party code that calls this function
             # directly without providing an XmlParser instance
             if xml_parser is None:
-                xml_parser = XmlParser(arg_for_zip)
+                xml_parser = ooxml.XmlParser(arg_for_zip)
                 # force iteration so XmlParser.iter_non_xml() returns data
                 for _ in xml_parser.iter_xml():
                     pass
@@ -856,8 +809,8 @@ def process_file(filename, data, output_dir=None):
         fname_prefix = os.path.join(base_dir, sane_fname)
 
     # TODO: option to extract objects to files (false by default)
-    print('-'*79)
-    print('File: %r' % filename)
+    log.print_str('-'*79)
+    log.print_str('File: %r' % filename)
     index = 1
 
     # do not throw errors but remember them and try continue with other streams
@@ -869,15 +822,15 @@ def process_file(filename, data, output_dir=None):
     if is_zipfile(filename):
         log.info('file could be an OOXML file, looking for relationships with '
                  'external links')
-        xml_parser = XmlParser(filename)
+        xml_parser = ooxml.XmlParser(filename)
         for relationship, target in find_external_relationships(xml_parser):
             did_dump = True
-            print("Found relationship '%s' with external link %s" % (relationship, target))
+            log.print_str("Found relationship '%s' with external link %s" % (relationship, target))
             if target.startswith('mhtml:'):
-                print("Potential exploit for CVE-2021-40444")
+                log.print_str("Potential exploit for CVE-2021-40444")
         for target in find_customUI(xml_parser):
             did_dump = True
-            print("Found customUI tag with external link or VBA macro %s (possibly exploiting CVE-2021-42292)" % target)
+            log.print_str("Found customUI tag with external link or VBA macro %s (possibly exploiting CVE-2021-42292)" % target)
 
     # look for ole files inside file (e.g. unzip docx)
     # have to finish work on every ole stream inside iteration, since handles
@@ -893,9 +846,9 @@ def process_file(filename, data, output_dir=None):
                 stream = None
                 try:
                     stream = ole.openstream(path_parts)
-                    print('extract file embedded in OLE object from stream %r:'
+                    log.print_str('extract file embedded in OLE object from stream %r:'
                           % stream_path)
-                    print('Parsing OLE Package')
+                    log.print_str('Parsing OLE Package')
                     opkg = OleNativeStream(stream)
                     # leave stream open until dumping is finished
                 except Exception:
@@ -910,9 +863,9 @@ def process_file(filename, data, output_dir=None):
                     log.debug('Object is not embedded but only linked to '
                               '- skip')
                     continue
-                print(u'Filename = "%s"' % opkg.filename)
-                print(u'Source path = "%s"' % opkg.src_path)
-                print(u'Temp path = "%s"' % opkg.temp_path)
+                log.print_str(u'Filename = "%s"' % opkg.filename)
+                log.print_str(u'Source path = "%s"' % opkg.src_path)
+                log.print_str(u'Temp path = "%s"' % opkg.temp_path)
                 for embedded_fname in get_sane_embedded_filenames(
                         opkg.filename, opkg.src_path, opkg.temp_path,
                         MAX_FILENAME_LENGTH - len(sane_fname) - 1, index):
@@ -922,7 +875,7 @@ def process_file(filename, data, output_dir=None):
 
                 # dump
                 try:
-                    print('saving to file %s' % fname)
+                    log.print_str('saving to file %s' % fname)
                     with open(fname, 'wb') as writer:
                         n_dumped = 0
                         next_size = min(DUMP_CHUNK_SIZE, opkg.actual_size)
@@ -948,7 +901,21 @@ def process_file(filename, data, output_dir=None):
     return err_stream, err_dumping, did_dump
 
 
-# === MAIN ====================================================================
+# === ARGUMENT PARSING =======================================================
+
+
+# banner to be printed at program start
+BANNER = """oleobj %s - http://decalage.info/python/oletools
+THIS IS WORK IN PROGRESS - Check updates regularly!
+Please report any issue at https://github.com/decalage2/oletools/issues
+""" % __version__
+
+
+class ArgParserWithBanner(argparse.ArgumentParser):
+    """ Print banner before showing any error """
+    def error(self, message):
+        print(BANNER)
+        super(ArgParserWithBanner, self).error(message)
 
 
 def existing_file_or_glob(filename):
@@ -958,22 +925,16 @@ def existing_file_or_glob(filename):
     return filename
 
 
+# === MAIN ====================================================================
+
 def main(cmd_line_args=None):
     """ main function, called when running this as script
 
     Per default (cmd_line_args=None) uses sys.argv. For testing, however, can
     provide other arguments.
     """
-    # print banner with version
-    ensure_stdout_handles_unicode()
-    print('oleobj %s - http://decalage.info/oletools' % __version__)
-    print('THIS IS WORK IN PROGRESS - Check updates regularly!')
-    print('Please report any issue at '
-          'https://github.com/decalage2/oletools/issues')
-    print('')
-
     usage = 'usage: %(prog)s [options] <filename> [filename2 ...]'
-    parser = argparse.ArgumentParser(usage=usage)
+    parser = ArgParserWithBanner(usage=usage)
     # parser.add_argument('-o', '--outfile', dest='outfile',
     #     help='output file')
     # parser.add_argument('-c', '--csv', dest='csv',
@@ -1014,20 +975,21 @@ def main(cmd_line_args=None):
     if options.verbose:
         options.loglevel = 'debug'
 
-    # Print help if no arguments are passed
-    if not options.input:
-        parser.print_help()
-        return RETURN_ERR_ARGS
-
     # Setup logging to the console:
     # here we use stdout instead of stderr by default, so that the output
     # can be redirected properly.
-    logging.basicConfig(level=LOG_LEVELS[options.loglevel], stream=sys.stdout,
-                        format='%(levelname)-8s %(message)s')
-    # enable logging in the modules:
-    log.setLevel(logging.NOTSET)
     if options.loglevel == 'debug-olefile':
         olefile.enable_logging()
+        options.loglevel = 'debug'
+    log_helper.enable_logging(level=options.loglevel, stream=sys.stdout)
+
+    # first thing after enabling logging: print banner
+    log.print_str(BANNER)
+
+    # Print help if no arguments are passed
+    if not options.input:
+        log.print_str(parser.format_help())
+        return RETURN_ERR_ARGS
 
     # remember if there was a problem and continue with other data
     any_err_stream = False
@@ -1046,6 +1008,9 @@ def main(cmd_line_args=None):
         any_err_stream |= err_stream
         any_err_dumping |= err_dumping
         any_did_dump |= did_dump
+
+    # end logging
+    log_helper.end_logging()
 
     # assemble return value
     return_val = RETURN_NO_DUMP
