@@ -3,6 +3,7 @@
 import unittest
 from tempfile import mkdtemp
 from shutil import rmtree
+from os import listdir
 from os.path import join, isfile
 from hashlib import md5
 from glob import glob
@@ -157,6 +158,17 @@ class TestOleObj(unittest.TestCase):
         """ Ensure old oleobj behaviour still works: pre-read whole file """
         return self.do_test_md5(['-d', self.temp_dir], test_fun=preread_file,
                                 only_run_every=4)
+
+    def test_nodump(self):
+        """Ensure that with --nodump nothing is ever written to disc."""
+        data_dir = join(DATA_BASE_DIR, 'oleobj')
+        for sample_name, _, _ in SAMPLES:
+            args = ['-d', self.temp_dir, '--nodump', join(data_dir, sample_name)]
+            call_and_capture('oleobj', args,
+                             accept_nonzero_exit=True)
+        temp_dir_contents = listdir(self.temp_dir)
+        if temp_dir_contents:
+            self.fail('Found file in temp dir despite "--nodump": {}'.format(temp_dir_contents))
 
 
 class TestSaneFilenameCreation(unittest.TestCase):
