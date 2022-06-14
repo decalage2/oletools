@@ -2,8 +2,9 @@
 """
 oleobj.py
 
-oleobj is a Python script and module to parse OLE objects and files stored
-into various MS Office file formats (doc, xls, ppt, docx, xlsx, pptx, etc)
+oleobj is a Python script and module to extract OLE objects and files stored
+into various MS Office file formats (doc, xls, ppt, docx, xlsx, pptx, etc).
+It also finds external relationships in newer xml-based office file formats.
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -381,6 +382,7 @@ class OleNativeStream(object):
             # TODO: SLACK DATA
         except (IOError, struct.error):      # no data to read actual_size
             log.debug('data is not embedded but only a link')
+            # TODO: extract that link and log it, might point to malicious content
             self.is_link = True
             self.actual_size = 0
             self.data = None
@@ -785,7 +787,7 @@ def find_customUI(xml_parser):
             yield customui_onload
 
 
-def process_file(filename, data, output_dir=None):
+def process_file(filename, data, output_dir=None, nodump=False):
     """ find embedded objects in given file
 
     if data is given (from xglob for encrypted zip files), then filename is
@@ -794,12 +796,21 @@ def process_file(filename, data, output_dir=None):
 
     If output_dir is given and does not exist, it is created. If it is not
     given, data is saved to same directory as the input file.
+
+    If nodump is given as `True`, nothing is written to disc, the file is only
+    checked for presence of dump-able contents or external relationships. The
+    returned flag `did_dump` is still set to `True` if something dump-worthy is
+    found.
+
+    Returns a bool triple `(err_stream, err_dumping, did_dump)`, indicating whether
+    there was an error in extracting streams, in dupming data and whether anything
+    relevant was found (including external relationships)
     """
     # sanitize filename, leave space for embedded filename part
     sane_fname = sanitize_filename(filename, max_len=MAX_FILENAME_LENGTH-5) or\
         'NONAME'
     if output_dir:
-        if not os.path.isdir(output_dir):
+        if not os.path.isdir(output_dir) and not nodump:
             log.info('creating output directory %s', output_dir)
             os.mkdir(output_dir)
 
@@ -808,7 +819,7 @@ def process_file(filename, data, output_dir=None):
         base_dir = os.path.dirname(filename)
         fname_prefix = os.path.join(base_dir, sane_fname)
 
-    # TODO: option to extract objects to files (false by default)
+    # TODO: option to extract objects to files (false by default) (solved by option nodump?)
     log.print_str('-'*79)
     log.print_str('File: %r' % filename)
     index = 1
@@ -874,28 +885,33 @@ def process_file(filename, data, output_dir=None):
                         break
 
                 # dump
-                try:
-                    log.print_str('saving to file %s' % fname)
-                    with open(fname, 'wb') as writer:
-                        n_dumped = 0
-                        next_size = min(DUMP_CHUNK_SIZE, opkg.actual_size)
-                        while next_size:
-                            data = stream.read(next_size)
-                            writer.write(data)
-                            n_dumped += len(data)
-                            if len(data) != next_size:
-                                log.warning('Wanted to read {0}, got {1}'
-                                            .format(next_size, len(data)))
-                                break
-                            next_size = min(DUMP_CHUNK_SIZE,
-                                            opkg.actual_size - n_dumped)
-                    did_dump = True
-                except Exception as exc:
-                    log.warning('error dumping to {0} ({1})'
-                                .format(fname, exc))
-                    err_dumping = True
-                finally:
+                if nodump:
+                    log.debug('Skip dumping')
                     stream.close()
+                    did_dump = True   # still tell caller that there's something to dump
+                else:
+                    try:
+                        log.print_str('saving to file %s' % fname)
+                        with open(fname, 'wb') as writer:
+                            n_dumped = 0
+                            next_size = min(DUMP_CHUNK_SIZE, opkg.actual_size)
+                            while next_size:
+                                data = stream.read(next_size)
+                                writer.write(data)
+                                n_dumped += len(data)
+                                if len(data) != next_size:
+                                    log.warning('Wanted to read {0}, got {1}'
+                                                .format(next_size, len(data)))
+                                    break
+                                next_size = min(DUMP_CHUNK_SIZE,
+                                                opkg.actual_size - n_dumped)
+                        did_dump = True
+                    except Exception as exc:
+                        log.warning('error dumping to {0} ({1})'
+                                    .format(fname, exc))
+                        err_dumping = True
+                    finally:
+                        stream.close()
 
                 index += 1
     return err_stream, err_dumping, did_dump
@@ -944,6 +960,8 @@ def main(cmd_line_args=None):
                              'Input arg must still be file or glob.')
     parser.add_argument("-d", type=str, dest="output_dir", default=None,
                         help='use specified directory to output files.')
+    parser.add_argument("--nodump", action="store_true",
+                        help="Do not dump anything, just check for external relationships")
     parser.add_argument("-z", "--zip", dest='zip_password', type=str,
                         default=None,
                         help='if the file is a zip archive, open first file '
@@ -1009,7 +1027,7 @@ def main(cmd_line_args=None):
         if container and filename.endswith('/'):
             continue
         err_stream, err_dumping, did_dump = \
-            process_file(filename, data, options.output_dir)
+            process_file(filename, data, options.output_dir, options.nodump)
         any_err_stream |= err_stream
         any_err_dumping |= err_dumping
         any_did_dump |= did_dump
