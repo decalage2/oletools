@@ -21,12 +21,20 @@ class TestExternalLinks(unittest.TestCase):
         for dirpath, _, filenames in os.walk(BASE_DIR):
             for filename in filenames:
                 file_path = path.join(dirpath, filename)
+                if not path.isfile(file_path):
+                    continue
 
-                output, ret_val = call_and_capture('oleobj', [file_path, ],
+                output, ret_val = call_and_capture('oleobj', ['--nodump', file_path, ],
                                                    accept_nonzero_exit=True)
                 self.assertEqual(ret_val, oleobj.RETURN_DID_DUMP,
                                  msg='Wrong return value {} for {}. Output:\n{}'
                                      .format(ret_val, filename, output))
+                found_relationship = False
+                for line in output.splitlines():
+                    if line.startswith('Found relationship'):
+                        found_relationship = True
+                        break
+                self.assertTrue(found_relationship)
 
 
 # just in case somebody calls this file as a script
