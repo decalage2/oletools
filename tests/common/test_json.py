@@ -9,7 +9,6 @@ import os
 from os.path import relpath
 import json
 import unittest
-from tempfile import TemporaryDirectory
 
 from tests.test_utils import DATA_BASE_DIR, call_and_capture
 from tests.test_utils.testdata_reader import loop_and_extract
@@ -22,23 +21,22 @@ class TestJson(unittest.TestCase):
 
     def test_all(self):
         """Check that olevba, msodde and oleobj produce valid json for ALL samples."""
-        with TemporaryDirectory(prefix='oletools-test-oleobj-') as temp_dir:
-            for sample_path in loop_and_extract():
-                if sample_path.startswith(DATA_BASE_DIR):
-                    print(f'TestJson: checking sample {relpath(sample_path, DATA_BASE_DIR)}')
-                else:
-                    print(f'TestJson: checking sample {sample_path}')
-                output, _ = call_and_capture('oleobj', ['--json', '-d', temp_dir, sample_path],
-                                             accept_nonzero_exit=True)
-                json.loads(output)
+        for sample_path in loop_and_extract():
+            if sample_path.startswith(DATA_BASE_DIR):
+                print(f'TestJson: checking sample {relpath(sample_path, DATA_BASE_DIR)}')
+            else:
+                print(f'TestJson: checking sample {sample_path}')
+            output, _ = call_and_capture('oleobj', ['--json', '--nodump', sample_path],
+                                         accept_nonzero_exit=True)
+            json.loads(output)
 
-                output, _ = call_and_capture('olevba', ['--json', sample_path],
-                                             accept_nonzero_exit=True)
-                json.loads(output)
+            output, _ = call_and_capture('olevba', ['--json', sample_path],
+                                         accept_nonzero_exit=True)
+            json.loads(output)
 
-                output, _ = call_and_capture('msodde', ['--json', sample_path],
-                                             accept_nonzero_exit=True)
-                json.loads(output)
+            output, _ = call_and_capture('msodde', ['--json', sample_path],
+                                         accept_nonzero_exit=True)
+            json.loads(output)
 
 
 # just in case somebody calls this file as a script
