@@ -165,6 +165,7 @@ RETURN_DID_DUMP = 1    # did dump/extract successfully
 RETURN_ERR_ARGS = 2    # reserve for OptionParser.parse_args
 RETURN_ERR_STREAM = 4  # error opening/parsing a stream
 RETURN_ERR_DUMP = 8    # error dumping data from stream to file
+RETURN_FOUND_EXTERNAL = 16   # found an external relationship
 
 # Not sure if they can all be "External", but just in case
 BLACKLISTED_RELATIONSHIP_TYPES = [
@@ -802,9 +803,10 @@ def process_file(filename, data, output_dir=None, nodump=False):
     returned flag `did_dump` is still set to `True` if something dump-worthy is
     found.
 
-    Returns a bool triple `(err_stream, err_dumping, did_dump)`, indicating whether
-    there was an error in extracting streams, in dupming data and whether anything
-    relevant was found (including external relationships)
+    Returns 4 bools: `(err_stream, err_dumping, did_dump, found_external)`,
+    indicating whether there was an error in extracting streams, in dupming
+    data and whether anything relevant was found (dump-worthy or external
+    relationship)
     """
     # sanitize filename, leave space for embedded filename part
     sane_fname = sanitize_filename(filename, max_len=MAX_FILENAME_LENGTH-5) or\
@@ -828,6 +830,7 @@ def process_file(filename, data, output_dir=None, nodump=False):
     err_stream = False
     err_dumping = False
     did_dump = False
+    found_external = False
 
     xml_parser = None
     if is_zipfile(filename):
@@ -835,12 +838,12 @@ def process_file(filename, data, output_dir=None, nodump=False):
                  'external links')
         xml_parser = ooxml.XmlParser(filename)
         for relationship, target in find_external_relationships(xml_parser):
-            did_dump = True
+            found_external = True
             log.print_str("Found relationship '%s' with external link %s" % (relationship, target))
             if target.startswith('mhtml:'):
                 log.print_str("Potential exploit for CVE-2021-40444")
         for target in find_customUI(xml_parser):
-            did_dump = True
+            found_external = True
             log.print_str("Found customUI tag with external link or VBA macro %s (possibly exploiting CVE-2021-42292)" % target)
 
     # look for ole files inside file (e.g. unzip docx)
@@ -914,7 +917,7 @@ def process_file(filename, data, output_dir=None, nodump=False):
                         stream.close()
 
                 index += 1
-    return err_stream, err_dumping, did_dump
+    return err_stream, err_dumping, did_dump, found_external
 
 
 # === ARGUMENT PARSING =======================================================
@@ -1018,6 +1021,7 @@ def main(cmd_line_args=None):
     any_err_stream = False
     any_err_dumping = False
     any_did_dump = False
+    any_found_external = False
 
     for container, filename, data in \
             xglob.iter_files(options.input, recursive=options.recursive,
@@ -1026,11 +1030,12 @@ def main(cmd_line_args=None):
         # ignore directory names stored in zip files:
         if container and filename.endswith('/'):
             continue
-        err_stream, err_dumping, did_dump = \
+        err_stream, err_dumping, did_dump, found_external = \
             process_file(filename, data, options.output_dir, options.nodump)
         any_err_stream |= err_stream
         any_err_dumping |= err_dumping
         any_did_dump |= did_dump
+        any_found_external |= found_external
 
     # end logging
     log_helper.end_logging()
@@ -1043,6 +1048,8 @@ def main(cmd_line_args=None):
         return_val += RETURN_ERR_STREAM
     if any_err_dumping:
         return_val += RETURN_ERR_DUMP
+    if any_found_external:
+        return_val += RETURN_FOUND_EXTERNAL
     return return_val
 
 
