@@ -26,7 +26,7 @@ class TestExternalLinks(unittest.TestCase):
 
                 output, ret_val = call_and_capture('oleobj', ['--nodump', file_path, ],
                                                    accept_nonzero_exit=True)
-                self.assertEqual(ret_val, oleobj.RETURN_DID_DUMP,
+                self.assertEqual(ret_val, oleobj.RETURN_FOUND_EXTERNAL,
                                  msg='Wrong return value {} for {}. Output:\n{}'
                                      .format(ret_val, filename, output))
                 found_relationship = False
