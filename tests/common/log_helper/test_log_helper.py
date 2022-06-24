@@ -224,6 +224,12 @@ class TestLogHelper(unittest.TestCase):
         self.assertIn('Traceback (most recent call last)', output)    # start of trace
         self.assertIn(TEST_FILE, output)        # part of trace
 
+    def test_json_wrong_args(self):
+        """Test that too many or missing args do not raise exceptions inside logger"""
+        output = self._run_test(['enable', 'as-json', 'wrong-log-args', 'info'])
+        json.loads(output)    # check that this does not raise, so json is valid
+        # do not care about actual contents of output
+
     def _assert_json_messages(self, output, messages):
         try:
             json_data = json.loads(output)

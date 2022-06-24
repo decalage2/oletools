@@ -50,6 +50,7 @@ def main(args):
     percent_autoformat = '%-autoformat' in args
     warn = 'warn' in args
     exc_info = 'exc-info' in args
+    wrong_log_args = 'wrong-log-args' in args
 
     log_helper_test_imported.logger.setLevel(logging.ERROR)
 
@@ -70,6 +71,12 @@ def main(args):
             raise Exception('This is an exception')
         except Exception:
             logger.exception('Caught exception')  # has exc_info=True
+
+    if wrong_log_args:
+        logger.info('Opening file /dangerous/file/with-%s-in-name')
+        logger.info('The result is %f')
+        logger.info('No result', 1.23)
+        logger.info('The result is %f', 'bla')
 
     log_helper.end_logging()
 
