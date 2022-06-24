@@ -49,6 +49,7 @@ def main(args):
     throw = 'throw' in args
     percent_autoformat = '%-autoformat' in args
     warn = 'warn' in args
+    exc_info = 'exc-info' in args
 
     log_helper_test_imported.logger.setLevel(logging.ERROR)
 
@@ -63,6 +64,12 @@ def main(args):
     if warn:
         warnings.warn(ACTUAL_WARNING)
         log_helper_test_imported.warn()
+
+    if exc_info:
+        try:
+            raise Exception('This is an exception')
+        except Exception:
+            logger.exception('Caught exception')  # has exc_info=True
 
     log_helper.end_logging()
 
