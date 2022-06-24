@@ -17,8 +17,7 @@ from os.path import dirname, join, relpath, abspath
 from tests.test_utils import PROJECT_ROOT
 
 # test file we use as "main" module
-TEST_FILE = relpath(join(dirname(abspath(__file__)), 'log_helper_test_main.py'),
-                    PROJECT_ROOT)
+TEST_FILE = join(dirname(abspath(__file__)), 'log_helper_test_main.py')
 
 # test file simulating a third party main module that only imports oletools
 TEST_FILE_3RD_PARTY = relpath(join(dirname(abspath(__file__)),
@@ -26,6 +25,8 @@ TEST_FILE_3RD_PARTY = relpath(join(dirname(abspath(__file__)),
                               PROJECT_ROOT)
 
 PYTHON_EXECUTABLE = sys.executable
+
+PERCENT_FORMAT_OUTPUT = 'The answer is 47.'
 
 
 class TestLogHelper(unittest.TestCase):
@@ -114,7 +115,7 @@ class TestLogHelper(unittest.TestCase):
     def test_percent_autoformat(self):
         """Test that auto-formatting of log strings with `%` works."""
         output = self._run_test(['enable', '%-autoformat', 'info'])
-        self.assertIn('The answer is 47.', output)
+        self.assertIn(PERCENT_FORMAT_OUTPUT, output)
 
     def test_json_correct_on_exceptions(self):
         """
@@ -207,6 +208,21 @@ class TestLogHelper(unittest.TestCase):
             '  warnings.warn(ACTUAL_WARNING)',   # warnings include source line
         ])
         self.assertEqual(output.strip(), expect)
+
+    def test_json_percent_formatting(self):
+        """Test that json-output has formatting args included in output."""
+        output = self._run_test(['enable', 'as-json', '%-autoformat', 'info'])
+        json.loads(output)    # check that this does not raise, so json is valid
+        self.assertIn(PERCENT_FORMAT_OUTPUT, output)
+
+    def test_json_exception_formatting(self):
+        """Test that json-output has formatted exception info in output"""
+        output = self._run_test(['enable', 'as-json', 'exc-info', 'info'])
+        json.loads(output)    # check that this does not raise, so json is valid
+        self.assertIn('Caught exception', output)      # actual log message
+        self.assertIn('This is an exception', output)    # message of caught exception
+        self.assertIn('Traceback (most recent call last)', output)    # start of trace
+        self.assertIn(TEST_FILE, output)        # part of trace
 
     def _assert_json_messages(self, output, messages):
         try:
