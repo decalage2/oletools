@@ -5,12 +5,17 @@ import json
 class JsonFormatter(logging.Formatter):
     """
     Format every message to be logged as a JSON object
+
+    Uses the standard :py:class:`logging.Formatter` with standard arguments
+    to do the actual formatting, could save and use a user-supplied formatter
+    instead.
     """
     _is_first_line = True
 
     def __init__(self, other_logger_has_first_line=False):
         if other_logger_has_first_line:
             self._is_first_line = False
+        self.msg_formatter = logging.Formatter()    # could adjust this
 
     def format(self, record):
         """
@@ -18,15 +23,17 @@ class JsonFormatter(logging.Formatter):
         the output JSON-compatible. The only exception is when printing the first line,
         so we need to keep track of it.
 
-        The resulting text is just a json dump of the :py:class:`logging.LogRecord`
-        object that is received as input, so no %-formatting or similar is done. Raw
-        unformatted message and formatting arguments are contained in fields `msg` and
-        `args` of the output.
+        The actual conversion from :py:class:`logging.LogRecord` to a text message
+        (i.e. %-formatting, adding exception information, etc.) is delegated to the
+        standard :py:class:`logging.Formatter.
 
-        Arg `record` has a `type` field when created by `OletoolLoggerAdapter`. If not
-        (e.g. captured warnings or output from third-party libraries), we add one.
+        The dumped json structure contains fields `msg` with the formatted message,
+        `level` with the log-level of the message and `type`, which is created by
+        :py:class:`oletools.common.log_helper.OletoolsLoggerAdapter` or added here
+        (for input from e.g. captured warnings, third-party libraries)
         """
-        json_dict = dict(msg=record.msg.replace('\n', ' '), level=record.levelname)
+        msg = self.msg_formatter.format(record)
+        json_dict = dict(msg=msg.replace('\n', ' '), level=record.levelname)
         try:
             json_dict['type'] = record.type
         except AttributeError:
