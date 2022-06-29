@@ -532,6 +532,39 @@ def consume_ScrollBarControl(stream):
     if propmask.fMouseIcon:
         consume_GuidAndPicture(stream)
 
+def consume_EmbeddedFormControl(stream):
+    # FormControl: [MS-OFORMS] 2.2.10.1
+    stream.check_values('FormControl (versions)', '<BB', 2, (0, 4))
+    cbform = stream.unpack('<H', 2)
+    caption = ""
+    with stream.will_jump_to(cbform):
+        propmask = FormPropMask(stream.unpack('<L', 4))
+        # Only extract Caption string, if it exists. Ignore everything else. 
+        if propmask.fCaption:
+            # FormDataBlock: [MS-OFORMS] 2.2.10.3
+            
+            with stream.padded_struct():
+                propmask.consume(stream, [('fBackColor', 4), ('fForeColor', 4),
+                                         ('fNextAvailableID', 4), ('fBooleanProperties', 4),
+                                         ('fBorderStyle', 1), ('fMousePointer', 1),
+                                         ('fScrollBars', 1), ('fGroupCnt', 4),
+                                         ('fMouseIcon', 2), ('fCycle', 1),
+                                         ('fSpecialEffect', 1), ('fBorderColor', 4)])
+                caption_size = consume_CountOfBytesWithCompressionFlag(stream)
+                propmask.consume(stream, [('fFont', 2), ('fPicture', 2),
+                                        ('fZoom', 4), ('fPictureAlignment', 1),
+                                        ('fPictureSizeMode', 1),('fShapeCookie', 4),
+                                        ('fDrawBuffer', 4)])
+
+            # FormExtraDataBlock: [MS-OFORMS] 2.2.10.4
+            propmask.consume(stream, [('fDisplayedSize', 8), ('fLogicalSize', 8), ('fScrollPosition', 8)])
+            # Read caption text.
+            if (caption_size > 0):
+                with stream.will_pad():
+                    caption = stream.read(caption_size)
+    # Ignore rest of the stream
+    return caption
+
 def extract_OleFormVariables(ole_file, stream_dir):
     control = ExtendedStream.open(ole_file, '/'.join(stream_dir + ['f']))
     variables = list(consume_FormControl(control))
@@ -543,7 +576,19 @@ def extract_OleFormVariables(ole_file, stream_dir):
         elif var['ClsidCacheIndex'] == 12:
             consume_ImageControl(data)
         elif var['ClsidCacheIndex'] == 14:
-            consume_FormControl(data)
+            # Frame Control: [MS-OFORMS] 2.2.2
+            # Also see Embedded Parents : [MS-OFORMS] 2.1.2.2.2
+            if var['id'] < 10:
+                embedded_fstream_dir =  '/'.join(stream_dir + ['i0'+str(var['id'])] + ['f'])
+            else:
+                embedded_fstream_dir = '/'.join(stream_dir + ['i'+str(var['id'])] + ['f'])
+        
+            try:
+                embedded_form_control = ExtendedStream.open(ole_file, embedded_fstream_dir)
+            except:
+                pass
+            else:
+                var['caption'] = consume_EmbeddedFormControl(embedded_form_control)
         elif var['ClsidCacheIndex'] in [15, 23, 24, 25, 26, 27, 28]:
             var['value'], var['caption'], var['group_name'] = consume_MorphDataControl(data)
         elif var['ClsidCacheIndex'] == 16:
