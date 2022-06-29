@@ -73,7 +73,7 @@ class FormPropMask(Mask):
     """FormPropMask: [MS-OFORMS] 2.2.10.2"""
     _size = 28
     _names = ['Unused1', 'fBackColor', 'fForeColor', 'fNextAvailableID', 'Unused2_0', 'Unused2_1',
-              'fBooleanProperties', 'fBooleanProperties', 'fMousePointer', 'fScrollBars',
+              'fBooleanProperties', 'fBorderStyle', 'fMousePointer', 'fScrollBars',
               'fDisplayedSize', 'fLogicalSize', 'fScrollPosition', 'fGroupCnt', 'Reserved',
               'fMouseIcon', 'fCycle', 'fSpecialEffect', 'fBorderColor', 'fCaption', 'fFont',
               'fPicture', 'fZoom', 'fPictureAlignment', 'fPictureTiling', 'fPictureSizeMode',
