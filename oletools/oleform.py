@@ -310,20 +310,20 @@ def consume_OleSiteConcreteControl(stream):
         # SiteExtraDataBlock: [MS-OFORMS] 2.2.10.12.4
         name = None
         if (name_len > 0):
-            name = stream.read(name_len)
-        # Consume 2 null bytes between name and tag.
-        #if ((tag_len > 0) or (control_tip_text_len > 0)):
-        #    stream.read(2)
-        #    # Sometimes it looks like 2 extra null bytes go here whether or not there is a tag.
+            with stream.will_pad():
+                name = stream.read(name_len)
         tag = None
         if (tag_len > 0):
-            tag = stream.read(tag_len)
+            with stream.will_pad():
+                tag = stream.read(tag_len)
         # Skip SitePosition.
         if propmask.fPosition:
             stream.read(8)
-        control_tip_text = stream.read(control_tip_text_len)
-        if (len(control_tip_text) == 0):
+        if (control_tip_text_len == 0):
             control_tip_text = None
+        else:
+            with stream.will_pad():
+                control_tip_text = stream.read(control_tip_text_len)
         return {'name': name, 'tag': tag, 'id': id, 'tabindex': tabindex,
                 'ClsidCacheIndex': ClsidCacheIndex, 'value': None, 'caption': None,
                 'control_tip_text':control_tip_text}
@@ -400,15 +400,20 @@ def consume_MorphDataControl(stream):
         # MorphDataExtraDataBlock: [MS-OFORMS] 2.2.5.4
         # Discard Size
         stream.read(8)
-        value = stream.read(value_size)
+        value = ""
+        if (value_size > 0):
+            with stream.will_pad():        
+                value = stream.read(value_size)
         # Read caption text.
         caption = ""
         if (caption_size > 0):
-            caption = stream.read(caption_size)
+            with stream.will_pad():
+                caption = stream.read(caption_size)
         # Read groupname text.
         group_name = ""
         if (group_name_size > 0):
-            group_name = stream.read(group_name_size)
+            with stream.will_pad():
+                group_name = stream.read(group_name_size)
             
     # MorphDataStreamData: [MS-OFORMS] 2.2.5.5
     if propmask.fMouseIcon:
@@ -502,7 +507,10 @@ def consume_LabelControl(stream):
                                       ('fSpecialEffect', 2), ('fPicture', 2),
                                       ('fAccelerator', 2), ('fMouseIcon', 2)])
         # LabelExtraDataBlock: [MS-OFORMS] 2.2.4.4
-        caption = stream.read(caption_size)
+        caption = ""
+        if (caption_size > 0):
+            with stream.will_pad():
+                caption = stream.read(caption_size)
         stream.read(8)
     # LabelStreamData: [MS-OFORMS] 2.2.4.5
     if propmask.fPicture:
