@@ -442,13 +442,31 @@ def consume_CommandButtonControl(stream):
     cbCommandButton = stream.unpack('<H', 2)
     with stream.will_jump_to(cbCommandButton):
         propmask = CommandButtonPropMask(stream.unpack('<L', 4))
-        # Skip the DataBlock and the ExtraDataBlock
-    # ImageStreamData: [MS-OFORMS] 2.2.1.5
+        # CommandButtonDataBlock: [MS-OFORMS] 2.2.1.3
+        with stream.padded_struct():
+            propmask.consume(stream, [('fForeColor', 4), ('fBackColor', 4),
+                                      ('fVariousPropertyBits', 4)])
+            if propmask.fCaption:
+                caption_size = consume_CountOfBytesWithCompressionFlag(stream)
+            else:
+                caption_size = 0
+            propmask.consume(stream, [('fPicturePosition', 4), ('fMousePointer', 1),
+                                      ('fPicture', 2), ('fAccelerator', 2),
+                                      ('fMouseIcon', 2)])
+        # CommandButtonExtraDataBlock: [MS-OFORMS] 2.2.1.4
+        caption = ""
+        if (caption_size > 0):
+            with stream.will_pad():
+                caption = stream.read(caption_size)
+        stream.read(8)
+    # CommandButtonStreamData: [MS-OFORMS] 2.2.1.5
     if propmask.fPicture:
         consume_GuidAndPicture(stream)
     if propmask.fMouseIcon:
         consume_GuidAndPicture(stream)
+    # TextProps
     consume_TextProps(stream)
+    return caption
 
 def consume_SpinButtonControl(stream):
     # SpinButtonControl: [MS-OFORMS] 2.2.8.1
@@ -579,7 +597,7 @@ def extract_OleFormVariables(ole_file, stream_dir):
             # Frame Control: [MS-OFORMS] 2.2.2
             # Also see Embedded Parents : [MS-OFORMS] 2.1.2.2.2
             if var['id'] < 10:
-                embedded_fstream_dir =  '/'.join(stream_dir + ['i0'+str(var['id'])] + ['f'])
+                embedded_fstream_dir = '/'.join(stream_dir + ['i0'+str(var['id'])] + ['f'])
             else:
                 embedded_fstream_dir = '/'.join(stream_dir + ['i'+str(var['id'])] + ['f'])
         
@@ -594,7 +612,7 @@ def extract_OleFormVariables(ole_file, stream_dir):
         elif var['ClsidCacheIndex'] == 16:
             consume_SpinButtonControl(data)
         elif var['ClsidCacheIndex'] == 17:
-            consume_CommandButtonControl(data)
+            var['caption'] = consume_CommandButtonControl(data)
         elif var['ClsidCacheIndex'] == 18:
             consume_TabStripControl(data)
         elif var['ClsidCacheIndex'] == 21:
