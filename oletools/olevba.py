@@ -2792,6 +2792,11 @@ class VBA_Parser(object):
             # It must start with "ID" in uppercase, no whitespace or newline allowed before by Excel:
             if data.startswith(b'ID'):
                 self.open_slk(data)
+            # check whether this is mso data
+            if is_mso_file(data):
+                log.debug('Found ActiveMime header, decompressing MSO container')
+                ole_data = mso_file_extract(data)
+                self.open_ole(ole_data)
             # Check if this is a plain text VBA or VBScript file:
             # To avoid scanning binary files, we simply check for some control chars:
             if self.type is None and b'\x00' not in data:
