@@ -327,7 +327,9 @@ class OleID(object):
                 return meta_property.decode(str(encoding))
             except LookupError:
                 log.error('Could not find encoding of {}'.format(encoding))
-                return meta_property
+            except ValueError:
+                log.error('With encoding {}, could not decode {}'.format(encoding, meta_property))
+            return meta_property
 
         appname = Indicator('appname', decode_property(meta.creating_application, meta.codepage), _type=str,
                             name='Application name', description='Application name declared in properties',
