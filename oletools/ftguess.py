@@ -633,26 +633,26 @@ class FType_Powerpoint2007(FType_Powerpoint, FType_Generic_OpenXML):
 
 class FType_Powerpoint2007_Presentation(FType_Powerpoint2007):
     filetype = FTYPE.POWERPOINT2007_PPTX
-    name = 'MSPointpoint 2007+ Presentation'
-    longname = 'MSPointpoint 2007+ Presentation (.pptx)'
+    name = 'MSPowerpoint 2007+ Presentation'
+    longname = 'MSPowerpoint 2007+ Presentation (.pptx)'
     extensions = ['pptx']
 
 class FType_Powerpoint2007_Slideshow(FType_Powerpoint2007):
     filetype = FTYPE.POWERPOINT2007_PPSX
-    name = 'MSPointpoint 2007+ Slideshow'
-    longname = 'MSPointpoint 2007+ Slideshow (.ppsx)'
+    name = 'MSPowerpoint 2007+ Slideshow'
+    longname = 'MSPowerpoint 2007+ Slideshow (.ppsx)'
     extensions = ['ppsx']
 
 class FType_Powerpoint2007_Macro(FType_Powerpoint2007):
     filetype = FTYPE.POWERPOINT2007_PPTM
-    name = 'MSPointpoint 2007+ Macro-Enabled Presentation'
-    longname = 'MSPointpoint 2007+ Macro-Enabled Presentation (.pptm)'
+    name = 'MSPowerpoint 2007+ Macro-Enabled Presentation'
+    longname = 'MSPowerpoint 2007+ Macro-Enabled Presentation (.pptm)'
     extensions = ['pptm']
 
 class FType_Powerpoint2007_Slideshow_Macro(FType_Powerpoint2007):
     filetype = FTYPE.POWERPOINT2007_PPSM
-    name = 'MSPointpoint 2007+ Macro-Enabled Slideshow'
-    longname = 'MSPointpoint 2007+ Macro-Enabled Slideshow (.ppsm)'
+    name = 'MSPowerpoint 2007+ Macro-Enabled Slideshow'
+    longname = 'MSPowerpoint 2007+ Macro-Enabled Slideshow (.ppsm)'
     extensions = ['ppsm']
 
 
