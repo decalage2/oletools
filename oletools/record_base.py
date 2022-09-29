@@ -257,7 +257,7 @@ class OleRecordStream(object):
         self.stream.close()
 
     def __str__(self):
-        return '[{0} {1} (type {2}, size {3})' \
+        return '[{0} {1} (type {2}, size {3})]' \
                .format(self.__class__.__name__,
                        self.name or '[orphan]',
                        ENTRY_TYPE2STR[self.stream_type],
