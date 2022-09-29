@@ -377,21 +377,26 @@ def test(filenames, ole_file_class=OleRecordFile,
         if not olefile.isOleFile(filename):
             logger.info('not an ole file - skip')
             continue
-        ole = ole_file_class(filename)
+        ole = None
+        try:
+            ole = ole_file_class(filename)
 
-        for stream in ole.iter_streams():
-            logger.info('  parse ' + str(stream))
-            try:
-                for record in stream.iter_records():
-                    logger.info('    ' + str(record))
-                    do_per_record(record)
-            except Exception:
-                if not must_parse:
-                    raise
-                elif isinstance(stream, must_parse):
-                    raise
-                else:
-                    logger.info('  failed to parse', exc_info=True)
+            for stream in ole.iter_streams():
+                logger.info('  parse ' + str(stream))
+                try:
+                    for record in stream.iter_records():
+                        logger.info('    ' + str(record))
+                        do_per_record(record)
+                except Exception:
+                    if not must_parse:
+                        raise
+                    elif isinstance(stream, must_parse):
+                        raise
+                    else:
+                        logger.info('  failed to parse', exc_info=True)
+        finally:
+            if ole is not None:
+                ole.close()
 
     log_helper.end_logging()
     return 0
