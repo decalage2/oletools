@@ -52,6 +52,7 @@ __version__ = '0.60.dev1'
 #   (maybe content type or so; identify streams that are never record-based)
 #   Or use oleid to avoid same functionality in several files
 # - think about integrating this with olefile itself
+# - there is quite some record parsing being done in __init__ of olevba.VBA_Project
 
 # -----------------------------------------------------------------------------
 #  REFERENCES:
@@ -223,6 +224,8 @@ class OleRecordStream(object):
         """ yield all records in this stream
 
         Stream must be positioned at start of records (e.g. start of stream).
+
+        :param bool fill_data: Always read (and save in `data`) all of this record's data.
         """
         while True:
             # unpacking as in olevba._extract_vba
@@ -292,7 +295,14 @@ class OleRecordBase(object):
     SIZE = None
 
     def __init__(self, type, size, more_data, pos, data):
-        """ create a record; more_data is discarded """
+        """
+        Create a record; more_data is discarded
+
+        Usually called from a stream's `iter_records` and `read_record_head`. The latter defines `more_data`.
+        `data` contains all of this record and all its sub-records.
+
+        Calls remembers `data` and calls `finish-constructing` with `more_data`.
+        """
         if self.TYPE is not None and type != self.TYPE:
             raise ValueError('Wrong subclass {0} for type {1}'
                              .format(self.__class__.__name__, type))
@@ -359,7 +369,7 @@ class OleRecordBase(object):
 
 
 def test(filenames, ole_file_class=OleRecordFile,
-         must_parse=None, do_per_record=None, verbose=False):
+         must_parse=None, do_per_record=None, verbose=False, fill_data=False):
     """ parse all given file names and print rough structure
 
     if an error occurs while parsing a stream of type in must_parse, the error
@@ -384,7 +394,7 @@ def test(filenames, ole_file_class=OleRecordFile,
             for stream in ole.iter_streams():
                 logger.info('  parse ' + str(stream))
                 try:
-                    for record in stream.iter_records():
+                    for record in stream.iter_records(fill_data=fill_data):
                         logger.info('    ' + str(record))
                         do_per_record(record)
                 except Exception:
