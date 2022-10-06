@@ -152,7 +152,7 @@ RECORD_TYPES = dict([
     (0x03ef, 'SlideAtom'),
     (0x03ff, 'VBAInfoContainer'),
     (0x0400, 'VBAInfoAtom'),
-    (0x0ff2, 'MouseClick/OverInteractiveInfoContainer'),
+    (0x0ff2, 'MouseClick/OverInteractiveInfoContainer'),   # this is a suspicious keyword in olevba
     (0x0ff3, 'InteractiveInfoAtom'),
     # from [MS-ODRAW], https://learn.microsoft.com/en-us/openspecs/office_file_formats/ms-odraw
     (0xf000, 'OfficeArtDggContainer'),
