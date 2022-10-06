@@ -287,6 +287,8 @@ class PptFile(record_base.OleRecordFile):
 class PptStream(record_base.OleRecordStream):
     """ a stream of records in a ppt file """
 
+    RECORD_HEADER_SIZE = 8
+
     def read_record_head(self):
         """ read first few bytes of record to determine size and type
 
@@ -311,6 +313,8 @@ class PptStream(record_base.OleRecordStream):
         elif rec_type == PptRecordCString.TYPE:
             return PptRecordCString, True
 
+        # flag to tell caller that complete record data must be read and given to constructor.
+        # important for Containers to they can parse their sub-records
         read_all_data = False
         try:
             record_name = RECORD_TYPES[rec_type]
@@ -406,35 +410,56 @@ class PptRecord(record_base.OleRecordBase):
 class PptContainerRecord(PptRecord):
     """ A record that contains other records """
 
+    def __init__(self, *args, **kwargs):
+        super(PptContainerRecord, self).__init__(*args, **kwargs)
+        self._records = None
+
     def finish_constructing(self, more_data):
         """ parse records from self.data """
         # set self.version and self.instance
         super(PptContainerRecord, self).finish_constructing(more_data)
-        self.records = None
+
+    def get_records(self):
+        """
+        Return list of records contained in this container.
+
+        If this is the first call to this function, then read records structure
+        from self.data, remember those, and forget self.data . All future calls will
+        just return saved records.
+
+        :return: list of sub-records contained in this container.
+        """
+        # has been called before --> return saved records
+        if self._records is not None:
+            return self._records
+
         if not self.data:
-            return
+            logging.warning("Constructor of {0} was not given its data. Cannot parse sub-structure"
+                            .format(self))
+            self._records = []
+        else:
+            # create a stream from self.data and parse it like any other
+            #logging.debug('parsing contents of container record {0}'.format(self))
+            data_stream = io.BytesIO(self.data)
+            record_stream = PptStream(data_stream, self.size,
+                                      'PptContainerRecordSubstream',
+                                      record_base.STGTY_SUBSTREAM)
+            self._records = list(record_stream.iter_records())
+            # logging.debug('done parsing contents of container record {0}'
+            #               .format(self))
+            self.data = None   # not needed any more
 
-        # logging.debug('parsing contents of container record {0}'
-        #               .format(self))
-
-        # create a stream from self.data and parse it like any other
-        data_stream = io.BytesIO(self.data)
-        record_stream = PptStream(data_stream, self.size,
-                                  'PptContainerRecordSubstream',
-                                  record_base.STGTY_SUBSTREAM)
-        self.records = list(record_stream.iter_records())
-        # logging.debug('done parsing contents of container record {0}'
-        #               .format(self))
+        return self._records
 
     def __str__(self):
         text = super(PptContainerRecord, self).__str__()
-        if self.records is None:
+        if self._records is None:
             return '{0}, unparsed{1}'.format(text[:-2], text[-2:])
-        elif self.records:
+        elif self._records:
             return '{0}, contains {1} recs{2}' \
-                   .format(text[:-2], len(self.records), text[-2:])
+                   .format(text[:-2], len(self._records), text[-2:])
         else:
-            return text
+            return '{0} (empty){1}'.format(text[:-2], text[-2:])
 
 
 class PptRecordCurrentUser(PptRecord):
@@ -822,7 +847,7 @@ def print_records(record, print_fn, indent, do_print_record):
     if do_print_record:
         print_fn('{0}{1}'.format('  ' * indent, record))
     if isinstance(record, PptContainerRecord):
-        for subrec in record.records:
+        for subrec in record.get_records():
             print_records(subrec, print_fn, indent+1, True)
     elif isinstance(record, PptRecordCurrentUser):
         logging.info('{4}--> crypt: {0}, offset {1}, user {2}/{3}'

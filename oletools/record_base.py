@@ -190,6 +190,8 @@ class OleRecordStream(object):
     abstract base class
     """
 
+    RECORD_HEADER_SIZE = None   # to be overwritten in subclass; specifies minimum size required for a record header
+
     def __init__(self, stream, size, name, stream_type):
         self.stream = stream
         self.size = size
@@ -231,6 +233,9 @@ class OleRecordStream(object):
             # unpacking as in olevba._extract_vba
             pos = self.stream.tell()
             if pos >= self.size:
+                break
+            if self.size - pos < self.RECORD_HEADER_SIZE:
+                logger.debug("Skip {0} byte".format(self.size - pos))
                 break
 
             # read first few bytes, determine record type and size
@@ -298,10 +303,11 @@ class OleRecordBase(object):
         """
         Create a record; more_data is discarded
 
-        Usually called from a stream's `iter_records` and `read_record_head`. The latter defines `more_data`.
-        `data` contains all of this record and all its sub-records.
+        Usually called from a stream's `iter_records` and `read_record_head`. The latter defines
+        `more_data`. `data` contains raw data for this record and all its sub-records (if this is
+        a container). It might be None, caller must ensure that this has the proper contents.
 
-        Calls remembers `data` and calls `finish-constructing` with `more_data`.
+        Remember `data` and calls `finish_constructing` with `more_data`.
         """
         if self.TYPE is not None and type != self.TYPE:
             raise ValueError('Wrong subclass {0} for type {1}'

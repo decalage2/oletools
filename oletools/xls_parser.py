@@ -143,7 +143,13 @@ class XlsFile(record_base.OleRecordFile):
 
 
 class XlsStream(record_base.OleRecordStream):
-    """ most streams in xls file consist of records """
+    """
+    Stream of Records that make up an xls file.
+
+    More info in [MS-XLS], https://learn.microsoft.com/en-us/openspecs/office_file_formats/ms-xls
+    """
+
+    RECORD_HEADER_SIZE = 4
 
     def read_record_head(self):
         """ read first few bytes of record to determine size and type
@@ -182,10 +188,16 @@ class WorkbookStream(XlsStream):
 
 
 class XlsbStream(record_base.OleRecordStream):
-    """ binary stream of an xlsb file, usually have a record structure """
+    """
+    Binary stream of an xlsb file, usually have a record structure.
+
+    For further info, see [MS-XLSB], https://learn.microsoft.com/en-us/openspecs/office_file_formats/ms-xlsb
+    """
 
     HIGH_BIT_MASK = 0b10000000
     LOW7_BIT_MASK = 0b01111111
+
+    RECORD_HEADER_SIZE = 2    # can be 2 to 6 bytes, minimum value requested in OleRecordStream comment
 
     def read_record_head(self):
         """ read first few bytes of record to determine size and type

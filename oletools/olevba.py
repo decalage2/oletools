@@ -3506,7 +3506,7 @@ class VBA_Parser(object):
                     return
             texts = set()
             if isinstance(record, PptContainerRecord):
-                for subrec in record.records:
+                for subrec in record.get_records():
                     if not isinstance(subrec, PptRecordCString):
                         continue
                     texts.add(subrec.get_string().strip().rstrip('/'))
@@ -3520,7 +3520,7 @@ class VBA_Parser(object):
             except ValueError:    # no such index
                 self.ppt_interactive.append([text, stream_name, False])
         if isinstance(record, PptContainerRecord):
-            for subrec in record.records:
+            for subrec in record.get_records():
                 self._detect_ppt_interactive(subrec, indent+1, stream_name)
         # todo: is record contains ole streams, then parse those or add to substreams
 
