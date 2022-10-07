@@ -50,7 +50,7 @@ import os
 import re
 import sys
 import io
-from zipfile import is_zipfile
+from zipfile import BadZipFile, is_zipfile
 import random
 
 import olefile
@@ -70,7 +70,7 @@ if _parent_dir not in sys.path:
 from oletools.thirdparty import xglob
 from oletools.ppt_record_parser import (is_ppt, PptFile,
                                         PptRecordExOleVbaActiveXAtom)
-from oletools.ooxml import XmlParser
+from oletools.ooxml import XmlParser, BadOOXML
 from oletools.common.io_encoding import ensure_stdout_handles_unicode
 
 # -----------------------------------------------------------------------------
@@ -866,7 +866,7 @@ def process_file(filename, data, output_dir=None):
     did_dump = False
 
     xml_parser = None
-    if is_zipfile(filename):
+    try:   # do not trust is_zipfile, can easily be fooled
         log.info('file could be an OOXML file, looking for relationships with '
                  'external links')
         xml_parser = XmlParser(filename)
@@ -878,6 +878,10 @@ def process_file(filename, data, output_dir=None):
         for target in find_customUI(xml_parser):
             did_dump = True
             print("Found customUI tag with external link or VBA macro %s (possibly exploiting CVE-2021-42292)" % target)
+    except (BadZipFile, BadOOXML, UnicodeDecodeError):
+        log.debug("", exc_info=True)
+        log.info("Not an OOXML file after all")
+
 
     # look for ole files inside file (e.g. unzip docx)
     # have to finish work on every ole stream inside iteration, since handles
