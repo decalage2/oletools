@@ -1195,13 +1195,11 @@ class PptParser(object):
         #  ['\x05SummaryInformation'],
         #  ['Current User'],
         #  ['PowerPoint Document']]
-        root_streams = self.ole.listdir()
-        #for stream in root_streams:
+        all_streams = self.ole.listdir()    # this includes non-root streams
+        #for stream in all_streams:
         #    log.debug('found root stream {0!r}'.format(stream))
-        if any(len(stream) != 1 for stream in root_streams):
-            self._fail('root', 'listdir', root_streams, 'len = 1')
-        root_streams = [stream[0].lower() for stream in root_streams]
-        if not 'current user' in root_streams:
+        root_streams = [stream[0].lower() for stream in all_streams if len(stream) == 1]
+        if 'current user' not in root_streams:
             self._fail('root', 'listdir', root_streams, 'Current User')
         if not MAIN_STREAM_NAME.lower() in root_streams:
             self._fail('root', 'listdir', root_streams, MAIN_STREAM_NAME)
