@@ -66,6 +66,9 @@ except ImportError:
     from oletools import record_base
 
 
+# flag to remember some more data for debug-printing
+debug_print = False
+
 # types of relevant records (there are much more than listed here, c.f. [MS-PPT] 2.13.24)
 # and https://learn.microsoft.com/en-us/openspecs/office_file_formats/ms-ppt
 # these names are parsed in `record_class_for_type`: only if a record ends in "Container" will we find the
@@ -143,8 +146,8 @@ RECORD_TYPES = dict([
     (0x040b, 'DrawingGroupContainer'),
     (0x040c, 'DrawingContainer'),
     (0x0423, 'RoundTripOArtTextStyles12Atom'),     # to extract data from these, could create class ...
-    (0x0428, 'RoundTripCustomTableStyles12Atom'),  # ... like PptRecordExOleVbaActiveXAtom
-    (0x040e, 'RoundTripThemeAtom'),
+    (0x0428, 'RoundTripCustomTableStyles12Atom'),  # ... like PptRecordExOleVbaActiveXAtom ...
+    (0x040e, 'RoundTripThemeAtom'),                # ... to parse zip/ooxml data
     (0x040f, 'RoundTripColorMappingAtom'),
     (0x041c, 'RoundTripOriginalMainMasterId12Atom'),
     (0x041e, 'RoundTripContentMasterInfo12Atom'),
@@ -318,7 +321,10 @@ class PptStream(record_base.OleRecordStream):
         read_all_data = False
         try:
             record_name = RECORD_TYPES[rec_type]
-            if record_name.endswith('Container'):
+            if record_name.startswith('RoundTrip'):
+                is_container = False
+                read_all_data = debug_print
+            elif record_name.endswith('Container'):
                 is_container = True
                 read_all_data = True
             elif record_name.endswith('Atom'):
@@ -326,7 +332,7 @@ class PptStream(record_base.OleRecordStream):
                 read_all_data = False
             elif record_name.endswith('Blob'):
                 is_container = False
-                read_all_data = True
+                read_all_data = debug_print
             elif record_name == 'OfficeArtClientData':
                 is_container = True
                 read_all_data = True
@@ -395,7 +401,9 @@ class PptRecord(record_base.OleRecordBase):
     def __str__(self):
         """Create string representation. Use super class except for Blobs."""
         try:
-            if RECORD_TYPES[self.type].endswith('Blob'):
+            if debug_print and \
+                (RECORD_TYPES[self.type].endswith('Blob') or
+                 RECORD_TYPES[self.type].startswith('RoundTrip')):
                 contents = ''.join(chr(ch) if ch in STR_PRINTABLE_CHARS else '.' for ch in self.data)
                 if len(contents) > STR_MAX_CONTENT_LEN:
                     data_text = contents[:STR_MAX_CONTENT_LEN - 5] + '[...]'
@@ -868,6 +876,7 @@ def print_records(record, print_fn, indent, do_print_record):
 
 
 if __name__ == '__main__':
+    debug_print = True
     def do_per_record(record):
         print_records(record, logging.info, 2, False)
     sys.exit(record_base.test(sys.argv[1:], PptFile,
