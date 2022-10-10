@@ -147,6 +147,26 @@ class TestOlevbaBasic(unittest.TestCase):
                 self.assertIn('AutoExec', types)
                 self.assertIn('Suspicious', types)
 
+    def test_interactive_ppt(self):
+        """Test detection of interactive ppt feature in special sample."""
+        SAMPLE = join(DATA_BASE_DIR, 'olevba', 'mouse-over.ppt')
+        out_str, _ = call_and_capture('olevba', args = [SAMPLE, '-j'])
+        output = json.loads(out_str)
+        self.assertEqual(len(output), 2)
+        self.assertEqual(output[0]['type'], 'MetaInformation')
+        self.assertEqual(output[0]['script_name'], 'olevba')
+        result = output[1]
+        self.assertTrue(result['json_conversion_successful'])
+        self.assertEqual(len(result['macros']), 1)
+        self.assertEqual(result['macros'][0]['ole_stream'], 'PowerPoint Document')
+        self.assertTrue(result['macros'][0]['code'].startswith('ExHyperlinkContainer'))
+        self.assertTrue(result['macros'][0]['code'].endswith('calc.exe'))
+        self.assertTrue(entry['type'] == 'AutoExec' for entry in result['analysis'])
+        self.assertTrue(entry['type'] == 'Suspicious' for entry in result['analysis'])
+        self.assertTrue(entry['keyword'] == 'calc.exe' for entry in result['analysis'])
+        self.assertTrue(entry['keyword'] == 'InteractiveControls' for entry in result['analysis'])
+        self.assertTrue(entry['keyword'] == 'MouseClick/OverInteractiveInfoContainer' for entry in result['analysis'])
+
 
 # just in case somebody calls this file as a script
 if __name__ == '__main__':
