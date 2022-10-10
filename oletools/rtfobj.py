@@ -1011,8 +1011,6 @@ def main():
     python_version = '%d.%d.%d' % sys.version_info[0:3]
     print ('rtfobj %s on Python %s - http://decalage.info/python/oletools' %
            (__version__, python_version))
-    print ('THIS IS WORK IN PROGRESS - Check updates regularly!')
-    print ('Please report any issue at https://github.com/decalage2/oletools/issues')
     print ('')
 
     DEFAULT_LOG_LEVEL = "warning" # Default log level
