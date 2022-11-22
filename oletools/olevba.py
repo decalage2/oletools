@@ -3448,6 +3448,7 @@ class VBA_Parser(object):
                         return True
                 except:
                     log.exception('Error when running oledump.plugin_biff, please report to %s' % URL_OLEVBA_ISSUES)
+        self.xlm_macros = []
         self.contains_xlm_macros = False
         return False
 
