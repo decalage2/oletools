@@ -99,11 +99,14 @@ def loop_and_extract(subdir=''):
     See also: :py:meth:`loop_over_files`
 
     :param str subdir: Optional subdir of test data dir that caller is interested in
+    :returns: nothing but yields full path to sample file and relative path of original
+              sample inside test dir
     """
     with TemporaryDirectory(prefix='oletools-test-') as temp_dir:
         for base_dir, _, files in os.walk(join(DATA_BASE_DIR, subdir)):
             for filename in files:
                 full_path = join(base_dir, filename)
+                path_part = relpath(full_path, DATA_BASE_DIR)
                 if filename.endswith('.zip'):
                     # remove the ".zip" and split the rest into actual name and extension
                     actual_name, actual_extn = splitext(splitext(filename)[0])
@@ -116,9 +119,9 @@ def loop_and_extract(subdir=''):
                             temp_file.write(zip_file.read(zip_file.namelist()[0],
                                                           pwd=ENCRYPTED_FILES_PASSWORD))
                             temp_file.flush()
-                            yield temp_file.name
+                            yield temp_file.name, path_part
                 else:
-                    yield full_path
+                    yield full_path, path_part
 
 
 @contextmanager
