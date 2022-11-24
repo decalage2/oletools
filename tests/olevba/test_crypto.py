@@ -40,7 +40,7 @@ class OlevbaCryptoWriteProtectTest(unittest.TestCase):
                                          exclude_stderr=True)
             data = json.loads(output, object_pairs_hook=OrderedDict)
             # debug: json.dump(data, sys.stdout, indent=4)
-            self.assertIn(len(data), (3, 4))
+            self.assertGreaterEqual(len(data), 3)
 
             # first 2 parts: general info about script and file
             self.assertIn('script_name', data[0])
@@ -53,22 +53,23 @@ class OlevbaCryptoWriteProtectTest(unittest.TestCase):
             self.assertEqual(data[1]['type'], 'OLE')
             self.assertTrue(data[1]['json_conversion_successful'])
 
-            # possible VBA stomping warning
-            if len(data) == 4:
-                self.assertEqual(data[2]['type'], 'msg')
-                self.assertIn('VBA stomping', data[2]['msg'])
+            for entry in data[2:]:
+                if entry['type'] in ('msg', 'warning'):
+                    continue
+                result = entry
+                break
 
             # last part is the actual result
-            self.assertEqual(data[-1]['container'], example_file)
-            self.assertNotEqual(data[-1]['file'], example_file)
-            self.assertEqual(data[-1]['type'], "OpenXML")
-            analysis = data[-1]['analysis']
+            self.assertEqual(result['container'], example_file)
+            self.assertNotEqual(result['file'], example_file)
+            self.assertEqual(result['type'], "OpenXML")
+            analysis = result['analysis']
             self.assertEqual(analysis[0]['type'], 'AutoExec')
             self.assertEqual(analysis[0]['keyword'], 'Auto_Open')
-            macros = data[-1]['macros']
+            macros = result['macros']
             self.assertEqual(macros[0]['vba_filename'], 'Modul1.bas')
             self.assertIn('Sub Auto_Open()', macros[0]['code'])
-            self.assertTrue(data[-1]['json_conversion_successful'])
+            self.assertTrue(result['json_conversion_successful'])
 
 
 if __name__ == '__main__':
