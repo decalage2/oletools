@@ -221,7 +221,7 @@ class TestLogHelper(unittest.TestCase):
         self.assertIn('Caught exception', output)      # actual log message
         self.assertIn('This is an exception', output)    # message of caught exception
         self.assertIn('Traceback (most recent call last)', output)    # start of trace
-        self.assertIn(TEST_FILE, output)        # part of trace
+        self.assertIn(TEST_FILE.replace('\\', '\\\\'), output)        # part of trace
 
     def test_json_wrong_args(self):
         """Test that too many or missing args do not raise exceptions inside logger"""
