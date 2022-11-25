@@ -7,7 +7,10 @@ using them.
 """
 
 import os, sys, zipfile
-from os.path import dirname, abspath, normpath, relpath, join, basename
+from os.path import relpath, join, isfile
+from contextlib import contextmanager
+from tempfile import mkstemp
+
 from . import DATA_BASE_DIR
 
 # Passwort used to encrypt problematic test samples inside a zip container
@@ -82,3 +85,42 @@ def loop_over_files(subdir=''):
                 yield relative_path, read_encrypted(relative_path)
             else:
                 yield relative_path, read(relative_path)
+
+
+@contextmanager
+def decrypt_sample(relpath):
+    """
+    Decrypt test sample, save to tempfile, yield temp file name.
+
+    Use as context-manager, deletes tempfile after use.
+
+    If sample is not encrypted at all (filename does not end in '.zip'),
+    yields absolute path to sample itself, so can apply this code also
+    to non-encrypted samples.
+
+    Code based on test_encoding_handler.temp_file().
+
+    :param relpath: path inside `DATA_BASE_DIR`, should end in '.zip'
+    :return: absolute path name to decrypted sample.
+    """
+    if not relpath.endswith('.zip'):
+        yield get_path_from_root(relpath)
+    else:
+        tmp_descriptor = None
+        tmp_name = None
+        try:
+            tmp_descriptor, tmp_name = mkstemp(text=False)
+            with zipfile.ZipFile(get_path_from_root(relpath), 'r') as unzipper:
+                # no need to iterate over blobs, our test files are all small
+                os.write(tmp_descriptor, unzipper.read(unzipper.namelist()[0],
+                                                       pwd=ENCRYPTED_FILES_PASSWORD))
+            os.close(tmp_descriptor)
+            tmp_descriptor = None
+            yield tmp_name
+        except Exception:
+            raise
+        finally:
+            if tmp_descriptor is not None:
+                os.close(tmp_descriptor)
+            if tmp_name is not None and isfile(tmp_name):
+                os.unlink(tmp_name)
