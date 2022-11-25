@@ -11,6 +11,7 @@ import json
 import subprocess
 from tests.common.log_helper import log_helper_test_main
 from tests.common.log_helper import log_helper_test_imported
+import os
 from os.path import dirname, join, relpath, abspath
 
 from tests.test_utils import PROJECT_ROOT
@@ -169,10 +170,12 @@ class TestLogHelper(unittest.TestCase):
         else:
             all_args.append(TEST_FILE)
         all_args.extend(args)
+        env = os.environ.copy()
+        env['PYTHONPATH'] = PROJECT_ROOT
         child = subprocess.Popen(
             all_args,
             shell=False,
-            env={'PYTHONPATH': PROJECT_ROOT},
+            env=env,
             universal_newlines=True,
             cwd=PROJECT_ROOT,
             stdin=None,

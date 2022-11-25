@@ -67,11 +67,11 @@ class TestReturnCode(unittest.TestCase):
 
     def test_invalid_empty(self):
         """ check that empty file argument leads to non-zero exit status """
-        self.do_test_validity(join(BASE_DIR, 'basic/empty'), Exception)
+        self.do_test_validity(join(BASE_DIR, 'basic', 'empty'), Exception)
 
     def test_invalid_text(self):
         """ check that text file argument leads to non-zero exit status """
-        self.do_test_validity(join(BASE_DIR, 'basic/text'), Exception)
+        self.do_test_validity(join(BASE_DIR, 'basic', 'text'), Exception)
 
     def test_encrypted(self):
         """
