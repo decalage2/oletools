@@ -120,12 +120,9 @@ class TestOlevbaBasic(unittest.TestCase):
                                                  args=[full_name, ] + ADD_ARGS,
                                                  accept_nonzero_exit=True)
             output = json.loads(out_str)
-            self.assertEqual(len(output), 3)
+            self.assertEqual(len(output), 2)
             self.assertEqual(output[0]['type'], 'MetaInformation')
             self.assertEqual(output[0]['script_name'], 'olevba')
-            self.assertEqual(output[-1]['type'], 'MetaInformation')
-            self.assertEqual(output[-1]['n_processed'], 1)
-            self.assertEqual(output[-1]['return_code'], 0)
             result = output[1]
             self.assertTrue(result['json_conversion_successful'])
             if suffix in ('.xlsb', '.xltm', '.xlsm'):

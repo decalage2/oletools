@@ -3112,7 +3112,7 @@ class VBA_Parser(object):
         xlm_macro_found = False
         xlm_macros = []
         xlm_macros.append('Formulas and XLM/Excel 4 macros extracted from SLK file:')
-        for line in data.splitlines(keepends=False):
+        for line in data.splitlines(False):
             if line.startswith(b'O'):
                 # Option: "O;E" indicates a macro sheet, must appear before NN and C rows
                 for s in line.split(b';'):
