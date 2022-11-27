@@ -12,13 +12,11 @@ import unittest
 import sys
 import os
 from os.path import join, basename
-from traceback import print_exc
-import json
-from collections import OrderedDict
 from oletools import msodde
 from oletools.crypto import \
     WrongEncryptionPassword, CryptoLibNotImported, check_msoffcrypto
-from tests.test_utils import call_and_capture, DATA_BASE_DIR as BASE_DIR
+from tests.test_utils import call_and_capture, decrypt_sample,\
+    DATA_BASE_DIR as BASE_DIR
 
 
 class TestReturnCode(unittest.TestCase):
@@ -26,14 +24,13 @@ class TestReturnCode(unittest.TestCase):
     def test_valid_doc(self):
         """ check that a valid doc file leads to 0 exit status """
         for filename in (
-                'harmless-clean',
-                # TODO: TEMPORARILY DISABLED UNTIL ISSUE #215 IS FIXED:
-                # 'dde-test-from-office2003',
-                # 'dde-test-from-office2016',
-                # 'dde-test-from-office2013-utf_16le-korean'
+                'harmless-clean.doc',
+                'dde-test-from-office2003.doc.zip',
+                'dde-test-from-office2016.doc.zip',
+                'dde-test-from-office2013-utf_16le-korean.doc.zip',
         ):
-            self.do_test_validity(join(BASE_DIR, 'msodde',
-                                       filename + '.doc'))
+            with decrypt_sample(join('msodde', filename)) as temp_name:
+                self.do_test_validity(temp_name)
 
     def test_valid_docx(self):
         """ check that a valid docx file leads to 0 exit status """
@@ -52,11 +49,11 @@ class TestReturnCode(unittest.TestCase):
         for filename in (
                 'harmless-clean-2003.xml',
                 'dde-in-excel2003.xml',
-                # TODO: TEMPORARILY DISABLED UNTIL ISSUE #215 IS FIXED:
-                # 'dde-in-word2003.xml',
-                # 'dde-in-word2007.xml'
+                'dde-in-word2003.xml.zip',
+                'dde-in-word2007.xml.zip'
         ):
-            self.do_test_validity(join(BASE_DIR, 'msodde', filename))
+            with decrypt_sample(join('msodde', filename)) as temp_name:
+                self.do_test_validity(temp_name)
 
     def test_invalid_none(self):
         """ check that no file argument leads to non-zero exit status """
@@ -99,13 +96,11 @@ class TestReturnCode(unittest.TestCase):
     def do_test_validity(self, filename, expect_error=None):
         """ helper for test_[in]valid_* """
         found_error = None
-        # DEBUG: print('Testing file {}'.format(filename))
         try:
             msodde.process_maybe_encrypted(filename,
-                            field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
+                field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
         except Exception as exc:
             found_error = exc
-            # DEBUG: print_exc()
 
         if expect_error and not found_error:
             self.fail('Expected {} but msodde finished without errors for {}'
@@ -145,15 +140,14 @@ class TestDdeLinks(unittest.TestCase):
         """
         return [o for o in output.splitlines()]
 
-    # TODO: TEMPORARILY DISABLED UNTIL ISSUE #215 IS FIXED:
-    # def test_with_dde(self):
-    #     """ check that dde links appear on stdout """
-    #     filename = 'dde-test-from-office2003.doc'
-    #     output = msodde.process_maybe_encrypted(
-    #         join(BASE_DIR, 'msodde', filename),
-    #         field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
-    #     self.assertNotEqual(len(self.get_dde_from_output(output)), 0,
-    #                         msg='Found no dde links in output of ' + filename)
+    def test_with_dde(self):
+        """ check that dde links appear on stdout """
+        filename = 'dde-test-from-office2003.doc.zip'
+        with decrypt_sample(join('msodde', filename)) as temp_file:
+            output = msodde.process_maybe_encrypted(temp_file,
+                field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
+            self.assertNotEqual(len(self.get_dde_from_output(output)), 0,
+                                msg='Found no dde links in output of ' + filename)
 
     def test_no_dde(self):
         """ check that no dde links appear on stdout """
@@ -164,15 +158,14 @@ class TestDdeLinks(unittest.TestCase):
         self.assertEqual(len(self.get_dde_from_output(output)), 0,
                          msg='Found dde links in output of ' + filename)
 
-    # TODO: TEMPORARILY DISABLED UNTIL ISSUE #215 IS FIXED:
-    # def test_with_dde_utf16le(self):
-    #     """ check that dde links appear on stdout """
-    #     filename = 'dde-test-from-office2013-utf_16le-korean.doc'
-    #     output = msodde.process_maybe_encrypted(
-    #         join(BASE_DIR, 'msodde', filename),
-    #         field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
-    #     self.assertNotEqual(len(self.get_dde_from_output(output)), 0,
-    #                         msg='Found no dde links in output of ' + filename)
+    def test_with_dde_utf16le(self):
+        """ check that dde links appear on stdout """
+        filename = 'dde-test-from-office2013-utf_16le-korean.doc.zip'
+        with decrypt_sample(join('msodde', filename)) as temp_file:
+            output = msodde.process_maybe_encrypted(temp_file,
+                field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
+            self.assertNotEqual(len(self.get_dde_from_output(output)), 0,
+                                msg='Found no dde links in output of ' + filename)
 
     def test_excel(self):
         """ check that dde links are found in excel 2007+ files """
@@ -188,19 +181,19 @@ class TestDdeLinks(unittest.TestCase):
 
     def test_xml(self):
         """ check that dde in xml from word / excel is found """
-        # TODO: TEMPORARILY DISABLED UNTIL ISSUE #215 IS FIXED:
-        for name_part in ('excel2003',):  #, 'word2003', 'word2007':
-            filename = 'dde-in-' + name_part + '.xml'
-            output = msodde.process_maybe_encrypted(
-                join(BASE_DIR, 'msodde', filename),
-                field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
-            links = self.get_dde_from_output(output)
-            self.assertEqual(len(links), 1, 'found {0} dde-links in {1}'
-                                            .format(len(links), filename))
-            self.assertTrue('cmd' in links[0], 'no "cmd" in dde-link for {0}'
-                                               .format(filename))
-            self.assertTrue('calc' in links[0], 'no "calc" in dde-link for {0}'
-                                                .format(filename))
+        for filename in ('dde-in-excel2003.xml',
+                         'dde-in-word2003.xml.zip',
+                         'dde-in-word2007.xml.zip'):
+            with decrypt_sample(join('msodde', filename)) as temp_file:
+                output = msodde.process_maybe_encrypted(temp_file,
+                    field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
+                links = self.get_dde_from_output(output)
+                self.assertEqual(len(links), 1, 'found {0} dde-links in {1}'
+                                                .format(len(links), filename))
+                self.assertTrue('cmd' in links[0], 'no "cmd" in dde-link for {0}'
+                                                   .format(filename))
+                self.assertTrue('calc' in links[0], 'no "calc" in dde-link for {0}'
+                                                    .format(filename))
 
     def test_clean_rtf_blacklist(self):
         """ find a lot of hyperlinks in rtf spec """
