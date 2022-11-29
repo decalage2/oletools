@@ -1,9 +1,9 @@
 """ Test oleobj basic functionality """
-
+import sys
 import unittest
 from tempfile import mkdtemp
 from shutil import rmtree
-from os.path import join, isfile
+from os.path import join, isfile, basename
 from hashlib import md5
 from glob import glob
 
@@ -11,6 +11,7 @@ from glob import glob
 from tests.test_utils import DATA_BASE_DIR, call_and_capture
 from oletools import oleobj
 from oletools.common.io_encoding import ensure_stdout_handles_unicode
+from oletools.crypto import check_msoffcrypto
 
 
 #: provide some more info to find errors
@@ -157,6 +158,38 @@ class TestOleObj(unittest.TestCase):
         """ Ensure old oleobj behaviour still works: pre-read whole file """
         return self.do_test_md5(['-d', self.temp_dir], test_fun=preread_file,
                                 only_run_every=4)
+
+    @unittest.skipIf(not check_msoffcrypto(),
+                     'Module msoffcrypto not installed for {}'
+                     .format(basename(sys.executable)))
+    def test_decrypt(self):
+        """Check that decryption in oleobj works."""
+        sample_name = 'embedded-jpg-standardpassword.docx'
+        embedded_name = 'nature-home-spring-desktop-background-images.jpg'
+        expect_hash = '82d6e5fee5925b2148f06343da4018d2'
+        args = ['-d', self.temp_dir,
+                join(DATA_BASE_DIR, 'oleobj', sample_name), ]
+        output, ret_val = call_and_capture('oleobj', args,
+                                           accept_nonzero_exit=True)
+        self.assertEqual(ret_val, oleobj.RETURN_DID_DUMP,
+                         msg='Wrong return value {} for {}. Output:\n{}'
+                         .format(ret_val, sample_name, output))
+        expect_name = glob(join(self.temp_dir,
+                                sample_name + '_decrypt-*_' + embedded_name))
+        if not expect_name:
+            self.did_fail = True
+            self.fail('Sample not created from {0}. Output:\n{1}'
+                      .format(sample_name, output))
+        elif len(expect_name) > 1:
+            self.did_fail = True
+            self.fail('Too many samples ({0}) created from {1}. Output:\n{2}'
+                      .format(len(expect_name), sample_name, output))
+        expect_name = expect_name[0]
+        md5_hash = calc_md5(expect_name)
+        if md5_hash != expect_hash:
+            self.did_fail = True
+            self.fail('Wrong md5 {0} of {1} from {2}. Output:\n{3}'
+                      .format(md5_hash, expect_name, sample_name, output))
 
 
 class TestSaneFilenameCreation(unittest.TestCase):
