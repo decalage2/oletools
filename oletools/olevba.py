@@ -3619,6 +3619,9 @@ class VBA_Parser(object):
                             log.debug('Error processing stream %r in file %r (%s)' % (d.name, self.filename, exc))
                             log.debug('Traceback:', exc_info=True)
                             # do not raise the error, as it is unlikely to be a compressed macro stream
+                            # instead, yield the code as-is, maybe it just was not compressed
+                            log.debug('Try analyzing uncompressed code')
+                            yield (self.filename, d.name, d.name, compressed_code)
             if self.xlm_macros:
                 vba_code = ''
                 for line in self.xlm_macros:
