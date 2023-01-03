@@ -159,6 +159,7 @@ including
 [FLARE-VM](https://github.com/fireeye/flare-vm),
 [GLIMPS Malware](https://www.glimps.fr/en/glimps-malware-2/),
 [Hybrid-analysis.com](https://www.hybrid-analysis.com/),
+[InQuest Labs](https://labs.inquest.net/),
 [IntelOwl](https://github.com/certego/IntelOwl),
 [Joe Sandbox](https://www.document-analyzer.net/),
 [Laika BOSS](https://github.com/lmco/laikaboss),
