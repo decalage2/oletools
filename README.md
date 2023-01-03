@@ -180,6 +180,7 @@ including
 [Strelka](https://github.com/target/strelka),
 [stoQ](https://stoq.punchcyber.com/),
 [Sublime Platform/MQL](https://docs.sublimesecurity.com/docs/enrichment-functions),
+[Subparse](https://github.com/jstrosch/subparse),
 [TheHive/Cortex](https://github.com/TheHive-Project/Cortex-Analyzers),
 [ThreatBoook](https://s.threatbook.com/),
 [TSUGURI Linux](https://tsurugi-linux.org/),
