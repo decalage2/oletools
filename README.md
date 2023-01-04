@@ -149,6 +149,7 @@ including
 [AssemblyLine](https://www.cse-cst.gc.ca/en/assemblyline),
 [CAPE](https://github.com/ctxis/CAPE),
 [CinCan](https://cincan.io),
+[Cortex XSOAR (Palo Alto)](https://cortex.marketplace.pan.dev/marketplace/details/Oletools/),
 [Cuckoo Sandbox](https://github.com/cuckoosandbox/cuckoo),
 [DARKSURGEON](https://github.com/cryps1s/DARKSURGEON),
 [Deepviz](https://sandbox.deepviz.com/),
