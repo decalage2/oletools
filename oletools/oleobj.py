@@ -578,7 +578,7 @@ def get_sane_embedded_filenames(filename, src_path, tmp_path, max_len,
 
         # identify suffix. Dangerous suffixes are all short
         idx = candidate.rfind('.')
-        if idx is -1:
+        if idx == -1:
             candidates_without_suffix.append(candidate)
             continue
         elif idx < len(candidate)-5:
