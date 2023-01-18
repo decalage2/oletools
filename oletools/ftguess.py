@@ -189,6 +189,7 @@ class FTYPE(object):
     GENERIC_OPENXML = 'OpenXML' # Generic OpenXML file
     UNKNOWN = 'Unknown File Type'
     MSI = "MSI"
+    ONENOTE = "OneNote"
 
 class CONTAINER(object):
     """
@@ -203,6 +204,7 @@ class CONTAINER(object):
     MIME = 'MIME'
     BINARY = 'Binary'  # Generic binary file without container
     UNKNOWN = 'Unknown Container'
+    ONENOTE = 'OneNote'
 
 class APP(object):
     """
@@ -215,6 +217,7 @@ class APP(object):
     MSVISIO = 'MS Visio'
     MSPROJECT = 'MS Project'
     MSOFFICE = 'MS Office'  # when the exact app is unknown
+    MSONENOTE = 'MS OneNote'
     ZIP_ARCHIVER = 'Any Zip Archiver'
     WINDOWS = 'Windows'  # for Windows executables and XPS
     UNKNOWN = 'Unknown Application'
@@ -678,6 +681,25 @@ class FType_MSI(FType_Generic_OLE):
     extensions = ['msi']
 
 
+class FType_OneNote(FType_Base):
+    container = CONTAINER.ONENOTE
+    application = APP.MSONENOTE
+    filetype = FTYPE.ONENOTE
+    name = 'OneNote'
+    longname = 'MS OneNote Revision Store (.one)'
+    extensions = ['one']
+    content_types = ('application/msonenote',)
+    PUID = 'fmt/637'
+    # ref: https://learn.microsoft.com/en-us/openspecs/office_file_formats/ms-onestore/ae670cd2-4b38-4b24-82d1-87cfb2cc3725
+    # PRONOM: https://www.nationalarchives.gov.uk/PRONOM/Format/proFormatSearch.aspx?status=detailReport&id=1437
+
+    @classmethod
+    def recognize(cls, ftg):
+        # ref about Header with OneNote GUID:
+        # https://learn.microsoft.com/en-us/openspecs/office_file_formats/ms-onestore/2b394c6b-8788-441f-b631-da1583d772fd
+        return True if ftg.data.startswith(b'\xE4\x52\x5C\x7B\x8C\xD8\xA7\x4D\xAE\xB1\x53\x78\xD0\x29\x96\xD3') else False
+
+
 # TODO: for PPT, check for stream 'PowerPoint Document'
 # TODO: for Visio, check for stream 'VisioDocument'
 
@@ -770,7 +792,7 @@ class FileTypeGuesser(object):
         self.data_bytesio = io.BytesIO(self.data)
 
         # Identify the main container type:
-        for ftype in (FType_RTF, FType_Generic_OLE, FType_Generic_Zip):
+        for ftype in (FType_RTF, FType_Generic_OLE, FType_Generic_Zip, FType_OneNote):
             if ftype.recognize(self):
                 self.ftype = ftype
                 break
