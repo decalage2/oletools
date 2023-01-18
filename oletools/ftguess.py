@@ -11,9 +11,13 @@ ftguess is part of the python-oletools package:
 http://www.decalage.info/python/oletools
 """
 
+# Useful resources about file formats:
+# http://fileformats.archiveteam.org
+# https://www.nationalarchives.gov.uk/PRONOM/Default.aspx
+
 #=== LICENSE =================================================================
 
-# ftguess is copyright (c) 2018-2022, Philippe Lagadec (http://www.decalage.info)
+# ftguess is copyright (c) 2018-2023, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -43,7 +47,7 @@ from __future__ import print_function
 # 2018-07-04 v0.54 PL: - first version
 # 2021-05-09 v0.60 PL: -
 
-__version__ = '0.60.1'
+__version__ = '0.60.2dev3'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -184,6 +188,7 @@ class FTYPE(object):
     GENERIC_XML = 'XML' # Generic XML file
     GENERIC_OPENXML = 'OpenXML' # Generic OpenXML file
     UNKNOWN = 'Unknown File Type'
+    MSI = "MSI"
 
 class CONTAINER(object):
     """
@@ -664,6 +669,15 @@ class FType_XPS(FType_Generic_OpenXML):
     extensions = ['xps']
 
 
+class FType_MSI(FType_Generic_OLE):
+    # see http://fileformats.archiveteam.org/wiki/Windows_Installer
+    application = APP.WINDOWS
+    filetype = FTYPE.MSI
+    name = 'MSI'
+    longname = 'Windows Installer Package (.msi)'
+    extensions = ['msi']
+
+
 # TODO: for PPT, check for stream 'PowerPoint Document'
 # TODO: for Visio, check for stream 'VisioDocument'
 
@@ -678,6 +692,8 @@ clsid_ftypes = {
     '00020810-0000-0000-C000-000000000046': FType_Excel5,
     # POWERPOINT
     '64818D10-4F9B-11CF-86EA-00AA00B929E8': FType_Powerpoint97,
+    # MSI
+    '000C1084-0000-0000-C000-000000000046': FType_MSI,
 }
 
 openxml_ftypes = {

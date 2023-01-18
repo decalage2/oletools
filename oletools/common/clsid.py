@@ -95,7 +95,7 @@ KNOWN_CLSIDS = {
     '0004A6B0-0000-0000-C000-000000000046': 'Microsoft Equation 2.0 (Known Related to CVE-2017-11882 or CVE-2018-0802)', # TODO: to be confirmed
     # Referenced in https://devblogs.microsoft.com/setup/identifying-windows-installer-file-types/ :
     '000C1082-0000-0000-C000-000000000046': 'MSI Transform (mst)',
-    '000C1084-0000-0000-C000-000000000046': 'MSI Installer Package (msi)',
+    '000C1084-0000-0000-C000-000000000046': 'MSI Windows Installer Package (msi)',
     '000C1086-0000-0000-C000-000000000046': 'MSI Patch Package (psp)',
     '048EB43E-2059-422F-95E0-557DA96038AF': 'Microsoft Powerpoint.Slide.12',
     '05741520-C4EB-440A-AC3F-9643BBC9F847': 'otkloadr.WRLoader (can be used to bypass ASLR after triggering an exploit)',
