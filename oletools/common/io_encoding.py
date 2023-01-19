@@ -58,7 +58,7 @@ PY3 = sys.version_info.major >= 3
 if PY3:
     from builtins import open as builtin_open
 else:
-    from __builtin__ import open as builtin_open
+    from __builtin__ import open as builtin_open    # pylint: disable=import-error
 
 # -- CONSTANTS ----------------------------------------------------------------
 #: encoding to use for redirection if no good encoding can be found

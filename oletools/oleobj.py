@@ -180,7 +180,7 @@ if sys.version_info[0] <= 2:
     NULL_CHAR = '\x00'
 else:
     # Python 3.x
-    NULL_CHAR = 0     # pylint: disable=redefined-variable-type
+    NULL_CHAR = 0
     xrange = range    # pylint: disable=redefined-builtin, invalid-name
 
 OOXML_RELATIONSHIP_TAG = '{http://schemas.openxmlformats.org/package/2006/relationships}Relationship'

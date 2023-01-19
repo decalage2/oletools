@@ -337,7 +337,7 @@ if sys.version_info[0] <= 2:
     BACKSLASH = '\\'
     BRACE_OPEN = '{'
     BRACE_CLOSE = '}'
-    UNICODE_TYPE = unicode
+    UNICODE_TYPE = unicode   # pylint: disable=undefined-variable
 else:
     # Python 3.x - Integers
     BACKSLASH = ord('\\')

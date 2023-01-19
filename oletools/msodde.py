@@ -149,69 +149,69 @@ LOCATIONS = ('word/document.xml', 'word/endnotes.xml', 'word/footnotes.xml',
 #          switches_with_args, switches_without_args, format_switches)
 FIELD_BLACKLIST = (
     # date and time:
-    ('CREATEDATE', 0, 0, '', 'hs',  'datetime'),                 # pylint: disable=bad-whitespace
-    ('DATE',       0, 0, '', 'hls', 'datetime'),                 # pylint: disable=bad-whitespace
-    ('EDITTIME',   0, 0, '', '',    'numeric'),                  # pylint: disable=bad-whitespace
-    ('PRINTDATE',  0, 0, '', 'hs',  'datetime'),                 # pylint: disable=bad-whitespace
-    ('SAVEDATE',   0, 0, '', 'hs',  'datetime'),                 # pylint: disable=bad-whitespace
-    ('TIME',       0, 0, '', '',    'datetime'),                 # pylint: disable=bad-whitespace
+    ('CREATEDATE', 0, 0, '', 'hs',  'datetime'),
+    ('DATE',       0, 0, '', 'hls', 'datetime'),
+    ('EDITTIME',   0, 0, '', '',    'numeric'),
+    ('PRINTDATE',  0, 0, '', 'hs',  'datetime'),
+    ('SAVEDATE',   0, 0, '', 'hs',  'datetime'),
+    ('TIME',       0, 0, '', '',    'datetime'),
     # exclude document automation (we hate the "auto" in "automation")
     # (COMPARE, DOCVARIABLE, GOTOBUTTON, IF, MACROBUTTON, PRINT)
     # document information
-    ('AUTHOR',      0, 1, '', '',   'string'),                   # pylint: disable=bad-whitespace
-    ('COMMENTS',    0, 1, '', '',   'string'),                   # pylint: disable=bad-whitespace
-    ('DOCPROPERTY', 1, 0, '', '',   'string/numeric/datetime'),  # pylint: disable=bad-whitespace
-    ('FILENAME',    0, 0, '', 'p',  'string'),                   # pylint: disable=bad-whitespace
-    ('FILESIZE',    0, 0, '', 'km', 'numeric'),                  # pylint: disable=bad-whitespace
-    ('KEYWORDS',    0, 1, '', '',   'string'),                   # pylint: disable=bad-whitespace
-    ('LASTSAVEDBY', 0, 0, '', '',   'string'),                   # pylint: disable=bad-whitespace
-    ('NUMCHARS',    0, 0, '', '',   'numeric'),                  # pylint: disable=bad-whitespace
-    ('NUMPAGES',    0, 0, '', '',   'numeric'),                  # pylint: disable=bad-whitespace
-    ('NUMWORDS',    0, 0, '', '',   'numeric'),                  # pylint: disable=bad-whitespace
-    ('SUBJECT',     0, 1, '', '',   'string'),                   # pylint: disable=bad-whitespace
-    ('TEMPLATE',    0, 0, '', 'p',  'string'),                   # pylint: disable=bad-whitespace
-    ('TITLE',       0, 1, '', '',   'string'),                   # pylint: disable=bad-whitespace
+    ('AUTHOR',      0, 1, '', '',   'string'),
+    ('COMMENTS',    0, 1, '', '',   'string'),
+    ('DOCPROPERTY', 1, 0, '', '',   'string/numeric/datetime'),
+    ('FILENAME',    0, 0, '', 'p',  'string'),
+    ('FILESIZE',    0, 0, '', 'km', 'numeric'),
+    ('KEYWORDS',    0, 1, '', '',   'string'),
+    ('LASTSAVEDBY', 0, 0, '', '',   'string'),
+    ('NUMCHARS',    0, 0, '', '',   'numeric'),
+    ('NUMPAGES',    0, 0, '', '',   'numeric'),
+    ('NUMWORDS',    0, 0, '', '',   'numeric'),
+    ('SUBJECT',     0, 1, '', '',   'string'),
+    ('TEMPLATE',    0, 0, '', 'p',  'string'),
+    ('TITLE',       0, 1, '', '',   'string'),
     # equations and formulas
     # exlude '=' formulae because they have different syntax (and can be bad)
-    ('ADVANCE', 0, 0, 'dlruxy', '', ''),                         # pylint: disable=bad-whitespace
-    ('SYMBOL',  1, 0, 'fs', 'ahju', ''),                         # pylint: disable=bad-whitespace
+    ('ADVANCE', 0, 0, 'dlruxy', '', ''),
+    ('SYMBOL',  1, 0, 'fs', 'ahju', ''),
     # form fields
-    ('FORMCHECKBOX', 0, 0, '', '', ''),                          # pylint: disable=bad-whitespace
-    ('FORMDROPDOWN', 0, 0, '', '', ''),                          # pylint: disable=bad-whitespace
-    ('FORMTEXT', 0, 0, '', '', ''),                              # pylint: disable=bad-whitespace
+    ('FORMCHECKBOX', 0, 0, '', '', ''),
+    ('FORMDROPDOWN', 0, 0, '', '', ''),
+    ('FORMTEXT', 0, 0, '', '', ''),
     # index and tables
-    ('INDEX', 0, 0, 'bcdefghklpsz', 'ry', ''),                   # pylint: disable=bad-whitespace
+    ('INDEX', 0, 0, 'bcdefghklpsz', 'ry', ''),
     # exlude RD since that imports data from other files
-    ('TA',  0, 0, 'clrs', 'bi', ''),                             # pylint: disable=bad-whitespace
-    ('TC',  1, 0, 'fl', 'n', ''),                                # pylint: disable=bad-whitespace
-    ('TOA', 0, 0, 'bcdegls', 'fhp', ''),                         # pylint: disable=bad-whitespace
-    ('TOC', 0, 0, 'abcdflnopst', 'huwxz', ''),                   # pylint: disable=bad-whitespace
-    ('XE',  1, 0, 'frty', 'bi', ''),                             # pylint: disable=bad-whitespace
+    ('TA',  0, 0, 'clrs', 'bi', ''),
+    ('TC',  1, 0, 'fl', 'n', ''),
+    ('TOA', 0, 0, 'bcdegls', 'fhp', ''),
+    ('TOC', 0, 0, 'abcdflnopst', 'huwxz', ''),
+    ('XE',  1, 0, 'frty', 'bi', ''),
     # links and references
     # exclude AUTOTEXT and AUTOTEXTLIST since we do not like stuff with 'AUTO'
-    ('BIBLIOGRAPHY', 0, 0, 'lfm', '', ''),                       # pylint: disable=bad-whitespace
-    ('CITATION', 1, 0, 'lfspvm', 'nty', ''),                     # pylint: disable=bad-whitespace
+    ('BIBLIOGRAPHY', 0, 0, 'lfm', '', ''),
+    ('CITATION', 1, 0, 'lfspvm', 'nty', ''),
     # exclude HYPERLINK since we are allergic to URLs
     # exclude INCLUDEPICTURE and INCLUDETEXT (other file or maybe even URL?)
     # exclude LINK and REF (could reference other files)
-    ('NOTEREF', 1, 0, '', 'fhp', ''),                            # pylint: disable=bad-whitespace
-    ('PAGEREF', 1, 0, '', 'hp', ''),                             # pylint: disable=bad-whitespace
-    ('QUOTE', 1, 0, '', '', 'datetime'),                         # pylint: disable=bad-whitespace
-    ('STYLEREF', 1, 0, '', 'lnprtw', ''),                        # pylint: disable=bad-whitespace
+    ('NOTEREF', 1, 0, '', 'fhp', ''),
+    ('PAGEREF', 1, 0, '', 'hp', ''),
+    ('QUOTE', 1, 0, '', '', 'datetime'),
+    ('STYLEREF', 1, 0, '', 'lnprtw', ''),
     # exclude all Mail Merge commands since they import data from other files
     # (ADDRESSBLOCK, ASK, COMPARE, DATABASE, FILLIN, GREETINGLINE, IF,
     #  MERGEFIELD, MERGEREC, MERGESEQ, NEXT, NEXTIF, SET, SKIPIF)
     # Numbering
-    ('LISTNUM',      0, 1, 'ls', '', ''),                        # pylint: disable=bad-whitespace
-    ('PAGE',         0, 0, '', '', 'numeric'),                   # pylint: disable=bad-whitespace
-    ('REVNUM',       0, 0, '', '', ''),                          # pylint: disable=bad-whitespace
-    ('SECTION',      0, 0, '', '', 'numeric'),                   # pylint: disable=bad-whitespace
-    ('SECTIONPAGES', 0, 0, '', '', 'numeric'),                   # pylint: disable=bad-whitespace
-    ('SEQ',          1, 1, 'rs', 'chn', 'numeric'),              # pylint: disable=bad-whitespace
-    # user information                                           # pylint: disable=bad-whitespace
-    ('USERADDRESS', 0, 1, '', '', 'string'),                     # pylint: disable=bad-whitespace
-    ('USERINITIALS', 0, 1, '', '', 'string'),                    # pylint: disable=bad-whitespace
-    ('USERNAME', 0, 1, '', '', 'string'),                        # pylint: disable=bad-whitespace
+    ('LISTNUM',      0, 1, 'ls', '', ''),
+    ('PAGE',         0, 0, '', '', 'numeric'),
+    ('REVNUM',       0, 0, '', '', ''),
+    ('SECTION',      0, 0, '', '', 'numeric'),
+    ('SECTIONPAGES', 0, 0, '', '', 'numeric'),
+    ('SEQ',          1, 1, 'rs', 'chn', 'numeric'),
+    # user information
+    ('USERADDRESS', 0, 1, '', '', 'string'),
+    ('USERINITIALS', 0, 1, '', '', 'string'),
+    ('USERNAME', 0, 1, '', '', 'string'),
 )
 
 FIELD_DDE_REGEX = re.compile(r'^\s*dde(auto)?\s+', re.I)

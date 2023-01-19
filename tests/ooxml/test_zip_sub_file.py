@@ -111,8 +111,8 @@ class TestZipSubFile(unittest.TestCase):
         self.assertEqual(self.subfile.tell(), self.compare.tell())
 
         # seek backward (only implemented case: back to start)
-        self.subfile.seek(-self.subfile.tell(), os.SEEK_CUR)
-        self.compare.seek(-self.compare.tell(), os.SEEK_CUR)
+        self.subfile.seek(-1 * self.subfile.tell(), os.SEEK_CUR)
+        self.compare.seek(-1 * self.compare.tell(), os.SEEK_CUR)
         self.assertEqual(self.subfile.read(1), self.compare.read(1))
         self.assertEqual(self.subfile.tell(), self.compare.tell())
 

@@ -69,7 +69,7 @@ __version__ = '0.51'
 
 # --- IMPORTS ----------------------------------------------------------------
 
-import Milter
+import Milter         # not part of requirements, therefore: # pylint: disable=import-error
 import io
 import time
 import email
@@ -78,7 +78,7 @@ import os
 import logging
 import logging.handlers
 import datetime
-import StringIO
+import StringIO      # not part of requirements, therefore: # pylint: disable=import-error
 
 from socket import AF_INET6
 
@@ -96,7 +96,7 @@ if not _parent_dir in sys.path:
 
 from oletools import olevba, mraptor
 
-from Milter.utils import parse_addr
+from Milter.utils import parse_addr  # not part of requirements, therefore: # pylint: disable=import-error
 
 from zipfile import is_zipfile
 
@@ -389,7 +389,7 @@ if __name__ == "__main__":
 
     # Using daemonize:
     # See http://daemonize.readthedocs.io/en/latest/
-    from daemonize import Daemonize
+    from daemonize import Daemonize    # not part of requirements, therefore: # pylint: disable=import-error
     daemon = Daemonize(app="mraptor_milter", pid=PIDFILE, action=main)
     daemon.start()
 
