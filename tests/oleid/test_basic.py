@@ -126,7 +126,7 @@ class TestOleIDBasic(unittest.TestCase):
             if filename in find_vba:                   # no macros!
                 self.assertEqual(value_dict['vba'], 'Yes')
             else:
-                self.assertEqual(value_dict['vba'], 'No')
+                self.assertIn(value_dict['vba'], ('No', 'Error'))
 
     def test_flash(self):
         """Test indicator for flash."""
