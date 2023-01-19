@@ -13,6 +13,8 @@ to **send feedback**.
 
 The code is available in [a repository on GitHub](https://github.com/decalage2/oletools).
 You may use it to **submit enhancements** using forks and pull requests.
+When submitting a PR, GitHub will automatically check that unittests pass and
+`pylint -E` does not report anything for the code files you changed.
 
 --------------------------------------------------------------------------
 
