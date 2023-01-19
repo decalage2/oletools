@@ -13,6 +13,9 @@ jobs:
       matrix:
         os: ["ubuntu-latest", "windows-latest", "macos-latest"]
         python-version: ["2.x", "3.x", "pypy-3.9"]
+        include:
+          - python-version: 3.x
+            runlint: 1
 
     steps:
       - uses: actions/checkout@v3
@@ -26,5 +29,9 @@ jobs:
           cat requirements.txt
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install pylint
+      - name: Run pylint
+        if: ${{ matrix.runlint }}
+        run: pylint -E --ignore=thirdparty oletools tests
       - name: Run unittests
         run: python -m unittest discover -f
