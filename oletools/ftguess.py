@@ -190,6 +190,7 @@ class FTYPE(object):
     UNKNOWN = 'Unknown File Type'
     MSI = "MSI"
     ONENOTE = "OneNote"
+    PNG = 'PNG'
 
 class CONTAINER(object):
     """
@@ -205,6 +206,7 @@ class CONTAINER(object):
     BINARY = 'Binary'  # Generic binary file without container
     UNKNOWN = 'Unknown Container'
     ONENOTE = 'OneNote'
+    PNG = 'PNG'
 
 class APP(object):
     """
@@ -700,6 +702,23 @@ class FType_OneNote(FType_Base):
         return True if ftg.data.startswith(b'\xE4\x52\x5C\x7B\x8C\xD8\xA7\x4D\xAE\xB1\x53\x78\xD0\x29\x96\xD3') else False
 
 
+class FType_PNG(FType_Base):
+    container = CONTAINER.PNG
+    application = APP.UNKNOWN
+    filetype = FTYPE.PNG
+    name = 'PNG'
+    longname = 'Portable Network Graphics picture (.png)'
+    extensions = ['png']
+    content_types = ('image/png',)
+    PUID = 'fmt/13' # This is for PNG 1.2. PNG 1.1 is fmt/12, 1.0 is fmt/11
+    # ref: http://fileformats.archiveteam.org/wiki/PNG
+    # PRONOM: https://www.nationalarchives.gov.uk/PRONOM/Format/proFormatSearch.aspx?status=detailReport&id=666
+
+    @classmethod
+    def recognize(cls, ftg):
+        return True if ftg.data.startswith(b'\x89\x50\x4E\x47\x0D\x0A\x1A\x0A') else False
+
+
 # TODO: for PPT, check for stream 'PowerPoint Document'
 # TODO: for Visio, check for stream 'VisioDocument'
 
@@ -792,7 +811,7 @@ class FileTypeGuesser(object):
         self.data_bytesio = io.BytesIO(self.data)
 
         # Identify the main container type:
-        for ftype in (FType_RTF, FType_Generic_OLE, FType_Generic_Zip, FType_OneNote):
+        for ftype in (FType_RTF, FType_Generic_OLE, FType_Generic_Zip, FType_OneNote, FType_PNG):
             if ftype.recognize(self):
                 self.ftype = ftype
                 break
