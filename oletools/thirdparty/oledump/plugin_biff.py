@@ -2,10 +2,8 @@
 
 __description__ = 'BIFF plugin for oledump.py'
 __author__ = 'Didier Stevens'
-__version__ = '0.0.22'
-__date__ = '2021/02/23'
-
-# Slightly modified version by Philippe Lagadec to be imported into olevba
+__version__ = '0.0.25'
+__date__ = '2022/05/03'
 
 """
 
@@ -52,6 +50,11 @@ History:
   2021/02/09: added recordsNotXORObfuscated
   2021/02/21: 0.0.22 bug fix
   2021/02/23: added PASSWORD record cracking
+  2021/05/23: 0.0.23 bruteforce
+  2021/06/18: added userdefinedfunction names (sample RANDBETWEEN)
+  2021/07/23: 0.0.24 added CreateXorKey_Method1
+  2021/08/12: continue xor deobfuscation
+  2022/05/03: 0.0.25 fix 0x1BA CODENAME
 
 Todo:
   updated parsing of records for BIFF5 record format
@@ -61,19 +64,6 @@ import struct
 import re
 import optparse
 import json
-
-# Modifications for olevba:
-import sys
-import binascii
-from .oledump_extract import(
-    cPluginParent,
-    AddPlugin,
-    CIC,
-    IFF,
-    P23Ord,
-    P23Chr
-)
-# end modifications
 
 DEFAULT_SEPARATOR = ','
 QUOTE = '"'
@@ -209,6 +199,8 @@ def ParseLocRelU(expression):
 def ParseLoc(expression, cellrefformat, ignoreRelFlags=False):
     formatcodes = 'HH'
     formatsize = struct.calcsize(formatcodes)
+    if len(expression) < formatsize:
+        return '', expression
     row, column = struct.unpack(formatcodes, expression[0:formatsize])
     if ignoreRelFlags:
         rowRelative = False
@@ -251,7 +243,7 @@ def StackBinary(stack, operator):
         operand1 = stack.pop()
         stack.append(operand1 + operator + operand2)
 
-def StackFunction(stack, function, arity):
+def StackFunction(stack, function, arity, userdefinedfunctionNames):
     if len(stack) < arity:
         stack.append('*STACKERROR* not enough arguments for function: %s' % function)
     else:
@@ -260,10 +252,12 @@ def StackFunction(stack, function, arity):
             arguments.insert(0, stack.pop())
         if function == 'User Defined Function':
             function = arguments[0]
+            if isinstance(function, int):
+                function = userdefinedfunctionNames[function - 1]
             arguments = arguments[1:]
         stack.append('%s(%s)' % (function, ','.join(arguments)))
 
-def ParseExpression(expression, definesNames, sheetNames, cellrefformat):
+def ParseExpression(expression, definedNames, sheetNames, userdefinedfunctionNames, cellrefformat):
     dTokens = {
 0x01: 'ptgExp',
 0x02: 'ptgTbl',
@@ -428,7 +422,7 @@ def ParseExpression(expression, definesNames, sheetNames, cellrefformat):
 0x003C: 'RATE',
 0x003D: 'MIRR',
 0x003E: 'IRR',
-0x003F: 'RAND',
+0x003F: ['RAND', 0],
 0x0040: 'MATCH',
 0x0041: 'DATE',
 0x0042: 'TIME',
@@ -1229,7 +1223,7 @@ def ParseExpression(expression, definesNames, sheetNames, cellrefformat):
                 functionid = P23Ord(expression[0]) + P23Ord(expression[1]) * 0x100
                 result += '%s (0x%04x) ' % (GetFunctionName(functionid), functionid)
                 expression = expression[2:]
-                StackFunction(stack, GetFunctionName(functionid), GetFunctionArity(functionid))
+                StackFunction(stack, GetFunctionName(functionid), GetFunctionArity(functionid), userdefinedfunctionNames)
             elif ptgid == 0x22 or ptgid == 0x42 or ptgid == 0x62:
                 functionid = P23Ord(expression[1]) + P23Ord(expression[2]) * 0x100
                 numberOfArguments = P23Ord(expression[0])
@@ -1237,13 +1231,13 @@ def ParseExpression(expression, definesNames, sheetNames, cellrefformat):
                 expression = expression[3:]
                 if functionid == 0x806D:
                     expression = expression[9:]
-                StackFunction(stack, GetFunctionName(functionid), numberOfArguments)
+                StackFunction(stack, GetFunctionName(functionid), numberOfArguments, userdefinedfunctionNames)
             elif ptgid == 0x23: # ptgName https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-xls/5f05c166-dfe3-4bbf-85aa-31c09c0258c0
                 nameValue = struct.unpack('<I', expression[0:4])[0]
                 result += '0x%08x ' % (nameValue)
                 expression = expression[4:]
-                if nameValue <= len(definesNames):
-                    stack.append(definesNames[nameValue - 1])
+                if nameValue <= len(definedNames):
+                    stack.append(definedNames[nameValue - 1])
                 else:
                     stack.append('ptgName:0x%08x' % (nameValue))
             elif ptgid == 0x1f:
@@ -1289,11 +1283,12 @@ def ParseExpression(expression, definesNames, sheetNames, cellrefformat):
                 nameindex = struct.unpack(formatcodes, expression[0:formatsize])[0]
                 result += ' NAMEIDX %d ' % nameindex
                 expression = expression[4:]
+                stack.append(nameindex)
             elif ptgid == 0x21: #ptgFunc
                 functionid = P23Ord(expression[0]) + P23Ord(expression[1]) * 0x100
                 result += '%s ' % GetFunctionName(functionid)
                 expression = expression[2:]
-                StackFunction(stack, GetFunctionName(functionid), GetFunctionArity(functionid))
+                StackFunction(stack, GetFunctionName(functionid), GetFunctionArity(functionid), userdefinedfunctionNames)
             elif ptgid == 0x61 or ptgid == 0x62: # ptgFuncVar  ptgFuncVarA
                 params_count = P23Ord(expression[0])
                 functionid = P23Ord(expression[1]) + P23Ord(expression[2]) * 0x100
@@ -1335,12 +1330,48 @@ def ShortXLUnicodeString(data, isBIFF8):
     else:
         return P23Decode(data[1:1 + cch])
 
-def GetDictionary(passwordfile):
-    if passwordfile != '.':
-        return File2Strings(passwordfile)
+class cBruteforceAttack(object):
+
+    def __init__(self, characters, maxlength):
+        self.characters = characters
+        self.maxlength = maxlength
+        self.maxCounterValue = len(self.characters) - 1
+        self.counter = []
+
+    def IncrementCounter(self, counter):
+        if counter == []:
+            return [0]
+        if counter[-1] < self.maxCounterValue:
+            return counter[:-1] + [counter[-1] + 1]
+        else:
+            return self.IncrementCounter(counter[:-1]) + [0]
+
+    def Next(self):
+        if len(self.counter) > self.maxlength:
+            return None
+        self.counter = self.IncrementCounter(self.counter)
+        if len(self.counter) > self.maxlength:
+            return None
+        else:
+            return ''.join([self.characters[index] for index in self.counter])
+
+def ParsePasswordFileName(filename):
+    dCharacterSets = {
+        'n': '0123456789',
+        'a': 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+        'p': ''' !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~''',
+    }
+
+    if not filename.startswith('#'):
+        return None
+    if filename[1] in dCharacterSets:
+        return [dCharacterSets[filename[1]], int(filename[2:])]
     else:
+        return [dCharacterSets['a'], int(filename[1:])]
+
+def GetDictionary(passwordfile):
 # https://github.com/magnumripper/JohnTheRipper/blob/bleeding-jumbo/run/password.lst
-        return [
+    passwordsJTR = [
           'infected',
           'P@ssw0rd',
           'VelvetSweatshop',
@@ -4890,6 +4921,22 @@ def GetDictionary(passwordfile):
           'notused',
           'sss']
 
+    if ParsePasswordFileName(passwordfile) != None:
+        characterSet, maxLength = ParsePasswordFileName(passwordfile)
+        oBruteforceAttack = cBruteforceAttack(characterSet, maxLength)
+        while True:
+            candidate = oBruteforceAttack.Next()
+            if candidate == None:
+                return
+            yield candidate
+    elif passwordfile == '.':
+        for password in passwordsJTR:
+            yield password
+    else:
+        with open(passwordfile, encoding='latin') as fPasswords:
+            for password in fPasswords:
+                yield password.rstrip('\n')
+
 def CreatePasswordVerifier_Method1(password):
     verifier = 0
     password = password[:15]
@@ -4905,11 +4952,27 @@ def CreatePasswordVerifier_Method1(password):
         verifier = intermediate3 ^ P23Ord(passwordbyte)
     return verifier ^ 0xCE4B
 
+def CreateXorKey_Method1(password):
+    password = password[:15]
+    initialCode = ( 0xE1F0, 0x1D0F, 0xCC9C, 0x84C0, 0x110C, 0x0E10, 0xF1CE, 0x313E, 0x1872, 0xE139, 0xD40F, 0x84F9, 0x280C, 0xA96A, 0x4EC3 )
+    xorMatrix = ( 0xAEFC, 0x4DD9, 0x9BB2, 0x2745, 0x4E8A, 0x9D14, 0x2A09, 0x7B61, 0xF6C2, 0xFDA5, 0xEB6B, 0xC6F7, 0x9DCF, 0x2BBF, 0x4563, 0x8AC6, 0x05AD, 0x0B5A, 0x16B4, 0x2D68, 0x5AD0, 0x0375, 0x06EA, 0x0DD4, 0x1BA8, 0x3750, 0x6EA0, 0xDD40, 0xD849, 0xA0B3, 0x5147, 0xA28E, 0x553D, 0xAA7A, 0x44D5, 0x6F45, 0xDE8A, 0xAD35, 0x4A4B, 0x9496, 0x390D, 0x721A, 0xEB23, 0xC667, 0x9CEF, 0x29FF, 0x53FE, 0xA7FC, 0x5FD9, 0x47D3, 0x8FA6, 0x0F6D, 0x1EDA, 0x3DB4, 0x7B68, 0xF6D0, 0xB861, 0x60E3, 0xC1C6, 0x93AD, 0x377B, 0x6EF6, 0xDDEC, 0x45A0, 0x8B40, 0x06A1, 0x0D42, 0x1A84, 0x3508, 0x6A10, 0xAA51, 0x4483, 0x8906, 0x022D, 0x045A, 0x08B4, 0x1168, 0x76B4, 0xED68, 0xCAF1, 0x85C3, 0x1BA7, 0x374E, 0x6E9C, 0x3730, 0x6E60, 0xDCC0, 0xA9A1, 0x4363, 0x86C6, 0x1DAD, 0x3331, 0x6662, 0xCCC4, 0x89A9, 0x0373, 0x06E6, 0x0DCC, 0x1021, 0x2042, 0x4084, 0x8108, 0x1231, 0x2462, 0x48C4 )
+
+    xorkey = initialCode[len(password) - 1]
+    currentElement = 0x68
+    for char in password[::-1]:
+        charValue = ord(char)
+        for i in range(7):
+            if charValue & 0x40 != 0:
+                xorkey = xorkey ^ xorMatrix[currentElement]
+            charValue = charValue * 2
+            currentElement -= 1
+    return xorkey
+
 def AnalyzeXORObfuscationStructure(data, passwordlistFilename):
     key, verifier = struct.unpack('<HH', data)
     password = None
     for candidate in GetDictionary(passwordlistFilename):
-        if CreatePasswordVerifier_Method1(candidate) == verifier:
+        if CreatePasswordVerifier_Method1(candidate) == verifier and CreateXorKey_Method1(candidate) == key:
             password = candidate
             break
     return key, verifier, password
@@ -4937,6 +5000,12 @@ def FindOpcodeInLine(opcodes, line):
         if opcode.lower() in line.lower():
             return True
     return False
+
+def Unpack(format, data):
+    size = struct.calcsize(format)
+    result = list(struct.unpack(format, data[:size]))
+    result.append(data[size:])
+    return result
 
 class cBIFF(cPluginParent):
     macroOnly = False
@@ -4985,7 +5054,6 @@ class cBIFF(cPluginParent):
             0x3D: 'WINDOW1 : Window Information',
             0x40: 'BACKUP : Save Backup Version of the File',
             0x41: 'PANE : Number of Panes and Their Position',
-            0x42: 'CODENAME : VBE Object Name',
             0x42: 'CODEPAGE : Default Code Page',
             0x4D: 'PLS : Environment-Specific Print Record',
             0x50: 'DCON : Data Consolidation Information',
@@ -5108,6 +5176,7 @@ class cBIFF(cPluginParent):
             0x1B6: 'TXO : Text Object',
             0x1B7: 'REFRESHALL : Refresh Flag',
             0x1B8: 'HLINK : Hyperlink',
+            0x1BA: 'CODENAME : VBE Object Name',
             0x1BB: 'SXFDBTYPE : SQL Datatype Identifier',
             0x1BC: 'PROT4REVPASS : Shared Workbook Protection Password',
             0x1BE: 'DV : Data Validation Criteria',
@@ -5260,7 +5329,8 @@ class cBIFF(cPluginParent):
             isBIFF8 = True
             dSheetNames = {}
             sheetNames = []
-            definesNames = []
+            definedNames = []
+            userdefinedfunctionNames = []
             currentSheetname = ''
             dOpcodeStatistics = {}
             xorObfuscationKey = None
@@ -5311,13 +5381,13 @@ class cBIFF(cPluginParent):
 
                 # FORMULA record
                 if opcode == 0x06 and len(data) >= 21:
-                    if not filepassFound:
+                    if not filepassFound or decrypted:
                         cellref, dummy = ParseLoc(data, options.cellrefformat, True)
                         formatcodes = 'H'
                         formatsize = struct.calcsize(formatcodes)
                         length = struct.unpack(formatcodes, data[20:20 + formatsize])[0]
                         expression = data[22:]
-                        parsedExpression, stack = ParseExpression(expression, definesNames, sheetNames, options.cellrefformat)
+                        parsedExpression, stack = ParseExpression(expression, definedNames, sheetNames, userdefinedfunctionNames, options.cellrefformat)
                         line += ' - %s len=%d %s' % (cellref, length, parsedExpression)
                         if len(stack) == 1:
                             csvrow = [currentSheetname, cellref, stack[0], '']
@@ -5330,7 +5400,7 @@ class cBIFF(cPluginParent):
 
                 # LABEL record #a# difference BIFF4 and BIFF5+
                 if opcode == 0x18 and len(data) >= 16:
-                    if not filepassFound:
+                    if not filepassFound or decrypted:
                         flags = P23Ord(data[0])
                         lnName = P23Ord(data[3])
                         szFormula = P23Ord(data[4]) + P23Ord(data[5]) * 0x100
@@ -5345,11 +5415,11 @@ class cBIFF(cPluginParent):
                         else:
                             name = P23Decode(data[offset:offset+lnName])
                             line += ' - %s' % (name)
-                        definesNames.append(name)
+                        definedNames.append(name)
                         if flags & 0x01:
                             line += ' hidden'
                         try:
-                            parsedExpression, stack = ParseExpression(data[offset+lnName:offset+lnName+szFormula], definesNames, sheetNames, options.cellrefformat)
+                            parsedExpression, stack = ParseExpression(data[offset+lnName:offset+lnName+szFormula], definedNames, sheetNames, userdefinedfunctionNames, options.cellrefformat)
                         except IndexError:
                             parsedExpression = '*PARSING ERROR*'
                         line += ' len=%d %s' % (szFormula, parsedExpression)
@@ -5418,12 +5488,12 @@ class cBIFF(cPluginParent):
 
                 # BOF record
                 if opcode == 0x0809 and len(data) >= 8:
-                    if not filepassFound:
+                    if not filepassFound or decrypted:
                         formatcodes = '<HHHH'
                         formatsize = struct.calcsize(formatcodes)
                         vers, dt, rupBuild, rupYear = struct.unpack(formatcodes, data[0:formatsize])
                         dBIFFVersion = {0x0500: 'BIFF5/BIFF7', 0x0600: 'BIFF8'}
-                        isBIFF8 = dBIFFVersion == 0x0600
+                        isBIFF8 = vers == 0x0600
                         dStreamType = {5: 'workbook', 6: 'Visual Basic Module', 0x10: 'dialog sheet/worksheet', 0x20: 'chart sheet', 0x40: 'Excel 4.0 macro sheet', 0x100: 'Workspace file'}
                         line += ' - %s %s 0x%04x %d' % (dBIFFVersion.get(vers, '0x%04x' % vers), dStreamType.get(dt, '0x%04x' % dt), rupBuild, rupYear)
                         if positionBIFFRecord in dSheetNames:
@@ -5432,7 +5502,7 @@ class cBIFF(cPluginParent):
 
                 # STRING record
                 if opcode == 0x207 and len(data) >= 4:
-                    if not filepassFound:
+                    if not filepassFound or decrypted:
                         values = list(Strings(data[3:]).values())
                         strings = ''
                         if values[0] != []:
@@ -5445,7 +5515,7 @@ class cBIFF(cPluginParent):
 
                 # number record
                 if opcode == 0x0203:
-                    if not filepassFound:
+                    if not filepassFound or decrypted:
                         cellref, data2 = ParseLoc(data, options.cellrefformat, True)
                         formatcodes = '<Hd'
                         formatsize = struct.calcsize(formatcodes)
@@ -5455,7 +5525,7 @@ class cBIFF(cPluginParent):
 
                 # RK record
                 if opcode == 0x027E and len(data) == 10:
-                    if not filepassFound:
+                    if not filepassFound or decrypted:
                         cellref, data2 = ParseLoc(data, options.cellrefformat, True)
                         formatcodes = '<H'
                         formatsize = struct.calcsize(formatcodes)
@@ -5463,6 +5533,13 @@ class cBIFF(cPluginParent):
                         value = DecodeRKValue(data2[formatsize:])
                         line += ' - %s %f' % (cellref, value)
                         csvrow = [currentSheetname, cellref, '', '%.20f' % value]
+
+                # unknown record
+                #a# handle more than one UDF
+                if opcode == 0x23 and len(data) > 8:
+                    if not filepassFound or decrypted:
+                        dummy1, dummy2, stringLength, remainder = Unpack('<IHH', data)
+                        userdefinedfunctionNames.append(remainder[:stringLength].decode())
 
                 if options.find == '' and options.opcode == '' and not options.xlm or options.opcode != '' and FindOpcodeInLine(options.opcode, line) or options.find != '' and options.find.encode() in data or options.xlm and opcode in [0x06, 0x18, 0x85, 0x207]:
                     if not options.hex and not options.dump:
