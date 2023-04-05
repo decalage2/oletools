@@ -235,7 +235,7 @@ from __future__ import print_function
 #                        for issue #619)
 # 2021-04-14       PL: - added detection of Workbook_BeforeClose (issue #518)
 
-__version__ = '0.60.1'
+__version__ = '0.60.2dev1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -3112,7 +3112,7 @@ class VBA_Parser(object):
         xlm_macro_found = False
         xlm_macros = []
         xlm_macros.append('Formulas and XLM/Excel 4 macros extracted from SLK file:')
-        for line in data.splitlines(keepends=False):
+        for line in data.splitlines(False):
             if line.startswith(b'O'):
                 # Option: "O;E" indicates a macro sheet, must appear before NN and C rows
                 for s in line.split(b';'):

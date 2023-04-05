@@ -149,6 +149,7 @@ including
 [AssemblyLine](https://www.cse-cst.gc.ca/en/assemblyline),
 [CAPE](https://github.com/ctxis/CAPE),
 [CinCan](https://cincan.io),
+[Cortex XSOAR (Palo Alto)](https://cortex.marketplace.pan.dev/marketplace/details/Oletools/),
 [Cuckoo Sandbox](https://github.com/cuckoosandbox/cuckoo),
 [DARKSURGEON](https://github.com/cryps1s/DARKSURGEON),
 [Deepviz](https://sandbox.deepviz.com/),
@@ -157,7 +158,9 @@ including
 [EML Analyzer](https://github.com/ninoseki/eml_analyzer),
 [FAME](https://certsocietegenerale.github.io/fame/),
 [FLARE-VM](https://github.com/fireeye/flare-vm),
+[GLIMPS Malware](https://www.glimps.fr/en/glimps-malware-2/),
 [Hybrid-analysis.com](https://www.hybrid-analysis.com/),
+[InQuest Labs](https://labs.inquest.net/),
 [IntelOwl](https://github.com/certego/IntelOwl),
 [Joe Sandbox](https://www.document-analyzer.net/),
 [Laika BOSS](https://github.com/lmco/laikaboss),
@@ -172,6 +175,7 @@ including
 [PeekabooAV](https://github.com/scVENUS/PeekabooAV),
 [pcodedmp](https://github.com/bontchev/pcodedmp),
 [PyCIRCLean](https://github.com/CIRCL/PyCIRCLean),
+[QFlow](https://www.quarkslab.com/products-qflow/),
 [REMnux](https://remnux.org/),
 [Snake](https://github.com/countercept/snake),
 [SNDBOX](https://app.sndbox.com),
@@ -180,6 +184,7 @@ including
 [Strelka](https://github.com/target/strelka),
 [stoQ](https://stoq.punchcyber.com/),
 [Sublime Platform/MQL](https://docs.sublimesecurity.com/docs/enrichment-functions),
+[Subparse](https://github.com/jstrosch/subparse),
 [TheHive/Cortex](https://github.com/TheHive-Project/Cortex-Analyzers),
 [ThreatBoook](https://s.threatbook.com/),
 [TSUGURI Linux](https://tsurugi-linux.org/),
@@ -246,7 +251,7 @@ License
 This license applies to the python-oletools package, apart from the thirdparty folder which contains third-party files 
 published with their own license.
 
-The python-oletools package is copyright (c) 2012-2022 Philippe Lagadec (http://www.decalage.info)
+The python-oletools package is copyright (c) 2012-2023 Philippe Lagadec (http://www.decalage.info)
 
 All rights reserved.
 
