@@ -1704,6 +1704,13 @@ class VBA_Project(object):
         # PROJECTLCID Record
         # Specifies the VBA project's LCID.
         projectlcid_id = struct.unpack("<H", dir_stream.read(2))[0]
+        # In newer versions the dir stream PROJECTINFORMATION record contains a
+        # new CompatVersionRecord (10 bytes) at this location, with ID 0x004A.
+        # If that ID is encountered, skip the remaining 8 bytes of this block and
+        # read the next 2 bytes which should contain PROJECTLCID_Id.
+        if projectlcid_id == 0x004A:
+            unused = dir_stream.read(8)
+            projectlcid_id = struct.unpack("<H", dir_stream.read(2))[0]
         self.check_value('PROJECTLCID_Id', 0x0002, projectlcid_id)
         projectlcid_size = struct.unpack("<L", dir_stream.read(4))[0]
         self.check_value('PROJECTLCID_Size', 0x0004, projectlcid_size)
