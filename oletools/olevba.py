@@ -806,7 +806,7 @@ SUSPICIOUS_KEYWORDS = {
         ('AccessVBOM', 'VBAWarnings', 'ProtectedView', 'DisableAttachementsInPV', 'DisableInternetFilesInPV',
          'DisableUnsafeLocationsInPV', 'blockcontentexecutionfrominternet'),
     'May attempt to modify the VBA code (self-modification)':
-        ('VBProject', 'VBComponents', 'CodeModule', 'AddFromString'),
+        ('VBProject', 'VBComponents', 'CodeModule', 'AddFromString', 'Modules'),
     'May modify Excel 4 Macro formulas at runtime (XLM/XLF)':
         ('FORMULA.FILL',),
 }
