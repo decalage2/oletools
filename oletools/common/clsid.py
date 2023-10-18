@@ -88,6 +88,7 @@ KNOWN_CLSIDS = {
     '00022603-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
     '0002CE02-0000-0000-C000-000000000046': 'Microsoft Equation 3.0 (Known Related to CVE-2017-11882 or CVE-2018-0802)',
     '0002CE03-0000-0000-C000-000000000046': 'MathType Equation Object',
+    '0003000A-0000-0000-C000-000000000046': 'Bitmap Image',
     '0003000B-0000-0000-C000-000000000046': 'Microsoft Equation (Known Related to CVE-2017-11882 or CVE-2018-0802)',
     '0003000C-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
     '0003000D-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
