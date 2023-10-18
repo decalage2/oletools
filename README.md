@@ -176,6 +176,7 @@ including
 [pcodedmp](https://github.com/bontchev/pcodedmp),
 [PyCIRCLean](https://github.com/CIRCL/PyCIRCLean),
 [QFlow](https://www.quarkslab.com/products-qflow/),
+[Qu1cksc0pe](https://github.com/CYB3RMX/Qu1cksc0pe),
 [REMnux](https://remnux.org/),
 [Snake](https://github.com/countercept/snake),
 [SNDBOX](https://app.sndbox.com),
