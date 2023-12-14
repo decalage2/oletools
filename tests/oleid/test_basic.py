@@ -111,7 +111,9 @@ class TestOleIDBasic(unittest.TestCase):
 
             # xlm detection does not work in-memory (yet)
             # --> xlm is "unknown" for excel files, except some encrypted files
-            self.assertIn(value_dict['xlm'], ('Unknown', 'No'))
+            self.assertIn(value_dict['xlm'], ('Unknown', 'No'),
+                          "Unexpected value '{0}' for XLM-content in test sample {1}'"
+                          .format(value_dict['xlm'], filename))
 
             # "macro detection" in text files leads to interesting results:
             if filename in ('ooxml/dde-in-excel2003.xml',    # not really
@@ -121,9 +123,17 @@ class TestOleIDBasic(unittest.TestCase):
                             'oleform/oleform-PR314.docm',
                             'basic/empty',                   # WTF?
                             'basic/text'):                   # no macros!
-                self.assertEqual(value_dict['vba'], 'Yes')
+                self.assertEqual(value_dict['vba'], 'Yes',
+                                 "Unexpected value '{0}' for test sample {1}'"
+                                 .format(value_dict['xlm'], filename))
+            elif filename.startswith(join('basic', 'test-sample-')):   # not clear what macro detection should do with text files
+                self.assertIn(value_dict['vba'], ('Yes', 'Error'),
+                              "Unexpected value '{0}' for test sample {1}'"
+                              .format(value_dict['vba'], filename))
             else:
-                self.assertEqual(value_dict['vba'], 'No')
+                self.assertEqual(value_dict['vba'], 'No',
+                                 "Unexpected value '{0}' for test sample {1}'"
+                                 .format(value_dict['vba'], filename))
 
     def test_flash(self):
         """Test indicator for flash."""

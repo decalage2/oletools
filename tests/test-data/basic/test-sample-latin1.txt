@@ -1,0 +1,2 @@
+Test sample file with special chars дцья,
+encoded using latin1

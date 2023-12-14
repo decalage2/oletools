@@ -1,0 +1,2 @@
+Test sample file without special chars or emjois,
+encoded using ascii

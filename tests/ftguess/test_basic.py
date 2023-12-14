@@ -1,7 +1,7 @@
 """Test ftguess"""
 
 import unittest
-import os
+import re
 from os.path import splitext
 from oletools import ftguess
 
@@ -14,7 +14,7 @@ class TestFTGuess(unittest.TestCase):
     """Test ftguess"""
 
     def test_all(self):
-        """Run all files in test-data and compare to known ouput"""
+        """Run all files in test-data and compare to known output"""
         # ftguess knows extension for each FType, create a reverse mapping
         used_types = (
             ftguess.FType_RTF, ftguess.FType_Generic_OLE,
@@ -31,7 +31,7 @@ class TestFTGuess(unittest.TestCase):
             ftguess.FType_Powerpoint2007_Slideshow,
             ftguess.FType_Powerpoint2007_Macro,
             ftguess.FType_Powerpoint2007_Slideshow_Macro,
-            ftguess.FType_XPS,
+            ftguess.FType_XPS, ftguess.FType_TEXT,
         )
         ftype_for_extension = dict()
         for ftype in used_types:
@@ -45,10 +45,10 @@ class TestFTGuess(unittest.TestCase):
 
             # determine what we expect...
             before_dot, extension = splitext(filename)
-            if extension == '.zip':
+            if extension == '.zip':    # zipped files are encrypted versions of other files to not alarm virus scanners
                 extension = splitext(before_dot)[1]
             elif filename in ('basic/empty', 'basic/text'):
-                extension = '.csv'    # have just like that
+                extension = '.txt'    # behave as if this were simple plain text
             elif not extension:
                 self.fail('Could not find extension for test sample {0}'
                           .format(filename))
@@ -105,6 +105,19 @@ class TestFTGuess(unittest.TestCase):
                 self.assertEqual(guess.is_powerpoint(),
                                  extension.startswith('p'))
 
+    def test_encoding(self):
+        """Check whether text file encoding is detected correctly"""
+        n_matches = 0
+        for filename, file_contents in loop_over_files(subdir='basic'):
+            match = re.match(r'basic[/\\]test-sample-(ascii|latin1|utf[816_lbe]+)(?:-nobom|-withbom)?.txt', filename)
+            if not match:
+                continue
+            n_matches += 1
+            expect_encoding = match.groups()[0].replace('_', '')
+            guess = ftguess.ftype_guess(data=file_contents)
+            self.assertEqual(guess.ftype, ftguess.FType_TEXT)
+            self.assertEqual(guess.text_encoding.replace('-', ''), expect_encoding)
+        self.assertGreater(n_matches, 0)
 
 
 # just in case somebody calls this file as a script
