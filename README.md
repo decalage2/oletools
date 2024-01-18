@@ -145,6 +145,7 @@ Projects using oletools:
 oletools are used by a number of projects and online malware analysis services,
 including
 [ACE](https://github.com/IntegralDefense/ACE),
+[ADAPT](https://www.blackhat.com/eu-23/briefings/schedule/index.html#unmasking-apts-an-automated-approach-for-real-world-threat-attribution-35162),
 [Anlyz.io](https://sandbox.anlyz.io/),
 [AssemblyLine](https://www.cse-cst.gc.ca/en/assemblyline),
 [CAPE](https://github.com/ctxis/CAPE),
