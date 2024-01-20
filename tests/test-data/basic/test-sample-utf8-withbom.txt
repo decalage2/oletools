@@ -1,0 +1,2 @@
+﻿Test sample file with special chars äöüß and emojis 😇🙊,
+encoded using utf8

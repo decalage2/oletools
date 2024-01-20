@@ -62,6 +62,7 @@ import os
 import olefile
 import logging
 import optparse
+import codecs
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -289,6 +290,78 @@ class FType_Base (object):
 
 class FType_Unknown(FType_Base):
     pass
+
+class FType_TEXT(FType_Base):
+    """
+    Try a few popular encoding to detect whether this is just plain text.
+
+    Try the most popular encodings according to wikipedia:
+    https://en.wikipedia.org/wiki/Popularity_of_text_encodings#Popularity_internally_in_software
+
+    Maybe should add 'windows-1251' (cyrillic) or 'big5' (Chinese) or other formats popular in Asia?
+
+    Implementation is rather hacky, but we do not need a perfect solution here (which would be to use
+    libmagic) and determining encoding is really not easy.
+    """
+    filetype = FTYPE.TEXT
+    name = 'plain text'
+    longname = 'unclassified plain text'
+    extensions = ['txt',]
+    content_types = ('text/plain',)   # behave like `file` on linux
+    PUID = 'x-fmt/111'
+    # encodings we try to decode the bytes with; from limited to more general
+    ENCODINGS = ('ascii', 'latin1', 'utf8', 'utf-16le', 'utf-16be')
+    CHECK_SIZE = 4096   # do not try to decode megabytes of data, just check the beginning
+
+    @classmethod
+    def recognize(cls, ftg):
+        """
+        Try to determine whether this data makes sense as encoded text.
+
+        If yes, set :py:data:`ftg.text_encoding`.
+        """
+        # first, try a few simple ones:
+        if ftg.data.startswith(codecs.BOM_UTF8):
+            try:
+                _ = ftg.data.decode('utf8', errors='strict')
+                ftg.text_encoding = 'utf8'
+                return True
+            except UnicodeError:
+                return False
+        elif ftg.data.startswith(codecs.BOM_UTF16_LE):
+            try:
+                _ = ftg.data.decode('utf-16le', errors='strict')
+                ftg.text_encoding = 'utf-16le'
+                return True
+            except UnicodeError:
+                return False
+        elif ftg.data.startswith(codecs.BOM_UTF16_BE):
+            try:
+                _ = ftg.data.decode('utf-16be', errors='strict')
+                ftg.text_encoding = 'utf-16be'
+                return True
+            except UnicodeError:
+                return False
+
+        # no BOM? then try to decode the first part using various encodings
+        # could also check if every 2nd byte is zero in 90% of time. If so, this is probably utf16
+        for encoding in cls.ENCODINGS:
+            try:
+                data_size = len(ftg.data)
+                decoded = ftg.data[:cls.CHECK_SIZE].decode(encoding, errors='strict')
+                if data_size > cls.CHECK_SIZE:
+                    rep = repr(decoded[:-10])  # remove the last characters, may be erroneous due to cutting
+                else:
+                    rep = repr(decoded)
+                bad_chars = rep.count(r'\x') + rep.count(r'\u')   # e.g. in latin1 everything "is valid" but looks horrible
+                if bad_chars > float(data_size) * 0.05:
+                    continue
+                ftg.text_encoding = encoding
+                return True
+            except UnicodeError:
+                pass
+        return False
+
 
 class FType_RTF(FType_Base):
     container = CONTAINER.RTF
@@ -802,6 +875,8 @@ class FileTypeGuesser(object):
         # For XML:
         self.root_xmltag = None
         self.xmlroot = None
+        # For TEXT:
+        self.text_encoding = None
 
         if filepath is None and data is None:
             raise ValueError('FileTypeGuesser requires either a file path or file data, or both')
@@ -811,7 +886,7 @@ class FileTypeGuesser(object):
         self.data_bytesio = io.BytesIO(self.data)
 
         # Identify the main container type:
-        for ftype in (FType_RTF, FType_Generic_OLE, FType_Generic_Zip, FType_OneNote, FType_PNG):
+        for ftype in (FType_RTF, FType_Generic_OLE, FType_Generic_Zip, FType_OneNote, FType_PNG, FType_TEXT):
             if ftype.recognize(self):
                 self.ftype = ftype
                 break

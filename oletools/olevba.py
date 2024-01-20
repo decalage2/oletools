@@ -2790,12 +2790,13 @@ class VBA_Parser(object):
                 raise FileOpenError(msg)
             # Check if it is a SLK/SYLK file - https://en.wikipedia.org/wiki/SYmbolic_LinK_(SYLK)
             # It must start with "ID" in uppercase, no whitespace or newline allowed before by Excel:
-            if data.startswith(b'ID'):
-                self.open_slk(data)
-            # Check if this is a plain text VBA or VBScript file:
-            # To avoid scanning binary files, we simply check for some control chars:
-            if self.type is None and b'\x00' not in data:
-                self.open_text(data)
+            if self.type is None and self.ftg.ftype == ftguess.FType_TEXT:
+                data = bytes2str(data, self.ftg.text_encoding)
+                if data.startswith('ID'):
+                    self.open_slk(data)
+                else:
+                    # Check if this is a plain text VBA or VBScript file:
+                    self.open_text(data)
         if self.type is None:
             # At this stage, could not match a known format:
             msg = '%s is not a supported file type, cannot extract VBA Macros.' % self.filename
@@ -3101,10 +3102,10 @@ class VBA_Parser(object):
                 log.debug("File appears not to be a ppt file (%s)" % exc)
 
 
-    def open_slk(self, data):
+    def open_slk(self, str_data):
         """
         Open a SLK file, which may contain XLM/Excel 4 macros
-        :param data: file contents in a bytes string
+        :param str_data: file contents in a [unicode] string
         :return: nothing
         """
         # TODO: Those results should be stored as XLM macros, not VBA
@@ -3112,40 +3113,40 @@ class VBA_Parser(object):
         xlm_macro_found = False
         xlm_macros = []
         xlm_macros.append('Formulas and XLM/Excel 4 macros extracted from SLK file:')
-        for line in data.splitlines(False):
-            if line.startswith(b'O'):
+        for line in str_data.splitlines(False):
+            if line.startswith('O'):
                 # Option: "O;E" indicates a macro sheet, must appear before NN and C rows
-                for s in line.split(b';'):
-                    if s.startswith(b'E'):
+                for s in line.split(';'):
+                    if s.startswith('E'):
                         xlm_macro_found = True
                         log.debug('SLK parser: found macro sheet')
-            elif line.startswith(b'NN') and xlm_macro_found:
+            elif line.startswith('NN') and xlm_macro_found:
                 # Name that can trigger a macro, for example "Auto_Open"
-                for s in line.split(b';'):
-                    if s.startswith(b'N') and s.strip() != b'NN':
-                        xlm_macros.append('Named cell: %s' % bytes2str(s[1:]))
-            elif line.startswith(b'C') and xlm_macro_found:
+                for s in line.split(';'):
+                    if s.startswith('N') and s.strip() != 'NN':
+                        xlm_macros.append('Named cell: %s' % s[1:])
+            elif line.startswith('C') and xlm_macro_found:
                 # Cell
-                for s in line.split(b';'):
-                    if s.startswith(b'E'):
-                        xlm_macros.append('Formula or Macro: %s' % bytes2str(s[1:]))
+                for s in line.split(';'):
+                    if s.startswith('E'):
+                        xlm_macros.append('Formula or Macro: %s' % s[1:])
         if xlm_macro_found:
             self.contains_xlm_macros = True
             self.xlm_macros = xlm_macros
         self.type = TYPE_SLK
 
 
-    def open_text(self, data):
+    def open_text(self, str_data):
         """
         Open a text file containing VBA or VBScript source code
-        :param data: file contents in a string or bytes
+        :param str_data: file contents in a [unicode] string
         :return: nothing
         """
         log.info('Opening text file %s' % self.filename)
         # directly store the source code:
         # On Python 2, store it as a raw bytes string
         # On Python 3, convert it to unicode assuming it was encoded with UTF-8
-        self.vba_code_all_modules = bytes2str(data)
+        self.vba_code_all_modules = str_data
         self.contains_vba_macros = True
         # set type only if parsing succeeds
         self.type = TYPE_TEXT
