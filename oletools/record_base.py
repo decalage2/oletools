@@ -52,6 +52,7 @@ __version__ = '0.60.dev1'
 #   (maybe content type or so; identify streams that are never record-based)
 #   Or use oleid to avoid same functionality in several files
 # - think about integrating this with olefile itself
+# - there is quite some record parsing being done in __init__ of olevba.VBA_Project
 
 # -----------------------------------------------------------------------------
 #  REFERENCES:
@@ -189,6 +190,8 @@ class OleRecordStream(object):
     abstract base class
     """
 
+    RECORD_HEADER_SIZE = None   # to be overwritten in subclass; specifies minimum size required for a record header
+
     def __init__(self, stream, size, name, stream_type):
         self.stream = stream
         self.size = size
@@ -223,11 +226,16 @@ class OleRecordStream(object):
         """ yield all records in this stream
 
         Stream must be positioned at start of records (e.g. start of stream).
+
+        :param bool fill_data: Always read (and save in `data`) all of this record's data.
         """
         while True:
             # unpacking as in olevba._extract_vba
             pos = self.stream.tell()
             if pos >= self.size:
+                break
+            if self.size - pos < self.RECORD_HEADER_SIZE:
+                logger.debug("Skip {0} byte".format(self.size - pos))
                 break
 
             # read first few bytes, determine record type and size
@@ -257,7 +265,7 @@ class OleRecordStream(object):
         self.stream.close()
 
     def __str__(self):
-        return '[{0} {1} (type {2}, size {3})' \
+        return '[{0} {1} (type {2}, size {3})]' \
                .format(self.__class__.__name__,
                        self.name or '[orphan]',
                        ENTRY_TYPE2STR[self.stream_type],
@@ -292,7 +300,15 @@ class OleRecordBase(object):
     SIZE = None
 
     def __init__(self, type, size, more_data, pos, data):
-        """ create a record; more_data is discarded """
+        """
+        Create a record; more_data is discarded
+
+        Usually called from a stream's `iter_records` and `read_record_head`. The latter defines
+        `more_data`. `data` contains raw data for this record and all its sub-records (if this is
+        a container). It might be None, caller must ensure that this has the proper contents.
+
+        Remember `data` and calls `finish_constructing` with `more_data`.
+        """
         if self.TYPE is not None and type != self.TYPE:
             raise ValueError('Wrong subclass {0} for type {1}'
                              .format(self.__class__.__name__, type))
@@ -359,7 +375,7 @@ class OleRecordBase(object):
 
 
 def test(filenames, ole_file_class=OleRecordFile,
-         must_parse=None, do_per_record=None, verbose=False):
+         must_parse=None, do_per_record=None, verbose=False, fill_data=False):
     """ parse all given file names and print rough structure
 
     if an error occurs while parsing a stream of type in must_parse, the error
@@ -377,21 +393,26 @@ def test(filenames, ole_file_class=OleRecordFile,
         if not olefile.isOleFile(filename):
             logger.info('not an ole file - skip')
             continue
-        ole = ole_file_class(filename)
+        ole = None
+        try:
+            ole = ole_file_class(filename)
 
-        for stream in ole.iter_streams():
-            logger.info('  parse ' + str(stream))
-            try:
-                for record in stream.iter_records():
-                    logger.info('    ' + str(record))
-                    do_per_record(record)
-            except Exception:
-                if not must_parse:
-                    raise
-                elif isinstance(stream, must_parse):
-                    raise
-                else:
-                    logger.info('  failed to parse', exc_info=True)
+            for stream in ole.iter_streams():
+                logger.info('  parse ' + str(stream))
+                try:
+                    for record in stream.iter_records(fill_data=fill_data):
+                        logger.info('    ' + str(record))
+                        do_per_record(record)
+                except Exception:
+                    if not must_parse:
+                        raise
+                    elif isinstance(stream, must_parse):
+                        raise
+                    else:
+                        logger.info('  failed to parse', exc_info=True)
+        finally:
+            if ole is not None:
+                ole.close()
 
     log_helper.end_logging()
     return 0

@@ -47,6 +47,7 @@ from struct import unpack      # unsigned: 1 Byte = B, 2 Byte = H, 4 Byte = L
 import logging
 import io
 import zlib
+import string
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
@@ -65,30 +66,66 @@ except ImportError:
     from oletools import record_base
 
 
-# types of relevant records (there are much more than listed here)
+# flag to remember some more data for debug-printing
+debug_print = False
+
+# types of relevant records (there are much more than listed here, c.f. [MS-PPT] 2.13.24)
+# and https://learn.microsoft.com/en-us/openspecs/office_file_formats/ms-ppt
+# these names are parsed in `record_class_for_type`: only if a record ends in "Container" will we find the
+# sub-records contained in it
 RECORD_TYPES = dict([
-    # file structure types
+    # file structure types, c.f. [MS-PPT] 2.3
     (0x0ff5, 'UserEditAtom'),
     (0x0ff6, 'CurrentUserAtom'),        # --> use PptRecordCurrentUser instead
     (0x1772, 'PersistDirectoryAtom'),
     (0x2f14, 'CryptSession10Container'),
-    # document types
+    # document types, c.f. [MS-PPT] 2.4
     (0x03e8, 'DocumentContainer'),
     (0x0fc9, 'HandoutContainer'),
     (0x03f0, 'NotesContainer'),
     (0x03ff, 'VbaInfoContainer'),
     (0x03e9, 'DocumentAtom'),
     (0x03ea, 'EndDocumentAtom'),
-    # slide types
+    (0x0ff0, 'Master/Slide/NotesListWithTextContainer'),
+    (0x03f3, 'Master/Slide/NotesPersistAtom'),
+    (0x0fd9, 'Slide/NotesHeadersFootersContainer'),
+    (0x0fda, 'HeadersFootersAtom'),
+    (0x07d0, 'DocInfoListContainer'),
+    # slide types, c.f. [MS-PPT] 2.5
     (0x03ee, 'SlideContainer'),
     (0x03f8, 'MainMasterContainer'),
-    # external object ty
+    (0x07f0, 'Slide/SchemeListeElementColorSchemeAtom'),
+    (0x1388, 'Slide/Doc/ShapeProgTagsContainer'),
+    (0x138a, 'Slide/Doc/ShapeProgBinaryTagContainer'),
+    # text types, c.f. [MS-PPT] 2.9
+    (0x0fc8, 'Kinsoku[9]Container'),   # user preferences for East Asian text line breaking
+    (0x07d9, 'FontCollectionContainer'),
+    (0x0fa0, 'TextCharsAtom'),
+    (0x0fa1, 'StyleTextPropAtom'),
+    (0x0fa2, 'MasterTextPropAtom'),
+    (0x0fa3, 'TextMasterStyleAtom'),
+    (0x0fa4, 'TextCharFormatExceptionAtom'),
+    (0x0fa5, 'TextParagraphFormatExceptionAtom'),
+    (0x0fa6, 'TextRulerAtom'),
+    (0x0fa7, 'TextBookmarkAtom'),
+    (0x0fa8, 'TextBytesAtom'),
+    (0x0fa9, 'TextSpecialInfoDefaultAtom'),
+    (0x0faa, 'TextSpecialInfoAtom'),
+    (0x0fab, 'DefaultRulerAtom'),
+    (0x0fac, 'StyleTextProp9Atom'),
+    (0x0fad, 'TextMasterStyle9Atom'),
+    (0x07d5, 'FontCollectionContainer'),
+    (0x0fb7, 'FontEntityAtom'),
+    # external object types, c.f. [MS-PPT] 2.10
     (0x0409, 'ExObjListContainer'),
     (0x1011, 'ExOleVbaActiveXAtom'),    # --> use PptRecordExOleVbaActiveXAtom
     (0x1006, 'ExAviMovieContainer'),
     (0x100e, 'ExCDAudioContainer'),
-    (0x0fee, 'ExControlContainer'),
+    (0x0fee, 'ExControl(ActiveX)Container'),
+    (0x0ffb, 'ExControl(ActiveX)Atom'),
     (0x0fd7, 'ExHyperlinkContainer'),
+    (0x0fd3, 'ExHyperlinkAtom'),
+    (0x0fe4, 'ExHyperlink9'),
     (0x1007, 'ExMCIMovieContainer'),
     (0x100d, 'ExMIDIAudioContainer'),
     (0x0fcc, 'ExOleEmbedContainer'),
@@ -99,20 +136,58 @@ RECORD_TYPES = dict([
     (0x040a, 'ExObjListAtom'),
     (0x0fcd, 'ExOleEmbedAtom'),
     (0x0fc3, 'ExOleObjAtom'),           # --> use PptRecordExOleObjAtom instead
-    # other types
+    # other types from [MS-PPT]
     (0x0fc1, 'MetafileBlob'),
     (0x0fb8, 'FontEmbedDataBlob'),
     (0x07e7, 'SoundDataBlob'),
     (0x138b, 'BinaryTagDataBlob'),
-    (0x0fba, 'CString'),
+    (0x0fba, 'CString'),               # --> use PptRecordCString instead
+    (0x03f2, 'DocumentTextInfoContainer'),
+    (0x040b, 'DrawingGroupContainer'),
+    (0x040c, 'DrawingContainer'),
+    (0x0423, 'RoundTripOArtTextStyles12Atom'),     # to extract data from these, could create class ...
+    (0x0428, 'RoundTripCustomTableStyles12Atom'),  # ... like PptRecordExOleVbaActiveXAtom ...
+    (0x040e, 'RoundTripThemeAtom'),                # ... to parse zip/ooxml data
+    (0x040f, 'RoundTripColorMappingAtom'),
+    (0x041c, 'RoundTripOriginalMainMasterId12Atom'),
+    (0x041e, 'RoundTripContentMasterInfo12Atom'),
+    (0x0422, 'RoundTripContentMasterId12Atom'),
+    (0x03ef, 'SlideAtom'),
+    (0x03ff, 'VBAInfoContainer'),
+    (0x0400, 'VBAInfoAtom'),
+    (0x0ff2, 'MouseClick/OverInteractiveInfoContainer'),   # this is a suspicious keyword in olevba
+    (0x0ff3, 'InteractiveInfoAtom'),
+    # from [MS-ODRAW], https://learn.microsoft.com/en-us/openspecs/office_file_formats/ms-odraw
+    (0xf000, 'OfficeArtDggContainer'),
+    (0xf001, 'OfficeArtBStoreContainer'),
+    (0xf002, 'OfficeArtDgContainer'),
+    (0xf003, 'OfficeArtSpgrContainer'),
+    (0xf004, 'OfficeArtSpContainer'),
+    (0xf005, 'OfficeArtSolverContainer'),
+    (0xf008, 'OfficeArtFDG'),
+    (0xf00a, 'OfficeArtFSP'),
+    (0xf00b, 'OfficeArtFOPT'),
+    (0xf00d, 'OfficeArtClientTextbox'),
+    (0xf010, 'OfficeArtClientAnchorChart'),
+    (0xf011, 'OfficeArtClientData'),
+    (0xf018, 'OfficeArtFRITContainer'),
+    (0xf11a, 'OfficeArtColorMRUContainer'),
+    (0xf11e, 'OfficeArtSplitMenuColorContainer'),
+    (0xf122, 'OfficeArtTertiaryFOPT'),
+    (0xf007, 'OfficeArtRecordHeader'),
 ])
 
 
 # record types where version is not 0x0 or 0x1 or 0xf
 VERSION_EXCEPTIONS = dict([
     (0x0400, 2),                       # rt_vbainfoatom
+    (0x0800, 4),                       # main item in "Powerpoint Document" stream
     (0x03ef, 2),                       # rt_slideatom
     (0xe9c7, 7),    # tests/test-data/encrypted/encrypted.ppt, not investigated
+    (0xf00a, 2),         # MS-ODRAW
+    (0xf00b, 3),         # MS-ODRAW
+    (0xf122, 3),         # MS-ODRAW
+    (0xf007, 2),         # MS-ODRAW
 ])
 
 
@@ -138,6 +213,12 @@ INSTANCE_EXCEPTIONS = dict([
     (0x0faf, (0, 5)),                    # rt_outlinetextpropsheader9atom,
     (0x0fb8, (0, 3)),                    # rt_fontembeddatablob,
 ])
+
+#: maximum length of record data to add to __str__
+STR_MAX_CONTENT_LEN = 100
+
+#: chars in unknown record data to show in __str__
+STR_PRINTABLE_CHARS = list(ord(ch) for ch in string.digits + string.ascii_letters + string.punctuation + ' ')
 
 
 def is_ppt(filename):
@@ -209,6 +290,8 @@ class PptFile(record_base.OleRecordFile):
 class PptStream(record_base.OleRecordStream):
     """ a stream of records in a ppt file """
 
+    RECORD_HEADER_SIZE = 8
+
     def read_record_head(self):
         """ read first few bytes of record to determine size and type
 
@@ -230,28 +313,44 @@ class PptStream(record_base.OleRecordStream):
             return PptRecordExOleObjAtom, True
         elif rec_type == PptRecordExOleVbaActiveXAtom.TYPE:
             return PptRecordExOleVbaActiveXAtom, True
+        elif rec_type == PptRecordCString.TYPE:
+            return PptRecordCString, True
 
+        # flag to tell caller that complete record data must be read and given to constructor.
+        # important for Containers to they can parse their sub-records
+        read_all_data = False
         try:
             record_name = RECORD_TYPES[rec_type]
-            if record_name.endswith('Container'):
+            if record_name.startswith('RoundTrip'):
+                is_container = False
+                read_all_data = debug_print
+            elif record_name.endswith('Container'):
                 is_container = True
+                read_all_data = True
             elif record_name.endswith('Atom'):
                 is_container = False
+                read_all_data = False
             elif record_name.endswith('Blob'):
                 is_container = False
-            elif record_name == 'CString':
+                read_all_data = debug_print
+            elif record_name == 'OfficeArtClientData':
+                is_container = True
+                read_all_data = True
+            elif record_name.startswith('OfficeArt'):  # no "atoms" here
                 is_container = False
+                read_all_data = False
             else:
                 logging.warning('Unexpected name for record type "{0}". typo?'
                                 .format(record_name))
                 is_container = False
+                read_all_data = False
 
             if is_container:
-                return PptContainerRecord, True
+                return PptContainerRecord, read_all_data
             else:
-                return PptRecord, False
+                return PptRecord, read_all_data
         except KeyError:
-            return PptRecord, False
+            return PptRecord, read_all_data
 
 
 class PptRecord(record_base.OleRecordBase):
@@ -296,42 +395,79 @@ class PptRecord(record_base.OleRecordBase):
             record_name = RECORD_TYPES[self.type]
             return '{0} record'.format(record_name)
         except KeyError:
-            return '{0} type 0x{1:04x}'.format(self.__class__.__name__,
-                                               self.type)
+            return 'Unknown {0} (type 0x{1:04x})'.format(self.__class__.__name__,
+                                                         self.type)
+
+    def __str__(self):
+        """Create string representation. Use super class except for Blobs."""
+        try:
+            if debug_print and \
+                (RECORD_TYPES[self.type].endswith('Blob') or
+                 RECORD_TYPES[self.type].startswith('RoundTrip')):
+                contents = ''.join(chr(ch) if ch in STR_PRINTABLE_CHARS else '.' for ch in self.data)
+                if len(contents) > STR_MAX_CONTENT_LEN:
+                    data_text = contents[:STR_MAX_CONTENT_LEN - 5] + '[...]'
+                else:
+                    data_text = contents
+                return '[{0} record of size {1}: "{2}"]'.format(RECORD_TYPES[self.type], self.size, data_text)
+        except KeyError:   # unknown record type --> fall back to super class
+            pass
+        return super(PptRecord, self).__str__()
 
 
 class PptContainerRecord(PptRecord):
     """ A record that contains other records """
 
+    def __init__(self, *args, **kwargs):
+        super(PptContainerRecord, self).__init__(*args, **kwargs)
+        self._records = None
+
     def finish_constructing(self, more_data):
         """ parse records from self.data """
         # set self.version and self.instance
         super(PptContainerRecord, self).finish_constructing(more_data)
-        self.records = None
+
+    def get_records(self):
+        """
+        Return list of records contained in this container.
+
+        If this is the first call to this function, then read records structure
+        from self.data, remember those, and forget self.data . All future calls will
+        just return saved records.
+
+        :return: list of sub-records contained in this container.
+        """
+        # has been called before --> return saved records
+        if self._records is not None:
+            return self._records
+
         if not self.data:
-            return
+            logging.warning("Constructor of {0} was not given its data. Cannot parse sub-structure"
+                            .format(self))
+            self._records = []
+        else:
+            # create a stream from self.data and parse it like any other
+            #logging.debug('parsing contents of container record {0}'.format(self))
+            data_stream = io.BytesIO(self.data)
+            record_stream = PptStream(data_stream, self.size,
+                                      'PptContainerRecordSubstream',
+                                      record_base.STGTY_SUBSTREAM)
+            self._records = list(record_stream.iter_records())
+            # logging.debug('done parsing contents of container record {0}'
+            #               .format(self))
+            self.data = None   # not needed any more
 
-        # logging.debug('parsing contents of container record {0}'
-        #               .format(self))
-
-        # create a stream from self.data and parse it like any other
-        data_stream = io.BytesIO(self.data)
-        record_stream = PptStream(data_stream, self.size,
-                                  'PptContainerRecordSubstream',
-                                  record_base.STGTY_SUBSTREAM)
-        self.records = list(record_stream.iter_records())
-        # logging.debug('done parsing contents of container record {0}'
-        #               .format(self))
+        return self._records
 
     def __str__(self):
         text = super(PptContainerRecord, self).__str__()
-        if self.records is None:
+        if self._records is None:
             return '{0}, unparsed{1}'.format(text[:-2], text[-2:])
-        elif self.records:
+        elif self._records:
             return '{0}, contains {1} recs{2}' \
-                   .format(text[:-2], len(self.records), text[-2:])
+                   .format(text[:-2], len(self._records), text[-2:])
         else:
-            return text
+            return '{0} (empty){1}'.format(text[:-2], text[-2:])
 
 
 class PptRecordCurrentUser(PptRecord):
@@ -586,7 +722,7 @@ class IterStream(io.RawIOBase):
 
 
 class PptRecordExOleVbaActiveXAtom(PptRecord):
-    """ record that contains and ole object / vba storage / active x control
+    """ record that contains an ole object / vba storage / active x control
 
     Contains the actual data of the ole object / VBA storage / ActiveX control
     in compressed or uncompressed form.
@@ -682,6 +818,30 @@ class PptRecordExOleVbaActiveXAtom(PptRecord):
         return '{0}, {1}{2}'.format(text[:-2], compr_text, text[-2:])
 
 
+class PptRecordCString(PptRecord):
+    """
+    Text used for many atom types
+
+    Examples include: FriendlyNameAtom, TargetAtom, LocationAtom (from ExHyperlinkContainer).
+    Instance could help determine what actual type this atom is since some use unique instance numbers
+    """
+    TYPE = 0x0fba
+    VERSION = 0x0
+    # instance varies
+
+    def get_string(self):
+        return self.data.decode('utf16')     # apparently, resources are always utf16-encoded. But might be wrong
+
+    def __str__(self):
+        """Print data"""
+        contents = self.get_string()
+        if len(contents) > STR_MAX_CONTENT_LEN:
+            data_text = contents[:STR_MAX_CONTENT_LEN - 5] + '[...]'
+        else:
+            data_text = contents
+        return '[CString record (size {0}): "{1}"]'.format(self.size, data_text)
+
+
 ###############################################################################
 # TESTING
 ###############################################################################
@@ -695,7 +855,7 @@ def print_records(record, print_fn, indent, do_print_record):
     if do_print_record:
         print_fn('{0}{1}'.format('  ' * indent, record))
     if isinstance(record, PptContainerRecord):
-        for subrec in record.records:
+        for subrec in record.get_records():
             print_records(subrec, print_fn, indent+1, True)
     elif isinstance(record, PptRecordCurrentUser):
         logging.info('{4}--> crypt: {0}, offset {1}, user {2}/{3}'
@@ -704,6 +864,7 @@ def print_records(record, print_fn, indent, do_print_record):
                              repr(record.ansi_user_name),
                              repr(record.unicode_user_name),
                              '  ' * indent))
+
     elif isinstance(record, PptRecordExOleObjAtom):
         logging.info('{2}--> obj id {0}, persist id ref {1}'
                      .format(record.ex_obj_id, record.persist_id_ref,
@@ -715,6 +876,7 @@ def print_records(record, print_fn, indent, do_print_record):
 
 
 if __name__ == '__main__':
+    debug_print = True
     def do_per_record(record):
         print_records(record, logging.info, 2, False)
     sys.exit(record_base.test(sys.argv[1:], PptFile,

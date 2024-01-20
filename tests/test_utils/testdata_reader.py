@@ -7,9 +7,9 @@ using them.
 """
 
 import os, sys, zipfile
-from os.path import relpath, join, isfile
+from os.path import relpath, join, isfile, splitext
 from contextlib import contextmanager
-from tempfile import mkstemp
+from tempfile import mkstemp, TemporaryDirectory, NamedTemporaryFile
 
 from . import DATA_BASE_DIR
 
@@ -73,11 +73,10 @@ def loop_over_files(subdir=''):
     and the contents of the file, with the file being unzipped first if it ends
     with .zip.
 
-    :arg str subdir: Optional subdir of test data dir that caller is interested
-                     in
-    """
-    # create temp dir to extract files into
+    See also: :py:meth:`loop_and_extract`
 
+    :param str subdir: Optional subdir of test data dir that caller is interested in
+    """
     for base_dir, _, files in os.walk(join(DATA_BASE_DIR, subdir)):
         for filename in files:
             relative_path = relpath(join(base_dir, filename), DATA_BASE_DIR)
@@ -85,6 +84,44 @@ def loop_over_files(subdir=''):
                 yield relative_path, read_encrypted(relative_path)
             else:
                 yield relative_path, read(relative_path)
+
+
+def loop_and_extract(subdir=''):
+    """
+    Find all files, decrypting them to tempdir if necessary.
+
+    Does a `os.walk` through all test data or the given subdir and yields
+    the absolute path for each sample, which is either its original location
+    in `DATA_BASE_DIR` or in a temporary directory if it had to be decrypted.
+
+    The temp dir and files inside it are always deleted right after usage.
+
+    See also: :py:meth:`loop_over_files`
+
+    :param str subdir: Optional subdir of test data dir that caller is interested in
+    :returns: nothing but yields full path to sample file and relative path of original
+              sample inside test dir
+    """
+    with TemporaryDirectory(prefix='oletools-test-') as temp_dir:
+        for base_dir, _, files in os.walk(join(DATA_BASE_DIR, subdir)):
+            for filename in files:
+                full_path = join(base_dir, filename)
+                path_part = relpath(full_path, DATA_BASE_DIR)
+                if filename.endswith('.zip'):
+                    # remove the ".zip" and split the rest into actual name and extension
+                    actual_name, actual_extn = splitext(splitext(filename)[0])
+
+                    with zipfile.ZipFile(full_path, 'r') as zip_file:
+                        # create a temp file that has a proper file name and is deleted on closing
+                        with NamedTemporaryFile(dir=temp_dir, prefix=actual_name, suffix=actual_extn) \
+                                as temp_file:
+                            # our test samples are not big, so we can read the whole thing at once
+                            temp_file.write(zip_file.read(zip_file.namelist()[0],
+                                                          pwd=ENCRYPTED_FILES_PASSWORD))
+                            temp_file.flush()
+                            yield temp_file.name, path_part
+                else:
+                    yield full_path, path_part
 
 
 @contextmanager

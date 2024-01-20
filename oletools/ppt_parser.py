@@ -8,7 +8,7 @@ Code much influenced by olevba._extract_vba but much more object-oriented
 Currently quite narrowly focused on extracting VBA from ppt files, no slides or
 stuff, but built to be extended to parsing more/all of the file. For better
 "understanding" of ppt files, see module ppt_record_parser, which will probably
-replace this module some time soon.
+replace this module some time.
 
 References:
 * https://msdn.microsoft.com/en-us/library/dd921564%28v=office.12%29.aspx
@@ -17,7 +17,7 @@ References:
 WARNING!
 Before thinking about understanding or even extending this module, please keep
 in mind that module ppt_record_parser has a better "understanding" of the ppt
-file structure and will replace this module some time soon!
+file structure and will replace this module some time!
 
 """
 
@@ -1195,13 +1195,11 @@ class PptParser(object):
         #  ['\x05SummaryInformation'],
         #  ['Current User'],
         #  ['PowerPoint Document']]
-        root_streams = self.ole.listdir()
-        #for stream in root_streams:
+        all_streams = self.ole.listdir()    # this includes non-root streams
+        #for stream in all_streams:
         #    log.debug('found root stream {0!r}'.format(stream))
-        if any(len(stream) != 1 for stream in root_streams):
-            self._fail('root', 'listdir', root_streams, 'len = 1')
-        root_streams = [stream[0].lower() for stream in root_streams]
-        if not 'current user' in root_streams:
+        root_streams = [stream[0].lower() for stream in all_streams if len(stream) == 1]
+        if 'current user' not in root_streams:
             self._fail('root', 'listdir', root_streams, 'Current User')
         if not MAIN_STREAM_NAME.lower() in root_streams:
             self._fail('root', 'listdir', root_streams, MAIN_STREAM_NAME)
@@ -1239,176 +1237,6 @@ class PptParser(object):
             raise PptUnexpectedData(*args)
         else:
             self._log_exception(PptUnexpectedData(*args).msg)
-
-    def parse_current_user(self):
-        """ parse the CurrentUserAtom record from stream 'Current User'
-
-        Structure described in
-        https://msdn.microsoft.com/en-us/library/dd948895%28v=office.12%29.aspx
-        """
-
-        if self.current_user_atom is not None:
-            log.warning('re-reading and overwriting '
-                        'previously read current_user_atom')
-
-        log.debug('parsing "Current User"')
-
-        stream = None
-        try:
-            log.debug('opening stream "Current User"')
-            stream = self.ole.openstream('Current User')
-            self.current_user_atom = CurrentUserAtom.extract_from(stream)
-        except Exception:
-            if self.fast_fail:
-                raise
-            else:
-                self._log_exception()
-        finally:
-            if stream is not None:
-                log.debug('closing stream "Current User"')
-                stream.close()
-
-    @with_opened_main_stream
-    def parse_persist_object_directory(self, stream):
-        """ Part 1: Construct the persist object directory """
-
-        if self.persist_object_directory is not None:
-            log.warning('re-reading and overwriting '
-                        'previously read persist_object_directory')
-
-        # Step 1: Read the CurrentUserAtom record (section 2.3.2) from the
-        # Current User Stream (section 2.1.1). All seek operations in the steps
-        # that follow this step are in the PowerPoint Document Stream.
-        if self.current_user_atom is None:
-            self.parse_current_user()
-
-        offset = self.current_user_atom.offset_to_current_edit
-        is_encrypted = self.current_user_atom.is_encrypted()
-        self.persist_object_directory = {}
-        self.newest_user_edit = None
-
-        # Repeat steps 3 through 6 until offsetLastEdit is 0x00000000.
-        while offset != 0:
-
-            # Step 2: Seek, in the PowerPoint Document Stream, to the
-            # offset specified by the offsetToCurrentEdit field of the
-            # CurrentUserAtom record identified in step 1.
-            stream.seek(offset, os.SEEK_SET)
-
-            # Step 3: Read the UserEditAtom record at the current offset.
-            # Let this record be a live record.
-            user_edit = UserEditAtom.extract_from(stream, is_encrypted)
-            if self.newest_user_edit is None:
-                self.newest_user_edit = user_edit
-
-            log.debug('checking validity')
-            errs = user_edit.check_validity()
-            if errs:
-                log.warning('check_validity found {0} issues'
-                            .format(len(errs)))
-            for err in errs:
-                log.warning('UserEditAtom.check_validity: {0}'.format(err))
-            if errs and self.fast_fail:
-                raise errs[0]
-
-            # Step 4: Seek to the offset specified by the
-            # offsetPersistDirectory field of the UserEditAtom record
-            # identified in step 3.
-            log.debug('seeking to pos {0}'
-                      .format(user_edit.offset_persist_directory))
-            stream.seek(user_edit.offset_persist_directory, os.SEEK_SET)
-
-            # Step 5: Read the PersistDirectoryAtom record at the current
-            # offset. Let this record be a live record.
-            persist_dir_atom = PersistDirectoryAtom.extract_from(stream)
-
-            log.debug('checking validity')
-            errs = persist_dir_atom.check_validity(offset)
-            if errs:
-                log.warning('check_validity found {0} issues'
-                            .format(len(errs)))
-            for err in errs:
-                log.warning('PersistDirectoryAtom.check_validity: {0}'
-                            .format(err))
-            if errs and self.fast_fail:
-                raise errs[0]
-
-
-            # Construct the complete persist object directory for this file
-            # as follows:
-            # - For each PersistDirectoryAtom record previously identified
-            # in step 5, add the persist object identifier and persist
-            # object stream offset pairs to the persist object directory
-            # starting with the PersistDirectoryAtom record last
-            # identified, that is, the one closest to the beginning of the
-            # stream.
-            # - Continue adding these pairs to the persist object directory
-            # for each PersistDirectoryAtom record in the reverse order
-            # that they were identified in step 5; that is, the pairs from
-            # the PersistDirectoryAtom record closest to the end of the
-            # stream are added last.
-            # - When adding a new pair to the persist object directory, if
-            # the persist object identifier already exists in the persist
-            # object directory, the persist object stream offset from the
-            # new pair replaces the existing persist object stream offset
-            # for that persist object identifier.
-            for entry in persist_dir_atom.rg_persist_dir_entry:
-                last_id = entry.persist_id+len(entry.rg_persist_offset)-1
-                log.debug('for persist IDs {0}-{1}, save offsets {2}'
-                          .format(entry.persist_id, last_id,
-                                  entry.rg_persist_offset))
-                for count, offset in enumerate(entry.rg_persist_offset):
-                    self.persist_object_directory[entry.persist_id+count] \
-                        = offset
-
-            # check for more
-            # Step 6: Seek to the offset specified by the offsetLastEdit
-            # field in the UserEditAtom record identified in step 3.
-            offset = user_edit.offset_last_edit
-
-    @with_opened_main_stream
-    def parse_document_persist_object(self, stream):
-        """ Part 2: Identify the document persist object """
-        if self.document_persist_obj is not None:
-            log.warning('re-reading and overwriting '
-                        'previously read document_persist_object')
-
-        # Step 1:  Read the docPersistIdRef field of the UserEditAtom record
-        # first identified in step 3 of Part 1, that is, the UserEditAtom
-        # record closest to the end of the stream.
-        if self.persist_object_directory is None:
-            self.parse_persist_object_directory()
-
-        # Step 2: Lookup the value of the docPersistIdRef field in the persist
-        # object directory constructed in step 8 of Part 1 to find the stream
-        # offset of a persist object.
-        newest_ref = self.newest_user_edit.doc_persist_id_ref
-        offset = self.persist_object_directory[newest_ref]
-        log.debug('newest user edit ID is {0}, offset is {1}'
-                  .format(newest_ref, offset))
-
-        # Step 3:  Seek to the stream offset specified in step 2.
-        log.debug('seek to {0}'.format(offset))
-        stream.seek(offset, os.SEEK_SET)
-
-        # Step 4: Read the DocumentContainer record at the current offset.
-        # Let this record be a live record.
-        self.document_persist_obj = DocumentContainer.extract_from(stream)
-
-        log.debug('checking validity')
-        errs = self.document_persist_obj.check_validity()
-        if errs:
-            log.warning('check_validity found {0} issues'.format(len(errs)))
-        for err in errs:
-            log.warning('check_validity(document_persist_obj): {0}'
-                        .format(err))
-        if errs and self.fast_fail:
-            raise errs[0]
-
-    #--------------------------------------------------------------------------
-    # 2nd attempt: do not parse whole structure but search through stream and
-    # yield results as they become available
-    # Keep in mind that after every yield the stream position may be anything!
 
     @generator_with_opened_main_stream
     def search_pattern(self, stream, pattern):

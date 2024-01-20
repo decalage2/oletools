@@ -345,6 +345,8 @@ from oletools.common.io_encoding import ensure_stdout_handles_unicode
 from oletools.common import codepages
 from oletools import ftguess
 from oletools.common.log_helper import log_helper
+from oletools.ppt_record_parser import PptFile, PptContainerRecord, RECORD_TYPES, \
+    PptRecordCString, PptRecordExOleObjAtom
 
 # === PYTHON 2+3 SUPPORT ======================================================
 
@@ -647,6 +649,8 @@ AUTOEXEC_KEYWORDS_REGEX = {
          r'\w+_ProgressChange', r'\w+_PropertyChange', r'\w+_SetSecureLockIcon',
          r'\w+_StatusTextChange', r'\w+_TitleChange', r'\w+_MouseMove', r'\w+_MouseEnter',
          r'\w+_MouseLeave', r'\w+_Layout', r'\w+_OnConnecting', r'\w+_FollowHyperlink', r'\w+_ContentControlOnEnter'),
+    'Runs when the file is opened and Mouse Clicks or Hovers over element':
+        (r'MouseClick/OverInteractiveInfoContainer',),
 }
 
 # Suspicious Keywords that may be used by malware
@@ -902,6 +906,10 @@ re_nothex_check = re.compile(r'[G-Zg-z]')
 # regex to extract printable strings (at least 5 chars) from VBA Forms:
 # (must be bytes for Python 3)
 re_printable_string = re.compile(b'[\\t\\r\\n\\x20-\\xFF]{5,}')
+
+# ppt record types that contain interactive content (like ActiveX)
+# see ppt_record_parser.RECORD_TYPES for meaning of these type constants
+PPT_INTERACTIVE_RECORD_TYPES = 0x0fc3, 0x0ff2, 0x0fd7
 
 
 # === PARTIAL VBA GRAMMAR ====================================================
@@ -1682,6 +1690,7 @@ class VBA_Project(object):
         self.dir_stream = dir_stream
 
         # reference: MS-VBAL 2.3.4.2 dir Stream: Version Independent Project Information
+        # This could be integrated with record parsing code in record_base.py
 
         # PROJECTSYSKIND Record
         # Specifies the platform for which the VBA project is created.
@@ -2703,6 +2712,7 @@ class VBA_Parser(object):
         self.vba_forms = None
         self.contains_vba_macros = None # will be set to True or False by detect_vba_macros
         self.contains_xlm_macros = None # will be set to True or False by detect_xlm_macros
+        self.contains_ppt_interactive = None # will be set to True or False by detect_ppt_interactive
         self.vba_code_all_modules = None # to store the source code of all modules
         # list of tuples for each module: (subfilename, stream_path, vba_filename, vba_code)
         self.modules = None
@@ -2720,7 +2730,9 @@ class VBA_Parser(object):
         #: Encoding for VBA source code and strings returned by all methods
         self.encoding = encoding
         self.xlm_macros = []
+        self.ppt_interactive = []
         self.no_xlm = False
+        self.no_ppt_interactive = False   # nowhere set yet, but include switch for future
         #: Output from pcodedmp, disassembly of the VBA P-code
         self.disable_pcode = disable_pcode
         self.pcodedmp_output = None
@@ -3259,13 +3271,20 @@ class VBA_Parser(object):
         by calling detect_vba_macros and detect_xlm_macros.
         (if the no_xlm option is set, XLM macros are not checked)
 
+        Also checks ppt files for ActiveX-like record types using self.detect_ppt_interactive
+        (if self.no_ppt_interactive is not set).
+
         :return: bool, True if at least one VBA project has been found, False otherwise
         """
         vba = self.detect_vba_macros()
         xlm = False
+        found_ppt_interactive = False
         if not self.no_xlm:
             xlm = self.detect_xlm_macros()
-        return (vba or xlm)
+        if not self.no_ppt_interactive:
+            found_ppt_interactive = self.detect_ppt_interactive()
+
+        return (vba or xlm or found_ppt_interactive)
 
     def detect_vba_macros(self):
         """
@@ -3293,6 +3312,7 @@ class VBA_Parser(object):
             for ole_subfile in self.ole_subfiles:
                 log.debug("ole subfile {}".format(ole_subfile))
                 ole_subfile.no_xlm = self.no_xlm
+                ole_subfile.no_ppt_interactive = self.no_ppt_interactive
                 if ole_subfile.detect_vba_macros():
                     self.contains_vba_macros = True
                     return True
@@ -3451,6 +3471,59 @@ class VBA_Parser(object):
         self.contains_xlm_macros = False
         return False
 
+    def detect_ppt_interactive(self):
+        """
+        Search through record structure of file and find problematic record types.
+
+        Remembers problematic records in `self.ppt_interactive
+
+        :return: True if record types from PPT_INTERACTIVE_RECORD_TYPES were found
+        """
+        # do not search again
+        if self.contains_ppt_interactive is not None:
+            return self.contains_ppt_interactive
+
+        if self.type != TYPE_PPT:
+            self.contains_ppt_interactive = False
+            return False
+
+        with PptFile(self.filename) as ppt:   # this is from ppt_record_parser
+            for stream in ppt.iter_streams():
+                log.debug('Parse records in ' + str(stream))
+                for record in stream.iter_records():
+                    self._detect_ppt_interactive(record, 1, stream.name)
+            if self.ppt_interactive:
+                self.contains_ppt_interactive = True
+        return self.contains_ppt_interactive
+
+    def _detect_ppt_interactive(self, record, indent, stream_name):
+        """Recursive helper for detect_ppt_interactive."""
+        log.debug('{0}{1}'.format('  ' * indent, record))
+        if record.type in PPT_INTERACTIVE_RECORD_TYPES:
+            # add record, avoiding duplicates (which ppt likes to contain)
+            if isinstance(record, PptRecordExOleObjAtom):
+                if record.obj_type != 2:    # not ActiveX
+                    return
+            texts = set()
+            if isinstance(record, PptContainerRecord):
+                for subrec in record.get_records():
+                    if not isinstance(subrec, PptRecordCString):
+                        continue
+                    texts.add(subrec.get_string().strip().rstrip('/'))
+            if texts:
+                text = '{0}: {1}'.format(RECORD_TYPES[record.type], ', '.join(texts))
+            else:
+                text = RECORD_TYPES[record.type]
+            try:
+                previous_idx = self.ppt_interactive.index([text, stream_name, False])
+                self.ppt_interactive[previous_idx][2] = True   # mark as duplicated instead of adding again
+            except ValueError:    # no such index
+                self.ppt_interactive.append([text, stream_name, False])
+        if isinstance(record, PptContainerRecord):
+            for subrec in record.get_records():
+                self._detect_ppt_interactive(subrec, indent+1, stream_name)
+        # todo: is record contains ole streams, then parse those or add to substreams
+
     def detect_is_encrypted(self):
         if self.ole_file:
             self.is_encrypted = crypto.is_encrypted(self.ole_file)
@@ -3512,6 +3585,19 @@ class VBA_Parser(object):
                     for line in self.xlm_macros:
                         vba_code += "' " + line + '\n'
                     yield ('xlm_macro', 'xlm_macro', 'xlm_macro.txt', vba_code)
+                # ...and interactive components found in PPT files (copy of this bit later in function)
+                if self.ppt_interactive:
+                    # group by stream
+                    curr_stream = self.ppt_interactive[0][1]
+                    texts = []
+                    for text, stream_name, _ in self.ppt_interactive:
+                        if stream_name == curr_stream:
+                            texts.append(text)
+                        else:
+                            yield (self.filename, curr_stream, '', '\n'.join(texts))
+                            texts = [text,]
+                            curr_stream = stream_name
+                    yield (self.filename, curr_stream, '', '\n'.join(texts))
         else:
             # This is an OLE file:
             self.find_vba_projects()
@@ -3574,6 +3660,19 @@ class VBA_Parser(object):
                 for line in self.xlm_macros:
                     vba_code += "' " + line + '\n'
                 yield ('xlm_macro', 'xlm_macro', 'xlm_macro.txt', vba_code)
+            # probably never happens here, but just in case (code copied from above):
+            if self.ppt_interactive:
+                # group by stream
+                curr_stream = self.ppt_interactive[0][1]
+                texts = []
+                for text, stream_name, _ in self.ppt_interactive:
+                    if stream_name == curr_stream:
+                        texts.append(text)
+                    else:
+                        yield (self.filename, curr_stream, '', '\n'.join(texts))
+                        texts = [text,]
+                        curr_stream = stream_name
+                yield (self.filename, curr_stream, '', '\n'.join(texts))
             # Analyse the VBA P-code to detect VBA stomping:
             # If stomping is detected, add a fake VBA module with the P-code as source comments
             # so that VBA_Scanner can find keywords and IOCs in it
@@ -3652,6 +3751,12 @@ class VBA_Parser(object):
                 log.debug('adding XLM macrosheet found to suspicious keywords')
                 keyword = 'XLM macro'
                 description = 'XLM macro found. It may contain malicious code'
+                scanner.suspicious_keywords.append((keyword, description))
+                scanner.results.append(('Suspicious', keyword, description))
+            if self.contains_ppt_interactive:
+                log.debug('adding PPT interactive found to suspicious keywords')
+                keyword = 'Interactive Controls'
+                description = 'Found interactive controls. May execute malicious code'
                 scanner.suspicious_keywords.append((keyword, description))
                 scanner.results.append(('Suspicious', keyword, description))
             # TODO: this has been temporarily disabled
