@@ -67,6 +67,11 @@ class TestOleIDBasic(unittest.TestCase):
                                  '949: ANSI/OEM Korean (Unified Hangul Code)')
                 self.assertEqual(value_dict['author'],
                                  b'\xb1\xe8\xb1\xe2\xc1\xa4;kijeong')
+            elif 'olevba/sample_with_vba.ppt' in filename:
+                self.assertEqual(value_dict['codepage'],
+                                 '949: ANSI/OEM Korean (Unified Hangul Code)')
+                self.assertEqual(value_dict['author'],
+                                 b'\xb1\xe8 \xb1\xe2\xc1\xa4')
             else:
                 self.assertEqual(value_dict['codepage'],
                                  '1252: ANSI Latin 1; Western European (Windows)')
@@ -120,7 +125,9 @@ class TestOleIDBasic(unittest.TestCase):
                             'msodde/dde-in-excel2003.xml',   # same as above
                             'oleform/oleform-PR314.docm',
                             'basic/empty',                   # WTF?
-                            'basic/text'):                   # no macros!
+                            'basic/text',                    # no macros!
+                            'olevba/sample_with_vba.ppt',
+                            ):
                 self.assertEqual(value_dict['vba'], 'Yes')
             else:
                 self.assertEqual(value_dict['vba'], 'No')
