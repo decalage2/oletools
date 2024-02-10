@@ -1895,8 +1895,9 @@ class VBA_Project(object):
                 # (section 2.3.4.2.2.3) twiddled type library was generated from.
                 referenceoriginal_id = check
                 referenceoriginal_sizeof_libidoriginal = struct.unpack("<L", dir_stream.read(4))[0]
-                referenceoriginal_libidoriginal = dir_stream.read(referenceoriginal_sizeof_libidoriginal)
-                log.debug(REFERENCEORIGINAL + ' lib id: %s' % unicode2str(self.decode_bytes(referenceoriginal_libidoriginal)))
+                referenceoriginal_libidoriginal = unicode2str(self.decode_bytes(dir_stream.read(referenceoriginal_sizeof_libidoriginal)))
+                log.debug(REFERENCEORIGINAL + ' lib id: %s' % referenceoriginal_libidoriginal)
+                self.references.append((REFERENCEORIGINAL,referenceoriginal_libidoriginal))
                 unused = referenceoriginal_id
                 continue
 
@@ -1941,8 +1942,10 @@ class VBA_Project(object):
                 self.check_value(REFERENCECONTROL + '_Reserved3', 0x0030, referencecontrol_reserved3)
                 referencecontrol_sizeextended = struct.unpack("<L", dir_stream.read(4))[0]
                 referencecontrol_sizeof_libidextended = struct.unpack("<L", dir_stream.read(4))[0]
-                referencecontrol_libidextended = dir_stream.read(referencecontrol_sizeof_libidextended)
-                log.debug(REFERENCECONTROL + ' lib id extended: %s' % unicode2str(self.decode_bytes(referencecontrol_libidextended)))
+                referencecontrol_libidextended = unicode2str(self.decode_bytes(dir_stream.read(referencecontrol_sizeof_libidextended)))
+                REFERENCECONTROL_LIB_ID_EXTENDED = REFERENCECONTROL + ' LIB ID EXTENDED'
+                log.debug(REFERENCECONTROL_LIB_ID_EXTENDED + ': %s' % referencecontrol_libidextended)
+                self.references.append((REFERENCECONTROL_LIB_ID_EXTENDED,referencecontrol_libidextended))
                 referencecontrol_reserved4 = struct.unpack("<L", dir_stream.read(4))[0]
                 referencecontrol_reserved5 = struct.unpack("<H", dir_stream.read(2))[0]
                 referencecontrol_originaltypelib = dir_stream.read(16)
