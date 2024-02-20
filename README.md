@@ -148,6 +148,7 @@ including
 [ADAPT](https://www.blackhat.com/eu-23/briefings/schedule/index.html#unmasking-apts-an-automated-approach-for-real-world-threat-attribution-35162),
 [Anlyz.io](https://sandbox.anlyz.io/),
 [AssemblyLine](https://www.cse-cst.gc.ca/en/assemblyline),
+[Binary Refinery](https://github.com/binref/refinery),
 [CAPE](https://github.com/ctxis/CAPE),
 [CinCan](https://cincan.io),
 [Cortex XSOAR (Palo Alto)](https://cortex.marketplace.pan.dev/marketplace/details/Oletools/),
