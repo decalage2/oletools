@@ -33,7 +33,7 @@ potentially encrypted files::
             raise crypto.MaxCryptoNestingReached(crypto_nesting, filename)
         decrypted_file = None
         try:
-            decrypted_file = crypto.decrypt(input_file, passwords)
+            decrypted_file, correct_password = crypto.decrypt(input_file, passwords, decrypted_filepath)
             if decrypted_file is None:
                 raise crypto.WrongEncryptionPassword(input_file)
             # might still be encrypted, so call this again recursively
@@ -102,6 +102,7 @@ __version__ = '0.60'
 import sys
 import struct
 import os
+import shutil
 from os.path import splitext, isfile
 from tempfile import mkstemp
 import zipfile
@@ -314,7 +315,7 @@ def check_msoffcrypto():
     return msoffcrypto is not None
 
 
-def decrypt(filename, passwords=None, **temp_file_args):
+def decrypt(filename, passwords=None, decrypted_filepath=None, **temp_file_args):
     """
     Try to decrypt an encrypted file
 
@@ -331,7 +332,10 @@ def decrypt(filename, passwords=None, **temp_file_args):
                            `dirname` or `prefix`. `suffix` will default to
                            suffix of input `filename`, `prefix` defaults to
                            `oletools-decrypt-`; `text` will be ignored
-    :returns: name of the decrypted temporary file (type str) or `None`
+    :param decrypted_filepath: filepath of the decrypted file in case you want to
+                              preserve it
+    :returns: a tuple with the name of the decrypted temporary file (type str) or `None`
+              and the correct password or 'None'
     :raises: :py:class:`ImportError` if :py:mod:`msoffcrypto-tools` not found
     :raises: :py:class:`ValueError` if the given file is not encrypted
     """
@@ -370,6 +374,7 @@ def decrypt(filename, passwords=None, **temp_file_args):
             raise ValueError('Given input file {} is not encrypted!'
                              .format(filename))
 
+        correct_password = None
         for password in passwords:
             log.debug('Trying to decrypt with password {!r}'.format(password))
             write_descriptor = None
@@ -387,6 +392,7 @@ def decrypt(filename, passwords=None, **temp_file_args):
                 # decryption was successfull; clean up and return
                 write_handle.close()
                 write_handle = None
+                correct_password = password
                 break
             except Exception:
                 log.debug('Failed to decrypt', exc_info=True)
@@ -399,6 +405,15 @@ def decrypt(filename, passwords=None, **temp_file_args):
                 if decrypt_file and isfile(decrypt_file):
                     os.unlink(decrypt_file)
                 decrypt_file = None
-    # if we reach this, all passwords were tried without success
-    log.debug('All passwords failed')
-    return decrypt_file
+                correct_password = None
+
+    if decrypt_file and correct_password:
+        log.debug(f'Successfully decrypted the file with password: {correct_password}')
+        if decrypted_filepath:
+            if os.path.isdir(decrypted_filepath) and os.access(decrypted_filepath, os.W_OK):
+                log.info(f"Saving decrypted file in: {decrypted_filepath}")
+                shutil.copy(decrypt_file, decrypted_filepath)
+    else:
+        log.info('All passwords failed')
+
+    return decrypt_file, correct_password
