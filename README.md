@@ -158,6 +158,7 @@ including
 [DIARIO](https://diario.elevenpaths.com/),
 [dridex.malwareconfig.com](https://dridex.malwareconfig.com),
 [EML Analyzer](https://github.com/ninoseki/eml_analyzer),
+[EXPMON](https://pub.expmon.com/),
 [FAME](https://certsocietegenerale.github.io/fame/),
 [FLARE-VM](https://github.com/fireeye/flare-vm),
 [GLIMPS Malware](https://www.glimps.fr/en/glimps-malware-2/),
