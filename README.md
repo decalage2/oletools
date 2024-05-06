@@ -145,8 +145,10 @@ Projects using oletools:
 oletools are used by a number of projects and online malware analysis services,
 including
 [ACE](https://github.com/IntegralDefense/ACE),
+[ADAPT](https://www.blackhat.com/eu-23/briefings/schedule/index.html#unmasking-apts-an-automated-approach-for-real-world-threat-attribution-35162),
 [Anlyz.io](https://sandbox.anlyz.io/),
 [AssemblyLine](https://www.cse-cst.gc.ca/en/assemblyline),
+[Binary Refinery](https://github.com/binref/refinery),
 [CAPE](https://github.com/ctxis/CAPE),
 [CinCan](https://cincan.io),
 [Cortex XSOAR (Palo Alto)](https://cortex.marketplace.pan.dev/marketplace/details/Oletools/),
@@ -156,6 +158,7 @@ including
 [DIARIO](https://diario.elevenpaths.com/),
 [dridex.malwareconfig.com](https://dridex.malwareconfig.com),
 [EML Analyzer](https://github.com/ninoseki/eml_analyzer),
+[EXPMON](https://pub.expmon.com/),
 [FAME](https://certsocietegenerale.github.io/fame/),
 [FLARE-VM](https://github.com/fireeye/flare-vm),
 [GLIMPS Malware](https://www.glimps.fr/en/glimps-malware-2/),
@@ -177,6 +180,7 @@ including
 [PyCIRCLean](https://github.com/CIRCL/PyCIRCLean),
 [QFlow](https://www.quarkslab.com/products-qflow/),
 [Qu1cksc0pe](https://github.com/CYB3RMX/Qu1cksc0pe),
+[Tylabs QuickSand](https://github.com/tylabs/quicksand),
 [REMnux](https://remnux.org/),
 [Snake](https://github.com/countercept/snake),
 [SNDBOX](https://app.sndbox.com),
@@ -252,7 +256,7 @@ License
 This license applies to the python-oletools package, apart from the thirdparty folder which contains third-party files 
 published with their own license.
 
-The python-oletools package is copyright (c) 2012-2023 Philippe Lagadec (http://www.decalage.info)
+The python-oletools package is copyright (c) 2012-2024 Philippe Lagadec (http://www.decalage.info)
 
 All rights reserved.
 
