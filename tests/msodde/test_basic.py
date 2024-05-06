@@ -9,6 +9,7 @@ Ensure that
 from __future__ import print_function
 
 import unittest
+from platform import python_implementation
 import sys
 import os
 from os.path import join, basename
@@ -19,8 +20,21 @@ from tests.test_utils import call_and_capture, decrypt_sample,\
     DATA_BASE_DIR as BASE_DIR
 
 
+# Check whether we run with PyPy on windows because that causes trouble
+# when using the :py:func:`tests.test_utils.decrypt_sample`.
+#
+# :return: `(do_skip, explanation)` where `do_skip` is `True` iff running
+# PyPy on Windows; `explanation` is a simple text string
+SKIP_PYPY_WIN = (
+    python_implementation().lower().startswith('pypy')
+            and sys.platform.lower().startswith('win'),
+    "On PyPy there is a problem with deleting temp files for decrypt_sample"
+)
+
+
 class TestReturnCode(unittest.TestCase):
     """ check return codes and exception behaviour (not text output) """
+    @unittest.skipIf(*SKIP_PYPY_WIN)
     def test_valid_doc(self):
         """ check that a valid doc file leads to 0 exit status """
         for filename in (
@@ -44,6 +58,7 @@ class TestReturnCode(unittest.TestCase):
             self.do_test_validity(join(BASE_DIR, 'msodde',
                                        filename + '.docm'))
 
+    @unittest.skipIf(*SKIP_PYPY_WIN)
     def test_valid_xml(self):
         """ check that xml leads to 0 exit status """
         for filename in (
@@ -67,11 +82,11 @@ class TestReturnCode(unittest.TestCase):
 
     def test_invalid_empty(self):
         """ check that empty file argument leads to non-zero exit status """
-        self.do_test_validity(join(BASE_DIR, 'basic/empty'), Exception)
+        self.do_test_validity(join(BASE_DIR, 'basic', 'empty'), Exception)
 
     def test_invalid_text(self):
         """ check that text file argument leads to non-zero exit status """
-        self.do_test_validity(join(BASE_DIR, 'basic/text'), Exception)
+        self.do_test_validity(join(BASE_DIR, 'basic', 'text'), Exception)
 
     def test_encrypted(self):
         """
@@ -140,6 +155,7 @@ class TestDdeLinks(unittest.TestCase):
         """
         return [o for o in output.splitlines()]
 
+    @unittest.skipIf(*SKIP_PYPY_WIN)
     def test_with_dde(self):
         """ check that dde links appear on stdout """
         filename = 'dde-test-from-office2003.doc.zip'
@@ -158,6 +174,7 @@ class TestDdeLinks(unittest.TestCase):
         self.assertEqual(len(self.get_dde_from_output(output)), 0,
                          msg='Found dde links in output of ' + filename)
 
+    @unittest.skipIf(*SKIP_PYPY_WIN)
     def test_with_dde_utf16le(self):
         """ check that dde links appear on stdout """
         filename = 'dde-test-from-office2013-utf_16le-korean.doc.zip'
@@ -179,6 +196,7 @@ class TestDdeLinks(unittest.TestCase):
                              msg='unexpected output for dde-test.{0}: {1}'
                                  .format(extn, output))
 
+    @unittest.skipIf(*SKIP_PYPY_WIN)
     def test_xml(self):
         """ check that dde in xml from word / excel is found """
         for filename in ('dde-in-excel2003.xml',

@@ -120,10 +120,14 @@ class TestOlevbaBasic(unittest.TestCase):
                                                  args=[full_name, ] + ADD_ARGS,
                                                  accept_nonzero_exit=True)
             output = json.loads(out_str)
-            self.assertEqual(len(output), 2)
+            self.assertGreaterEqual(len(output), 2)
             self.assertEqual(output[0]['type'], 'MetaInformation')
             self.assertEqual(output[0]['script_name'], 'olevba')
-            result = output[1]
+            for entry in output[1:]:
+                if entry['type'] in ('msg', 'warning'):
+                    continue    # ignore messages
+                result = entry
+                break
             self.assertTrue(result['json_conversion_successful'])
             if suffix in ('.xlsb', '.xltm', '.xlsm'):
                 # TODO: cannot extract xlm macros for these types yet

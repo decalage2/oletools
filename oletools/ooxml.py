@@ -160,7 +160,7 @@ def debug_str(elem):
 def isstr(some_var):
     """ version-independent test for isinstance(some_var, (str, unicode)) """
     if sys.version_info.major == 2:
-        return isinstance(some_var, basestring)  # true for str and unicode
+        return isinstance(some_var, basestring)  # true for str and unicode   # pylint: disable=undefined-variable
     return isinstance(some_var, str)         # there is no unicode
 
 

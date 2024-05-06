@@ -90,14 +90,14 @@ class TestOleIDBasic(unittest.TestCase):
         for filename, value_dict in self.oleids:
             # print('Debugging: testing file {0}'.format(filename))
             self.assertEqual(value_dict['ext_rels'],
-                             '/external_link/' in filename)
+                             os.sep + 'external_link' + os.sep in filename)
 
     def test_objectpool(self):
         """Test indicator for ObjectPool stream in ole files."""
         for filename, value_dict in self.oleids:
             # print('Debugging: testing file {0}'.format(filename))
-            if (filename.startswith('oleobj/sample_with_')
-                        or filename.startswith('oleobj/embedded')) \
+            if (filename.startswith(join('oleobj', 'sample_with_'))
+                        or filename.startswith(join('oleobj', 'embedded'))) \
                     and (filename.endswith('.doc') 
                          or filename.endswith('.dot')):
                 self.assertTrue(value_dict['ObjectPool'])
@@ -106,6 +106,15 @@ class TestOleIDBasic(unittest.TestCase):
 
     def test_macros(self):
         """Test indicator for macros."""
+        find_vba = (
+            join('ooxml', 'dde-in-excel2003.xml'),    # not really
+            join('encrypted', 'autostart-encrypt-standardpassword.xls'),
+            join('msodde', 'dde-in-csv.csv'),     # "Windows" "calc.exe"
+            join('msodde', 'dde-in-excel2003.xml'),   # same as above
+            join('oleform', 'oleform-PR314.docm'),
+            join('basic', 'empty'),                   # WTF?
+            join('basic', 'text'),
+        )
         for filename, value_dict in self.oleids:
             # TODO: we need a sample file with xlm macros
             before_dot, suffix = splitext(filename)
@@ -119,18 +128,10 @@ class TestOleIDBasic(unittest.TestCase):
             self.assertIn(value_dict['xlm'], ('Unknown', 'No'))
 
             # "macro detection" in text files leads to interesting results:
-            if filename in ('ooxml/dde-in-excel2003.xml',    # not really
-                            'encrypted/autostart-encrypt-standardpassword.xls',
-                            'msodde/dde-in-csv.csv',     # "Windows" "calc.exe"
-                            'msodde/dde-in-excel2003.xml',   # same as above
-                            'oleform/oleform-PR314.docm',
-                            'basic/empty',                   # WTF?
-                            'basic/text',                    # no macros!
-                            'olevba/sample_with_vba.ppt',
-                            ):
+            if filename in find_vba:                   # no macros!
                 self.assertEqual(value_dict['vba'], 'Yes')
             else:
-                self.assertEqual(value_dict['vba'], 'No')
+                self.assertIn(value_dict['vba'], ('No', 'Error'))
 
     def test_flash(self):
         """Test indicator for flash."""

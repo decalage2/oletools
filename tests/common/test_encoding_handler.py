@@ -14,7 +14,13 @@ FILE_TEXT = u'The unicode check mark is \u2713.\n'
 
 @contextmanager
 def temp_file(just_name=True):
-    """Context manager that creates temp file and deletes it in the end"""
+    """
+    Context manager that creates temp file and deletes it in the end.
+
+    If `just_name` is `False` this yields (file-name, open-file-handle),
+    if `just_name` is `True` this yields just the file-name (and closes
+    the file-handle if we are on windows)
+    """
     tmp_descriptor = None
     tmp_name = None
     tmp_handle = None
@@ -24,8 +30,12 @@ def temp_file(just_name=True):
         # we create our own file handle since we want to be able to close the
         # file and open it again for reading.
         # We keep the os-level descriptor open so file name is still reserved
-        # for us
+        # for us ... except for Windows where it is not possible for another
+        # process to write to that handle
         if just_name:
+            if sys.platform.startswith('win'):
+                os.close(tmp_descriptor)
+                tmp_descriptor = None
             yield tmp_name
         else:
             tmp_handle = open(tmp_name, 'wb')
@@ -51,11 +61,7 @@ class TestEncodingHandler(unittest.TestCase):
                    shell=True)
 
     def test_print_redirect(self):
-        """
-        Test redirection of unicode output to files does not raise error
-
-        TODO: test this on non-linux OSs
-        """
+        """Test redirection of unicode output to files does not raise error."""
         with temp_file() as tmp_file:
             check_call('{python} {this_file} print > {tmp_file}'
                        .format(python=sys.executable, this_file=__file__,
@@ -63,7 +69,7 @@ class TestEncodingHandler(unittest.TestCase):
                        shell=True)
 
     @unittest.skipIf(not sys.platform.startswith('linux'),
-                     'Only tested on linux sofar')
+                     'Need to adapt this test to Windows')
     def test_print_no_lang(self):
         """
         Test redirection of unicode output to files does not raise error
@@ -89,11 +95,7 @@ class TestEncodingHandler(unittest.TestCase):
                 self.fail(cpe.output)
 
     def test_uopen_redirect(self):
-        """
-        Test redirection of unicode output to files does not raise error
-
-        TODO: test this on non-linux OSs
-        """
+        """Test redirection of unicode output to files does not raise error."""
         with temp_file(False) as (tmp_handle, tmp_file):
             tmp_handle.write(FILE_TEXT.encode('utf8'))
             tmp_handle.close()
@@ -109,7 +111,7 @@ class TestEncodingHandler(unittest.TestCase):
                     self.fail(cpe.output)
 
     @unittest.skipIf(not sys.platform.startswith('linux'),
-                     'Only tested on linux sofar')
+                     'Need to adapt this test to Windows')
     def test_uopen_no_lang(self):
         """
         Test that uopen in a C-LANG environment is ok

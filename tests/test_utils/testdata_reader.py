@@ -100,6 +100,9 @@ def decrypt_sample(relpath):
 
     Code based on test_encoding_handler.temp_file().
 
+    Note: this causes problems if running with PyPy on Windows. The `unlink`
+          fails because the file is "still being used by another process".
+
     :param relpath: path inside `DATA_BASE_DIR`, should end in '.zip'
     :return: absolute path name to decrypted sample.
     """
