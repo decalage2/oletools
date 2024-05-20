@@ -322,7 +322,6 @@ def main():
         install_requires=[
             "pyparsing>=2.1.0,<4",  # changed from 2.2.0 to 2.1.0 for issue #481
             "olefile>=0.46",
-            "easygui",
             'colorclass',
             # msoffcrypto-tool is not installable on PyPy+Windows (see issue #473),
             # so we only require it if the platform is not Windows or not PyPy:
@@ -342,7 +341,8 @@ def main():
                 # References for the syntax:
                 # https://github.com/decalage2/oletools/issues/690
                 # https://stackoverflow.com/questions/30239152/specify-extras-require-with-pip-install-e
-            ]
+            ],
+            'gui': ['easygui'],
         }
     )
 
