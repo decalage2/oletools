@@ -534,7 +534,7 @@ def sanitize_filename(filename, replacement='_',
     Might return empty string
     """
     basepath = os.path.basename(filename).strip()
-    sane_fname = re.sub(u'[^a-zA-Z0-9.\-_ ]', replacement, basepath)
+    sane_fname = re.sub(u'[^a-zA-Z0-9._ -]', replacement, basepath)
     sane_fname = str(sane_fname)    # py3: does nothing;   py2: unicode --> str
 
     while ".." in sane_fname:
