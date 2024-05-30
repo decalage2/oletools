@@ -1050,6 +1050,7 @@ def vba_chr_tostr(t):
         else:
             # unicode character
             # Note: this distinction is only needed for Python 2
+            # pylint: disable-next=possibly-used-before-assignment
             return VbaExpressionString(unichr(i).encode('utf-8', 'backslashreplace'))
     except ValueError:
         log.exception('ERROR: incorrect parameter value for chr(): %r' % i)
@@ -1165,6 +1166,7 @@ def subtract_ints_list(tokens):
     # extract argument from the tokens:
     # expected to be a tuple containing a list of integers such as [a,'&',b,'&',c,...]
     integers = tokens[0][::2]
+    # pylint: disable-next=possibly-used-before-assignment
     return reduce(lambda x,y:x-y, integers)
 
 
@@ -1407,6 +1409,7 @@ def decompress_stream(compressed_container):
                 # copy tokens (reference to a previous literal token)
                 flag_byte = compressed_container[compressed_current]
                 compressed_current += 1
+                # pylint: disable-next=possibly-used-before-assignment
                 for bit_index in xrange(0, 8):
                     # log.debug('bit_index=%d / compressed_current=%d / compressed_end=%d' % (bit_index, compressed_current, compressed_end))
                     if compressed_current >= compressed_end:
@@ -2434,6 +2437,7 @@ def json2ascii(json_obj, encoding='utf8', errors='replace'):
         else:
             # on Python 3, just keep Unicode strings as-is:
             return json_obj
+    # pylint: disable-next=possibly-used-before-assignment
     elif isinstance(json_obj, unicode) and PYTHON2:
         # On Python 2, encode unicode to bytes:
         json_obj_bytes = json_obj.encode(encoding, errors)

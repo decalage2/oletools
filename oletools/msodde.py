@@ -388,6 +388,7 @@ def process_doc_stream(stream):
             # appending a raw byte to a unicode string here. Not clean but
             # all we do later is check for the ascii-sequence 'DDE' later...
             elif char == 0:        # may be a high-byte of a 2-byte codec
+                # pylint: disable-next=possibly-used-before-assignment
                 field_contents += unichr(char)
             elif char in (10, 13):
                 field_contents += u'\n'

@@ -132,6 +132,7 @@ def hexdump3(src, length=8, startindex=0):
     startindex: index of 1st byte.
     """
     result=[]
+    # pylint: disable-next=possibly-used-before-assignment
     for i in xrange(0, len(src), length):
         s = src[i:i+length]
         hexa = ' '.join(["%02X" % xord(x) for x in s])

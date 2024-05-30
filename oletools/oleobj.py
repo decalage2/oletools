@@ -332,6 +332,7 @@ def read_zero_terminated_string(data, index):
     """
     if index is None:
         result = bytearray()
+        # pylint: disable-next=possibly-used-before-assignment
         for _ in xrange(STR_MAX_LEN):
             char = ord(data.read(1))    # need ord() for py3
             if char == 0:
