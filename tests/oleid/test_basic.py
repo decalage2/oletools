@@ -77,10 +77,14 @@ class TestOleIDBasic(unittest.TestCase):
                 continue
             else:
                 self.assertEqual(value_dict['codepage'],
-                                 '1252: ANSI Latin 1; Western European (Windows)')
+                                 '1252: ANSI Latin 1; Western European (Windows)',
+                                 'Unexpected result {0!r} for codepage of sample {1}'
+                                 .format(value_dict['codepage'], filename))
                 self.assertIn(value_dict['author'],
                               (b'user', b'schulung',
-                               b'xxxxxxxxxxxx', b'zzzzzzzzzzzz'))
+                               b'xxxxxxxxxxxx', b'zzzzzzzzzzzz'),
+                              'Unexpected result {0!r} for author of sample {1}'
+                              .format(value_dict['author'], filename))
 
     def test_encrypted(self):
         """Test indicator "encrypted"."""
