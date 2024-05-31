@@ -1589,7 +1589,7 @@ class PptParser(object):
 
         n_infos = 0
         n_macros = 0
-        for info in self.search_vba_info(stream):
+        for info in self.search_vba_info():    # pylint: disable=no-value-for-parameter
             n_infos += 1
             if info.vba_info_atom.f_has_macros > 0:
                 n_macros += 1
