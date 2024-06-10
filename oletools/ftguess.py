@@ -645,24 +645,28 @@ class FType_Powerpoint2007_Presentation(FType_Powerpoint2007):
     filetype = FTYPE.POWERPOINT2007_PPTX
     name = 'MSPowerpoint 2007+ Presentation'
     longname = 'MSPowerpoint 2007+ Presentation (.pptx)'
+    content_types = ('application/vnd.openxmlformats-officedocument.presentationml.presentation',)
     extensions = ['pptx']
 
 class FType_Powerpoint2007_Slideshow(FType_Powerpoint2007):
     filetype = FTYPE.POWERPOINT2007_PPSX
     name = 'MSPowerpoint 2007+ Slideshow'
     longname = 'MSPowerpoint 2007+ Slideshow (.ppsx)'
+    content_types = ('application/vnd.openxmlformats-officedocument.presentationml.slideshow',)
     extensions = ['ppsx']
 
 class FType_Powerpoint2007_Macro(FType_Powerpoint2007):
     filetype = FTYPE.POWERPOINT2007_PPTM
     name = 'MSPowerpoint 2007+ Macro-Enabled Presentation'
     longname = 'MSPowerpoint 2007+ Macro-Enabled Presentation (.pptm)'
+    content_types = ('application/vnd.ms-powerpoint.presentation.macroEnabled.12',)
     extensions = ['pptm']
 
 class FType_Powerpoint2007_Slideshow_Macro(FType_Powerpoint2007):
     filetype = FTYPE.POWERPOINT2007_PPSM
     name = 'MSPowerpoint 2007+ Macro-Enabled Slideshow'
     longname = 'MSPowerpoint 2007+ Macro-Enabled Slideshow (.ppsm)'
+    content_types = ('application/vnd.ms-powerpoint.slideshow.macroEnabled.12',)
     extensions = ['ppsm']
 
 
@@ -752,12 +756,19 @@ openxml_ftypes = {
     'application/vnd.ms-excel.template.macroEnabled.main+xml': FType_Excel2007_Template_Macro,
     'application/vnd.ms-excel.addin.macroEnabled.main+xml': FType_Excel2007_Addin_Macro,
     # POWERPOINT
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml': FType_Powerpoint2007_Presentation,
-    'application/vnd.openxmlformats-officedocument.presentationml.slideshow.main+xml': FType_Powerpoint2007_Slideshow,
-    'application/vnd.ms-powerpoint.presentation.macroEnabled.main+xml': FType_Powerpoint2007_Macro,
-    'application/vnd.ms-powerpoint.slideshow.macroEnabled.main+xml': FType_Powerpoint2007_Slideshow_Macro,
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml': FType_Powerpoint2007_Presentation, #PPTX
+    'application/vnd.openxmlformats-officedocument.presentationml.slideshow.main+xml': FType_Powerpoint2007_Slideshow, #PPSX
+    'application/vnd.ms-powerpoint.presentation.macroEnabled.main+xml': FType_Powerpoint2007_Macro, #PPTM
+    'application/vnd.ms-powerpoint.slideshow.macroEnabled.main+xml': FType_Powerpoint2007_Slideshow_Macro, #PPSM
+
+    # TODO: add missing PowerPoint formats:
+    # PPAM – PowerPoint Add-in Open Office XML File Format. Mime type is application/vnd.ms-powerpoint.addin.macroEnabled.12.
+    # POTX – PowerPoint Template Open Office XML File Format. Mime type is application/vnd.openxmlformats-officedocument.presentationml.template.
+    # POTM – PowerPoint Macro-Enabled Template Open Office XML File Format. Mime type is application/vnd.ms-powerpoint.template.macroEnabled.12.
+
     # XPS
     'application/vnd.ms-package.xps-fixeddocumentsequence+xml': FType_XPS,
+    #TODO: Add MSIX
 }
 
 
