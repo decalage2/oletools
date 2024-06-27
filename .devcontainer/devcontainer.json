@@ -12,6 +12,7 @@
       },
       "vscode": {
         "extensions": [
+          "EditorConfig.EditorConfig",
           "ms-python.python"
         ]
       }
