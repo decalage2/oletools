@@ -236,7 +236,7 @@ from __future__ import print_function
 # 2021-04-14       PL: - added detection of Workbook_BeforeClose (issue #518)
 # 2021-11-09       KJ: - added PROJECTCOMPATVERSION Record on dir Stream
 
-__version__ = '0.60.2dev5'
+__version__ = '0.60.2'
 
 #------------------------------------------------------------------------------
 # TODO:

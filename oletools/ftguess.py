@@ -17,7 +17,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# ftguess is copyright (c) 2018-2023, Philippe Lagadec (http://www.decalage.info)
+# ftguess is copyright (c) 2018-2024, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -47,7 +47,7 @@ from __future__ import print_function
 # 2018-07-04 v0.54 PL: - first version
 # 2021-05-09 v0.60 PL: -
 
-__version__ = '0.60.2dev3'
+__version__ = '0.60.2'
 
 # ------------------------------------------------------------------------------
 # TODO:

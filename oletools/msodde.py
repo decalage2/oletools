@@ -103,7 +103,7 @@ from oletools.common.log_helper import log_helper
 # 2019-07-17 v0.55 CH: - fixed issue #267, unicode error on Python 2
 
 
-__version__ = '0.55'
+__version__ = '0.60.2'
 
 # -----------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these
@@ -435,6 +435,8 @@ def process_doc(ole):
         if is_stream:
             new_parts = process_doc_stream(
                 ole._open(direntry.isectStart, direntry.size))
+            if new_parts:
+                logger.debug("stream %r: %r" % (direntry.name, new_parts))
             links.extend(new_parts)
 
     # mimic behaviour of process_docx: combine links to single text string
@@ -646,7 +648,7 @@ def process_xlsx(filepath):
     """ process an OOXML excel file (e.g. .xlsx or .xlsb or .xlsm) """
     dde_links = []
     parser = ooxml.XmlParser(filepath)
-    for _, elem, _ in parser.iter_xml():
+    for subfilename, elem, _ in parser.iter_xml():
         tag = elem.tag.lower()
         if tag == 'ddelink' or tag.endswith('}ddelink'):
             # we have found a dde link. Try to get more info about it
@@ -656,6 +658,7 @@ def process_xlsx(filepath):
             if 'ddeTopic' in elem.attrib:
                 link_info.append(elem.attrib['ddeTopic'])
             dde_links.append(u' '.join(link_info))
+            logger.debug('Found tag "%s" in file %s: %s' % (tag, subfilename, repr(link_info)))
 
     # binary parts, e.g. contained in .xlsb
     for subfile, content_type, handle in parser.iter_non_xml():

@@ -7,8 +7,15 @@ python-oletools
 [oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze
 [Microsoft OLE2 files](http://en.wikipedia.org/wiki/Compound_File_Binary_Format) 
 (also called Structured Storage, Compound File Binary Format or Compound Document File Format), 
-such as Microsoft Office documents or Outlook messages, mainly for malware analysis, forensics and debugging. 
+such as Microsoft Office 97-2003 documents, MSI files or Outlook messages, mainly for malware analysis, 
+forensics and debugging. 
 It is based on the [olefile](http://www.decalage.info/olefile) parser. 
+
+It also provides tools to analyze RTF files and files based on the [OpenXML format](https://en.wikipedia.org/wiki/Office_Open_XML) 
+(aka OOXML) such as MS Office 2007+ documents, XPS or MSIX files.
+
+For example, oletools can detect, extract and analyse VBA macros, OLE objects, Excel 4 macros (XLM) and DDE links.
+
 See [http://www.decalage.info/python/oletools](http://www.decalage.info/python/oletools) for more info.  
 
 **Quick links:** 
@@ -26,6 +33,16 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
+- **2024-06-27 v0.60.2**:
+    - olevba: 
+      - fixed a bug in open_slk (issue #797, PR #769)
+      - fixed a bug due to new PROJECTCOMPATVERSION record in dir stream (PR #723, issues #700, #701, #725, #791, #808, #811, #833)
+    - oleobj: fixed SyntaxError with Python 3.12 (PR #855), SyntaxWarning (PR #774)
+    - rtfobj: fixed SyntaxError with Python 3.12 (PR #854)
+    - clsid: added CLSIDs for MSI, Zed
+    - ftguess: added MSI, PNG and OneNote formats
+    - pyxswf: fixed python 3.12 compatibility (PR #841, issue #813)
+    - setup/requirements: allow pyparsing 3 to solve install issues (PR #812, issue #762)
 - **2022-05-09 v0.60.1**:
     - olevba: 
       - fixed a bug when calling XLMMacroDeobfuscator (PR #737)
@@ -54,63 +71,6 @@ News
         - fixed bug in re_executable_extensions
     - crypto: added PowerPoint transparent password '/01Hannes Ruescher/01' (issue #627)
     - setup: XLMMacroDeobfuscator, xlrd2 and pyxlsb2 added as optional dependencies 
-- **2021-05-07 v0.56.2**:
-    - olevba:
-        - updated plugin_biff to v0.0.22 to fix a bug (issues #647, #674)
-    - olevba, mraptor:
-        - added detection of Workbook_BeforeClose (issue #518)
-    - rtfobj:
-        - fixed bug when OLE package class name ends with null characters (issue #507, PR #648)
-    - oleid:
-        - fixed bug in check_excel (issue #584, PR #585)
-    - clsid:
-        - added several CLSIDs related to MS Office click-to-run issue CVE-2021-27058
-        - added checks to ensure that all CLSIDs are uppercase (PR #678) 
-- **2021-04-02 v0.56.1**:
-    - olevba:
-        - fixed bug when parsing some malformed files (issue #629)
-    - oleobj:
-        - fixed bug preventing detection of links 'externalReference', 'frame', 
-          'hyperlink' (issue #641, PR #670)
-    - setup:
-        - avoid installing msoffcrypto-tool when platform is PyPy+Windows (issue #473)
-        - PyPI version is now a wheel package to improve installation and avoid antivirus 
-          false positives due to test files (issues #215, #398)
-- **2020-09-28 v0.56**:
-    - olevba/mraptor:
-        - added detection of trigger _OnConnecting
-    - olevba:
-        - updated plugin_biff to v0.0.17 to improve Excel 4/XLM macros parsing
-        - added simple analysis of Excel 4/XLM macros in XLSM files (PR #569)
-        - added detection of template injection (PR #569)
-        - added detection of many suspicious keywords (PR #591 and #569, see https://www.certego.net/en/news/advanced-vba-macros/)
-        - improved MHT detection (PR #532)
-        - added --no-xlm option to disable Excel 4/XLM macros parsing (PR #532)
-        - fixed bug when decompressing raw chunks in VBA (issue #575)
-        - fixed bug with email package due to monkeypatch for MHT parsing (issue #602, PR #604)
-        - fixed option --relaxed (issue #596, PR #595)
-        - enabled relaxed mode by default (issues #477, #593)
-        - fixed detect_vba_macros to always return VBA code as
-          unicode on Python 3 (issues  #455, #477, #587, #593)
-        - replaced option --pcode by --show-pcode and --no-pcode,
-          replaced optparse by argparse (PR #479)
-    - oleform: improved form parsing (PR #532)
-    - oleobj: "Ole10Native" is now case insensitive (issue #541)
-    - clsid: added PDF (issue #552), Microsoft Word Picture (issue #571)
-    - ppt_parser: fixed bug on Python 3 (issues #177, #607, PR #450)
-- **2019-12-03 v0.55**:
-    - olevba:
-        - added support for SLK files and XLM macro extraction from SLK
-        - VBA Stomping detection
-        - integrated pcodedmp to extract and disassemble P-code
-        - detection of suspicious keywords and IOCs in P-code
-        - new option --pcode to display P-code disassembly
-        - improved detection of auto execution triggers
-    - rtfobj: added URL carver for CVE-2017-0199
-    - better handling of unicode for systems with locale that does not support UTF-8, e.g. LANG=C (PR #365)
-    - tests: 
-        - test files can now be encrypted, to avoid antivirus alerts (PR #217, issue #215)
-        - tests that trigger antivirus alerts have been temporarily disabled (issue #215)
 
 See the [full changelog](https://github.com/decalage2/oletools/wiki/Changelog) for more information.
 
