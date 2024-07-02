@@ -76,8 +76,6 @@ except ImportError:
 ###############################################################################
 
 
-logger = log_helper.get_or_create_silent_logger('ooxml')
-
 #: subfiles that have to be part of every ooxml file
 FILE_CONTENT_TYPES = '[Content_Types].xml'
 FILE_RELATIONSHIPS = '_rels/.rels'
@@ -118,6 +116,19 @@ DOCTYPE_WORD_XML = 'word-xml'
 DOCTYPE_EXCEL_XML = 'excel-xml'
 DOCTYPE_WORD_XML2003 = 'word-xml2003'
 DOCTYPE_EXCEL_XML2003 = 'excel-xml2003'
+
+
+###############################################################################
+# LOGGING
+###############################################################################
+
+
+logger = log_helper.get_or_create_silent_logger('ooxml')
+
+
+def enable_logging():
+    """Enable logging in this module; for use by importing scripts"""
+    logger.setLevel(log_helper.NOTSET)
 
 
 ###############################################################################
