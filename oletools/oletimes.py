@@ -111,8 +111,6 @@ def process_ole(ole):
 def main():
     # print banner with version
     print('oletimes %s - http://decalage.info/python/oletools' % __version__)
-    print ('THIS IS WORK IN PROGRESS - Check updates regularly!')
-    print ('Please report any issue at https://github.com/decalage2/oletools/issues')
 
     usage = 'usage: oletimes [options] <filename> [filename2 ...]'
     parser = optparse.OptionParser(usage=usage)
