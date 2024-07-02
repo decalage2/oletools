@@ -33,7 +33,7 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2024-06-27 v0.60.2**:
+- **2024-07-02 v0.60.2**:
     - olevba: 
       - fixed a bug in open_slk (issue #797, PR #769)
       - fixed a bug due to new PROJECTCOMPATVERSION record in dir stream (PR #723, issues #700, #701, #725, #791, #808, #811, #833)
