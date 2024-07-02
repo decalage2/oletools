@@ -4,25 +4,177 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Untitled</title>
-  <style type="text/css">
-      code{white-space: pre-wrap;}
-      span.smallcaps{font-variant: small-caps;}
-      span.underline{text-decoration: underline;}
-      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  <title>-</title>
+  <style>
+    html {
+      line-height: 1.5;
+      font-family: Georgia, serif;
+      font-size: 20px;
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 1em;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, 'Lucida Console', Consolas, monospace;
+      font-size: 85%;
+      margin: 0;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
   </style>
-  <!--[if lt IE 9]>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
-  <![endif]-->
 </head>
 <body>
 <h1 id="mraptor-macroraptor">mraptor (MacroRaptor)</h1>
-<p>mraptor is a tool designed to detect most malicious VBA Macros using generic heuristics. Unlike antivirus engines, it does not rely on signatures.</p>
-<p>In a nutshell, mraptor detects keywords corresponding to the three following types of behaviour that are present in clear text in almost any macro malware: - A: Auto-execution trigger - W: Write to the file system or memory - X: Execute a file or any payload outside the VBA context</p>
-<p>mraptor considers that a macro is suspicious when A and (W or X) is true.</p>
-<p>For more information about mraptor’s detection algorithm, see the article <a href="http://www.decalage.info/mraptor">How to detect most malicious macros without an antivirus</a>.</p>
-<p>mraptor can be used either as a command-line tool, or as a python module from your own applications.</p>
-<p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
+<p>mraptor is a tool designed to detect most malicious VBA Macros using
+generic heuristics. Unlike antivirus engines, it does not rely on
+signatures.</p>
+<p>In a nutshell, mraptor detects keywords corresponding to the three
+following types of behaviour that are present in clear text in almost
+any macro malware: - A: Auto-execution trigger - W: Write to the file
+system or memory - X: Execute a file or any payload outside the VBA
+context</p>
+<p>mraptor considers that a macro is suspicious when A and (W or X) is
+true.</p>
+<p>For more information about mraptor’s detection algorithm, see the
+article <a href="http://www.decalage.info/mraptor">How to detect most
+malicious macros without an antivirus</a>.</p>
+<p>mraptor can be used either as a command-line tool, or as a python
+module from your own applications.</p>
+<p>It is part of the <a
+href="http://www.decalage.info/python/oletools">python-oletools</a>
+package.</p>
 <h2 id="usage">Usage</h2>
 <pre class="text"><code>Usage: mraptor [options] &lt;filename&gt; [filename2 ...]
 
@@ -50,24 +202,34 @@ An exit code is returned based on the analysis result:
 <h3 id="examples">Examples</h3>
 <p>Scan a single file:</p>
 <pre class="text"><code>mraptor file.doc</code></pre>
-<p>Scan a single file, stored in a Zip archive with password “infected”:</p>
+<p>Scan a single file, stored in a Zip archive with password
+“infected”:</p>
 <pre class="text"><code>mraptor malicious_file.xls.zip -z infected</code></pre>
 <p>Scan a collection of files stored in a folder:</p>
 <pre class="text"><code>mraptor &quot;MalwareZoo/VBA/*&quot;</code></pre>
-<p><strong>Important</strong>: on Linux/MacOSX, always add double quotes around a file name when you use wildcards such as <code>*</code> and <code>?</code>. Otherwise, the shell may replace the argument with the actual list of files matching the wildcards before starting the script.</p>
+<p><strong>Important</strong>: on Linux/MacOSX, always add double quotes
+around a file name when you use wildcards such as <code>*</code> and
+<code>?</code>. Otherwise, the shell may replace the argument with the
+actual list of files matching the wildcards before starting the
+script.</p>
 <p><img src="mraptor1.png" /></p>
 <h2 id="python-3-support---mraptor3">Python 3 support - mraptor3</h2>
-<p>Since v0.54, mraptor is fully compatible with both Python 2 and 3. There is no need to use mraptor3 anymore, however it is still present for backward compatibility.</p>
+<p>Since v0.54, mraptor is fully compatible with both Python 2 and 3.
+There is no need to use mraptor3 anymore, however it is still present
+for backward compatibility.</p>
 <hr />
-<h2 id="how-to-use-mraptor-in-python-applications">How to use mraptor in Python applications</h2>
+<h2 id="how-to-use-mraptor-in-python-applications">How to use mraptor in
+Python applications</h2>
 <p>TODO</p>
 <hr />
-<h2 id="python-oletools-documentation">python-oletools documentation</h2>
+<h2 id="python-oletools-documentation">python-oletools
+documentation</h2>
 <ul>
 <li><a href="Home.html">Home</a></li>
 <li><a href="License.html">License</a></li>
 <li><a href="Install.html">Install</a></li>
-<li><a href="Contribute.html">Contribute</a>, Suggest Improvements or Report Issues</li>
+<li><a href="Contribute.html">Contribute</a>, Suggest Improvements or
+Report Issues</li>
 <li>Tools:
 <ul>
 <li><a href="mraptor.html">mraptor</a></li>

@@ -4,40 +4,231 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Untitled</title>
-  <style type="text/css">
-      code{white-space: pre-wrap;}
-      span.smallcaps{font-variant: small-caps;}
-      span.underline{text-decoration: underline;}
-      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  <title>-</title>
+  <style>
+    html {
+      line-height: 1.5;
+      font-family: Georgia, serif;
+      font-size: 20px;
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 1em;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, 'Lucida Console', Consolas, monospace;
+      font-size: 85%;
+      margin: 0;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
   </style>
-  <!--[if lt IE 9]>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
-  <![endif]-->
 </head>
 <body>
 <h1 id="python-oletools">python-oletools</h1>
-<p><a href="https://pypi.org/project/oletools/"><img src="https://img.shields.io/pypi/v/oletools.svg" alt="PyPI" /></a> <a href="https://travis-ci.org/decalage2/oletools"><img src="https://travis-ci.org/decalage2/oletools.svg?branch=master" alt="Build Status" /></a> <a href="https://saythanks.io/to/decalage2"><img src="https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg" alt="Say Thanks!" /></a></p>
-<p><a href="http://www.decalage.info/python/oletools">oletools</a> is a package of python tools to analyze <a href="http://en.wikipedia.org/wiki/Compound_File_Binary_Format">Microsoft OLE2 files</a> (also called Structured Storage, Compound File Binary Format or Compound Document File Format), such as Microsoft Office documents or Outlook messages, mainly for malware analysis, forensics and debugging. It is based on the <a href="http://www.decalage.info/olefile">olefile</a> parser. See <a href="http://www.decalage.info/python/oletools" class="uri">http://www.decalage.info/python/oletools</a> for more info.</p>
-<p><strong>Quick links:</strong> <a href="http://www.decalage.info/python/oletools">Home page</a> - <a href="https://github.com/decalage2/oletools/wiki/Install">Download/Install</a> - <a href="https://github.com/decalage2/oletools/wiki">Documentation</a> - <a href="https://github.com/decalage2/oletools/issues">Report Issues/Suggestions/Questions</a> - <a href="http://decalage.info/contact">Contact the Author</a> - <a href="https://github.com/decalage2/oletools">Repository</a> - <a href="https://twitter.com/decalage2">Updates on Twitter</a> <a href="https://github.com/decalage2/oletools/blob/master/cheatsheet/oletools_cheatsheet.pdf">Cheatsheet</a></p>
-<p>Note: python-oletools is not related to OLETools published by BeCubed Software.</p>
+<p><a href="https://pypi.org/project/oletools/"><img
+src="https://img.shields.io/pypi/v/oletools.svg" alt="PyPI" /></a> <a
+href="https://travis-ci.org/decalage2/oletools"><img
+src="https://travis-ci.org/decalage2/oletools.svg?branch=master"
+alt="Build Status" /></a> <a
+href="https://saythanks.io/to/decalage2"><img
+src="https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg"
+alt="Say Thanks!" /></a></p>
+<p><a href="http://www.decalage.info/python/oletools">oletools</a> is a
+package of python tools to analyze <a
+href="http://en.wikipedia.org/wiki/Compound_File_Binary_Format">Microsoft
+OLE2 files</a> (also called Structured Storage, Compound File Binary
+Format or Compound Document File Format), such as Microsoft Office
+97-2003 documents, MSI files or Outlook messages, mainly for malware
+analysis, forensics and debugging. It is based on the <a
+href="http://www.decalage.info/olefile">olefile</a> parser.</p>
+<p>It also provides tools to analyze RTF files and files based on the <a
+href="https://en.wikipedia.org/wiki/Office_Open_XML">OpenXML format</a>
+(aka OOXML) such as MS Office 2007+ documents, XPS or MSIX files.</p>
+<p>For example, oletools can detect, extract and analyse VBA macros, OLE
+objects, Excel 4 macros (XLM) and DDE links.</p>
+<p>See <a
+href="http://www.decalage.info/python/oletools">http://www.decalage.info/python/oletools</a>
+for more info.</p>
+<p><strong>Quick links:</strong> <a
+href="http://www.decalage.info/python/oletools">Home page</a> - <a
+href="https://github.com/decalage2/oletools/wiki/Install">Download/Install</a>
+- <a href="https://github.com/decalage2/oletools/wiki">Documentation</a>
+- <a href="https://github.com/decalage2/oletools/issues">Report
+Issues/Suggestions/Questions</a> - <a
+href="http://decalage.info/contact">Contact the Author</a> - <a
+href="https://github.com/decalage2/oletools">Repository</a> - <a
+href="https://twitter.com/decalage2">Updates on Twitter</a> <a
+href="https://github.com/decalage2/oletools/blob/master/cheatsheet/oletools_cheatsheet.pdf">Cheatsheet</a></p>
+<p>Note: python-oletools is not related to OLETools published by BeCubed
+Software.</p>
 <h2 id="news">News</h2>
 <ul>
+<li><strong>2024-06-27 v0.60.2</strong>:
+<ul>
+<li>olevba:
+<ul>
+<li>fixed a bug in open_slk (issue #797, PR #769)</li>
+<li>fixed a bug due to new PROJECTCOMPATVERSION record in dir stream (PR
+#723, issues #700, #701, #725, #791, #808, #811, #833)</li>
+</ul></li>
+<li>oleobj: fixed SyntaxError with Python 3.12 (PR #855), SyntaxWarning
+(PR #774)</li>
+<li>rtfobj: fixed SyntaxError with Python 3.12 (PR #854)</li>
+<li>clsid: added CLSIDs for MSI, Zed</li>
+<li>ftguess: added MSI, PNG and OneNote formats</li>
+<li>pyxswf: fixed python 3.12 compatibility (PR #841, issue #813)</li>
+<li>setup/requirements: allow pyparsing 3 to solve install issues (PR
+#812, issue #762)</li>
+</ul></li>
 <li><strong>2022-05-09 v0.60.1</strong>:
 <ul>
 <li>olevba:
 <ul>
 <li>fixed a bug when calling XLMMacroDeobfuscator (PR #737)</li>
-<li>removed keyword &quot;sample&quot; causing false positives</li>
+<li>removed keyword "sample" causing false positives</li>
 </ul></li>
 <li>oleid: fixed OleID init issue (issue #695, PR #696)</li>
 <li>oleobj:
 <ul>
 <li>added simple detection of CVE-2021-40444 initial stage</li>
 <li>added detection for customUI onLoad</li>
-<li>improved handling of incorrect filenames in OLE package (PR #451)</li>
+<li>improved handling of incorrect filenames in OLE package (PR
+#451)</li>
 </ul></li>
-<li>rtfobj: fixed code to find URLs in OLE2Link objects for Py3 (issue #692)</li>
+<li>rtfobj: fixed code to find URLs in OLE2Link objects for Py3 (issue
+#692)</li>
 <li>ftguess:
 <ul>
 <li>added PowerPoint and XPS formats (PR #716)</li>
@@ -48,7 +239,8 @@
 </ul></li>
 <li><strong>2021-06-02 v0.60</strong>:
 <ul>
-<li>ftguess: new tool to identify file formats and containers (issue #680)</li>
+<li>ftguess: new tool to identify file formats and containers (issue
+#680)</li>
 <li>oleid: (issue #679)
 <ul>
 <li>each indicator now has a risk level</li>
@@ -58,160 +250,232 @@
 </ul></li>
 <li>olevba:
 <ul>
-<li>when XLMMacroDeobfuscator is available, use it to extract and deobfuscate XLM macros</li>
+<li>when XLMMacroDeobfuscator is available, use it to extract and
+deobfuscate XLM macros</li>
 </ul></li>
 <li>rtfobj:
 <ul>
 <li>use ftguess to identify file type of OLE Package (issue #682)</li>
 <li>fixed bug in re_executable_extensions</li>
 </ul></li>
-<li>crypto: added PowerPoint transparent password '/01Hannes Ruescher/01' (issue #627)</li>
-<li>setup: XLMMacroDeobfuscator, xlrd2 and pyxlsb2 added as optional dependencies</li>
-</ul></li>
-<li><strong>2021-05-07 v0.56.2</strong>:
-<ul>
-<li>olevba:
-<ul>
-<li>updated plugin_biff to v0.0.22 to fix a bug (issues #647, #674)</li>
-</ul></li>
-<li>olevba, mraptor:
-<ul>
-<li>added detection of Workbook_BeforeClose (issue #518)</li>
-</ul></li>
-<li>rtfobj:
-<ul>
-<li>fixed bug when OLE package class name ends with null characters (issue #507, PR #648)</li>
-</ul></li>
-<li>oleid:
-<ul>
-<li>fixed bug in check_excel (issue #584, PR #585)</li>
-</ul></li>
-<li>clsid:
-<ul>
-<li>added several CLSIDs related to MS Office click-to-run issue CVE-2021-27058</li>
-<li>added checks to ensure that all CLSIDs are uppercase (PR #678)</li>
-</ul></li>
-</ul></li>
-<li><strong>2021-04-02 v0.56.1</strong>:
-<ul>
-<li>olevba:
-<ul>
-<li>fixed bug when parsing some malformed files (issue #629)</li>
-</ul></li>
-<li>oleobj:
-<ul>
-<li>fixed bug preventing detection of links 'externalReference', 'frame', 'hyperlink' (issue #641, PR #670)</li>
-</ul></li>
-<li>setup:
-<ul>
-<li>avoid installing msoffcrypto-tool when platform is PyPy+Windows (issue #473)</li>
-<li>PyPI version is now a wheel package to improve installation and avoid antivirus false positives due to test files (issues #215, #398)</li>
-</ul></li>
-</ul></li>
-<li><strong>2020-09-28 v0.56</strong>:
-<ul>
-<li>olevba/mraptor:
-<ul>
-<li>added detection of trigger _OnConnecting</li>
-</ul></li>
-<li>olevba:
-<ul>
-<li>updated plugin_biff to v0.0.17 to improve Excel 4/XLM macros parsing</li>
-<li>added simple analysis of Excel 4/XLM macros in XLSM files (PR #569)</li>
-<li>added detection of template injection (PR #569)</li>
-<li>added detection of many suspicious keywords (PR #591 and #569, see https://www.certego.net/en/news/advanced-vba-macros/)</li>
-<li>improved MHT detection (PR #532)</li>
-<li>added --no-xlm option to disable Excel 4/XLM macros parsing (PR #532)</li>
-<li>fixed bug when decompressing raw chunks in VBA (issue #575)</li>
-<li>fixed bug with email package due to monkeypatch for MHT parsing (issue #602, PR #604)</li>
-<li>fixed option --relaxed (issue #596, PR #595)</li>
-<li>enabled relaxed mode by default (issues #477, #593)</li>
-<li>fixed detect_vba_macros to always return VBA code as unicode on Python 3 (issues #455, #477, #587, #593)</li>
-<li>replaced option --pcode by --show-pcode and --no-pcode, replaced optparse by argparse (PR #479)</li>
-</ul></li>
-<li>oleform: improved form parsing (PR #532)</li>
-<li>oleobj: &quot;Ole10Native&quot; is now case insensitive (issue #541)</li>
-<li>clsid: added PDF (issue #552), Microsoft Word Picture (issue #571)</li>
-<li>ppt_parser: fixed bug on Python 3 (issues #177, #607, PR #450)</li>
-</ul></li>
-<li><strong>2019-12-03 v0.55</strong>:
-<ul>
-<li>olevba:
-<ul>
-<li>added support for SLK files and XLM macro extraction from SLK</li>
-<li>VBA Stomping detection</li>
-<li>integrated pcodedmp to extract and disassemble P-code</li>
-<li>detection of suspicious keywords and IOCs in P-code</li>
-<li>new option --pcode to display P-code disassembly</li>
-<li>improved detection of auto execution triggers</li>
-</ul></li>
-<li>rtfobj: added URL carver for CVE-2017-0199</li>
-<li>better handling of unicode for systems with locale that does not support UTF-8, e.g. LANG=C (PR #365)</li>
-<li>tests:
-<ul>
-<li>test files can now be encrypted, to avoid antivirus alerts (PR #217, issue #215)</li>
-<li>tests that trigger antivirus alerts have been temporarily disabled (issue #215)</li>
-</ul></li>
+<li>crypto: added PowerPoint transparent password '/01Hannes
+Ruescher/01' (issue #627)</li>
+<li>setup: XLMMacroDeobfuscator, xlrd2 and pyxlsb2 added as optional
+dependencies</li>
 </ul></li>
 </ul>
-<p>See the <a href="https://github.com/decalage2/oletools/wiki/Changelog">full changelog</a> for more information.</p>
+<p>See the <a
+href="https://github.com/decalage2/oletools/wiki/Changelog">full
+changelog</a> for more information.</p>
 <h2 id="tools">Tools:</h2>
-<h3 id="tools-to-analyze-malicious-documents">Tools to analyze malicious documents</h3>
+<h3 id="tools-to-analyze-malicious-documents">Tools to analyze malicious
+documents</h3>
 <ul>
-<li><a href="https://github.com/decalage2/oletools/wiki/oleid">oleid</a>: to analyze OLE files to detect specific characteristics usually found in malicious files.</li>
-<li><a href="https://github.com/decalage2/oletools/wiki/olevba">olevba</a>: to extract and analyze VBA Macro source code from MS Office documents (OLE and OpenXML).</li>
-<li><a href="https://github.com/decalage2/oletools/wiki/mraptor">MacroRaptor</a>: to detect malicious VBA Macros</li>
-<li><a href="https://github.com/decalage2/oletools/wiki/msodde">msodde</a>: to detect and extract DDE/DDEAUTO links from MS Office documents, RTF and CSV</li>
-<li><a href="https://github.com/decalage2/oletools/wiki/pyxswf">pyxswf</a>: to detect, extract and analyze Flash objects (SWF) that may be embedded in files such as MS Office documents (e.g. Word, Excel) and RTF, which is especially useful for malware analysis.</li>
-<li><a href="https://github.com/decalage2/oletools/wiki/oleobj">oleobj</a>: to extract embedded objects from OLE files.</li>
-<li><a href="https://github.com/decalage2/oletools/wiki/rtfobj">rtfobj</a>: to extract embedded objects from RTF files.</li>
+<li><a
+href="https://github.com/decalage2/oletools/wiki/oleid">oleid</a>: to
+analyze OLE files to detect specific characteristics usually found in
+malicious files.</li>
+<li><a
+href="https://github.com/decalage2/oletools/wiki/olevba">olevba</a>: to
+extract and analyze VBA Macro source code from MS Office documents (OLE
+and OpenXML).</li>
+<li><a
+href="https://github.com/decalage2/oletools/wiki/mraptor">MacroRaptor</a>:
+to detect malicious VBA Macros</li>
+<li><a
+href="https://github.com/decalage2/oletools/wiki/msodde">msodde</a>: to
+detect and extract DDE/DDEAUTO links from MS Office documents, RTF and
+CSV</li>
+<li><a
+href="https://github.com/decalage2/oletools/wiki/pyxswf">pyxswf</a>: to
+detect, extract and analyze Flash objects (SWF) that may be embedded in
+files such as MS Office documents (e.g. Word, Excel) and RTF, which is
+especially useful for malware analysis.</li>
+<li><a
+href="https://github.com/decalage2/oletools/wiki/oleobj">oleobj</a>: to
+extract embedded objects from OLE files.</li>
+<li><a
+href="https://github.com/decalage2/oletools/wiki/rtfobj">rtfobj</a>: to
+extract embedded objects from RTF files.</li>
 </ul>
-<h3 id="tools-to-analyze-the-structure-of-ole-files">Tools to analyze the structure of OLE files</h3>
+<h3 id="tools-to-analyze-the-structure-of-ole-files">Tools to analyze
+the structure of OLE files</h3>
 <ul>
-<li><a href="https://github.com/decalage2/oletools/wiki/olebrowse">olebrowse</a>: A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to view and extract individual data streams.</li>
-<li><a href="https://github.com/decalage2/oletools/wiki/olemeta">olemeta</a>: to extract all standard properties (metadata) from OLE files.</li>
-<li><a href="https://github.com/decalage2/oletools/wiki/oletimes">oletimes</a>: to extract creation and modification timestamps of all streams and storages.</li>
-<li><a href="https://github.com/decalage2/oletools/wiki/oledir">oledir</a>: to display all the directory entries of an OLE file, including free and orphaned entries.</li>
-<li><a href="https://github.com/decalage2/oletools/wiki/olemap">olemap</a>: to display a map of all the sectors in an OLE file.</li>
+<li><a
+href="https://github.com/decalage2/oletools/wiki/olebrowse">olebrowse</a>:
+A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint
+documents), to view and extract individual data streams.</li>
+<li><a
+href="https://github.com/decalage2/oletools/wiki/olemeta">olemeta</a>:
+to extract all standard properties (metadata) from OLE files.</li>
+<li><a
+href="https://github.com/decalage2/oletools/wiki/oletimes">oletimes</a>:
+to extract creation and modification timestamps of all streams and
+storages.</li>
+<li><a
+href="https://github.com/decalage2/oletools/wiki/oledir">oledir</a>: to
+display all the directory entries of an OLE file, including free and
+orphaned entries.</li>
+<li><a
+href="https://github.com/decalage2/oletools/wiki/olemap">olemap</a>: to
+display a map of all the sectors in an OLE file.</li>
 </ul>
 <h2 id="projects-using-oletools">Projects using oletools:</h2>
-<p>oletools are used by a number of projects and online malware analysis services, including <a href="https://github.com/IntegralDefense/ACE">ACE</a>, <a href="https://sandbox.anlyz.io/">Anlyz.io</a>, <a href="https://www.cse-cst.gc.ca/en/assemblyline">AssemblyLine</a>, <a href="https://github.com/ctxis/CAPE">CAPE</a>, <a href="https://cincan.io">CinCan</a>, <a href="https://github.com/cuckoosandbox/cuckoo">Cuckoo Sandbox</a>, <a href="https://github.com/cryps1s/DARKSURGEON">DARKSURGEON</a>, <a href="https://sandbox.deepviz.com/">Deepviz</a>, <a href="https://diario.elevenpaths.com/">DIARIO</a>, <a href="https://dridex.malwareconfig.com">dridex.malwareconfig.com</a>, <a href="https://github.com/ninoseki/eml_analyzer">EML Analyzer</a>, <a href="https://certsocietegenerale.github.io/fame/">FAME</a>, <a href="https://github.com/fireeye/flare-vm">FLARE-VM</a>, <a href="https://www.hybrid-analysis.com/">Hybrid-analysis.com</a>, <a href="https://github.com/certego/IntelOwl">IntelOwl</a>, <a href="https://www.document-analyzer.net/">Joe Sandbox</a>, <a href="https://github.com/lmco/laikaboss">Laika BOSS</a>, <a href="https://github.com/sbidy/MacroMilter">MacroMilter</a>, <a href="https://mailcow.email/">mailcow</a>, <a href="https://malshare.io">malshare.io</a>, <a href="https://github.com/Tigzy/malware-repo">malware-repo</a>, <a href="https://www.adlice.com/download/mrf/">Malware Repository Framework (MRF)</a>, <a href="https://bazaar.abuse.ch/">MalwareBazaar</a>, <a href="https://github.com/HeinleinSupport/olefy">olefy</a>, <a href="https://github.com/pandora-analysis/pandora">Pandora</a>, <a href="https://github.com/scVENUS/PeekabooAV">PeekabooAV</a>, <a href="https://github.com/bontchev/pcodedmp">pcodedmp</a>, <a href="https://github.com/CIRCL/PyCIRCLean">PyCIRCLean</a>, <a href="https://remnux.org/">REMnux</a>, <a href="https://github.com/countercept/snake">Snake</a>, <a href="https://app.sndbox.com">SNDBOX</a>, <a href="https://splunkbase.splunk.com/app/5365/">Splunk add-on for MS O365 Email</a>, <a href="https://github.com/ldbo/SpuriousEmu">SpuriousEmu</a>, <a href="https://github.com/target/strelka">Strelka</a>, <a href="https://stoq.punchcyber.com/">stoQ</a>, <a href="https://docs.sublimesecurity.com/docs/enrichment-functions">Sublime Platform/MQL</a>, <a href="https://github.com/TheHive-Project/Cortex-Analyzers">TheHive/Cortex</a>, <a href="https://tsurugi-linux.org/">TSUGURI Linux</a>, <a href="https://github.com/MalwareCantFly/Vba2Graph">Vba2Graph</a>, <a href="http://viper.li/">Viper</a>, <a href="https://github.com/decalage2/ViperMonkey">ViperMonkey</a>, <a href="https://yomi.yoroi.company">YOMI</a>, and probably <a href="https://www.virustotal.com">VirusTotal</a>, <a href="https://www.filescan.io">FileScan.IO</a>. And quite a few <a href="https://github.com/search?q=oletools&amp;type=Repositories">other projects on GitHub</a>. (Please <a href="(http://decalage.info/contact)">contact me</a> if you have or know a project using oletools)</p>
+<p>oletools are used by a number of projects and online malware analysis
+services, including <a
+href="https://github.com/IntegralDefense/ACE">ACE</a>, <a
+href="https://www.blackhat.com/eu-23/briefings/schedule/index.html#unmasking-apts-an-automated-approach-for-real-world-threat-attribution-35162">ADAPT</a>,
+<a href="https://sandbox.anlyz.io/">Anlyz.io</a>, <a
+href="https://www.cse-cst.gc.ca/en/assemblyline">AssemblyLine</a>, <a
+href="https://github.com/binref/refinery">Binary Refinery</a>, <a
+href="https://github.com/ctxis/CAPE">CAPE</a>, <a
+href="https://cincan.io">CinCan</a>, <a
+href="https://cortex.marketplace.pan.dev/marketplace/details/Oletools/">Cortex
+XSOAR (Palo Alto)</a>, <a
+href="https://github.com/cuckoosandbox/cuckoo">Cuckoo Sandbox</a>, <a
+href="https://github.com/cryps1s/DARKSURGEON">DARKSURGEON</a>, <a
+href="https://sandbox.deepviz.com/">Deepviz</a>, <a
+href="https://diario.elevenpaths.com/">DIARIO</a>, <a
+href="https://dridex.malwareconfig.com">dridex.malwareconfig.com</a>, <a
+href="https://github.com/ninoseki/eml_analyzer">EML Analyzer</a>, <a
+href="https://pub.expmon.com/">EXPMON</a>, <a
+href="https://certsocietegenerale.github.io/fame/">FAME</a>, <a
+href="https://github.com/fireeye/flare-vm">FLARE-VM</a>, <a
+href="https://www.glimps.fr/en/glimps-malware-2/">GLIMPS Malware</a>, <a
+href="https://www.hybrid-analysis.com/">Hybrid-analysis.com</a>, <a
+href="https://labs.inquest.net/">InQuest Labs</a>, <a
+href="https://github.com/certego/IntelOwl">IntelOwl</a>, <a
+href="https://www.document-analyzer.net/">Joe Sandbox</a>, <a
+href="https://github.com/lmco/laikaboss">Laika BOSS</a>, <a
+href="https://github.com/sbidy/MacroMilter">MacroMilter</a>, <a
+href="https://mailcow.email/">mailcow</a>, <a
+href="https://malshare.io">malshare.io</a>, <a
+href="https://github.com/Tigzy/malware-repo">malware-repo</a>, <a
+href="https://www.adlice.com/download/mrf/">Malware Repository Framework
+(MRF)</a>, <a href="https://bazaar.abuse.ch/">MalwareBazaar</a>, <a
+href="https://github.com/HeinleinSupport/olefy">olefy</a>, <a
+href="https://github.com/pandora-analysis/pandora">Pandora</a>, <a
+href="https://github.com/scVENUS/PeekabooAV">PeekabooAV</a>, <a
+href="https://github.com/bontchev/pcodedmp">pcodedmp</a>, <a
+href="https://github.com/CIRCL/PyCIRCLean">PyCIRCLean</a>, <a
+href="https://www.quarkslab.com/products-qflow/">QFlow</a>, <a
+href="https://github.com/CYB3RMX/Qu1cksc0pe">Qu1cksc0pe</a>, <a
+href="https://github.com/tylabs/quicksand">Tylabs QuickSand</a>, <a
+href="https://remnux.org/">REMnux</a>, <a
+href="https://github.com/countercept/snake">Snake</a>, <a
+href="https://app.sndbox.com">SNDBOX</a>, <a
+href="https://splunkbase.splunk.com/app/5365/">Splunk add-on for MS O365
+Email</a>, <a
+href="https://github.com/ldbo/SpuriousEmu">SpuriousEmu</a>, <a
+href="https://github.com/target/strelka">Strelka</a>, <a
+href="https://stoq.punchcyber.com/">stoQ</a>, <a
+href="https://docs.sublimesecurity.com/docs/enrichment-functions">Sublime
+Platform/MQL</a>, <a
+href="https://github.com/jstrosch/subparse">Subparse</a>, <a
+href="https://github.com/TheHive-Project/Cortex-Analyzers">TheHive/Cortex</a>,
+<a href="https://s.threatbook.com/">ThreatBoook</a>, <a
+href="https://tsurugi-linux.org/">TSUGURI Linux</a>, <a
+href="https://github.com/MalwareCantFly/Vba2Graph">Vba2Graph</a>, <a
+href="http://viper.li/">Viper</a>, <a
+href="https://github.com/decalage2/ViperMonkey">ViperMonkey</a>, <a
+href="https://yomi.yoroi.company">YOMI</a>, and probably <a
+href="https://www.virustotal.com">VirusTotal</a>, <a
+href="https://www.filescan.io">FileScan.IO</a>. And quite a few <a
+href="https://github.com/search?q=oletools&amp;type=Repositories">other
+projects on GitHub</a>. (Please <a
+href="(http://decalage.info/contact)">contact me</a> if you have or know
+a project using oletools)</p>
 <h2 id="download-and-install">Download and Install:</h2>
-<p>The recommended way to download and install/update the <strong>latest stable release</strong> of oletools is to use <a href="https://pip.pypa.io/en/stable/installing/">pip</a>:</p>
+<p>The recommended way to download and install/update the <strong>latest
+stable release</strong> of oletools is to use <a
+href="https://pip.pypa.io/en/stable/installing/">pip</a>:</p>
 <ul>
-<li>On Linux/Mac: <code>sudo -H pip install -U oletools[full]</code></li>
+<li>On Linux/Mac:
+<code>sudo -H pip install -U oletools[full]</code></li>
 <li>On Windows: <code>pip install -U oletools[full]</code></li>
 </ul>
-<p>This should automatically create command-line scripts to run each tool from any directory: <code>olevba</code>, <code>mraptor</code>, <code>rtfobj</code>, etc.</p>
-<p>The keyword <code>[full]</code> means that all optional dependencies will be installed, such as XLMMacroDeobfuscator. If you prefer a lighter version without optional dependencies, just remove <code>[full]</code> from the command line.</p>
+<p>This should automatically create command-line scripts to run each
+tool from any directory: <code>olevba</code>, <code>mraptor</code>,
+<code>rtfobj</code>, etc.</p>
+<p>The keyword <code>[full]</code> means that all optional dependencies
+will be installed, such as XLMMacroDeobfuscator. If you prefer a lighter
+version without optional dependencies, just remove <code>[full]</code>
+from the command line.</p>
 <p>To get the <strong>latest development version</strong> instead:</p>
 <ul>
-<li>On Linux/Mac: <code>sudo -H pip install -U https://github.com/decalage2/oletools/archive/master.zip</code></li>
-<li>On Windows: <code>pip install -U https://github.com/decalage2/oletools/archive/master.zip</code></li>
+<li>On Linux/Mac:
+<code>sudo -H pip install -U https://github.com/decalage2/oletools/archive/master.zip</code></li>
+<li>On Windows:
+<code>pip install -U https://github.com/decalage2/oletools/archive/master.zip</code></li>
 </ul>
-<p>See the <a href="https://github.com/decalage2/oletools/wiki/Install">documentation</a> for other installation options.</p>
+<p>See the <a
+href="https://github.com/decalage2/oletools/wiki/Install">documentation</a>
+for other installation options.</p>
 <h2 id="documentation">Documentation:</h2>
-<p>The latest version of the documentation can be found <a href="https://github.com/decalage2/oletools/wiki">online</a>, otherwise a copy is provided in the doc subfolder of the package.</p>
-<h2 id="how-to-suggest-improvements-report-issues-or-contribute">How to Suggest Improvements, Report Issues or Contribute:</h2>
-<p>This is a personal open-source project, developed on my spare time. Any contribution, suggestion, feedback or bug report is welcome.</p>
-<p>To suggest improvements, report a bug or any issue, please use the <a href="https://github.com/decalage2/oletools/issues">issue reporting page</a>, providing all the information and files to reproduce the problem.</p>
-<p>You may also <a href="http://decalage.info/contact">contact the author</a> directly to provide feedback.</p>
-<p>The code is available in <a href="https://github.com/decalage2/oletools">a GitHub repository</a>. You may use it to submit enhancements using forks and pull requests.</p>
+<p>The latest version of the documentation can be found <a
+href="https://github.com/decalage2/oletools/wiki">online</a>, otherwise
+a copy is provided in the doc subfolder of the package.</p>
+<h2 id="how-to-suggest-improvements-report-issues-or-contribute">How to
+Suggest Improvements, Report Issues or Contribute:</h2>
+<p>This is a personal open-source project, developed on my spare time.
+Any contribution, suggestion, feedback or bug report is welcome.</p>
+<p>To suggest improvements, report a bug or any issue, please use the <a
+href="https://github.com/decalage2/oletools/issues">issue reporting
+page</a>, providing all the information and files to reproduce the
+problem.</p>
+<p>You may also <a href="http://decalage.info/contact">contact the
+author</a> directly to provide feedback.</p>
+<p>The code is available in <a
+href="https://github.com/decalage2/oletools">a GitHub repository</a>.
+You may use it to submit enhancements using forks and pull requests.</p>
 <h2 id="license">License</h2>
-<p>This license applies to the python-oletools package, apart from the thirdparty folder which contains third-party files published with their own license.</p>
-<p>The python-oletools package is copyright (c) 2012-2022 Philippe Lagadec (http://www.decalage.info)</p>
+<p>This license applies to the python-oletools package, apart from the
+thirdparty folder which contains third-party files published with their
+own license.</p>
+<p>The python-oletools package is copyright (c) 2012-2024 Philippe
+Lagadec (http://www.decalage.info)</p>
 <p>All rights reserved.</p>
-<p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
+<p>Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:</p>
 <ul>
-<li>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</li>
-<li>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</li>
+<li>Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.</li>
+<li>Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the
+distribution.</li>
 </ul>
-<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &quot;AS IS&quot; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>
+<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>
 <hr />
-<p>olevba contains modified source code from the officeparser project, published under the following MIT License (MIT):</p>
+<p>olevba contains modified source code from the officeparser project,
+published under the following MIT License (MIT):</p>
 <p>officeparser is copyright (c) 2014 John William Davison</p>
-<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the &quot;Software&quot;), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
-<p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
-<p>THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+<p>Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:</p>
+<p>The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.</p>
+<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
 </body>
 </html>

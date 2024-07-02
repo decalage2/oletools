@@ -4,50 +4,240 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Untitled</title>
-  <style type="text/css">
-      code{white-space: pre-wrap;}
-      span.smallcaps{font-variant: small-caps;}
-      span.underline{text-decoration: underline;}
-      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  <title>-</title>
+  <style>
+    html {
+      line-height: 1.5;
+      font-family: Georgia, serif;
+      font-size: 20px;
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 1em;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, 'Lucida Console', Consolas, monospace;
+      font-size: 85%;
+      margin: 0;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
   </style>
-  <!--[if lt IE 9]>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
-  <![endif]-->
 </head>
 <body>
-<h1 id="python-oletools-v0.56-documentation">python-oletools v0.56 documentation</h1>
-<p>This is the home page of the documentation for python-oletools. The latest version can be found <a href="https://github.com/decalage2/oletools/wiki">online</a>, otherwise a copy is provided in the doc subfolder of the package.</p>
-<p><a href="http://www.decalage.info/python/oletools">python-oletools</a> is a package of python tools to analyze <a href="http://en.wikipedia.org/wiki/Compound_File_Binary_Format">Microsoft OLE2 files</a> (also called Structured Storage, Compound File Binary Format or Compound Document File Format), such as Microsoft Office documents or Outlook messages, mainly for malware analysis, forensics and debugging. It is based on the <a href="http://www.decalage.info/olefile">olefile</a> parser. See <a href="http://www.decalage.info/python/oletools" class="uri">http://www.decalage.info/python/oletools</a> for more info.</p>
-<p><strong>Quick links:</strong> <a href="http://www.decalage.info/python/oletools">Home page</a> - <a href="https://github.com/decalage2/oletools/wiki/Install">Download/Install</a> - <a href="https://github.com/decalage2/oletools/wiki">Documentation</a> - <a href="https://github.com/decalage2/oletools/issues">Report Issues/Suggestions/Questions</a> - <a href="http://decalage.info/contact">Contact the Author</a> - <a href="https://github.com/decalage2/oletools">Repository</a> - <a href="https://twitter.com/decalage2">Updates on Twitter</a></p>
-<p>Note: python-oletools is not related to OLETools published by BeCubed Software.</p>
+<h1 id="python-oletools-documentation">python-oletools
+documentation</h1>
+<p>This is the home page of the documentation for python-oletools. The
+latest version can be found <a
+href="https://github.com/decalage2/oletools/wiki">online</a>, otherwise
+a copy is provided in the doc subfolder of the package.</p>
+<p><a href="http://www.decalage.info/python/oletools">oletools</a> is a
+package of python tools to analyze <a
+href="http://en.wikipedia.org/wiki/Compound_File_Binary_Format">Microsoft
+OLE2 files</a> (also called Structured Storage, Compound File Binary
+Format or Compound Document File Format), such as Microsoft Office
+97-2003 documents, MSI files or Outlook messages, mainly for malware
+analysis, forensics and debugging. It is based on the <a
+href="http://www.decalage.info/olefile">olefile</a> parser.</p>
+<p>It also provides tools to analyze RTF files and files based on the <a
+href="https://en.wikipedia.org/wiki/Office_Open_XML">OpenXML format</a>
+(aka OOXML) such as MS Office 2007+ documents, XPS or MSIX files.</p>
+<p>For example, oletools can detect, extract and analyse VBA macros, OLE
+objects, Excel 4 macros (XLM) and DDE links.</p>
+<p>See <a
+href="http://www.decalage.info/python/oletools">http://www.decalage.info/python/oletools</a>
+for more info.</p>
+<p><strong>Quick links:</strong> <a
+href="http://www.decalage.info/python/oletools">Home page</a> - <a
+href="https://github.com/decalage2/oletools/wiki/Install">Download/Install</a>
+- <a href="https://github.com/decalage2/oletools/wiki">Documentation</a>
+- <a href="https://github.com/decalage2/oletools/issues">Report
+Issues/Suggestions/Questions</a> - <a
+href="http://decalage.info/contact">Contact the Author</a> - <a
+href="https://github.com/decalage2/oletools">Repository</a> - <a
+href="https://twitter.com/decalage2">Updates on Twitter</a></p>
+<p>Note: python-oletools is not related to OLETools published by BeCubed
+Software.</p>
 <h2 id="tools-in-python-oletools">Tools in python-oletools:</h2>
-<h3 id="tools-to-analyze-malicious-documents">Tools to analyze malicious documents</h3>
+<h3 id="tools-to-analyze-malicious-documents">Tools to analyze malicious
+documents</h3>
 <ul>
-<li><strong><a href="oleid.html">oleid</a></strong>: to analyze OLE files to detect specific characteristics usually found in malicious files.</li>
-<li><strong><a href="olevba.html">olevba</a></strong>: to extract and analyze VBA Macro source code from MS Office documents (OLE and OpenXML).</li>
-<li><strong><a href="mraptor.html">mraptor</a></strong>: to detect malicious VBA Macros</li>
-<li><strong><a href="msodde.html">msodde</a></strong>: to detect and extract DDE/DDEAUTO links from MS Office documents, RTF and CSV</li>
-<li><strong><a href="pyxswf.html">pyxswf</a></strong>: to detect, extract and analyze Flash objects (SWF) that may be embedded in files such as MS Office documents (e.g. Word, Excel) and RTF, which is especially useful for malware analysis.</li>
-<li><strong><a href="oleobj.html">oleobj</a></strong>: to extract embedded objects from OLE files.</li>
-<li><strong><a href="rtfobj.html">rtfobj</a></strong>: to extract embedded objects from RTF files.</li>
+<li><strong><a href="oleid.html">oleid</a></strong>: to analyze OLE
+files to detect specific characteristics usually found in malicious
+files.</li>
+<li><strong><a href="olevba.html">olevba</a></strong>: to extract and
+analyze VBA Macro source code from MS Office documents (OLE and
+OpenXML).</li>
+<li><strong><a href="mraptor.html">mraptor</a></strong>: to detect
+malicious VBA Macros</li>
+<li><strong><a href="msodde.html">msodde</a></strong>: to detect and
+extract DDE/DDEAUTO links from MS Office documents, RTF and CSV</li>
+<li><strong><a href="pyxswf.html">pyxswf</a></strong>: to detect,
+extract and analyze Flash objects (SWF) that may be embedded in files
+such as MS Office documents (e.g. Word, Excel) and RTF, which is
+especially useful for malware analysis.</li>
+<li><strong><a href="oleobj.html">oleobj</a></strong>: to extract
+embedded objects from OLE files.</li>
+<li><strong><a href="rtfobj.html">rtfobj</a></strong>: to extract
+embedded objects from RTF files.</li>
 </ul>
-<h3 id="tools-to-analyze-the-structure-of-ole-files">Tools to analyze the structure of OLE files</h3>
+<h3 id="tools-to-analyze-the-structure-of-ole-files">Tools to analyze
+the structure of OLE files</h3>
 <ul>
-<li><strong><a href="olebrowse.html">olebrowse</a></strong>: A simple GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to view and extract individual data streams.</li>
-<li><strong><a href="olemeta.html">olemeta</a></strong>: to extract all standard properties (metadata) from OLE files.</li>
-<li><strong><a href="oletimes.html">oletimes</a></strong>: to extract creation and modification timestamps of all streams and storages.</li>
-<li><strong><a href="oledir.html">oledir</a></strong>: to display all the directory entries of an OLE file, including free and orphaned entries.</li>
-<li><strong><a href="olemap.html">olemap</a></strong>: to display a map of all the sectors in an OLE file.</li>
+<li><strong><a href="olebrowse.html">olebrowse</a></strong>: A simple
+GUI to browse OLE files (e.g. MS Word, Excel, Powerpoint documents), to
+view and extract individual data streams.</li>
+<li><strong><a href="olemeta.html">olemeta</a></strong>: to extract all
+standard properties (metadata) from OLE files.</li>
+<li><strong><a href="oletimes.html">oletimes</a></strong>: to extract
+creation and modification timestamps of all streams and storages.</li>
+<li><strong><a href="oledir.html">oledir</a></strong>: to display all
+the directory entries of an OLE file, including free and orphaned
+entries.</li>
+<li><strong><a href="olemap.html">olemap</a></strong>: to display a map
+of all the sectors in an OLE file.</li>
 <li>and a few others (coming soon)</li>
 </ul>
 <hr />
-<h2 id="python-oletools-documentation">python-oletools documentation</h2>
+<h2 id="python-oletools-documentation-1">python-oletools
+documentation</h2>
 <ul>
 <li><a href="Home.html">Home</a></li>
 <li><a href="License.html">License</a></li>
 <li><a href="Install.html">Install</a></li>
-<li><a href="Contribute.html">Contribute</a>, Suggest Improvements or Report Issues</li>
+<li><a href="Contribute.html">Contribute</a>, Suggest Improvements or
+Report Issues</li>
 <li>Tools:
 <ul>
 <li><a href="mraptor.html">mraptor</a></li>

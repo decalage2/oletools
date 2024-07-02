@@ -4,25 +4,177 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Untitled</title>
-  <style type="text/css">
-      code{white-space: pre-wrap;}
-      span.smallcaps{font-variant: small-caps;}
-      span.underline{text-decoration: underline;}
-      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  <title>-</title>
+  <style>
+    html {
+      line-height: 1.5;
+      font-family: Georgia, serif;
+      font-size: 20px;
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 1em;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, 'Lucida Console', Consolas, monospace;
+      font-size: 85%;
+      margin: 0;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
   </style>
-  <!--[if lt IE 9]>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
-  <![endif]-->
 </head>
 <body>
 <h1 id="pyxswf">pyxswf</h1>
-<p>pyxswf is a script to detect, extract and analyze Flash objects (SWF files) that may be embedded in files such as MS Office documents (e.g. Word, Excel), which is especially useful for malware analysis.</p>
-<p>It is part of the <a href="http://www.decalage.info/python/oletools">python-oletools</a> package.</p>
-<p>pyxswf is an extension to <a href="http://hooked-on-mnemonics.blogspot.nl/2011/12/xxxswfpy.html">xxxswf.py</a> published by Alexander Hanel.</p>
-<p>Compared to xxxswf, it can extract streams from MS Office documents by parsing their OLE structure properly, which is necessary when streams are fragmented. Stream fragmentation is a known obfuscation technique, as explained on <a href="http://web.archive.org/web/20121118021207/http://www.breakingpointsystems.com/resources/blog/evasion-with-ole2-fragmentation/">http://www.breakingpointsystems.com/resources/blog/evasion-with-ole2-fragmentation/</a></p>
-<p>It can also extract Flash objects from RTF documents, by parsing embedded objects encoded in hexadecimal format (-f option).</p>
-<p>For this, simply add the -o option to work on OLE streams rather than raw files, or the -f option to work on RTF files.</p>
+<p>pyxswf is a script to detect, extract and analyze Flash objects (SWF
+files) that may be embedded in files such as MS Office documents
+(e.g. Word, Excel), which is especially useful for malware analysis.</p>
+<p>It is part of the <a
+href="http://www.decalage.info/python/oletools">python-oletools</a>
+package.</p>
+<p>pyxswf is an extension to <a
+href="http://hooked-on-mnemonics.blogspot.nl/2011/12/xxxswfpy.html">xxxswf.py</a>
+published by Alexander Hanel.</p>
+<p>Compared to xxxswf, it can extract streams from MS Office documents
+by parsing their OLE structure properly, which is necessary when streams
+are fragmented. Stream fragmentation is a known obfuscation technique,
+as explained on <a
+href="http://web.archive.org/web/20121118021207/http://www.breakingpointsystems.com/resources/blog/evasion-with-ole2-fragmentation/">http://www.breakingpointsystems.com/resources/blog/evasion-with-ole2-fragmentation/</a></p>
+<p>It can also extract Flash objects from RTF documents, by parsing
+embedded objects encoded in hexadecimal format (-f option).</p>
+<p>For this, simply add the -o option to work on OLE streams rather than
+raw files, or the -f option to work on RTF files.</p>
 <h2 id="usage">Usage</h2>
 <pre class="text"><code>Usage: pyxswf [options] &lt;file.bad&gt;
 
@@ -45,7 +197,10 @@ Options:
                         Will recursively scan a directory for files that
                         contain SWFs. Must provide path in quotes
   -c, --compress        Compresses the SWF using Zlib</code></pre>
-<h3 id="example-1---detecting-and-extracting-a-swf-file-from-a-word-document-on-windows">Example 1 - detecting and extracting a SWF file from a Word document on Windows:</h3>
+<h3
+id="example-1---detecting-and-extracting-a-swf-file-from-a-word-document-on-windows">Example
+1 - detecting and extracting a SWF file from a Word document on
+Windows:</h3>
 <pre class="text"><code>C:\oletools&gt;pyxswf -o word_flash.doc
 OLE stream: &#39;Contents&#39;
 [SUMMARY] 1 SWF(s) in MD5:993664cc86f60d52d671b6610813cfd1:Contents
@@ -56,22 +211,28 @@ OLE stream: &#39;Contents&#39;
 [SUMMARY] 1 SWF(s) in MD5:993664cc86f60d52d671b6610813cfd1:Contents
         [ADDR] SWF 1 at 0x8  - FWS Header
                 [FILE] Carved SWF MD5: 2498e9c0701dc0e461ab4358f9102bc5.swf</code></pre>
-<h3 id="example-2---detecting-and-extracting-a-swf-file-from-a-rtf-document-on-windows">Example 2 - detecting and extracting a SWF file from a RTF document on Windows:</h3>
+<h3
+id="example-2---detecting-and-extracting-a-swf-file-from-a-rtf-document-on-windows">Example
+2 - detecting and extracting a SWF file from a RTF document on
+Windows:</h3>
 <pre class="text"><code>C:\oletools&gt;pyxswf -xf &quot;rtf_flash.rtf&quot;
 RTF embedded object size 1498557 at index 000036DD
 [SUMMARY] 1 SWF(s) in MD5:46a110548007e04f4043785ac4184558:RTF_embedded_object_0
 00036DD
         [ADDR] SWF 1 at 0xc40  - FWS Header
                 [FILE] Carved SWF MD5: 2498e9c0701dc0e461ab4358f9102bc5.swf</code></pre>
-<h2 id="how-to-use-pyxswf-in-python-applications">How to use pyxswf in Python applications</h2>
+<h2 id="how-to-use-pyxswf-in-python-applications">How to use pyxswf in
+Python applications</h2>
 <p>TODO</p>
 <hr />
-<h2 id="python-oletools-documentation">python-oletools documentation</h2>
+<h2 id="python-oletools-documentation">python-oletools
+documentation</h2>
 <ul>
 <li><a href="Home.html">Home</a></li>
 <li><a href="License.html">License</a></li>
 <li><a href="Install.html">Install</a></li>
-<li><a href="Contribute.html">Contribute</a>, Suggest Improvements or Report Issues</li>
+<li><a href="Contribute.html">Contribute</a>, Suggest Improvements or
+Report Issues</li>
 <li>Tools:
 <ul>
 <li><a href="mraptor.html">mraptor</a></li>
