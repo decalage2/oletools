@@ -33,7 +33,7 @@ potentially encrypted files::
             raise crypto.MaxCryptoNestingReached(crypto_nesting, filename)
         decrypted_file = None
         try:
-            decrypted_file, correct_password = crypto.decrypt(input_file, passwords, decrypted_filepath)
+            decrypted_file, correct_password = crypto.decrypt(input_file, passwords, decrypted_dir)
             if decrypted_file is None:
                 raise crypto.WrongEncryptionPassword(input_file)
             # might still be encrypted, so call this again recursively
@@ -315,7 +315,7 @@ def check_msoffcrypto():
     return msoffcrypto is not None
 
 
-def decrypt(filename, passwords=None, decrypted_filepath=None, **temp_file_args):
+def decrypt(filename, passwords=None, decrypted_dir=None, **temp_file_args):
     """
     Try to decrypt an encrypted file
 
@@ -332,8 +332,8 @@ def decrypt(filename, passwords=None, decrypted_filepath=None, **temp_file_args)
                            `dirname` or `prefix`. `suffix` will default to
                            suffix of input `filename`, `prefix` defaults to
                            `oletools-decrypt-`; `text` will be ignored
-    :param decrypted_filepath: filepath of the decrypted file in case you want to
-                              preserve it
+    :param decrypted_dir: folder to store the decrypted file in case you want
+                            to preserve it
     :returns: a tuple with the name of the decrypted temporary file (type str) or `None`
               and the correct password or 'None'
     :raises: :py:class:`ImportError` if :py:mod:`msoffcrypto-tools` not found
@@ -409,10 +409,10 @@ def decrypt(filename, passwords=None, decrypted_filepath=None, **temp_file_args)
 
     if decrypt_file and correct_password:
         log.debug(f'Successfully decrypted the file with password: {correct_password}')
-        if decrypted_filepath:
-            if os.path.isdir(decrypted_filepath) and os.access(decrypted_filepath, os.W_OK):
-                log.info(f"Saving decrypted file in: {decrypted_filepath}")
-                shutil.copy(decrypt_file, decrypted_filepath)
+        if decrypted_dir:
+            if os.path.isdir(decrypted_dir) and os.access(decrypted_dir, os.W_OK):
+                log.info(f"Saving decrypted file in: {decrypted_dir}")
+                shutil.copy(decrypt_file, decrypted_dir)
     else:
         log.info('All passwords failed')
 

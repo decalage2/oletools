@@ -271,9 +271,9 @@ def process_args(cmd_line_args=None):
     parser.add_argument("-p", "--password", type=str, action='append',
                         help='if encrypted office files are encountered, try '
                              'decryption with this password. May be repeated.')
-    parser.add_argument("--decrypted_filepath", dest='decrypted_filepath', type=str,
+    parser.add_argument("--decrypted_dir", dest='decrypted_dir', type=str,
                         default=None,
-                        help='save the decrypted file to this location.')
+                        help='store the decrypted file to this folder.')
     filter_group = parser.add_argument_group(
         title='Filter which OpenXML field commands are returned',
         description='Only applies to OpenXML (e.g. docx) and rtf, not to OLE '
@@ -913,7 +913,7 @@ def process_file(filepath, field_filter_mode=None):
 # === MAIN =================================================================
 
 
-def process_maybe_encrypted(filepath, passwords=None, decrypted_filepath=None, crypto_nesting=0,
+def process_maybe_encrypted(filepath, passwords=None, decrypted_dir=None, crypto_nesting=0,
                             **kwargs):
     """
     Process a file that might be encrypted.
@@ -924,8 +924,8 @@ def process_maybe_encrypted(filepath, passwords=None, decrypted_filepath=None, c
 
     :param str filepath: path to file on disc.
     :param passwords: list of passwords (str) to try for decryption or None
-    :param decrypted_filepath: filepath of the decrypted file in case you want to
-                               preserve it
+    :param decrypted_dir: folder to store the decrypted file in case you want
+                               to preserve it
     :param int crypto_nesting: How many decryption layers were already used to
                                get the given file.
     :param kwargs: same as :py:func:`process_file`
@@ -954,14 +954,14 @@ def process_maybe_encrypted(filepath, passwords=None, decrypted_filepath=None, c
         passwords = list(passwords) + crypto.DEFAULT_PASSWORDS
     try:
         logger.debug('Trying to decrypt file')
-        decrypted_file, correct_password = crypto.decrypt(filepath, passwords, decrypted_filepath)
+        decrypted_file, correct_password = crypto.decrypt(filepath, passwords, decrypted_dir)
         if correct_password:
             logger.info(f"The correct password is: {correct_password}")
         if not decrypted_file:
             logger.error('Decrypt failed, run with debug output to get details')
             raise crypto.WrongEncryptionPassword(filepath)
         logger.info('Analyze decrypted file')
-        result = process_maybe_encrypted(decrypted_file, passwords, decrypted_filepath,
+        result = process_maybe_encrypted(decrypted_file, passwords, decrypted_dir,
                                          crypto_nesting+1, **kwargs)
     finally:     # clean up
         try:     # (maybe file was not yet created)
@@ -997,7 +997,7 @@ def main(cmd_line_args=None):
     return_code = 1
     try:
         text = process_maybe_encrypted(
-            args.filepath, args.password, args.decrypted_filepath,
+            args.filepath, args.password, args.decrypted_dir,
             field_filter_mode=args.field_filter_mode)
         return_code = 0
     except Exception as exc:

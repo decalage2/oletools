@@ -3473,14 +3473,14 @@ class VBA_Parser(object):
             self.is_encrypted = crypto.is_encrypted(self.ole_file)
         return self.is_encrypted
 
-    def decrypt_file(self, passwords_list=None, decrypted_filepath=None):
+    def decrypt_file(self, passwords_list=None, decrypted_dir=None):
         decrypted_file = None
         correct_password = None
         if self.detect_is_encrypted():
             passwords = crypto.DEFAULT_PASSWORDS
             if passwords_list and isinstance(passwords_list, list):
                 passwords.extend(passwords_list)
-            decrypted_file, correct_password = crypto.decrypt(self.filename, passwords, decrypted_filepath)
+            decrypted_file, correct_password = crypto.decrypt(self.filename, passwords, decrypted_dir)
             if correct_password:
                 log.info(f"The correct password is: {correct_password}")
 
@@ -4373,9 +4373,9 @@ def parse_args(cmd_line_args=None):
                         default=None,
                         help='if the file is a zip archive, open all files '
                              'from it, using the provided password.')
-    parser.add_argument("--decrypted_filepath", dest='decrypted_filepath', type=str,
+    parser.add_argument("--decrypted_dir", dest='decrypted_dir', type=str,
                         default=None,
-                        help='save the decrypted file to this location.')
+                        help='store the decrypted file to this folder.')
     parser.add_argument("-p", "--password", type=str, action='append',
                         default=[],
                         help='if encrypted office files are encountered, try '
@@ -4557,9 +4557,9 @@ def process_file(filename, data, container, options, crypto_nesting=0):
     try:
         log.debug('Checking encryption passwords {}'.format(options.password))
         passwords = options.password + crypto.DEFAULT_PASSWORDS
-        log.debug('Checking decrypted filepath {}'.format(options.decrypted_filepath))
+        log.debug('Checking decrypted filepath {}'.format(options.decrypted_dir))
 
-        decrypted_file, correct_password = crypto.decrypt(filename, passwords, options.decrypted_filepath)
+        decrypted_file, correct_password = crypto.decrypt(filename, passwords, options.decrypted_dir)
         if not decrypted_file:
             log.error('Decrypt failed, run with debug output to get details')
             raise crypto.WrongEncryptionPassword(filename)
