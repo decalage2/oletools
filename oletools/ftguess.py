@@ -47,7 +47,7 @@ from __future__ import print_function
 # 2018-07-04 v0.54 PL: - first version
 # 2021-05-09 v0.60 PL: -
 
-__version__ = '0.60.2'
+__version__ = '0.61dev1'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -176,7 +176,6 @@ class FTYPE(object):
     POWERPOINT2007_PPSX = 'Powerpoint2007_PPSX'
     POWERPOINT2007_PPTM = 'Powerpoint2007_PPTM'
     POWERPOINT2007_PPSM = 'Powerpoint2007_PPSM'
-    # TODO: DOCM, PPTM, PPSX, PPSM, ...
     XPS = 'XPS'
     RTF = 'RTF'
     HTML = 'HTML'
@@ -189,6 +188,7 @@ class FTYPE(object):
     GENERIC_OPENXML = 'OpenXML' # Generic OpenXML file
     UNKNOWN = 'Unknown File Type'
     MSI = "MSI"
+    MSIX = "MSIX"
     ONENOTE = "OneNote"
     PNG = 'PNG'
 
@@ -368,6 +368,7 @@ class FType_Generic_Zip(FType_Base):
     name = 'Zip Archive'
     longname = 'Generic Zip Archive'
     extensions = ['zip']
+    content_types = ('application/zip',)
 
     @classmethod
     def recognize(cls, ftg):
@@ -479,6 +480,54 @@ class FType_Generic_OpenXML(FType_Base):
         log.debug('Main part content-type: %s' % main_part_content_type)
         return True
 
+class FType_MSIX_APPX(FType_Base):
+    container = CONTAINER.OpenXML # actually a subset of OpenXML (no .rels files)
+    application = APP.UNKNOWN # TODO
+    filetype = FTYPE.MSIX
+    name = 'MSIX or APPX file'
+    longname = 'MSIX or APPX installer file'
+    extensions = ['msix', 'appx']
+
+    @classmethod
+    def recognize(cls, ftg):
+        log.debug('MSIX/APPX - recognize')
+        # TODO: does this also match APPX files? Is there a difference we can check?
+        # Note: contrary to OpenXML, MSIX files do not have .rels files,
+        # so the only reliable way to recognize them is to check [Content_Types].xml
+        try:
+            ftg.zipfile.getinfo('[Content_Types].xml')
+        except KeyError:
+            return False
+        # parse content types, find content type of main part
+        # TODO: merge with OpenXML?
+        try:
+            content_types = ftg.zipfile.read('[Content_Types].xml')
+        except RuntimeError:
+            return False
+        # parse the XML content
+        # TODO: handle XML parsing exceptions
+        elem_ctypes = ET.fromstring(content_types)
+        ctypes_ext = {}
+        ctypes_part = {}
+        msix_or_appx = False
+        for elem_ext in elem_ctypes.iter(tag = TAG_CTYPES_DEFAULT):
+            extension = elem_ext.get('Extension')
+            content_type = elem_ext.get('ContentType')
+            # print('Ext: %s => Content-type: %s' % (extension, content_type))
+            if extension is not None and content_type is not None:
+                ctypes_ext[extension] = content_type
+        for elem_part in elem_ctypes.iter(tag = TAG_CTYPES_OVERRIDE):
+            partname = elem_part.get('PartName')
+            # remove leading slash if present
+            partname = partname.lstrip('/')
+            content_type = elem_part.get('ContentType')
+            # print('Part: %s => Content-type: %s' % (partname, content_type))
+            if partname is not None and content_type is not None:
+                ctypes_part[partname] = content_type
+            # TODO: check if partname and/or content_type are case-sensitive or not
+            if partname == "AppxManifest.xml" and content_type == "application/vnd.ms-appx.manifest+xml":
+                msix_or_appx = True
+        return msix_or_appx
 
 # --- WORD Formats ---
 
@@ -768,7 +817,6 @@ openxml_ftypes = {
 
     # XPS
     'application/vnd.ms-package.xps-fixeddocumentsequence+xml': FType_XPS,
-    #TODO: Add MSIX
 }
 
 
@@ -817,6 +865,9 @@ class FileTypeGuesser(object):
         if filepath is None and data is None:
             raise ValueError('FileTypeGuesser requires either a file path or file data, or both')
         if data is None:
+            # TODO: here we assume the file fits in memory, which will fail for very large files
+            # Instead we should just open the file on disk, and make sure all the FType classes
+            # can just read necessary data as required, without loading everything at once.
             with open(filepath, 'rb') as f:
                 self.data = f.read()
         self.data_bytesio = io.BytesIO(self.data)
@@ -847,6 +898,10 @@ class FileTypeGuesser(object):
                 ft = openxml_ftypes.get(self.main_part_content_type, None)
                 if ft is not None:
                     self.ftype = ft
+            # MSIX/APPX is a special case:
+            if FType_MSIX_APPX.recognize(self):
+                self.ftype = FType_MSIX_APPX
+
 
         # TODO: use a mapping from magic to file types
         if self.container == CONTAINER.UNKNOWN:
