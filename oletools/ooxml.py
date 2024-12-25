@@ -57,6 +57,8 @@ __version__ = '0.54.2'
 # -- IMPORTS ------------------------------------------------------------------
 
 import sys
+from io import BytesIO
+
 from oletools.common.log_helper import log_helper
 from oletools.common.io_encoding import uopen
 from zipfile import ZipFile, BadZipfile, is_zipfile
@@ -432,6 +434,16 @@ class BadOOXML(ValueError):
 # PARSING
 ###############################################################################
 
+class Part(object):
+    """
+    OpenXML part
+    """
+    def __init__(self, name, size, content_type):
+        """Part constructor"""
+        self.name = name
+        self.size = size
+        self.content_type = content_type
+
 
 class XmlParser(object):
     """ parser for OOXML files
@@ -443,11 +455,28 @@ class XmlParser(object):
     different. Method :py:meth:`is_single_xml` tells them apart.
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, data=None):
+        """
+        XmlParser constructor
+        - filename: str, filename or path on disk if data==None
+        - data: bytes, file content in memory if it is not on disk
+       """
         self.filename = filename
+        self.data = data
+        if data == None:
+            # file on disk, open it
+            self.file_io = open(filename, 'rb')
+        else:
+            # file only in memory, use BytesIO
+            self.file_io = BytesIO(self.data)
         self.did_iter_all = False
         self.subfiles_no_xml = set()
         self._is_single_xml = None
+        self.parts = {}
+        # TODO: open zip here once and for all
+        self.zip = None
+        if not self.is_single_xml():
+            self
 
     def is_single_xml(self):
         """ determine whether this is "regular" ooxml or a single xml file
@@ -457,14 +486,19 @@ class XmlParser(object):
         if self._is_single_xml is not None:
             return self._is_single_xml
 
-        if is_zipfile(self.filename):
+        if is_zipfile(self.file_io):
             self._is_single_xml = False
             return False
 
         # find prog id in xml prolog
-        match = None
-        with uopen(self.filename, 'r') as handle:
-            match = re.search(OFFICE_XML_PROGID_REGEX, handle.read(1024))
+        if self.data is None:
+            # file on disk only, read 1st KB:
+            with uopen(self.filename, 'r') as handle:
+                first_kb = handle.read(1024)
+        else:
+            # file in memory:
+            first_kb = self.data[:1024]
+        match = re.search(OFFICE_XML_PROGID_REGEX, first_kb)
         if match:
             self._is_single_xml = True
             return True
@@ -481,15 +515,20 @@ class XmlParser(object):
         if self.is_single_xml():
             if args:
                 raise BadOOXML(self.filename, 'xml has no subfiles')
-            # do not use uopen, xml parser determines encoding on its own
-            with open(self.filename, 'rb') as handle:
-                yield None, handle   # the subfile=None is needed in iter_xml
+            if self.data is None:
+                # file on disk, open it:
+                # do not use uopen, xml parser determines encoding on its own
+                with open(self.filename, 'rb') as handle:
+                    yield None, handle   # the subfile=None is needed in iter_xml
+            else:
+                # file in memory, use BytesIO instead:
+                yield None, self.file_io
             self.did_iter_all = True
         else:
             zipper = None
             subfiles = None
             try:
-                zipper = ZipFile(self.filename)
+                zipper = ZipFile(self.file_io)
                 if not args:
                     subfiles = zipper.namelist()
                 elif isstr(args):

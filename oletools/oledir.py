@@ -14,7 +14,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE ==================================================================
 
-# oledir is copyright (c) 2015-2019 Philippe Lagadec (http://www.decalage.info)
+# oledir is copyright (c) 2015-2024 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -53,7 +53,7 @@ from __future__ import print_function
 # 2018-08-28 v0.54 PL: - olefile is now a dependency
 # 2018-10-06           - colorclass is now a dependency
 
-__version__ = '0.54'
+__version__ = '0.61dev1'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -86,6 +86,7 @@ if not _parent_dir in sys.path:
 from oletools.thirdparty.tablestream import tablestream
 from oletools.thirdparty.xglob import xglob
 from oletools.common.clsid import KNOWN_CLSIDS
+from oletools import ftguess
 
 # === CONSTANTS ==============================================================
 
@@ -119,12 +120,19 @@ STATUS_COLORS = {
 # === FUNCTIONS ==============================================================
 
 def sid_display(sid):
+    """
+    Helper function to display a SID (stream ID)
+    """
     if sid == olefile.NOSTREAM:
         return '-'  # None
     else:
         return sid
 
 def clsid_display(clsid):
+    """
+    Helper function to display a CLSID, adding a description if it is
+    a known CLSID, and coloring in red if a CVE is mentioned.
+    """
     clsid_upper = clsid.upper()
     if clsid_upper in KNOWN_CLSIDS:
         clsid += '\n%s' % KNOWN_CLSIDS[clsid_upper]
@@ -132,6 +140,116 @@ def clsid_display(clsid):
     if 'CVE' in clsid:
         color = 'red'
     return (clsid, color)
+
+def process_ole_file(filename, data=None):
+    """
+    Process an OLE file to display the list of streams with details
+
+    - filename: str, filename or path on disk if data==None
+    - data: bytes, file content in memory if it is not on disk
+    """
+    if data is not None:
+        # data extracted from zip file
+        ole = olefile.OleFileIO(data)
+    else:
+        # normal filename on disk
+        ole = olefile.OleFileIO(filename)
+
+    # t = prettytable.PrettyTable(('id', 'Status', 'Type', 'Name', 'Left', 'Right', 'Child', '1st Sect', 'Size'))
+    # t.align = 'l'
+    # t.max_width['id'] = 4
+    # t.max_width['Status'] = 6
+    # t.max_width['Type'] = 10
+    # t.max_width['Name'] = 10
+    # t.max_width['Left'] = 5
+    # t.max_width['Right'] = 5
+    # t.max_width['Child'] = 5
+    # t.max_width['1st Sect'] = 8
+    # t.max_width['Size'] = 6
+
+    table = tablestream.TableStream(
+        column_width=[4, 6, 7, 22, 5, 5, 5, 8, 6],
+        header_row=('id', 'Status', 'Type', 'Name', 'Left', 'Right', 'Child', '1st Sect', 'Size'),
+        style=tablestream.TableStyleSlim)
+
+    # TODO: read ALL the actual directory entries from the directory stream, because olefile does not!
+    # TODO: OR fix olefile!
+    # TODO: olefile should store or give access to the raw direntry data on demand
+    # TODO: oledir option to hexdump the raw direntries
+    # TODO: olefile should be less picky about incorrect directory structures
+
+    for id in range(len(ole.direntries)):
+        d = ole.direntries[id]
+        if d is None:
+            # this direntry is not part of the tree: either unused or an orphan
+            d = ole._load_direntry(id)  # ole.direntries[id]
+            # print('%03d: %s *** ORPHAN ***' % (id, d.name))
+            if d.entry_type == olefile.STGTY_EMPTY:
+                status = 'unused'
+            else:
+                status = 'ORPHAN'
+        else:
+            # print('%03d: %s' % (id, d.name))
+            status = '<Used>'
+        if d.name.startswith('\x00'):
+            # this may happen with unused entries, the name may be filled with zeroes
+            name = ''
+        else:
+            # handle non-printable chars using repr(), remove quotes:
+            name = repr(d.name)[1:-1]
+        left = sid_display(d.sid_left)
+        right = sid_display(d.sid_right)
+        child = sid_display(d.sid_child)
+        entry_type = STORAGE_NAMES.get(d.entry_type, 'Unknown')
+        etype_color = STORAGE_COLORS.get(d.entry_type, 'red')
+        status_color = STATUS_COLORS.get(status, 'red')
+
+        # print('      type=%7s sid_left=%s sid_right=%s sid_child=%s'
+        #       %(entry_type, left, right, child))
+        # t.add_row((id, status, entry_type, name, left, right, child, hex(d.isectStart), d.size))
+        table.write_row((id, status, entry_type, name, left, right, child, '%X' % d.isectStart, d.size),
+                        colors=(None, status_color, etype_color, None, None, None, None, None, None))
+
+    table = tablestream.TableStream(column_width=[4, 28, 6, 38],
+                                    header_row=('id', 'Name', 'Size', 'CLSID'),
+                                    style=tablestream.TableStyleSlim)
+    rootname = ole.get_rootentry_name()
+    entry_id = 0
+    clsid = ole.root.clsid
+    clsid_text, clsid_color = clsid_display(clsid)
+    table.write_row((entry_id, rootname, '-', clsid_text),
+                    colors=(None, 'cyan', None, clsid_color))
+    for entry in sorted(ole.listdir(storages=True)):
+        name = entry[-1]
+        # handle non-printable chars using repr(), remove quotes:
+        name = repr(name)[1:-1]
+        name_color = None
+        if ole.get_type(entry) in (olefile.STGTY_STORAGE, olefile.STGTY_ROOT):
+            name_color = 'cyan'
+        indented_name = '  ' * (len(entry) - 1) + name
+        entry_id = ole._find(entry)
+        try:
+            size = ole.get_size(entry)
+        except:
+            size = '-'
+        clsid = ole.getclsid(entry)
+        clsid_text, clsid_color = clsid_display(clsid)
+        table.write_row((entry_id, indented_name, size, clsid_text),
+                        colors=(None, name_color, None, clsid_color))
+
+    ole.close()
+    # print t
+
+
+def process_openxml_file(filename, data=None):
+    """
+    Process an OLE file to display the list of streams with details
+
+    - filename: str, filename or path on disk if data==None
+    - data: bytes, file content in memory if it is not on disk
+    """
+    print("process openxml")
+
 
 # === MAIN ===================================================================
 
@@ -164,105 +282,23 @@ def main():
     if os.name == 'nt':
         colorclass.Windows.enable(auto_colors=True, reset_atexit=True)
 
-    for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
-                                                      zip_password=options.zip_password, zip_fname=options.zip_fname):
+    for container, filename, data in xglob.iter_files(
+            args, recursive=options.recursive,
+            zip_password=options.zip_password, zip_fname=options.zip_fname):
         # ignore directory names stored in zip files:
         if container and filename.endswith('/'):
             continue
         full_name = '%s in %s' % (filename, container) if container else filename
-        print('OLE directory entries in file %s:' % full_name)
-        if data is not None:
-            # data extracted from zip file
-            ole = olefile.OleFileIO(data)
+        # Check if file is OLE or OpenXML:
+        ftg = ftguess.FileTypeGuesser(filename, data)
+        if ftg.is_ole():
+            print('OLE directory entries in file %s:' % full_name)
+            process_ole_file(filename, data)
+        elif ftg.is_openxml():
+            print(f"OpenXML file {full_name}:")
+            process_openxml_file(filename, data)
         else:
-            # normal filename
-            ole = olefile.OleFileIO(filename)
-        # ole.dumpdirectory()
-
-        # t = prettytable.PrettyTable(('id', 'Status', 'Type', 'Name', 'Left', 'Right', 'Child', '1st Sect', 'Size'))
-        # t.align = 'l'
-        # t.max_width['id'] = 4
-        # t.max_width['Status'] = 6
-        # t.max_width['Type'] = 10
-        # t.max_width['Name'] = 10
-        # t.max_width['Left'] = 5
-        # t.max_width['Right'] = 5
-        # t.max_width['Child'] = 5
-        # t.max_width['1st Sect'] = 8
-        # t.max_width['Size'] = 6
-
-        table = tablestream.TableStream(column_width=[4, 6, 7, 22, 5, 5, 5, 8, 6],
-            header_row=('id', 'Status', 'Type', 'Name', 'Left', 'Right', 'Child', '1st Sect', 'Size'),
-            style=tablestream.TableStyleSlim)
-
-        # TODO: read ALL the actual directory entries from the directory stream, because olefile does not!
-        # TODO: OR fix olefile!
-        # TODO: olefile should store or give access to the raw direntry data on demand
-        # TODO: oledir option to hexdump the raw direntries
-        # TODO: olefile should be less picky about incorrect directory structures
-
-        for id in range(len(ole.direntries)):
-            d = ole.direntries[id]
-            if d is None:
-                # this direntry is not part of the tree: either unused or an orphan
-                d = ole._load_direntry(id) #ole.direntries[id]
-                # print('%03d: %s *** ORPHAN ***' % (id, d.name))
-                if d.entry_type == olefile.STGTY_EMPTY:
-                    status = 'unused'
-                else:
-                    status = 'ORPHAN'
-            else:
-                # print('%03d: %s' % (id, d.name))
-                status = '<Used>'
-            if d.name.startswith('\x00'):
-                # this may happen with unused entries, the name may be filled with zeroes
-                name = ''
-            else:
-                # handle non-printable chars using repr(), remove quotes:
-                name = repr(d.name)[1:-1]
-            left  = sid_display(d.sid_left)
-            right = sid_display(d.sid_right)
-            child = sid_display(d.sid_child)
-            entry_type = STORAGE_NAMES.get(d.entry_type, 'Unknown')
-            etype_color = STORAGE_COLORS.get(d.entry_type, 'red')
-            status_color = STATUS_COLORS.get(status, 'red')
-
-            # print('      type=%7s sid_left=%s sid_right=%s sid_child=%s'
-            #       %(entry_type, left, right, child))
-            # t.add_row((id, status, entry_type, name, left, right, child, hex(d.isectStart), d.size))
-            table.write_row((id, status, entry_type, name, left, right, child, '%X' % d.isectStart, d.size),
-                colors=(None, status_color, etype_color, None, None, None, None, None, None))
-
-        table = tablestream.TableStream(column_width=[4, 28, 6, 38],
-            header_row=('id', 'Name', 'Size', 'CLSID'),
-            style=tablestream.TableStyleSlim)
-        rootname = ole.get_rootentry_name()
-        entry_id = 0
-        clsid = ole.root.clsid
-        clsid_text, clsid_color = clsid_display(clsid)
-        table.write_row((entry_id, rootname, '-', clsid_text),
-                        colors=(None, 'cyan', None, clsid_color))
-        for entry in sorted(ole.listdir(storages=True)):
-            name = entry[-1]
-            # handle non-printable chars using repr(), remove quotes:
-            name = repr(name)[1:-1]
-            name_color = None
-            if ole.get_type(entry) in (olefile.STGTY_STORAGE, olefile.STGTY_ROOT):
-                name_color = 'cyan'
-            indented_name = '  '*(len(entry)-1) + name
-            entry_id = ole._find(entry)
-            try:
-                size = ole.get_size(entry)
-            except:
-                size = '-'
-            clsid = ole.getclsid(entry)
-            clsid_text, clsid_color = clsid_display(clsid)
-            table.write_row((entry_id, indented_name, size, clsid_text),
-                            colors=(None, name_color, None, clsid_color))
-
-
-        ole.close()
-        # print t
+            print(f"{full_name}: unsupported format")
 
 
 if __name__ == '__main__':
