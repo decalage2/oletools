@@ -17,7 +17,7 @@ http://www.decalage.info/python/oletools
 
 #=== LICENSE =================================================================
 
-# ftguess is copyright (c) 2018-2024, Philippe Lagadec (http://www.decalage.info)
+# ftguess is copyright (c) 2018-2025, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -46,8 +46,9 @@ from __future__ import print_function
 # CHANGELOG:
 # 2018-07-04 v0.54 PL: - first version
 # 2021-05-09 v0.60 PL: -
+# 2025-01-18 v0.61 PL: - added strict mode
 
-__version__ = '0.60.2'
+__version__ = '0.61.dev1'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -62,6 +63,7 @@ import os
 import olefile
 import logging
 import optparse
+import inspect
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -191,6 +193,7 @@ class FTYPE(object):
     MSI = "MSI"
     ONENOTE = "OneNote"
     PNG = 'PNG'
+    JAR = 'JAR'
 
 class CONTAINER(object):
     """
@@ -207,6 +210,8 @@ class CONTAINER(object):
     UNKNOWN = 'Unknown Container'
     ONENOTE = 'OneNote'
     PNG = 'PNG'
+    PDF = 'PDF'
+    JAR = 'JAR'
 
 class APP(object):
     """
@@ -221,6 +226,8 @@ class APP(object):
     MSOFFICE = 'MS Office'  # when the exact app is unknown
     MSONENOTE = 'MS OneNote'
     ZIP_ARCHIVER = 'Any Zip Archiver'
+    PDF_VIEWER = 'Any PDF viewer (Adobe Reader, Acrobat, Firefox, Chrome, etc)'
+    JVM = 'Java Virtual Machine'
     WINDOWS = 'Windows'  # for Windows executables and XPS
     UNKNOWN = 'Unknown Application'
 
@@ -259,7 +266,6 @@ ATTR_PKG_NAME = NS_XMLPACKAGE + 'name'
 ATTR_PKG_CONTENTTYPE = NS_XMLPACKAGE + 'contentType'
 CTYPE_VBAPROJECT = "application/vnd.ms-office.vbaProject"
 TAG_PKGBINDATA = NS_XMLPACKAGE + 'binaryData'
-
 
 
 
@@ -349,7 +355,10 @@ class FType_OLE_CLSID_Base(FType_Generic_OLE):
 
     @classmethod
     def recognize(cls, ftg):
-        # TODO: refactor, this is not used anymore
+        # First make sure the olefile is parsed:
+        if ftg.olefile is None and not FType_Generic_OLE.recognize(ftg):
+            return False
+        # The following checks are used by children ftype classes:
         if ftg.root_clsid is not None:
             # First, attempt to identify the root storage CLSID:
             if ftg.root_clsid in cls.CLSIDS:
@@ -395,6 +404,10 @@ class FType_Generic_OpenXML(FType_Base):
     @classmethod
     def recognize(cls, ftg):
         log.debug('Open XML - recognize')
+        # First make sure this is a zip file, and set ftg.zipfile:
+        if ftg.zipfile is None:
+            if not FType_Generic_Zip.recognize(ftg):
+                return False
         # TODO: move most of this code to ooxml.py
         # TODO: here it can be either forward or backward slash...
         try:
@@ -723,6 +736,79 @@ class FType_PNG(FType_Base):
         return True if ftg.data.startswith(b'\x89\x50\x4E\x47\x0D\x0A\x1A\x0A') else False
 
 
+class FType_MHT(FType_Base):
+    """
+    MHTML file format, which can be produced by a web browser, MS Word, Excel or OneNote
+    """
+    # TODO: this class is generic, it would be better to distinguish MHT produced by different apps (check MIME headers)
+    container = CONTAINER.MIME
+    application = APP.UNKNOWN
+    filetype = FTYPE.MHTML
+    name = 'MHTML'
+    longname = 'MHTML - MIME Encapsulation of Aggregate Documents, such as HTML (.mht)'
+    # TODO: MHT can work with .doc extension, need to check othe cases (xls, docx, etc)
+    extensions = ['mht', 'mhtml', 'doc', 'xls']
+    content_types = ('multipart/related', 'message/rfc822')
+    PUID = 'x-fmt/429'
+    # ref: http://justsolve.archiveteam.org/wiki/MHTML
+    # PRONOM: https://www.nationalarchives.gov.uk/PRONOM/x-fmt/429
+
+    @classmethod
+    def recognize(cls, ftg):
+        log.debug('FType_MHT.recognize')
+        data_lowercase = ftg.data.lower()
+        # code borrowed from olevba, not sure it's fully accurate
+        if (b'mime' in data_lowercase and
+            b'version' in data_lowercase and
+            b'multipart' in data_lowercase and
+            abs(data_lowercase.index(b'version') - data_lowercase.index(b'mime')) < 20):
+            return True
+        else:
+            return False
+
+
+class FType_PDF(FType_Base):
+    """
+    PDF file format
+    """
+    container = CONTAINER.PDF
+    application = APP.PDF_VIEWER
+    filetype = FTYPE.PDF
+    name = 'PDF'
+    longname = 'PDF - Portable Document Format (.pdf)'
+    # TODO: check if other extensions are supported
+    extensions = ['pdf']
+    content_types = ('application/pdf',)
+    # TODO: in fact PDF has lots of PUID codes, one for each PDF version
+    # see http://fileformats.archiveteam.org/wiki/PDF#Identifiers
+    PUID = 'fmt/276' # This is only for PDF 1.7
+    # ref: http://fileformats.archiveteam.org/wiki/PDF
+    # PRONOM: https://www.nationalarchives.gov.uk/PRONOM/fmt/276
+
+    @classmethod
+    def recognize(cls, ftg):
+        log.debug('FType_PDF.recognize')
+        # Look for the "%PDF-" header, which can be in the first 1030 bytes:
+        if (b'%PDF-' in ftg.data[:1030]):
+            return True
+        else:
+            return False
+        # TODO: we could also look for other keywords present in all PDF files to be more accurate
+        # - %%EOF, startxref, trailer are NOT mandatory (see minimal PDF files)
+        # - obj/endobj should always be present, also "<<" and ">>"
+
+
+class FType_JAR(FType_Generic_Zip):
+    container = CONTAINER.JAR
+    application = APP.JVM
+    filetype = FTYPE.JAR
+    name = 'Java Archive'
+    longname = 'Java Archive (.jar)'
+    extensions = ['jar']
+    # TODO: for now we just rely on the generic zip recognize(), but we need to check specific files in JAR
+    # TODO: see https://github.com/CybercentreCanada/assemblyline-base/blob/3c2509e2618fb5d55827f6c80ca7f3419cda4de7/assemblyline/common/identify.py#L466
+
+
 # TODO: for PPT, check for stream 'PowerPoint Document'
 # TODO: for Visio, check for stream 'VisioDocument'
 
@@ -787,13 +873,35 @@ class FType_EXE_PE (FType_Base):
         return True if ftg.data.startswith(b'MZ') else False
         # TODO: make this more accurate by checking the PE header, e.g. using pefile or directly
 
+# List of FType_* classes in this module
+ftype_classes = [obj for name,obj in inspect.getmembers(sys.modules[__name__], inspect.isclass) if issubclass(obj, FType_Base)]
+
+# Map each file extension to matching FType classes
+# TODO: need to add a priority to sort the order of ftype classes
+# For example for the .doc extension, MHT should be checked last, after Word, RTF, etc
+EXT_FTYPE = {}
+for ftype in ftype_classes:
+    for extension in ftype.extensions:
+        if extension in EXT_FTYPE:
+            EXT_FTYPE[extension].append(ftype)
+        else:
+            EXT_FTYPE[extension] = [ftype]
+
+# for extension in EXT_FTYPE:
+#     ftypes = EXT_FTYPE[extension]
+#     ftype_names = [ftype.name for ftype in ftypes]
+#     print(f".{extension}: {','.join(ftype_names)}")
+
+
+
 class FileTypeGuesser(object):
     """
     A class to guess the type of a file, focused on MS Office, RTF and ZIP.
     """
 
-    def __init__(self, filepath=None, data=None):
+    def __init__(self, filepath=None, data=None, strict_mode=False):
         self.filepath = filepath
+        self.extension = ''
         self.data = data
         self.container = None
         self.application = None
@@ -817,10 +925,46 @@ class FileTypeGuesser(object):
         if filepath is None and data is None:
             raise ValueError('FileTypeGuesser requires either a file path or file data, or both')
         if data is None:
+            # TODO: in general we should not read the whole file in RAM, to support large files
             with open(filepath, 'rb') as f:
                 self.data = f.read()
         self.data_bytesio = io.BytesIO(self.data)
+        if strict_mode:
+            self.guess_ftype_strict()
+        else:
+            self.guess_ftype_by_content()
 
+    def guess_ftype_strict(self):
+        _, extension = os.path.splitext(self.filepath)
+        # remove dot if present (.exe => exe)
+        if extension.startswith('.'):
+            extension = extension[1:]
+        self.extension = extension
+        # if the file has no extension, attempt to guess file type:
+        if extension == '':
+            log.debug("The file has no extension, guessing file type by content only")
+            self.guess_ftype_by_content()
+            return
+        # if the extension is unknown or not supported, also attempt to guess file type:
+        if extension not in EXT_FTYPE:
+            log.debug("The file extension is unknown or not supported, guessing file type by content only")
+            self.guess_ftype_by_content()
+            return
+        # check all ftypes matching the extension:
+        for ftype in EXT_FTYPE[extension]:
+            log.debug(f'Checking file type "{ftype.name}" which matches the extension ".{extension}"')
+            if ftype.recognize(self):
+                self.ftype = ftype
+                self.container = self.ftype.container
+                self.filetype = self.ftype.filetype
+                self.application = self.ftype.application
+                return
+            # TODO: handle case when several ftypes are recognized!
+        # if none of the ftypes could recognize the file structure, attempt to guess:
+        log.debug("None of the file types matching the extension were recognized, guessing file type by content only")
+        self.guess_ftype_by_content()
+
+    def guess_ftype_by_content(self):
         # Identify the main container type:
         for ftype in (FType_RTF, FType_Generic_OLE, FType_Generic_Zip, FType_OneNote, FType_PNG):
             if ftype.recognize(self):
@@ -832,6 +976,7 @@ class FileTypeGuesser(object):
 
         # OLE file types:
         if self.container == CONTAINER.OLE:
+            log.debug('OLE container')
             # for ftype in (FType_Word97, FType_Word6, FType_Excel97, FType_Excel5):
             #     if ftype.recognize(self):
             #         self.ftype = ftype
@@ -842,16 +987,22 @@ class FileTypeGuesser(object):
 
         # OpenXML file types:
         if self.container == CONTAINER.ZIP:
+            log.debug('ZIP container')
             if FType_Generic_OpenXML.recognize(self):
                 self.ftype = FType_Generic_OpenXML
                 ft = openxml_ftypes.get(self.main_part_content_type, None)
                 if ft is not None:
                     self.ftype = ft
 
-        # TODO: use a mapping from magic to file types
+        # TODO: use a mapping from magic to file types?
         if self.container == CONTAINER.UNKNOWN:
-            if FType_EXE_PE.recognize(self):
-                self.ftype = FType_EXE_PE
+            log.debug('Unknown container, checking other formats')
+            # NOTE: the order of file types matters!
+            # Check PDF, MHT towards the end because false positives are likely
+            for ftype in (FType_EXE_PE, FType_PDF, FType_MHT):
+                if ftype.recognize(self):
+                    self.ftype = ftype
+                    break
 
         self.container = self.ftype.container
         self.filetype = self.ftype.filetype
@@ -910,12 +1061,48 @@ class FileTypeGuesser(object):
 
 # === FUNCTIONS ==============================================================
 
-def ftype_guess(filepath=None, data=None):
-    return FileTypeGuesser(filepath, data)
+def ftype_guess(filepath=None, data=None, strict_mode=False):
+    return FileTypeGuesser(filepath, data, strict_mode)
 
-def process_file(container, filename, data):
+# def ftype_strict(filepath=None, data=None, extension=''):
+#     """
+#     Identify the file type using the strict mode:
+#     first by checking the file extension, and second by matching it to the
+#     internal file structure.
+#     :param filepath: str, file path
+#     :param data: bytes, file content
+#     :param extension: str, filename extension without dot
+#     :return: FType class
+#     """
+#     # remove dot at beginning
+#     # if the file has no extension, attempt to guess file type:
+#     if extension == '':
+#         log.debug("The file has no extension, guessing file type by content only")
+#         return ftype_guess(filepath, data)
+#     # if the extension is unknown or not supported, also attempt to guess file type:
+#     if extension not in EXT_FTYPE:
+#         log.debug("The file extension is unknown or not supported, guessing file type by content only")
+#         return ftype_guess(filepath, data)
+#     # check all ftypes matching the extension:
+#     ftg = FileTypeGuesser(filepath, data)
+#     for ftype in EXT_FTYPE[extension]:
+#         if ftype.recognize(ftg):
+#             return ftype
+#         # TODO: handle case when several ftypes are recognized!
+#     # if none of the ftypes could recognize the file structure, attempt to guess:
+#     log.debug("None of the file types matching the extension were recognized, guessing file type by content only")
+#     return ftype_guess(filepath, data)
+
+
+
+def process_file(container, filename, data, strict_mode=False):
     print('File       : %s' % filename)
-    ftg = ftype_guess(filepath=filename, data=data)
+    _, extension = os.path.splitext(filename)
+    # remove dot if present (.exe => exe)
+    if extension.startswith('.'):
+        extension = extension[1:]
+    print('File extension: %s' % extension)
+    ftg = ftype_guess(filepath=filename, data=data, strict_mode=strict_mode)
     print('File Type  : %s' % ftg.ftype.name)
     print('Description: %s' % ftg.ftype.longname)
     print('Application: %s' % ftg.ftype.application)
@@ -953,6 +1140,8 @@ def main():
     #     help='export results to a CSV file')
     parser.add_option("-r", action="store_true", dest="recursive",
         help='find files recursively in subdirectories.')
+    parser.add_option("-s", "--strict", action="store_true", dest="strict_mode",
+        help='Strict mode: file extension is checked first, then matched to file structure')
     parser.add_option("-z", "--zip", dest='zip_password', type='str', default=None,
         help='if the file is a zip archive, open first file from it, using the provided password')
     parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
@@ -981,7 +1170,7 @@ def main():
         # ignore directory names stored in zip files:
         if container and filename.endswith('/'):
             continue
-        process_file(container, filename, data)
+        process_file(container, filename, data, options.strict_mode)
 
 
 if __name__ == '__main__':
