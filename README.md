@@ -109,7 +109,7 @@ including
 [Anlyz.io](https://sandbox.anlyz.io/),
 [AssemblyLine](https://www.cse-cst.gc.ca/en/assemblyline),
 [Binary Refinery](https://github.com/binref/refinery),
-[CAPE](https://github.com/ctxis/CAPE),
+[CAPE](https://github.com/kevoreilly/CAPEv2),
 [CinCan](https://cincan.io),
 [Cortex XSOAR (Palo Alto)](https://cortex.marketplace.pan.dev/marketplace/details/Oletools/),
 [Cuckoo Sandbox](https://github.com/cuckoosandbox/cuckoo),
