@@ -309,6 +309,12 @@ def process_args(cmd_line_args=None):
 # separator is present. The field begin character, field end character, and
 # field separator are collectively referred to as field characters.
 
+# Begin     = 0x13
+# Sep       = 0x14
+# End       = 0x15
+# Field     = <Begin> *<Field> [Sep] *<Field> <End>
+# FieldList = *<Field>
+
 
 def process_doc_field(data):
     """ check if field instructions start with DDE
@@ -350,8 +356,12 @@ def process_doc_stream(stream):
             char = ord(char)
 
         if char == OLE_FIELD_START:
-            if have_start and max_size_exceeded:
-                logger.debug('big field was not a field after all')
+            if have_start:
+                if max_size_exceeded:
+                    logger.debug('big field was not a field after all')
+                else:
+                    logger.debug('It has multiple starts!')
+                    continue
             have_start = True
             have_sep = False
             max_size_exceeded = False

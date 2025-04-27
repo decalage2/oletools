@@ -42,6 +42,7 @@ class TestReturnCode(unittest.TestCase):
                 'dde-test-from-office2003.doc.zip',
                 'dde-test-from-office2016.doc.zip',
                 'dde-test-from-office2013-utf_16le-korean.doc.zip',
+                'dde-test-from-office365-nested-field.doc.zip',
         ):
             with decrypt_sample(join('msodde', filename)) as temp_name:
                 self.do_test_validity(temp_name)
@@ -178,6 +179,15 @@ class TestDdeLinks(unittest.TestCase):
     def test_with_dde_utf16le(self):
         """ check that dde links appear on stdout """
         filename = 'dde-test-from-office2013-utf_16le-korean.doc.zip'
+        with decrypt_sample(join('msodde', filename)) as temp_file:
+            output = msodde.process_maybe_encrypted(temp_file,
+                field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
+            self.assertNotEqual(len(self.get_dde_from_output(output)), 0,
+                                msg='Found no dde links in output of ' + filename)
+
+    def test_with_dde_nested_field(self):
+        """ check that ddeauto appear on stdout """
+        filename = 'dde-test-from-office365-nested-field.doc.zip'
         with decrypt_sample(join('msodde', filename)) as temp_file:
             output = msodde.process_maybe_encrypted(temp_file,
                 field_filter_mode=msodde.FIELD_FILTER_BLACKLIST)
