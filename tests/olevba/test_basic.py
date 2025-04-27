@@ -75,6 +75,8 @@ class TestOlevbaBasic(unittest.TestCase):
                 raise self.fail('Found "warn" in output line: "{}"'
                                 .format(line.rstrip()))
 
+    @unittest.skipIf('OLETOOLS_TEST_SKIP_SLOW' in os.environ and os.environ['OLETOOLS_TEST_SKIP_SLOW'] == '1',
+                     "Skip slower tests")
     def test_crypt_return(self):
         """
         Test that encrypted files give a certain return code.
@@ -105,7 +107,7 @@ class TestOlevbaBasic(unittest.TestCase):
                                      .format(ret_code, args + [filename, ]))
 
                 # test only first file with all arg combinations, others just
-                # without arg (test takes too long otherwise
+                # without arg (test takes too long otherwise)
                 ADD_ARGS = ([], )
 
     def test_xlm(self):

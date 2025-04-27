@@ -968,9 +968,6 @@ def main(cmd_line_args=None):
     # print banner with version
     ensure_stdout_handles_unicode()
     print('oleobj %s - http://decalage.info/oletools' % __version__)
-    print('THIS IS WORK IN PROGRESS - Check updates regularly!')
-    print('Please report any issue at '
-          'https://github.com/decalage2/oletools/issues')
     print('')
 
     usage = 'usage: %(prog)s [options] <filename> [filename2 ...]'

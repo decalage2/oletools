@@ -253,8 +253,6 @@ def main():
     # Print help if no arguments are passed
     if len(args) == 0:
         print('MacroRaptor %s - http://decalage.info/python/oletools' % __version__)
-        print('This is work in progress, please report issues at %s' % URL_ISSUES)
-        print(__doc__)
         parser.print_help()
         print('\nAn exit code is returned based on the analysis result:')
         for result in (Result_NoMacro, Result_NotMSOffice, Result_MacroOK, Result_Error, Result_Suspicious):
@@ -263,7 +261,6 @@ def main():
 
     # print banner with version
     print('MacroRaptor %s - http://decalage.info/python/oletools' % __version__)
-    print('This is work in progress, please report issues at %s' % URL_ISSUES)
 
     log_helper.enable_logging(level=options.loglevel)
     # enable logging in the modules:
