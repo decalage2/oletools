@@ -4112,6 +4112,11 @@ class VBA_Parser_CLI(VBA_Parser):
             for kw_type, keyword, description in results:
                 color_type = COLOR_TYPE.get(kw_type, None)
                 if color_type:
+
+                    # Prevent malicious actors from performing anti-analysis by replacing
+                    # character 27 (ESC) with \e.
+                    # See more: https://www.youtube.com/watch?v=3T2Al3jdY38
+                    vba_code = vba_code.replace("\x1b", "\\e")
                     vba_code = vba_code.replace(keyword, '{auto%s}%s{/%s}' % (color_type, keyword, color_type))
         return vba_code
 
