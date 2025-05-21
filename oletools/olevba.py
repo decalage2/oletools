@@ -32,7 +32,7 @@ https://github.com/unixfreak0037/officeparser
 
 # === LICENSE ==================================================================
 
-# olevba is copyright (c) 2014-2024 Philippe Lagadec (http://www.decalage.info)
+# olevba is copyright (c) 2014-2025 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -236,7 +236,7 @@ from __future__ import print_function
 # 2021-04-14       PL: - added detection of Workbook_BeforeClose (issue #518)
 # 2021-11-09       KJ: - added PROJECTCOMPATVERSION Record on dir Stream
 
-__version__ = '0.60.2'
+__version__ = '0.60.3'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -4112,7 +4112,6 @@ class VBA_Parser_CLI(VBA_Parser):
             for kw_type, keyword, description in results:
                 color_type = COLOR_TYPE.get(kw_type, None)
                 if color_type:
-
                     # Prevent malicious actors from performing anti-analysis by replacing
                     # character 27 (ESC) with \e.
                     # See more: https://www.youtube.com/watch?v=3T2Al3jdY38
