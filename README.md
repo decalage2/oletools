@@ -33,8 +33,10 @@ Note: python-oletools is not related to OLETools published by BeCubed Software.
 News
 ----
 
-- **2025-05-21 v0.60.3**:
-    - olevba: fixed a security issue in the CLI display when ANSI escape codes are present (PR #873) 
+- **2025-05-22 v0.60.3**:
+    - olevba: 
+      - fixed a security issue in the CLI display when ANSI escape codes are present (PR #873)
+      - encrypted files: password is now reported in the logs, added --decrypted_dir option (PR #842)
 - **2024-07-02 v0.60.2**:
     - olevba: 
       - fixed a bug in open_slk (issue #797, PR #769)
