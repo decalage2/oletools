@@ -3461,6 +3461,9 @@ class VBA_Parser(object):
                         self.xlm_macros += biff_plugin.Analyze()
                         biff_plugin = cBIFF(name=[excel_stream], stream=data, options='-c -r LN')
                         self.xlm_macros += biff_plugin.Analyze()
+                        # try to extract keywords from FORMULAs
+                        biff_plugin = cBIFF(name=[excel_stream], stream=data, options='-o FORMULA -r LN')
+                        self.xlm_macros += biff_plugin.Analyze()
                         # we run plugin_biff again, this time to search DCONN objects and get their URLs, if any:
                         # ref: https://inquest.net/blog/2020/03/18/Getting-Sneakier-Hidden-Sheets-Data-Connections-and-XLM-Macros
                         biff_plugin = cBIFF(name=[excel_stream], stream=data, options='-o DCONN -s')
