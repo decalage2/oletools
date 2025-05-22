@@ -314,18 +314,32 @@ class OleID(object):
         if not self.ole:
             return None
         meta = self.ole.get_metadata()
-        appname = Indicator('appname', meta.creating_application, _type=str,
-                            name='Application name', description='Application name declared in properties',
-                            risk=RISK.INFO)
-        self.indicators.append(appname)
         codepage_name = None
         if meta.codepage is not None:
             codepage_name = '{}: {}'.format(meta.codepage, get_codepage_name(meta.codepage))
+
+        def decode_property(meta_property, encoding):
+            if isinstance(meta_property, str):
+                return meta_property
+            try:
+                if encoding is None:
+                    return meta_property.decode()
+                return meta_property.decode(str(encoding))
+            except LookupError:
+                log.error('Could not find encoding of {}'.format(encoding))
+            except ValueError:
+                log.error('With encoding {}, could not decode {}'.format(encoding, meta_property))
+            return meta_property
+
+        appname = Indicator('appname', decode_property(meta.creating_application, meta.codepage), _type=str,
+                            name='Application name', description='Application name declared in properties',
+                            risk=RISK.INFO)
+        self.indicators.append(appname)
         codepage = Indicator('codepage', codepage_name, _type=str,
                       name='Properties code page', description='Code page used for properties',
                       risk=RISK.INFO)
         self.indicators.append(codepage)
-        author = Indicator('author', meta.author, _type=str,
+        author = Indicator('author', decode_property(meta.author, meta.codepage), _type=str,
                       name='Author', description='Author declared in properties',
                       risk=RISK.INFO)
         self.indicators.append(author)
