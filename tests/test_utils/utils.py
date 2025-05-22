@@ -29,15 +29,15 @@ def call_and_capture(module, args=None, accept_nonzero_exit=False,
     Only drawback sofar: stdout and stderr are merged into one (which is
     what users see on their shell as well). When testing for json-compatible
     output you should `exclude_stderr` to `False` since logging ignores stderr,
-    so unforseen warnings (e.g. issued by pypy) would mess up your json.
+    so unforeseen warnings (e.g. issued by pypy) would mess up your json.
 
     :param str module: name of module to test, e.g. `olevba`
     :param args: arguments for module's main function
-    :param bool fail_nonzero: Raise error if command returns non-0 return code
+    :param bool accept_nonzero_exit: Do not raise error if command returns non-0 return code
     :param bool exclude_stderr: Exclude output to `sys.stderr` from output
                                 (e.g. if parsing output through json)
-    :returns: ret_code, output
-    :rtype: int, str
+    :returns: output, ret_code
+    :rtype: str, int
     """
     # create a PYTHONPATH environment var to prefer our current code
     env = os.environ.copy()
@@ -46,13 +46,6 @@ def call_and_capture(module, args=None, accept_nonzero_exit=False,
                             os.environ['PYTHONPATH']
     except KeyError:
         env['PYTHONPATH'] = SOURCE_BASE_DIR
-
-    # hack: in python2 output encoding (sys.stdout.encoding) was None
-    # although sys.getdefaultencoding() and sys.getfilesystemencoding were ok
-    # TODO: maybe can remove this once branch
-    #       "encoding-for-non-unicode-environments" is merged
-    if 'PYTHONIOENCODING' not in env:
-        env['PYTHONIOENCODING'] = 'utf8'
 
     # ensure args is a tuple
     my_args = tuple(args) if args else ()
