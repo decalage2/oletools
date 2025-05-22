@@ -225,8 +225,6 @@ FIELD_FILTER_DEFAULT = FIELD_FILTER_BLACKLIST
 
 # banner to be printed at program start
 BANNER = """msodde %s - http://decalage.info/python/oletools
-THIS IS WORK IN PROGRESS - Check updates regularly!
-Please report any issue at https://github.com/decalage2/oletools/issues
 """ % __version__
 
 # === LOGGING =================================================================

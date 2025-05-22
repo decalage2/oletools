@@ -513,9 +513,6 @@ def main():
     """Called when running this file as script. Shows all info on input file."""
     # print banner with version
     print('oleid %s - http://decalage.info/oletools' % __version__)
-    print('THIS IS WORK IN PROGRESS - Check updates regularly!')
-    print('Please report any issue at '
-          'https://github.com/decalage2/oletools/issues')
     print('')
 
     parser = argparse.ArgumentParser(description=__doc__)
