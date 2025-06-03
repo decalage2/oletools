@@ -650,6 +650,7 @@ class RtfObject(object):
         # Additional OLE object data
         self.clsid = None
         self.clsid_desc = None
+        self.was_obfuscated = False
 
 
 
@@ -676,6 +677,7 @@ class RtfObjParser(RtfParser):
             self.objects.append(rtfobj)
             rtfobj.start = destination.start
             rtfobj.end = destination.end
+            rtfobj.was_obfuscated = len(destination.data) != destination.end - destination.start
             # Filter out all whitespaces first (just ignored):
             hexdata1 = destination.data.translate(None, b' \t\r\n\f\v')
             # Then filter out any other non-hex character:
@@ -914,6 +916,8 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                 ole_column += '\nFile Type: {}'.format(rtfobj.ftg.ftype.name)
             else:
                 ole_column += '\nMD5 = %r' % rtfobj.oledata_md5
+            if rtfobj.was_obfuscated:
+                ole_column += '\nObfuscation detected in RTF OLE Object'
             if rtfobj.clsid is not None:
                 ole_column += '\nCLSID: %s' % rtfobj.clsid
                 ole_column += '\n%s' % rtfobj.clsid_desc
