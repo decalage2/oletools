@@ -491,7 +491,7 @@ class IterStream(io.RawIOBase):
     def reset(self):
         """ re-set array to state right after creation """
         self.iterable = None
-        self.leftover = None
+        self.leftover = ""
         self.at_end = False
         self.curr_pos = 0
 
@@ -515,22 +515,26 @@ class IterStream(io.RawIOBase):
             # logging.debug('IterStream: created iterable {0}'
             #               .format(self.iterable))
             self.curr_pos = 0
-        try:
-            target_len = len(target)  # we should return at most this much
-            chunk = self.leftover or next(self.iterable)
-            # logging.debug('IterStream: chunk is size {0}'.format(len(chunk)))
-            output, self.leftover = chunk[:target_len], chunk[target_len:]
-            # logging.debug('IterStream: output is size {0}, leftover is {1}'
-            #               .format(len(output), len(self.leftover)))
-            target[:len(output)] = output
-            self.curr_pos += len(output)
-            # logging.debug('IterStream: pos updated to {0}'
-            #               .format(self.curr_pos))
-            return len(output)
-        except StopIteration:
+        target_len = len(target)
+        # aim to always return the desired length, if possible
+        while len(self.leftover) < target_len:
+            try:
+                self.leftover += next(self.iterable)
+            except StopIteration:
+                break
+        # logging.debug('IterStream: leftover size is {0}'
+        #               .format(len(self.leftover)))
+        if len(self.leftover) == 0:
             # logging.debug('IterStream: source iterable exhausted')
             self.at_end = True
             return 0    # indicate EOF
+        output, self.leftover = self.leftover[:target_len], self.leftover[target_len:]
+        # logging.debug('IterStream: output size is {0}, leftover size is {1}'
+        #               .format(len(output), len(self.leftover)))
+        target[:len(output)] = output
+        self.curr_pos += len(output)
+        # logging.debug('IterStream: pos updated to {0}'.format(self.curr_pos))
+        return len(output)
 
     def seek(self, offset, whence=io.SEEK_SET):
         """ can seek to start, possibly end """
@@ -557,7 +561,7 @@ class IterStream(io.RawIOBase):
                 raise IOError('size unknown, cannot seek to end')
             self.at_end = True   # fake jumping to the end
             self.iterable = None   # cannot safely be used any more
-            self.leftover = None
+            self.leftover = ""
             return self.size
         elif whence == io.SEEK_SET:   # seek to start
             # logging.debug('IterStream: seek to start')
@@ -580,7 +584,7 @@ class IterStream(io.RawIOBase):
 
     def close(self):
         self.iterable = None
-        self.leftover = None
+        self.leftover = ""
         self.at_end = False
         self.curr_pos = 0
 
