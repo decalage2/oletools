@@ -445,7 +445,7 @@ class FType_Generic_OpenXML(FType_Base):
         # parse content types, find content type of main part
         try:
             content_types = ftg.zipfile.read('[Content_Types].xml')
-        except RuntimeError:
+        except (RuntimeError, KeyError):
             return False
         # parse the XML content
         # TODO: handle XML parsing exceptions
