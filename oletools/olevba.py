@@ -1675,6 +1675,8 @@ class VBA_Project(object):
         self.relaxed = relaxed
         #: VBA modules contained in the project (list of VBA_Module objects)
         self.modules = []
+        # to store the VBA Project Tools->References details
+        self.references = []
         #: file extension for each VBA module
         self.module_ext = {}
         log.debug('Parsing the dir stream from %r' % dir_path)
@@ -1861,12 +1863,12 @@ class VBA_Project(object):
                 break
 
             if check == 0x0016:
-                # REFERENCENAME
+                REFERENCENAME = "REFERENCENAME"
                 # Specifies the name of a referenced VBA project or Automation type library.
                 reference_id = check
                 reference_sizeof_name = struct.unpack("<L", dir_stream.read(4))[0]
                 reference_name = dir_stream.read(reference_sizeof_name)
-                log.debug('REFERENCE name: %s' % unicode2str(self.decode_bytes(reference_name)))
+                log.debug(REFERENCENAME + ': %s' % unicode2str(self.decode_bytes(reference_name)))
                 reference_reserved = struct.unpack("<H", dir_stream.read(2))[0]
                 # According to [MS-OVBA] 2.3.4.2.2.2 REFERENCENAME Record:
                 # "Reserved (2 bytes): MUST be 0x003E. MUST be ignored."
@@ -1891,29 +1893,29 @@ class VBA_Project(object):
                     log.debug("reference type = {0:04X}".format(check))
 
             if check == 0x0033:
-                # REFERENCEORIGINAL (followed by REFERENCECONTROL)
+                REFERENCEORIGINAL = "REFERENCEORIGINAL" # followed by REFERENCECONTROL
                 # Specifies the identifier of the Automation type library the containing REFERENCECONTROL's
                 # (section 2.3.4.2.2.3) twiddled type library was generated from.
                 referenceoriginal_id = check
                 referenceoriginal_sizeof_libidoriginal = struct.unpack("<L", dir_stream.read(4))[0]
-                referenceoriginal_libidoriginal = dir_stream.read(referenceoriginal_sizeof_libidoriginal)
-                log.debug('REFERENCE original lib id: %s' % unicode2str(self.decode_bytes(referenceoriginal_libidoriginal)))
+                referenceoriginal_libidoriginal = unicode2str(self.decode_bytes(dir_stream.read(referenceoriginal_sizeof_libidoriginal)))
+                log.debug(REFERENCEORIGINAL + ' lib id: %s' % referenceoriginal_libidoriginal)
+                self.references.append((REFERENCEORIGINAL,referenceoriginal_libidoriginal))
                 unused = referenceoriginal_id
-                unused = referenceoriginal_libidoriginal
                 continue
 
             if check == 0x002F:
-                # REFERENCECONTROL
+                REFERENCECONTROL = "REFERENCECONTROL"
                 # Specifies a reference to a twiddled type library and its extended type library.
                 referencecontrol_id = check
                 referencecontrol_sizetwiddled = struct.unpack("<L", dir_stream.read(4))[0]  # ignore
                 referencecontrol_sizeof_libidtwiddled = struct.unpack("<L", dir_stream.read(4))[0]
                 referencecontrol_libidtwiddled = dir_stream.read(referencecontrol_sizeof_libidtwiddled)
-                log.debug('REFERENCE control twiddled lib id: %s' % unicode2str(self.decode_bytes(referencecontrol_libidtwiddled)))
+                log.debug(REFERENCECONTROL + ' twiddled lib id: %s' % unicode2str(self.decode_bytes(referencecontrol_libidtwiddled)))
                 referencecontrol_reserved1 = struct.unpack("<L", dir_stream.read(4))[0]  # ignore
-                self.check_value('REFERENCECONTROL_Reserved1', 0x0000, referencecontrol_reserved1)
+                self.check_value(REFERENCECONTROL + '_Reserved1', 0x0000, referencecontrol_reserved1)
                 referencecontrol_reserved2 = struct.unpack("<H", dir_stream.read(2))[0]  # ignore
-                self.check_value('REFERENCECONTROL_Reserved2', 0x0000, referencecontrol_reserved2)
+                self.check_value(REFERENCECONTROL + '_Reserved2', 0x0000, referencecontrol_reserved2)
                 unused = referencecontrol_id
                 unused = referencecontrol_sizetwiddled
                 unused = referencecontrol_libidtwiddled
@@ -1924,7 +1926,7 @@ class VBA_Project(object):
                     referencecontrol_namerecordextended_sizeof_name = struct.unpack("<L", dir_stream.read(4))[0]
                     referencecontrol_namerecordextended_name = dir_stream.read(
                         referencecontrol_namerecordextended_sizeof_name)
-                    log.debug('REFERENCE control name record extended: %s' % unicode2str(
+                    log.debug(REFERENCECONTROL + ' name record extended: %s' % unicode2str(
                         self.decode_bytes(referencecontrol_namerecordextended_name)))
                     referencecontrol_namerecordextended_reserved = struct.unpack("<H", dir_stream.read(2))[0]
                     if referencecontrol_namerecordextended_reserved == 0x003E:
@@ -1940,16 +1942,18 @@ class VBA_Project(object):
                 else:
                     referencecontrol_reserved3 = check2
 
-                self.check_value('REFERENCECONTROL_Reserved3', 0x0030, referencecontrol_reserved3)
+                self.check_value(REFERENCECONTROL + '_Reserved3', 0x0030, referencecontrol_reserved3)
                 referencecontrol_sizeextended = struct.unpack("<L", dir_stream.read(4))[0]
                 referencecontrol_sizeof_libidextended = struct.unpack("<L", dir_stream.read(4))[0]
-                referencecontrol_libidextended = dir_stream.read(referencecontrol_sizeof_libidextended)
+                referencecontrol_libidextended = unicode2str(self.decode_bytes(dir_stream.read(referencecontrol_sizeof_libidextended)))
+                REFERENCECONTROL_LIB_ID_EXTENDED = REFERENCECONTROL + ' LIB ID EXTENDED'
+                log.debug(REFERENCECONTROL_LIB_ID_EXTENDED + ': %s' % referencecontrol_libidextended)
+                self.references.append((REFERENCECONTROL_LIB_ID_EXTENDED,referencecontrol_libidextended))
                 referencecontrol_reserved4 = struct.unpack("<L", dir_stream.read(4))[0]
                 referencecontrol_reserved5 = struct.unpack("<H", dir_stream.read(2))[0]
                 referencecontrol_originaltypelib = dir_stream.read(16)
                 referencecontrol_cookie = struct.unpack("<L", dir_stream.read(4))[0]
                 unused = referencecontrol_sizeextended
-                unused = referencecontrol_libidextended
                 unused = referencecontrol_reserved4
                 unused = referencecontrol_reserved5
                 unused = referencecontrol_originaltypelib
@@ -1957,41 +1961,40 @@ class VBA_Project(object):
                 continue
 
             if check == 0x000D:
-                # REFERENCEREGISTERED
+                REFERENCEREGISTERED = "REFERENCEREGISTERED"
                 # Specifies a reference to an Automation type library.
                 referenceregistered_id = check
                 referenceregistered_size = struct.unpack("<L", dir_stream.read(4))[0]
                 referenceregistered_sizeof_libid = struct.unpack("<L", dir_stream.read(4))[0]
-                referenceregistered_libid = dir_stream.read(referenceregistered_sizeof_libid)
-                log.debug('REFERENCE registered lib id: %s' % unicode2str(self.decode_bytes(referenceregistered_libid)))
+                referenceregistered_libid = unicode2str(self.decode_bytes(dir_stream.read(referenceregistered_sizeof_libid)))
+                log.debug(REFERENCEREGISTERED + ' lib id: %s' % referenceregistered_libid)
                 referenceregistered_reserved1 = struct.unpack("<L", dir_stream.read(4))[0]
-                self.check_value('REFERENCEREGISTERED_Reserved1', 0x0000, referenceregistered_reserved1)
+                self.check_value(REFERENCEREGISTERED + '_Reserved1', 0x0000, referenceregistered_reserved1)
                 referenceregistered_reserved2 = struct.unpack("<H", dir_stream.read(2))[0]
-                self.check_value('REFERENCEREGISTERED_Reserved2', 0x0000, referenceregistered_reserved2)
+                self.check_value(REFERENCEREGISTERED + '_Reserved2', 0x0000, referenceregistered_reserved2)
                 unused = referenceregistered_id
                 unused = referenceregistered_size
-                unused = referenceregistered_libid
+                self.references.append((REFERENCEREGISTERED,referenceregistered_libid))
                 continue
 
             if check == 0x000E:
-                # REFERENCEPROJECT
+                REFERENCEPROJECT = "REFERENCEPROJECT"
                 # Specifies a reference to an external VBA project.
                 referenceproject_id = check
                 referenceproject_size = struct.unpack("<L", dir_stream.read(4))[0]
                 referenceproject_sizeof_libidabsolute = struct.unpack("<L", dir_stream.read(4))[0]
-                referenceproject_libidabsolute = dir_stream.read(referenceproject_sizeof_libidabsolute)
-                log.debug('REFERENCE project lib id absolute: %s' % unicode2str(self.decode_bytes(referenceproject_libidabsolute)))
+                referenceproject_libidabsolute = unicode2str(self.decode_bytes(dir_stream.read(referenceproject_sizeof_libidabsolute)))
+                log.debug(REFERENCEPROJECT + ' lib id absolute: %s' % referenceproject_libidabsolute)
                 referenceproject_sizeof_libidrelative = struct.unpack("<L", dir_stream.read(4))[0]
-                referenceproject_libidrelative = dir_stream.read(referenceproject_sizeof_libidrelative)
-                log.debug('REFERENCE project lib id relative: %s' % unicode2str(self.decode_bytes(referenceproject_libidrelative)))
+                referenceproject_libidrelative = unicode2str(self.decode_bytes(dir_stream.read(referenceproject_sizeof_libidrelative)))
+                log.debug(REFERENCEPROJECT + ' lib id relative: %s' % referenceproject_libidrelative)
                 referenceproject_majorversion = struct.unpack("<L", dir_stream.read(4))[0]
                 referenceproject_minorversion = struct.unpack("<H", dir_stream.read(2))[0]
                 unused = referenceproject_id
                 unused = referenceproject_size
-                unused = referenceproject_libidabsolute
-                unused = referenceproject_libidrelative
                 unused = referenceproject_majorversion
                 unused = referenceproject_minorversion
+                self.references.append((REFERENCEPROJECT,referenceproject_libidabsolute))
                 continue
 
             log.error('invalid or unknown check Id {0:04X}'.format(check))
@@ -2115,7 +2118,7 @@ def _extract_vba(ole, vba_root, project_path, dir_path, relaxed=True):
     project.parse_project_stream()
 
     for code_path, filename, code_data in project.parse_modules():
-        yield (code_path, filename, code_data)
+        yield (code_path, filename, code_data, project.references)
 
 
 def vba_collapse_long_lines(vba_code):
@@ -2725,6 +2728,7 @@ class VBA_Parser(object):
         self.contains_vba_macros = None # will be set to True or False by detect_vba_macros
         self.contains_xlm_macros = None # will be set to True or False by detect_xlm_macros
         self.vba_code_all_modules = None # to store the source code of all modules
+        self.references = None  # To store details of the Tools->References Info from the VBA Project
         # list of tuples for each module: (subfilename, stream_path, vba_filename, vba_code)
         self.modules = None
         # Analysis results: list of tuples (type, keyword, description) - See VBA_Scanner
@@ -2752,6 +2756,7 @@ class VBA_Parser(object):
         # TODO: those are disabled for now:
         self.xlm_macrosheet_found = False
         self.template_injection_found = False
+
 
         # call ftguess to identify file type:
         self.ftg = ftguess.FileTypeGuesser(self.filename, data=data)
@@ -3541,18 +3546,19 @@ class VBA_Parser(object):
             self.find_vba_projects()
             # set of stream ids
             vba_stream_ids = set()
+            references = []
             for vba_root, project_path, dir_path in self.vba_projects:
                 # extract all VBA macros from that VBA root storage:
                 # The function _extract_vba may fail on some files (issue #132)
                 # TODO: refactor this loop, because if one module fails it stops parsing,
                 #  and the error is only logged, not stored for reporting anomalies
                 try:
-                    for stream_path, vba_filename, vba_code in \
+                    for stream_path, vba_filename, vba_code, references in \
                             _extract_vba(self.ole_file, vba_root, project_path,
                                          dir_path, self.relaxed):
                         # store direntry ids in a set:
                         vba_stream_ids.add(self.ole_file._find(stream_path))
-                        yield (self.filename, stream_path, vba_filename, vba_code)
+                        yield (self.filename, stream_path, vba_filename, vba_code, references)
                 except Exception as e:
                     log.exception('Error in _extract_vba')
             # Also look for VBA code in any stream including orphans
@@ -3612,14 +3618,17 @@ class VBA_Parser(object):
         """
         Extract and decompress source code for each VBA macro found in the file
         by calling extract_macros(), store the results as a list of tuples
-        (filename, stream_path, vba_filename, vba_code) in self.modules.
+        (filename, stream_path, vba_filename, vba_code) in self.modules and self.references.
         See extract_macros for details.
         :returns: list of tuples (filename, stream_path, vba_filename, vba_code)
         """
+        
         if self.modules is None:
             self.modules = []
-            for (subfilename, stream_path, vba_filename, vba_code) in self.extract_macros():
+            self.references = []
+            for (subfilename, stream_path, vba_filename, vba_code, references) in self.extract_macros():
                 self.modules.append((subfilename, stream_path, vba_filename, vba_code))
+                self.references = references
         self.nb_macros = len(self.modules)
         return self.modules
 
