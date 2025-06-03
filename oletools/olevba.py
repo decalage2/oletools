@@ -3669,7 +3669,7 @@ class VBA_Parser(object):
                 log.debug('adding VBA stomping to suspicious keywords')
                 keyword = 'VBA Stomping'
                 description = 'VBA Stomping was detected: the VBA source code and P-code are different, '\
-                    'this may have been used to hide malicious code'
+                    'this may have been used to hide malicious code (option --show-pcode to show disassembled P-code)'
                 scanner.suspicious_keywords.append((keyword, description))
                 scanner.results.append(('Suspicious', keyword, description))
             if self.contains_xlm_macros:
