@@ -2137,6 +2137,26 @@ def vba_collapse_long_lines(vba_code):
     return vba_code
 
 
+def vba_delete_comments(vba_code):
+    """
+    Parse a VBA module code to remove the comments.
+
+    :param vba_code: str, VBA module code
+    :return: str, VBA module code without comments
+    """
+    formit_lines = []
+    for code_line in vba_code.splitlines():
+        new_line = ''
+        for char in code_line:
+            if char != "'":
+                new_line += char
+            else:
+                break
+        formit_lines.append(new_line)
+    vba_code = '\r\n'.join(formit_lines)
+    return vba_code
+
+
 def filter_vba(vba_code):
     """
     Filter VBA source code to remove the first lines starting with "Attribute VB_",
