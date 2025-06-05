@@ -331,6 +331,7 @@ def main():
             # so we only require it if the platform is not Windows or not PyPy:
             'msoffcrypto-tool; platform_python_implementation!="PyPy" or (python_version>="3" and platform_system!="Windows" and platform_system!="Darwin")',
             'pcodedmp>=1.2.5',
+            'magika',
         ],
         extras_require={
             # Optional packages - to be installed with pip install -U oletools[full]

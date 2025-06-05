@@ -15,7 +15,7 @@ http://www.decalage.info/python/oletools
 # http://fileformats.archiveteam.org
 # https://www.nationalarchives.gov.uk/PRONOM/Default.aspx
 
-#=== LICENSE =================================================================
+# === LICENSE =================================================================
 
 # ftguess is copyright (c) 2018-2025, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
@@ -42,7 +42,7 @@ http://www.decalage.info/python/oletools
 
 from __future__ import print_function
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # CHANGELOG:
 # 2018-07-04 v0.54 PL: - first version
 # 2021-05-09 v0.60 PL: -
@@ -65,6 +65,8 @@ import logging
 import optparse
 import inspect
 
+import magika
+
 # import lxml or ElementTree for XML parsing:
 try:
     # lxml: best performance for XML processing
@@ -79,8 +81,8 @@ except ImportError:
             import elementtree.cElementTree as ET
         except ImportError:
             raise ImportError("lxml or ElementTree are not installed, " \
-                               + "see http://codespeak.net/lxml " \
-                               + "or http://effbot.org/zone/element-index.htm")
+                              + "see http://codespeak.net/lxml " \
+                              + "or http://effbot.org/zone/element-index.htm")
 
 # IMPORTANT: it should be possible to run oletools directly as scripts
 # in any directory without installing them with pip or setup.py.
@@ -97,6 +99,7 @@ if _parent_dir not in sys.path:
 from oletools.common import clsid
 from oletools.thirdparty.xglob import xglob
 
+
 # === LOGGING =================================================================
 
 class NullHandler(logging.Handler):
@@ -106,10 +109,12 @@ class NullHandler(logging.Handler):
     Python 2.7 has logging.NullHandler, but this is necessary for 2.6:
     see https://docs.python.org/2.6/library/logging.html#configuring-logging-for-a-library
     """
+
     def emit(self, record):
         pass
 
-def get_logger(name, level=logging.CRITICAL+1):
+
+def get_logger(name, level=logging.CRITICAL + 1):
     """
     Create a suitable logger object for this module.
     The goal is not to change settings of the root logger, to avoid getting
@@ -121,7 +126,7 @@ def get_logger(name, level=logging.CRITICAL+1):
     # First, test if there is already a logger with the same name, else it
     # will generate duplicate messages (due to duplicate handlers):
     if name in logging.Logger.manager.loggerDict:
-        #NOTE: another less intrusive but more "hackish" solution would be to
+        # NOTE: another less intrusive but more "hackish" solution would be to
         # use getLogger then test if its effective level is not default.
         logger = logging.getLogger(name)
         # make sure level is OK:
@@ -135,8 +140,10 @@ def get_logger(name, level=logging.CRITICAL+1):
     logger.setLevel(level)
     return logger
 
+
 # a global logger object used for debugging:
 log = get_logger('ftguess')
+
 
 def enable_logging():
     """
@@ -145,6 +152,7 @@ def enable_logging():
     means the main application controls the actual logging level.
     """
     log.setLevel(logging.NOTSET)
+
 
 # === CONSTANTS ===============================================================
 
@@ -186,14 +194,15 @@ class FTYPE(object):
     MHTML = 'MHTML'
     TEXT = 'TEXT'
     EXE_PE = 'EXE_PE'
-    GENERIC_OLE = 'OLE' # Generic OLE file
-    GENERIC_XML = 'XML' # Generic XML file
-    GENERIC_OPENXML = 'OpenXML' # Generic OpenXML file
+    GENERIC_OLE = 'OLE'  # Generic OLE file
+    GENERIC_XML = 'XML'  # Generic XML file
+    GENERIC_OPENXML = 'OpenXML'  # Generic OpenXML file
     UNKNOWN = 'Unknown File Type'
     MSI = "MSI"
     ONENOTE = "OneNote"
     PNG = 'PNG'
     JAR = 'JAR'
+    BAT = 'BAT'
 
 class CONTAINER(object):
     """
@@ -213,6 +222,7 @@ class CONTAINER(object):
     PDF = 'PDF'
     JAR = 'JAR'
 
+
 class APP(object):
     """
     Constants for file types
@@ -229,7 +239,9 @@ class APP(object):
     PDF_VIEWER = 'Any PDF viewer (Adobe Reader, Acrobat, Firefox, Chrome, etc)'
     JVM = 'Java Virtual Machine'
     WINDOWS = 'Windows'  # for Windows executables and XPS
+    CMD = "Windows cmd.exe"
     UNKNOWN = 'Unknown Application'
+
 
 # FTYPE_NAME = {
 #     FTYPE_ZIP: 'Zip archive',
@@ -254,7 +266,6 @@ NS_CONTENT_TYPES = '{http://schemas.openxmlformats.org/package/2006/content-type
 TAG_CTYPES_DEFAULT = NS_CONTENT_TYPES + 'Default'
 TAG_CTYPES_OVERRIDE = NS_CONTENT_TYPES + 'Override'
 
-
 # Namespaces and tags for Word/PowerPoint 2007+ XML parsing:
 # root: <pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage">
 NS_XMLPACKAGE = '{http://schemas.microsoft.com/office/2006/xmlPackage}'
@@ -268,10 +279,9 @@ CTYPE_VBAPROJECT = "application/vnd.ms-office.vbaProject"
 TAG_PKGBINDATA = NS_XMLPACKAGE + 'binaryData'
 
 
-
 # === CLASSES ================================================================
 
-class FType_Base (object):
+class FType_Base(object):
     container = CONTAINER.UNKNOWN
     application = APP.UNKNOWN
     filetype = FTYPE.UNKNOWN
@@ -293,8 +303,10 @@ class FType_Base (object):
         """
         return False
 
+
 class FType_Unknown(FType_Base):
     pass
+
 
 class FType_RTF(FType_Base):
     container = CONTAINER.RTF
@@ -326,8 +338,8 @@ class FType_Generic_OLE(FType_Base):
         # see https://github.com/decalage2/olefile/issues/142
         # Workaround: pad data when it's smaller than 1536 bytes
         # TODO: use the new data parameter of isOleFile when it's implemented
-        if len(ftg.data)<1536:
-            data = ftg.data + (b'\x00'*1536)
+        if len(ftg.data) < 1536:
+            data = ftg.data + (b'\x00' * 1536)
         else:
             data = ftg.data
         if olefile.isOleFile(data):
@@ -369,6 +381,7 @@ class FType_OLE_CLSID_Base(FType_Generic_OLE):
             # Second, check the presence of well-known stream names
             # TODO: check if a Word doc is OK without a clsid
             return False
+
 
 class FType_Generic_Zip(FType_Base):
     container = CONTAINER.ZIP
@@ -465,13 +478,13 @@ class FType_Generic_OpenXML(FType_Base):
         elem_ctypes = ET.fromstring(content_types)
         ctypes_ext = {}
         ctypes_part = {}
-        for elem_ext in elem_ctypes.iter(tag = TAG_CTYPES_DEFAULT):
+        for elem_ext in elem_ctypes.iter(tag=TAG_CTYPES_DEFAULT):
             extension = elem_ext.get('Extension')
             content_type = elem_ext.get('ContentType')
             # print('Ext: %s => Content-type: %s' % (extension, content_type))
             if extension is not None and content_type is not None:
                 ctypes_ext[extension] = content_type
-        for elem_part in elem_ctypes.iter(tag = TAG_CTYPES_OVERRIDE):
+        for elem_part in elem_ctypes.iter(tag=TAG_CTYPES_OVERRIDE):
             partname = elem_part.get('PartName')
             # remove leading slash if present
             partname = partname.lstrip('/')
@@ -501,6 +514,7 @@ class FType_Word(FType_Base):
     name = 'MS Word (generic)'
     longname = 'MS Word Document or Template (generic)'
 
+
 class FType_Word97(FType_OLE_CLSID_Base, FType_Word):
     application = APP.MSWORD
     filetype = FTYPE.WORD97
@@ -514,6 +528,7 @@ class FType_Word97(FType_OLE_CLSID_Base, FType_Word):
     may_contain_ole = True
     # TODO: if no CLSID, check stream 'WordDocument'
 
+
 class FType_Word6(FType_OLE_CLSID_Base, FType_Word):
     application = APP.MSWORD
     filetype = FTYPE.WORD6
@@ -524,6 +539,7 @@ class FType_Word6(FType_OLE_CLSID_Base, FType_Word):
     content_types = ['application/msword']
     PUID = 'fmt/39'
     may_contain_ole = True
+
 
 class FType_Word2007_Base(FType_Generic_OpenXML, FType_Word):
     application = APP.MSWORD
@@ -538,12 +554,14 @@ class FType_Word2007(FType_Word2007_Base):
     longname = 'MS Word 2007+ Document (.docx)'
     extensions = ['docx']
 
+
 class FType_Word2007_Macro(FType_Word2007_Base):
     application = APP.MSWORD
     filetype = FTYPE.WORD2007_DOCM
     name = 'MS Word 2007+ Macro-Enabled Document'
     longname = 'MS Word 2007+ Macro-Enabled Document (.docm)'
     extensions = ['docm']
+
 
 class FType_Word2007_Template(FType_Word2007_Base):
     application = APP.MSWORD
@@ -552,12 +570,14 @@ class FType_Word2007_Template(FType_Word2007_Base):
     longname = 'MS Word 2007+ Template (.dotx)'
     extensions = ['dotx']
 
+
 class FType_Word2007_Template_Macro(FType_Word2007_Base):
     application = APP.MSWORD
     filetype = FTYPE.WORD2007_DOTM
     name = 'MS Word 2007+ Macro-Enabled Template'
     longname = 'MS Word 2007+ Macro-Enabled Template (.dotm)'
     extensions = ['dotm']
+
 
 # --- EXCEL Formats ---
 
@@ -567,6 +587,7 @@ class FType_Excel(FType_Base):
     name = 'MS Excel (generic)'
     longname = 'MS Excel Workbook/Template/Add-in (generic)'
 
+
 class FType_Excel97(FType_Excel, FType_Generic_OLE):
     filetype = FTYPE.EXCEL97
     name = 'MS Excel 97 Workbook'
@@ -574,6 +595,7 @@ class FType_Excel97(FType_Excel, FType_Generic_OLE):
     CLSIDS = ('00020820-0000-0000-C000-000000000046',)
     extensions = ['xls', 'xlt', 'xla']
     # TODO: if no CLSID, check stream 'Workbook' or 'Book' (maybe Excel 5)
+
 
 class FType_Excel5(FType_Excel, FType_Generic_OLE):
     filetype = FTYPE.EXCEL5
@@ -583,21 +605,24 @@ class FType_Excel5(FType_Excel, FType_Generic_OLE):
     extensions = ['xls', 'xlt', 'xla']
     # TODO: this CLSID is also used in Excel addins (.xla) saved by MS Excel 365
 
+
 class FType_Excel2007(FType_Excel, FType_Generic_OpenXML):
     '''Base class for all MS Excel 2007 file types'''
     name = 'MS Excel 2007+ (generic)'
     longname = 'MS Excel 2007+ Workbook or Template (generic)'
     content_types = ('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',)
-      # note: content type differs only for xlsm
+    # note: content type differs only for xlsm
 
-class FType_Excel2007_XLSX (FType_Excel2007):
+
+class FType_Excel2007_XLSX(FType_Excel2007):
     filetype = FTYPE.EXCEL2007_XLSX
     name = 'MS Excel 2007+ Workbook'
     longname = 'MS Excel 2007+ Workbook (.xlsx)'
     extensions = ['xlsx']
     PUID = 'fmt/214'
 
-class FType_Excel2007_XLSM (FType_Excel2007):
+
+class FType_Excel2007_XLSM(FType_Excel2007):
     filetype = FTYPE.EXCEL2007_XLSM
     name = 'MS Excel 2007+ Macro-Enabled Workbook'
     longname = 'MS Excel 2007+ Macro-Enabled Workbook (.xlsm)'
@@ -605,7 +630,8 @@ class FType_Excel2007_XLSM (FType_Excel2007):
     content_types = ('application/vnd.ms-excel.sheet.macroEnabled.12',)
     PUID = 'fmt/445'
 
-class FType_Excel2007_XLSB (FType_Excel2007):
+
+class FType_Excel2007_XLSB(FType_Excel2007):
     filetype = FTYPE.EXCEL2007_XLSB
     name = 'MS Excel 2007+ Binary Workbook'
     longname = 'MS Excel 2007+ Binary Workbook (.xlsb)'
@@ -613,11 +639,13 @@ class FType_Excel2007_XLSB (FType_Excel2007):
     content_types = ('application/vnd.ms-excel.sheet.binary.macroEnabled.12',)
     PUID = 'fmt/595'
 
+
 class FType_Excel2007_Template(FType_Excel2007):
     filetype = FTYPE.EXCEL2007_XLTX
     name = 'MS Excel 2007+ Template'
     longname = 'MS Excel 2007+ Template (.xltx)'
     extensions = ['xltx']
+
 
 class FType_Excel2007_Template_Macro(FType_Excel2007):
     filetype = FTYPE.EXCEL2007_XLTM
@@ -625,11 +653,13 @@ class FType_Excel2007_Template_Macro(FType_Excel2007):
     longname = 'MS Excel 2007+ Macro-Enabled Template (.xltm)'
     extensions = ['xltm']
 
+
 class FType_Excel2007_Addin_Macro(FType_Excel2007):
     filetype = FTYPE.EXCEL2007_XLAM
     name = 'MS Excel 2007+ Macro-Enabled Add-in'
     longname = 'MS Excel 2007+ Macro-Enabled Add-in (.xlam)'
     extensions = ['xlam']
+
 
 # --- POWERPOINT Formats ---
 
@@ -639,6 +669,7 @@ class FType_Powerpoint(FType_Base):
     name = 'MS Powerpoint (generic)'
     longname = 'MS Powerpoint Presentation/Slideshow/Template/Addin/... (generic)'
 
+
 class FType_Powerpoint97(FType_Powerpoint, FType_Generic_OLE):
     # see also: ppt_record_parser.is_ppt
     filetype = FTYPE.POWERPOINT97
@@ -647,12 +678,14 @@ class FType_Powerpoint97(FType_Powerpoint, FType_Generic_OLE):
     CLSIDS = ('64818D10-4F9B-11CF-86EA-00AA00B929E8',)
     extensions = ['ppt', 'pps', 'pot']
 
+
 class FType_Powerpoint2007(FType_Powerpoint, FType_Generic_OpenXML):
     '''Base class for all MS Powerpoint 2007 file types'''
     filetype = FTYPE.POWERPOINT2007
     name = 'MS Powerpoint 2007+ (generic)'
     longname = 'MS Powerpoint 2007+ Presentation/Slideshow/Template (generic)'
     content_types = ('application/vnd.openxmlformats-officedocument.presentationml.presentation',)
+
 
 class FType_Powerpoint2007_Presentation(FType_Powerpoint2007):
     filetype = FTYPE.POWERPOINT2007_PPTX
@@ -661,6 +694,7 @@ class FType_Powerpoint2007_Presentation(FType_Powerpoint2007):
     content_types = ('application/vnd.openxmlformats-officedocument.presentationml.presentation',)
     extensions = ['pptx']
 
+
 class FType_Powerpoint2007_Slideshow(FType_Powerpoint2007):
     filetype = FTYPE.POWERPOINT2007_PPSX
     name = 'MSPowerpoint 2007+ Slideshow'
@@ -668,12 +702,14 @@ class FType_Powerpoint2007_Slideshow(FType_Powerpoint2007):
     content_types = ('application/vnd.openxmlformats-officedocument.presentationml.slideshow',)
     extensions = ['ppsx']
 
+
 class FType_Powerpoint2007_Macro(FType_Powerpoint2007):
     filetype = FTYPE.POWERPOINT2007_PPTM
     name = 'MSPowerpoint 2007+ Macro-Enabled Presentation'
     longname = 'MSPowerpoint 2007+ Macro-Enabled Presentation (.pptm)'
     content_types = ('application/vnd.ms-powerpoint.presentation.macroEnabled.12',)
     extensions = ['pptm']
+
 
 class FType_Powerpoint2007_Slideshow_Macro(FType_Powerpoint2007):
     filetype = FTYPE.POWERPOINT2007_PPSM
@@ -709,6 +745,7 @@ class FType_OneNote(FType_Base):
     extensions = ['one']
     content_types = ('application/msonenote',)
     PUID = 'fmt/637'
+
     # ref: https://learn.microsoft.com/en-us/openspecs/office_file_formats/ms-onestore/ae670cd2-4b38-4b24-82d1-87cfb2cc3725
     # PRONOM: https://www.nationalarchives.gov.uk/PRONOM/Format/proFormatSearch.aspx?status=detailReport&id=1437
 
@@ -716,7 +753,8 @@ class FType_OneNote(FType_Base):
     def recognize(cls, ftg):
         # ref about Header with OneNote GUID:
         # https://learn.microsoft.com/en-us/openspecs/office_file_formats/ms-onestore/2b394c6b-8788-441f-b631-da1583d772fd
-        return True if ftg.data.startswith(b'\xE4\x52\x5C\x7B\x8C\xD8\xA7\x4D\xAE\xB1\x53\x78\xD0\x29\x96\xD3') else False
+        return True if ftg.data.startswith(
+            b'\xE4\x52\x5C\x7B\x8C\xD8\xA7\x4D\xAE\xB1\x53\x78\xD0\x29\x96\xD3') else False
 
 
 class FType_PNG(FType_Base):
@@ -727,7 +765,8 @@ class FType_PNG(FType_Base):
     longname = 'Portable Network Graphics picture (.png)'
     extensions = ['png']
     content_types = ('image/png',)
-    PUID = 'fmt/13' # This is for PNG 1.2. PNG 1.1 is fmt/12, 1.0 is fmt/11
+    PUID = 'fmt/13'  # This is for PNG 1.2. PNG 1.1 is fmt/12, 1.0 is fmt/11
+
     # ref: http://fileformats.archiveteam.org/wiki/PNG
     # PRONOM: https://www.nationalarchives.gov.uk/PRONOM/Format/proFormatSearch.aspx?status=detailReport&id=666
 
@@ -750,6 +789,7 @@ class FType_MHT(FType_Base):
     extensions = ['mht', 'mhtml', 'doc', 'xls']
     content_types = ('multipart/related', 'message/rfc822')
     PUID = 'x-fmt/429'
+
     # ref: http://justsolve.archiveteam.org/wiki/MHTML
     # PRONOM: https://www.nationalarchives.gov.uk/PRONOM/x-fmt/429
 
@@ -759,13 +799,64 @@ class FType_MHT(FType_Base):
         data_lowercase = ftg.data.lower()
         # code borrowed from olevba, not sure it's fully accurate
         if (b'mime' in data_lowercase and
-            b'version' in data_lowercase and
-            b'multipart' in data_lowercase and
-            abs(data_lowercase.index(b'version') - data_lowercase.index(b'mime')) < 20):
+                b'version' in data_lowercase and
+                b'multipart' in data_lowercase and
+                abs(data_lowercase.index(b'version') - data_lowercase.index(b'mime')) < 20):
             return True
         else:
             return False
 
+
+class FType_BAT(FType_Base):
+    """
+    BAT/CMD file format, aka Windows batch files
+    """
+    container = CONTAINER.UNKNOWN
+    application = APP.CMD
+    filetype = FTYPE.BAT
+    name = 'BAT/CMD'
+    longname = 'BAT/CMD - Windows batch files (.bat, .cmd)'
+    extensions = ['bat', 'cmd']
+    content_types = ('text/x-msdos-batch', 'text/plain') # TODO
+    PUID = 'x-fmt/TODO' # TODO
+
+    # ref: http://justsolve.archiveteam.org/wiki/MHTML
+    # PRONOM: https://www.nationalarchives.gov.uk/PRONOM/x-fmt/429
+
+    @classmethod
+    def recognize(cls, ftg):
+        log.debug('FType_BAT.recognize')
+        res = ftg.get_magika_results()
+        log.debug(repr(res))
+        if res.status == 'ok':
+            if res.output.label == 'batch':
+                return True
+        return False
+
+def get_ftype_class(ftype, _name, _extensions, _content_types, label):
+    class FType_new(FType_Base):
+        container = CONTAINER.UNKNOWN
+        application = APP.UNKNOWN
+        filetype = ftype
+        name = _name
+        longname = name
+        extensions = _extensions
+        content_types = _content_types
+        PUID = 'x-fmt/TODO'  # TODO
+
+        @classmethod
+        def recognize(cls, ftg):
+            # log.debug('FType_BAT.recognize')
+            res = ftg.get_magika_results()
+            log.debug(repr(res))
+            if res.status == 'ok':
+                if res.output.label == label:
+                    return True
+            return False
+
+    return FType_new
+
+# FType_HTML = get_ftype_class("HTML", "HTML", ("html", "htm"), ('text/html',), "html")
 
 class FType_PDF(FType_Base):
     """
@@ -781,7 +872,8 @@ class FType_PDF(FType_Base):
     content_types = ('application/pdf',)
     # TODO: in fact PDF has lots of PUID codes, one for each PDF version
     # see http://fileformats.archiveteam.org/wiki/PDF#Identifiers
-    PUID = 'fmt/276' # This is only for PDF 1.7
+    PUID = 'fmt/276'  # This is only for PDF 1.7
+
     # ref: http://fileformats.archiveteam.org/wiki/PDF
     # PRONOM: https://www.nationalarchives.gov.uk/PRONOM/fmt/276
 
@@ -842,10 +934,12 @@ openxml_ftypes = {
     'application/vnd.ms-excel.template.macroEnabled.main+xml': FType_Excel2007_Template_Macro,
     'application/vnd.ms-excel.addin.macroEnabled.main+xml': FType_Excel2007_Addin_Macro,
     # POWERPOINT
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml': FType_Powerpoint2007_Presentation, #PPTX
-    'application/vnd.openxmlformats-officedocument.presentationml.slideshow.main+xml': FType_Powerpoint2007_Slideshow, #PPSX
-    'application/vnd.ms-powerpoint.presentation.macroEnabled.main+xml': FType_Powerpoint2007_Macro, #PPTM
-    'application/vnd.ms-powerpoint.slideshow.macroEnabled.main+xml': FType_Powerpoint2007_Slideshow_Macro, #PPSM
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml': FType_Powerpoint2007_Presentation,
+    # PPTX
+    'application/vnd.openxmlformats-officedocument.presentationml.slideshow.main+xml': FType_Powerpoint2007_Slideshow,
+    # PPSX
+    'application/vnd.ms-powerpoint.presentation.macroEnabled.main+xml': FType_Powerpoint2007_Macro,  # PPTM
+    'application/vnd.ms-powerpoint.slideshow.macroEnabled.main+xml': FType_Powerpoint2007_Slideshow_Macro,  # PPSM
 
     # TODO: add missing PowerPoint formats:
     # PPAM – PowerPoint Add-in Open Office XML File Format. Mime type is application/vnd.ms-powerpoint.addin.macroEnabled.12.
@@ -854,11 +948,11 @@ openxml_ftypes = {
 
     # XPS
     'application/vnd.ms-package.xps-fixeddocumentsequence+xml': FType_XPS,
-    #TODO: Add MSIX
+    # TODO: Add MSIX
 }
 
 
-class FType_EXE_PE (FType_Base):
+class FType_EXE_PE(FType_Base):
     filetype = FTYPE.EXE_PE
     container = CONTAINER.BINARY
     application = APP.WINDOWS
@@ -873,8 +967,10 @@ class FType_EXE_PE (FType_Base):
         return True if ftg.data.startswith(b'MZ') else False
         # TODO: make this more accurate by checking the PE header, e.g. using pefile or directly
 
+
 # List of FType_* classes in this module
-ftype_classes = [obj for name,obj in inspect.getmembers(sys.modules[__name__], inspect.isclass) if issubclass(obj, FType_Base)]
+ftype_classes = [obj for name, obj in inspect.getmembers(sys.modules[__name__], inspect.isclass) if
+                 issubclass(obj, FType_Base)]
 
 # Map each file extension to matching FType classes
 # TODO: need to add a priority to sort the order of ftype classes
@@ -886,12 +982,13 @@ for ftype in ftype_classes:
             EXT_FTYPE[extension].append(ftype)
         else:
             EXT_FTYPE[extension] = [ftype]
+        # print(f"ext {extension} => {ftype.name}")
+
 
 # for extension in EXT_FTYPE:
 #     ftypes = EXT_FTYPE[extension]
 #     ftype_names = [ftype.name for ftype in ftypes]
 #     print(f".{extension}: {','.join(ftype_names)}")
-
 
 
 class FileTypeGuesser(object):
@@ -908,6 +1005,9 @@ class FileTypeGuesser(object):
         self.filetype = None
         self.ftype = FType_Unknown  # FType class
         self.data_bytesio = None
+        self.magika_results = None  # Cached Magika results
+        self.magika = None  # Magika object (reused several times)
+        self.method = None  # detection methodology
         # For OLE:
         self.olefile = None
         self.root_clsid = None
@@ -929,35 +1029,40 @@ class FileTypeGuesser(object):
             with open(filepath, 'rb') as f:
                 self.data = f.read()
         self.data_bytesio = io.BytesIO(self.data)
+        if self.filepath is not None:
+            _, extension = os.path.splitext(self.filepath)
+            # remove dot if present (.exe => exe)
+            if extension.startswith('.'):
+                extension = extension[1:]
+            self.extension = extension.lower()
         if strict_mode:
             self.guess_ftype_strict()
         else:
             self.guess_ftype_by_content()
 
     def guess_ftype_strict(self):
-        _, extension = os.path.splitext(self.filepath)
-        # remove dot if present (.exe => exe)
-        if extension.startswith('.'):
-            extension = extension[1:]
-        self.extension = extension
+        log.debug('guess_ftype_strict')
+        log.info("STEP 1: Checking the extension if it matches known file formats")
         # if the file has no extension, attempt to guess file type:
-        if extension == '':
-            log.debug("The file has no extension, guessing file type by content only")
+        if self.extension == '':
+            log.info("The file has no extension, guessing file type by content only")
             self.guess_ftype_by_content()
             return
         # if the extension is unknown or not supported, also attempt to guess file type:
-        if extension not in EXT_FTYPE:
-            log.debug("The file extension is unknown or not supported, guessing file type by content only")
+        if self.extension not in EXT_FTYPE:
+            log.info("The file extension is unknown or not supported, guessing file type by content only")
             self.guess_ftype_by_content()
             return
         # check all ftypes matching the extension:
-        for ftype in EXT_FTYPE[extension]:
-            log.debug(f'Checking file type "{ftype.name}" which matches the extension ".{extension}"')
+        log.info(f"STEP 1: candidate file types matching the file extension: {[ftype.name for ftype in EXT_FTYPE[self.extension]]}")
+        for ftype in EXT_FTYPE[self.extension]:
+            log.info(f'STEP 2: Checking content for file type "{ftype.name}" which matches the extension ".{self.extension}"')
             if ftype.recognize(self):
                 self.ftype = ftype
                 self.container = self.ftype.container
                 self.filetype = self.ftype.filetype
                 self.application = self.ftype.application
+                self.method = "strict mode (file extension and content)"
                 return
             # TODO: handle case when several ftypes are recognized!
         # if none of the ftypes could recognize the file structure, attempt to guess:
@@ -965,6 +1070,8 @@ class FileTypeGuesser(object):
         self.guess_ftype_by_content()
 
     def guess_ftype_by_content(self):
+        log.debug('guess_ftype_by_content')
+        log.info("STEP 3: Guessing file type by checking the content only")
         # Identify the main container type:
         for ftype in (FType_RTF, FType_Generic_OLE, FType_Generic_Zip, FType_OneNote, FType_PNG):
             if ftype.recognize(self):
@@ -999,10 +1106,37 @@ class FileTypeGuesser(object):
             log.debug('Unknown container, checking other formats')
             # NOTE: the order of file types matters!
             # Check PDF, MHT towards the end because false positives are likely
-            for ftype in (FType_EXE_PE, FType_PDF, FType_MHT):
+            for ftype in (FType_EXE_PE, FType_PDF, FType_MHT, FType_BAT):
                 if ftype.recognize(self):
                     self.ftype = ftype
                     break
+
+        # Fallback to magika: create FType class on the fly
+        if self.ftype == None or self.ftype == FType_Unknown:
+            log.info("STEP 4: Fallback to magika")
+            res = self.get_magika_results()
+            # TODO: did it find a match?
+            log.debug(res)
+            ftype = res.output.label
+            # Check if Magika has recognized the format:
+            if ftype != "unknown":
+                name = res.output.label
+                longname = res.output.description
+                ext = res.output.extensions
+                mimetypes = (res.output.mime_type,)
+                self.ftype = get_ftype_class(ftype, name, ext, mimetypes, ftype)
+                if self.extension in ext:
+                    # TODO: this result has higher confidence than content only
+                    self.method = "Magika on file content only + matching extension"
+                else:
+                    self.method = "Magika on file content only"
+            else:
+                self.method = "File format not recognized"
+        else:
+            self.method = "File content only"
+
+        if self.ftype.extensions and self.extension not in self.ftype.extensions:
+            log.warning("The file extension does not match the file content")
 
         self.container = self.ftype.container
         self.filetype = self.ftype.filetype
@@ -1022,6 +1156,16 @@ class FileTypeGuesser(object):
         # TODO: only close self.olefile if it was opened by ftguess
         if self.zipfile is not None:
             self.zipfile.close()
+
+    def get_magika_results(self):
+        """
+        Get results from Magika. Magika is only launched at first call.
+        """
+        # TODO: only use magika if installed
+        if self.magika_results == None:
+            self.magika = magika.Magika()
+            self.magika_results = self.magika.identify_stream(self.data_bytesio)
+        return self.magika_results
 
     def is_ole(self):
         """
@@ -1064,6 +1208,7 @@ class FileTypeGuesser(object):
 def ftype_guess(filepath=None, data=None, strict_mode=False):
     return FileTypeGuesser(filepath, data, strict_mode)
 
+
 # def ftype_strict(filepath=None, data=None, extension=''):
 #     """
 #     Identify the file type using the strict mode:
@@ -1094,7 +1239,6 @@ def ftype_guess(filepath=None, data=None, strict_mode=False):
 #     return ftype_guess(filepath, data)
 
 
-
 def process_file(container, filename, data, strict_mode=False):
     print('File       : %s' % filename)
     _, extension = os.path.splitext(filename)
@@ -1111,49 +1255,50 @@ def process_file(container, filename, data, strict_mode=False):
         print('Root CLSID : %s - %s' % (ftg.root_clsid, ftg.root_clsid_name))
     print('Content-type(s) : %s' % ','.join(ftg.ftype.content_types))
     print('PUID       : %s' % ftg.ftype.PUID)
+    print('File type identification method: %s' % ftg.method)
     print()
 
 
-#=== MAIN =================================================================
+# === MAIN =================================================================
 
 def main():
     # print banner with version
     python_version = '%d.%d.%d' % sys.version_info[0:3]
-    print ('ftguess %s on Python %s - http://decalage.info/python/oletools' %
-           (__version__, python_version))
-    print ('THIS IS WORK IN PROGRESS - Check updates regularly!')
-    print ('Please report any issue at https://github.com/decalage2/oletools/issues')
-    print ('')
+    print('ftguess %s on Python %s - http://decalage.info/python/oletools' %
+          (__version__, python_version))
+    print('THIS IS WORK IN PROGRESS - Check updates regularly!')
+    print('Please report any issue at https://github.com/decalage2/oletools/issues')
+    print('')
 
-    DEFAULT_LOG_LEVEL = "warning" # Default log level
+    DEFAULT_LOG_LEVEL = "warning"  # Default log level
     LOG_LEVELS = {
-        'debug':    logging.DEBUG,
-        'info':     logging.INFO,
-        'warning':  logging.WARNING,
-        'error':    logging.ERROR,
+        'debug': logging.DEBUG,
+        'info': logging.INFO,
+        'warning': logging.WARNING,
+        'error': logging.ERROR,
         'critical': logging.CRITICAL
-        }
+    }
 
     usage = 'usage: %prog [options] <filename> [filename2 ...]'
     parser = optparse.OptionParser(usage=usage)
     # parser.add_option('-c', '--csv', dest='csv',
     #     help='export results to a CSV file')
     parser.add_option("-r", action="store_true", dest="recursive",
-        help='find files recursively in subdirectories.')
+                      help='find files recursively in subdirectories.')
     parser.add_option("-s", "--strict", action="store_true", dest="strict_mode",
-        help='Strict mode: file extension is checked first, then matched to file structure')
+                      help='Strict mode: file extension is checked first, then matched to file structure')
     parser.add_option("-z", "--zip", dest='zip_password', type='str', default=None,
-        help='if the file is a zip archive, open first file from it, using the provided password')
+                      help='if the file is a zip archive, open first file from it, using the provided password')
     parser.add_option("-f", "--zipfname", dest='zip_fname', type='str', default='*',
-        help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
+                      help='if the file is a zip archive, file(s) to be opened within the zip. Wildcards * and ? are supported. (default:*)')
     parser.add_option('-l', '--loglevel', dest="loglevel", action="store", default=DEFAULT_LOG_LEVEL,
-                            help="logging level debug/info/warning/error/critical (default=%default)")
+                      help="logging level debug/info/warning/error/critical (default=%default)")
 
     (options, args) = parser.parse_args()
 
     # Print help if no arguments are passed
     if len(args) == 0:
-        print (__doc__)
+        print(__doc__)
         parser.print_help()
         sys.exit()
 
@@ -1166,7 +1311,7 @@ def main():
     enable_logging()
 
     for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
-        zip_password=options.zip_password, zip_fname=options.zip_fname):
+                                                      zip_password=options.zip_password, zip_fname=options.zip_fname):
         # ignore directory names stored in zip files:
         if container and filename.endswith('/'):
             continue
