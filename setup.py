@@ -335,7 +335,7 @@ def main():
             # magika requires onnxruntime, which is not yet available for Python 3.14:
             # TODO: update this when onnxruntime is available for Python 3.14
             # See https://github.com/microsoft/onnxruntime/issues/26309
-            'magika==1.0.1; python_version < "3.14"',
+            'magika==1.0.1; python_version < "3.14"  and platform_python_implementation!="PyPy"',
         ],
         extras_require={
             # Optional packages - to be installed with pip install -U oletools[full]

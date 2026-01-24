@@ -9,4 +9,4 @@ pcodedmp>=1.2.5
 # Magika is only used by ftguess, to improve accuracy and file formats coverage.
 # For now it cannot be installed with Python 3.14 due to onnxruntime
 # See https://github.com/microsoft/onnxruntime/issues/26309
-magika==1.0.1; python_version < "3.14"
+magika==1.0.1; python_version < "3.14" and platform_python_implementation!="PyPy"
