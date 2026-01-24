@@ -17,7 +17,7 @@ http://www.decalage.info/python/oletools
 
 # === LICENSE =================================================================
 
-# ftguess is copyright (c) 2018-2025, Philippe Lagadec (http://www.decalage.info)
+# ftguess is copyright (c) 2018-2026, Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -48,7 +48,7 @@ from __future__ import print_function
 # 2021-05-09 v0.60 PL: -
 # 2025-01-18 v0.61 PL: - added strict mode
 
-__version__ = '0.61.dev1'
+__version__ = '0.61.dev2'
 
 # ------------------------------------------------------------------------------
 # TODO:
@@ -65,7 +65,10 @@ import logging
 import optparse
 import inspect
 
-import magika
+try:
+    import magika
+except ImportError:
+    magika = None
 
 # import lxml or ElementTree for XML parsing:
 try:
@@ -827,10 +830,11 @@ class FType_BAT(FType_Base):
     def recognize(cls, ftg):
         log.debug('FType_BAT.recognize')
         res = ftg.get_magika_results()
-        log.debug(repr(res))
-        if res.status == 'ok':
-            if res.output.label == 'batch':
-                return True
+        if res is not None:  # if magika is installed
+            log.debug(repr(res))
+            if res.status == 'ok':
+                if res.output.label == 'batch':
+                    return True
         return False
 
 def get_ftype_class(ftype, _name, _extensions, _content_types, label):
@@ -846,12 +850,12 @@ def get_ftype_class(ftype, _name, _extensions, _content_types, label):
 
         @classmethod
         def recognize(cls, ftg):
-            # log.debug('FType_BAT.recognize')
             res = ftg.get_magika_results()
-            log.debug(repr(res))
-            if res.status == 'ok':
-                if res.output.label == label:
-                    return True
+            if res is not None: # if magika is installed
+                log.debug(repr(res))
+                if res.status == 'ok':
+                    if res.output.label == label:
+                        return True
             return False
 
     return FType_new
@@ -958,7 +962,8 @@ class FType_EXE_PE(FType_Base):
     application = APP.WINDOWS
     name = "Windows PE Executable or DLL"
     longname = "Windows Portable Executable or DLL (EXE,DLL)"
-    extensions = ('exe', 'dll', 'sys', 'scr')  # TODO: add more from https://en.wikipedia.org/wiki/Portable_Executable
+    extensions = ('exe', 'dll', 'sys', 'scr', 'com')  # TODO: add more from https://en.wikipedia.org/wiki/Portable_Executable
+    # Note: on Windows 64 bits COM files cannot run, but EXE files renamed as COM are allowed to run (cf. Wikipedia)
     content_types = ('application/vnd.microsoft.portable-executable',)
     PUID = 'fmt/899'
 
@@ -993,10 +998,18 @@ for ftype in ftype_classes:
 
 class FileTypeGuesser(object):
     """
-    A class to guess the type of a file, focused on MS Office, RTF and ZIP.
+    A class to guess the type of a file.
     """
 
     def __init__(self, filepath=None, data=None, strict_mode=False):
+        """
+        FileTypeGuesser constructor
+        :param filepath: (optional) path of the file to be opened from disk, or original filename if data is provided
+        :param data: (optional) bytes string containing the full file content
+        :param strict_mode: if True, the file identification algorithm is based on extension+content. Otherwise, content only.
+        """
+        # TODO: add the possibility to get data from a file-like object
+        # TODO: add the possibility to supply the original filename, if filepath is a different name
         self.filepath = filepath
         self.extension = ''
         self.data = data
@@ -1113,23 +1126,26 @@ class FileTypeGuesser(object):
 
         # Fallback to magika: create FType class on the fly
         if self.ftype == None or self.ftype == FType_Unknown:
-            log.info("STEP 4: Fallback to magika")
-            res = self.get_magika_results()
-            # TODO: did it find a match?
-            log.debug(res)
-            ftype = res.output.label
-            # Check if Magika has recognized the format:
-            if ftype != "unknown":
-                name = res.output.label
-                longname = res.output.description
-                ext = res.output.extensions
-                mimetypes = (res.output.mime_type,)
-                self.ftype = get_ftype_class(ftype, name, ext, mimetypes, ftype)
-                if self.extension in ext:
-                    # TODO: this result has higher confidence than content only
-                    self.method = "Magika on file content only + matching extension"
+            if magika is not None:
+                log.info("STEP 4: Fallback to magika")
+                res = self.get_magika_results()
+                # TODO: did it find a match?
+                log.debug(res)
+                ftype = res.output.label
+                # Check if Magika has recognized the format:
+                if ftype != "unknown":
+                    name = res.output.label
+                    longname = res.output.description
+                    ext = res.output.extensions
+                    mimetypes = (res.output.mime_type,)
+                    self.ftype = get_ftype_class(ftype, name, ext, mimetypes, ftype)
+                    if self.extension in ext:
+                        # TODO: this result has higher confidence than content only
+                        self.method = "Magika on file content only + matching extension"
+                    else:
+                        self.method = "Magika on file content only"
                 else:
-                    self.method = "Magika on file content only"
+                    self.method = "File format not recognized"
             else:
                 self.method = "File format not recognized"
         else:
@@ -1160,9 +1176,10 @@ class FileTypeGuesser(object):
     def get_magika_results(self):
         """
         Get results from Magika. Magika is only launched at first call.
+        If Magika is not available, return None
         """
-        # TODO: only use magika if installed
-        if self.magika_results == None:
+        # only use magika if installed
+        if self.magika_results == None and magika is not None:
             self.magika = magika.Magika()
             self.magika_results = self.magika.identify_stream(self.data_bytesio)
         return self.magika_results
@@ -1309,6 +1326,10 @@ def main():
                         format='%(levelname)-8s %(message)s')
     # enable logging in the modules:
     enable_logging()
+
+    # warn if Magika is not installed
+    if magika is None:
+        log.warning("Magika is not installed, some file formats will not be recognized")
 
     for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
                                                       zip_password=options.zip_password, zip_fname=options.zip_fname):
