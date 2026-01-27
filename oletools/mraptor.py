@@ -184,6 +184,8 @@ class MacroRaptor(object):
         """
         # collapse long lines first
         self.vba_code = olevba.vba_collapse_long_lines(vba_code)
+        # delete comments
+        self.vba_code = olevba.vba_delete_comments(vba_code)
         self.autoexec = False
         self.write = False
         self.execute = False
