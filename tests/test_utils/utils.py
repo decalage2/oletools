@@ -36,7 +36,7 @@ def call_and_capture(module, args=None, accept_nonzero_exit=False,
     :param bool fail_nonzero: Raise error if command returns non-0 return code
     :param bool exclude_stderr: Exclude output to `sys.stderr` from output
                                 (e.g. if parsing output through json)
-    :returns: ret_code, output
+    :returns: output, ret_codt
     :rtype: int, str
     """
     # create a PYTHONPATH environment var to prefer our current code
