@@ -55,7 +55,7 @@ import os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.60.3'
+version      = '0.61.dev1'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       = "Philippe Lagadec"
@@ -323,7 +323,8 @@ def main():
         test_suite="tests",
         # scripts=scripts,
         install_requires=[
-            "pyparsing>=2.1.0,<4",  # changed from 2.2.0 to 2.1.0 for issue #481
+            # TODO: for now we avoid pyparsing 3.3+ which generates warnings (see PR #877)
+            "pyparsing>=2.1.0,<3.3",  # changed from 2.2.0 to 2.1.0 for issue #481
             "olefile>=0.46",
             "easygui",
             'colorclass',
@@ -331,6 +332,10 @@ def main():
             # so we only require it if the platform is not Windows or not PyPy:
             'msoffcrypto-tool; platform_python_implementation!="PyPy" or (python_version>="3" and platform_system!="Windows" and platform_system!="Darwin")',
             'pcodedmp>=1.2.5',
+            # magika requires onnxruntime, which is not yet available for Python 3.14:
+            # TODO: update this when onnxruntime is available for Python 3.14
+            # See https://github.com/microsoft/onnxruntime/issues/26309
+            'magika==1.0.1; python_version < "3.14"  and platform_python_implementation!="PyPy"',
         ],
         extras_require={
             # Optional packages - to be installed with pip install -U oletools[full]

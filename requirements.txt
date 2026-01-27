@@ -1,6 +1,12 @@
-pyparsing>=2.1.0,<4
+# TODO: for now we avoid pyparsing 3.3+ which generates warnings (see PR #877)
+pyparsing>=2.1.0,<3.3
 olefile>=0.46
 easygui
 colorclass
 msoffcrypto-tool; platform_python_implementation!="PyPy" or (python_version>="3" and platform_system!="Windows" and platform_system!="Darwin")
 pcodedmp>=1.2.5
+
+# Magika is only used by ftguess, to improve accuracy and file formats coverage.
+# For now it cannot be installed with Python 3.14 due to onnxruntime
+# See https://github.com/microsoft/onnxruntime/issues/26309
+magika==1.0.1; python_version < "3.14" and platform_python_implementation!="PyPy"
