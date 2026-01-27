@@ -328,8 +328,10 @@ def main():
             "easygui",
             'colorclass',
             # msoffcrypto-tool is not installable on PyPy+Windows (see issue #473),
-            # so we only require it if the platform is not Windows or not PyPy:
-            'msoffcrypto-tool; platform_python_implementation!="PyPy" or (python_version>="3" and platform_system!="Windows" and platform_system!="Darwin")',
+            # so we only require it if the platform is not Windows or not PyPy;
+            # Also, usage of cryptography (used by msoffcrypt-tool) is deprecated for py2
+            'msoffcrypto-tool; (python_version>="3" and platform_python_implementation!="PyPy") \
+                or (python_version>="3" and platform_system!="Windows" and platform_system!="Darwin")',
             'pcodedmp>=1.2.5',
         ],
         extras_require={
