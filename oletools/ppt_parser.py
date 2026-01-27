@@ -122,6 +122,9 @@ MAIN_STREAM_NAME = 'PowerPoint Document'
 URL_OLEVBA_ISSUES = 'https://bitbucket.org/decalage/oletools/issues'
 MSG_OLEVBA_ISSUES = 'Please report this issue on %s' % URL_OLEVBA_ISSUES
 
+# zlib
+DETECT_HEADER = zlib.MAX_WBITS | 32
+NO_HEADER = -zlib.MAX_WBITS
 
 # === EXCEPTIONS ==============================================================
 
@@ -1552,7 +1555,7 @@ class PptParser(object):
         # failed with Error -5 (incomplete or truncated stream)
         stream.seek(storage.data_offset, os.SEEK_SET)
         decomp, n_read, err = \
-            iterative_decompress(stream, storage.data_size)
+            iterative_decompress(stream, storage.data_offset, storage.data_size)
         log.debug('decompressed {0} to {1} bytes; found err: {2}'
                   .format(n_read, len(decomp), err))
         if err and self.fast_fail:
@@ -1610,10 +1613,12 @@ class PptParser(object):
                  .format(n_infos, n_macros, n_storages, n_compressed))
 
 
-def iterative_decompress(stream, size, chunk_size=4096):
+def iterative_decompress(
+    stream, offset, size, chunk_size=4096, wbits=DETECT_HEADER, retry=False
+):
     """ decompress data from stream chunk-wise """
 
-    decompressor = zlib.decompressobj()
+    decompressor = zlib.decompressobj(wbits)
     n_read = 0
     decomp = b''
     return_err = None
@@ -1624,6 +1629,9 @@ def iterative_decompress(stream, size, chunk_size=4096):
             decomp += decompressor.decompress(stream.read(n_new))
             n_read += n_new
     except zlib.error as err:
+        if not retry:
+            stream.seek(offset)
+            return iterative_decompress(stream, offset, size, wbits=NO_HEADER, retry=True)
         return_err = err
 
     return decomp, n_read, return_err
