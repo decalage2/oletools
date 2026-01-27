@@ -1,6 +1,5 @@
 pyparsing>=2.1.0,<4
 olefile>=0.46
-easygui
 colorclass
 msoffcrypto-tool; platform_python_implementation!="PyPy" or (python_version>="3" and platform_system!="Windows" and platform_system!="Darwin")
 pcodedmp>=1.2.5
