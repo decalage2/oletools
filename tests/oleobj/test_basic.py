@@ -3,6 +3,7 @@
 import unittest
 from tempfile import mkdtemp
 from shutil import rmtree
+from os import listdir
 from os.path import join, isfile
 from hashlib import md5
 from glob import glob
@@ -68,16 +69,16 @@ def preread_file(args):
         raise ValueError('ignore_arg not as expected!')
     with open(filename, 'rb') as file_handle:
         data = file_handle.read()
-    err_stream, err_dumping, did_dump = \
+    err_stream, err_dumping, did_dump, found_external = \
         oleobj.process_file(filename, data, output_dir=output_dir)
-    if did_dump and not err_stream and not err_dumping:
+    if did_dump and not err_stream and not err_dumping and not found_external:
         return oleobj.RETURN_DID_DUMP
     else:
-        return oleobj.RETURN_NO_DUMP   # just anything else
+        return oleobj.RETURN_NO_DUMP   # just anything else, will cause error
 
 
 class TestOleObj(unittest.TestCase):
-    """ Tests oleobj basic feature """
+    """Tests oleobj basic feature: dump embedded content."""
 
     def setUp(self):
         """ fixture start: create temp dir """
@@ -157,6 +158,17 @@ class TestOleObj(unittest.TestCase):
         """ Ensure old oleobj behaviour still works: pre-read whole file """
         return self.do_test_md5(['-d', self.temp_dir], test_fun=preread_file,
                                 only_run_every=4)
+
+    def test_nodump(self):
+        """Ensure that with --nodump nothing is ever written to disc."""
+        data_dir = join(DATA_BASE_DIR, 'oleobj')
+        for sample_name, _, _ in SAMPLES:
+            args = ['-d', self.temp_dir, '--nodump', join(data_dir, sample_name)]
+            call_and_capture('oleobj', args,
+                             accept_nonzero_exit=True)
+        temp_dir_contents = listdir(self.temp_dir)
+        if temp_dir_contents:
+            self.fail('Found file in temp dir despite "--nodump": {}'.format(temp_dir_contents))
 
 
 class TestSaneFilenameCreation(unittest.TestCase):

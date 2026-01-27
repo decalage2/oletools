@@ -2,8 +2,9 @@
 """
 oleobj.py
 
-oleobj is a Python script and module to parse OLE objects and files stored
-into various MS Office file formats (doc, xls, ppt, docx, xlsx, pptx, etc)
+oleobj is a Python script and module to extract OLE objects and files stored
+into various MS Office file formats (doc, xls, ppt, docx, xlsx, pptx, etc).
+It also finds external relationships in newer xml-based office file formats.
 
 Author: Philippe Lagadec - http://www.decalage.info
 License: BSD, see source code or documentation
@@ -43,7 +44,6 @@ http://www.decalage.info/python/oletools
 
 from __future__ import print_function
 
-import logging
 import struct
 import argparse
 import os
@@ -68,10 +68,11 @@ if _parent_dir not in sys.path:
     sys.path.insert(0, _parent_dir)
 
 from oletools.thirdparty import xglob
+from oletools import record_base
 from oletools.ppt_record_parser import (is_ppt, PptFile,
                                         PptRecordExOleVbaActiveXAtom)
-from oletools.ooxml import XmlParser
-from oletools.common.io_encoding import ensure_stdout_handles_unicode
+from oletools import ooxml
+from oletools.common.log_helper import log_helper
 
 # -----------------------------------------------------------------------------
 # CHANGELOG:
@@ -94,7 +95,6 @@ __version__ = '0.60.1'
 
 # -----------------------------------------------------------------------------
 # TODO:
-# + setup logging (common with other oletools)
 
 
 # -----------------------------------------------------------------------------
@@ -111,64 +111,18 @@ __version__ = '0.60.1'
 # === LOGGING =================================================================
 
 DEFAULT_LOG_LEVEL = "warning"
-LOG_LEVELS = {'debug':    logging.DEBUG,
-              'info':     logging.INFO,
-              'warning':  logging.WARNING,
-              'error':    logging.ERROR,
-              'critical': logging.CRITICAL,
-              'debug-olefile': logging.DEBUG}
-
-
-class NullHandler(logging.Handler):
-    """
-    Log Handler without output, to avoid printing messages if logging is not
-    configured by the main application.
-    Python 2.7 has logging.NullHandler, but this is necessary for 2.6:
-    see https://docs.python.org/2.6/library/logging.html section
-    configuring-logging-for-a-library
-    """
-    def emit(self, record):
-        pass
-
-
-def get_logger(name, level=logging.CRITICAL+1):
-    """
-    Create a suitable logger object for this module.
-    The goal is not to change settings of the root logger, to avoid getting
-    other modules' logs on the screen.
-    If a logger exists with same name, reuse it. (Else it would have duplicate
-    handlers and messages would be doubled.)
-    The level is set to CRITICAL+1 by default, to avoid any logging.
-    """
-    # First, test if there is already a logger with the same name, else it
-    # will generate duplicate messages (due to duplicate handlers):
-    if name in logging.Logger.manager.loggerDict:
-        # NOTE: another less intrusive but more "hackish" solution would be to
-        # use getLogger then test if its effective level is not default.
-        logger = logging.getLogger(name)
-        # make sure level is OK:
-        logger.setLevel(level)
-        return logger
-    # get a new logger:
-    logger = logging.getLogger(name)
-    # only add a NullHandler for this logger, it is up to the application
-    # to configure its own logging:
-    logger.addHandler(NullHandler())
-    logger.setLevel(level)
-    return logger
-
 
 # a global logger object used for debugging:
-log = get_logger('oleobj')     # pylint: disable=invalid-name
+log = log_helper.get_or_create_silent_logger("oleobj")
 
 
 def enable_logging():
-    """
-    Enable logging for this module (disabled by default).
-    This will set the module-specific logger level to NOTSET, which
-    means the main application controls the actual logging level.
-    """
-    log.setLevel(logging.NOTSET)
+    """Enable logging in this module; for use by importing scripts"""
+    log.setLevel(log_helper.NOTSET)
+    ooxml.enable_logging()
+    record_base.enable_logging()     # for ppt_record_parser
+
+    # do not enable logging for olefile, have extra logging value "debug-olefile" for that
 
 
 # === CONSTANTS ===============================================================
@@ -211,6 +165,7 @@ RETURN_DID_DUMP = 1    # did dump/extract successfully
 RETURN_ERR_ARGS = 2    # reserve for OptionParser.parse_args
 RETURN_ERR_STREAM = 4  # error opening/parsing a stream
 RETURN_ERR_DUMP = 8    # error dumping data from stream to file
+RETURN_FOUND_EXTERNAL = 16   # found an external relationship
 
 # Not sure if they can all be "External", but just in case
 BLACKLISTED_RELATIONSHIP_TYPES = [
@@ -429,6 +384,7 @@ class OleNativeStream(object):
             # TODO: SLACK DATA
         except (IOError, struct.error):      # no data to read actual_size
             log.debug('data is not embedded but only a link')
+            # TODO: extract that link and log it, might point to malicious content
             self.is_link = True
             self.actual_size = 0
             self.data = None
@@ -758,7 +714,7 @@ def find_ole(filename, data, xml_parser=None):
             # keep compatibility with 3rd-party code that calls this function
             # directly without providing an XmlParser instance
             if xml_parser is None:
-                xml_parser = XmlParser(arg_for_zip)
+                xml_parser = ooxml.XmlParser(arg_for_zip)
                 # force iteration so XmlParser.iter_non_xml() returns data
                 for _ in xml_parser.iter_xml():
                     pass
@@ -833,7 +789,7 @@ def find_customUI(xml_parser):
             yield customui_onload
 
 
-def process_file(filename, data, output_dir=None):
+def process_file(filename, data, output_dir=None, nodump=False):
     """ find embedded objects in given file
 
     if data is given (from xglob for encrypted zip files), then filename is
@@ -842,12 +798,22 @@ def process_file(filename, data, output_dir=None):
 
     If output_dir is given and does not exist, it is created. If it is not
     given, data is saved to same directory as the input file.
+
+    If nodump is given as `True`, nothing is written to disc, the file is only
+    checked for presence of dump-able contents or external relationships. The
+    returned flag `did_dump` is still set to `True` if something dump-worthy is
+    found.
+
+    Returns 4 bools: `(err_stream, err_dumping, did_dump, found_external)`,
+    indicating whether there was an error in extracting streams, in dupming
+    data and whether anything relevant was found (dump-worthy or external
+    relationship)
     """
     # sanitize filename, leave space for embedded filename part
     sane_fname = sanitize_filename(filename, max_len=MAX_FILENAME_LENGTH-5) or\
         'NONAME'
     if output_dir:
-        if not os.path.isdir(output_dir):
+        if not os.path.isdir(output_dir) and not nodump:
             log.info('creating output directory %s', output_dir)
             os.mkdir(output_dir)
 
@@ -856,29 +822,30 @@ def process_file(filename, data, output_dir=None):
         base_dir = os.path.dirname(filename)
         fname_prefix = os.path.join(base_dir, sane_fname)
 
-    # TODO: option to extract objects to files (false by default)
-    print('-'*79)
-    print('File: %r' % filename)
+    # TODO: option to extract objects to files (false by default) (solved by option nodump?)
+    log.print_str('-'*79)
+    log.print_str('File: %r' % filename)
     index = 1
 
     # do not throw errors but remember them and try continue with other streams
     err_stream = False
     err_dumping = False
     did_dump = False
+    found_external = False
 
     xml_parser = None
     if is_zipfile(filename):
         log.info('file could be an OOXML file, looking for relationships with '
                  'external links')
-        xml_parser = XmlParser(filename)
+        xml_parser = ooxml.XmlParser(filename)
         for relationship, target in find_external_relationships(xml_parser):
-            did_dump = True
-            print("Found relationship '%s' with external link %s" % (relationship, target))
+            found_external = True
+            log.print_str("Found relationship '%s' with external link %s" % (relationship, target))
             if target.startswith('mhtml:'):
-                print("Potential exploit for CVE-2021-40444")
+                log.print_str("Potential exploit for CVE-2021-40444")
         for target in find_customUI(xml_parser):
-            did_dump = True
-            print("Found customUI tag with external link or VBA macro %s (possibly exploiting CVE-2021-42292)" % target)
+            found_external = True
+            log.print_str("Found customUI tag with external link or VBA macro %s (possibly exploiting CVE-2021-42292)" % target)
 
     # look for ole files inside file (e.g. unzip docx)
     # have to finish work on every ole stream inside iteration, since handles
@@ -894,9 +861,9 @@ def process_file(filename, data, output_dir=None):
                 stream = None
                 try:
                     stream = ole.openstream(path_parts)
-                    print('extract file embedded in OLE object from stream %r:'
+                    log.print_str('extract file embedded in OLE object from stream %r:'
                           % stream_path)
-                    print('Parsing OLE Package')
+                    log.print_str('Parsing OLE Package')
                     opkg = OleNativeStream(stream)
                     # leave stream open until dumping is finished
                 except Exception:
@@ -911,9 +878,9 @@ def process_file(filename, data, output_dir=None):
                     log.debug('Object is not embedded but only linked to '
                               '- skip')
                     continue
-                print(u'Filename = "%s"' % opkg.filename)
-                print(u'Source path = "%s"' % opkg.src_path)
-                print(u'Temp path = "%s"' % opkg.temp_path)
+                log.print_str(u'Filename = "%s"' % opkg.filename)
+                log.print_str(u'Source path = "%s"' % opkg.src_path)
+                log.print_str(u'Temp path = "%s"' % opkg.temp_path)
                 for embedded_fname in get_sane_embedded_filenames(
                         opkg.filename, opkg.src_path, opkg.temp_path,
                         MAX_FILENAME_LENGTH - len(sane_fname) - 1, index):
@@ -922,42 +889,63 @@ def process_file(filename, data, output_dir=None):
                         break
 
                 # dump
-                try:
-                    print('saving to file %s' % fname)
-                    with open(fname, 'wb') as writer:
-                        n_dumped = 0
-                        next_size = min(DUMP_CHUNK_SIZE, opkg.actual_size)
-                        while next_size:
-                            data = stream.read(next_size)
-                            writer.write(data)
-                            n_dumped += len(data)
-                            if len(data) != next_size:
-                                log.warning('Wanted to read {0}, got {1}'
-                                            .format(next_size, len(data)))
-                                break
-                            next_size = min(DUMP_CHUNK_SIZE,
-                                            opkg.actual_size - n_dumped)
-                    did_dump = True
-                except Exception as exc:
-                    log.warning('error dumping to {0} ({1})'
-                                .format(fname, exc))
-                    err_dumping = True
-                finally:
+                if nodump:
+                    log.debug('Skip dumping')
                     stream.close()
+                    did_dump = True   # still tell caller that there's something to dump
+                else:
+                    try:
+                        log.print_str('saving to file %s' % fname)
+                        with open(fname, 'wb') as writer:
+                            n_dumped = 0
+                            next_size = min(DUMP_CHUNK_SIZE, opkg.actual_size)
+                            while next_size:
+                                data = stream.read(next_size)
+                                writer.write(data)
+                                n_dumped += len(data)
+                                if len(data) != next_size:
+                                    log.warning('Wanted to read {0}, got {1}'
+                                                .format(next_size, len(data)))
+                                    break
+                                next_size = min(DUMP_CHUNK_SIZE,
+                                                opkg.actual_size - n_dumped)
+                        did_dump = True
+                    except Exception as exc:
+                        log.warning('error dumping to {0} ({1})'
+                                    .format(fname, exc))
+                        err_dumping = True
+                    finally:
+                        stream.close()
 
                 index += 1
-    return err_stream, err_dumping, did_dump
+    return err_stream, err_dumping, did_dump, found_external
+
+
+# === ARGUMENT PARSING =======================================================
+
+
+# banner to be printed at program start
+BANNER = """oleobj %s - http://decalage.info/python/oletools
+THIS IS WORK IN PROGRESS - Check updates regularly!
+Please report any issue at https://github.com/decalage2/oletools/issues
+""" % __version__
+
+
+class ArgParserWithBanner(argparse.ArgumentParser):
+    """ Print banner before showing any error """
+    def error(self, message):
+        print(BANNER)
+        super(ArgParserWithBanner, self).error(message)
+
+
+def existing_file_or_glob(filename):
+    """ called by argument parser to see whether given file[s] exists """
+    if not os.path.isfile(filename) and not xglob.is_glob(filename):
+        raise argparse.ArgumentTypeError('{0} does not specify existing file[s]'.format(filename))
+    return filename
 
 
 # === MAIN ====================================================================
-
-
-def existing_file(filename):
-    """ called by argument parser to see whether given file exists """
-    if not os.path.isfile(filename):
-        raise argparse.ArgumentTypeError('{0} is not a file.'.format(filename))
-    return filename
-
 
 def main(cmd_line_args=None):
     """ main function, called when running this as script
@@ -965,24 +953,19 @@ def main(cmd_line_args=None):
     Per default (cmd_line_args=None) uses sys.argv. For testing, however, can
     provide other arguments.
     """
-    # print banner with version
-    ensure_stdout_handles_unicode()
-    print('oleobj %s - http://decalage.info/oletools' % __version__)
-    print('THIS IS WORK IN PROGRESS - Check updates regularly!')
-    print('Please report any issue at '
-          'https://github.com/decalage2/oletools/issues')
-    print('')
-
     usage = 'usage: %(prog)s [options] <filename> [filename2 ...]'
-    parser = argparse.ArgumentParser(usage=usage)
+    parser = ArgParserWithBanner(usage=usage)
     # parser.add_argument('-o', '--outfile', dest='outfile',
     #     help='output file')
     # parser.add_argument('-c', '--csv', dest='csv',
     #     help='export results to a CSV file')
     parser.add_argument("-r", action="store_true", dest="recursive",
-                        help='find files recursively in subdirectories.')
+                        help='find files recursively in subdirectories. '
+                             'Input arg must still be file or glob.')
     parser.add_argument("-d", type=str, dest="output_dir", default=None,
                         help='use specified directory to output files.')
+    parser.add_argument("--nodump", action="store_true",
+                        help="Do not dump anything, just check for external relationships")
     parser.add_argument("-z", "--zip", dest='zip_password', type=str,
                         default=None,
                         help='if the file is a zip archive, open first file '
@@ -997,11 +980,13 @@ def main(cmd_line_args=None):
                         default=DEFAULT_LOG_LEVEL,
                         help='logging level debug/info/warning/error/critical '
                              '(default=%(default)s)')
-    parser.add_argument('input', nargs='*', type=existing_file, metavar='FILE',
+    parser.add_argument('-j', '--json', action='store_true',
+                        help='Convert all output to json format')
+    parser.add_argument('input', nargs='*', type=existing_file_or_glob, metavar='FILE',
                         help='Office files to parse (same as -i)')
 
     # options for compatibility with ripOLE
-    parser.add_argument('-i', '--more-input', type=str, metavar='FILE',
+    parser.add_argument('-i', '--more-input', type=existing_file_or_glob, metavar='FILE',
                         help='Additional file to parse (same as positional '
                              'arguments)')
     parser.add_argument('-v', '--verbose', action='store_true',
@@ -1014,25 +999,30 @@ def main(cmd_line_args=None):
     if options.verbose:
         options.loglevel = 'debug'
 
-    # Print help if no arguments are passed
-    if not options.input:
-        parser.print_help()
-        return RETURN_ERR_ARGS
-
     # Setup logging to the console:
     # here we use stdout instead of stderr by default, so that the output
     # can be redirected properly.
-    logging.basicConfig(level=LOG_LEVELS[options.loglevel], stream=sys.stdout,
-                        format='%(levelname)-8s %(message)s')
-    # enable logging in the modules:
-    log.setLevel(logging.NOTSET)
     if options.loglevel == 'debug-olefile':
+        if options.json:
+            raise argparse.ArgumentTypeError('log-level "debug-olefile" cannot be combined with "--json"')
         olefile.enable_logging()
+        options.loglevel = 'debug'
+    log_helper.enable_logging(level=options.loglevel, use_json=options.json,
+                              stream=sys.stdout)
+
+    # first thing after enabling logging: print banner
+    log.print_str(BANNER)
+
+    # Print help if no arguments are passed
+    if not options.input:
+        log.print_str(parser.format_help())
+        return RETURN_ERR_ARGS
 
     # remember if there was a problem and continue with other data
     any_err_stream = False
     any_err_dumping = False
     any_did_dump = False
+    any_found_external = False
 
     for container, filename, data in \
             xglob.iter_files(options.input, recursive=options.recursive,
@@ -1041,11 +1031,15 @@ def main(cmd_line_args=None):
         # ignore directory names stored in zip files:
         if container and filename.endswith('/'):
             continue
-        err_stream, err_dumping, did_dump = \
-            process_file(filename, data, options.output_dir)
+        err_stream, err_dumping, did_dump, found_external = \
+            process_file(filename, data, options.output_dir, options.nodump)
         any_err_stream |= err_stream
         any_err_dumping |= err_dumping
         any_did_dump |= did_dump
+        any_found_external |= found_external
+
+    # end logging
+    log_helper.end_logging()
 
     # assemble return value
     return_val = RETURN_NO_DUMP
@@ -1055,6 +1049,8 @@ def main(cmd_line_args=None):
         return_val += RETURN_ERR_STREAM
     if any_err_dumping:
         return_val += RETURN_ERR_DUMP
+    if any_found_external:
+        return_val += RETURN_FOUND_EXTERNAL
     return return_val
 
 

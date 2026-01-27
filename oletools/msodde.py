@@ -74,7 +74,6 @@ from oletools import xls_parser
 from oletools import rtfobj
 from oletools.ppt_record_parser import is_ppt
 from oletools import crypto
-from oletools.common.io_encoding import ensure_stdout_handles_unicode
 from oletools.common.log_helper import log_helper
 
 # -----------------------------------------------------------------------------
