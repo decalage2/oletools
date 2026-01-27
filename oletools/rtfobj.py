@@ -446,6 +446,20 @@ class RtfParser(object):
                 continue
             if self.data[self.index] == BRACE_CLOSE:
                 # Found a closing brace "}": End of a group
+
+                if self.group_level == 0 and self.index + 1 < self.size:
+                    remaining_data = self.data[(self.index + 1):]
+
+                    # We're closing a group at the level zero and there is more data,
+                    # so treat it as an object
+                    log.warn('Detected extra data past the last closing group at index %X' % (self.index + 1))
+                    m = re.match(r".*", remaining_data, re.S)
+
+                    # Close the previous destination and open another to be closed next
+                    self._open_destination(m, b'objdata')
+                    self.current_destination.data += binascii.hexlify(remaining_data)
+                    self.index += len(remaining_data)
+
                 self._close_group()
                 self.index += 1
                 continue
