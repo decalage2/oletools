@@ -88,6 +88,8 @@ class TestReturnCode(unittest.TestCase):
         """ check that text file argument leads to non-zero exit status """
         self.do_test_validity(join(BASE_DIR, 'basic', 'text'), Exception)
 
+    @unittest.skipIf('OLETOOLS_TEST_SKIP_SLOW' in os.environ and os.environ['OLETOOLS_TEST_SKIP_SLOW'] == '1',
+                     "Skip slower tests")
     def test_encrypted(self):
         """
         check that encrypted files lead to non-zero exit status
@@ -134,6 +136,8 @@ class TestReturnCode(unittest.TestCase):
 class TestErrorOutput(unittest.TestCase):
     """msodde does not specify error by return code but text output."""
 
+    @unittest.skipIf('OLETOOLS_TEST_SKIP_SLOW' in os.environ and os.environ['OLETOOLS_TEST_SKIP_SLOW'] == '1',
+                     "Skip slower tests")
     def test_crypt_output(self):
         """Check for helpful error message when failing to decrypt."""
         for suffix in 'doc', 'docm', 'docx', 'ppt', 'pptm', 'pptx', 'xls', \

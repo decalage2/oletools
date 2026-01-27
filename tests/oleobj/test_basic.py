@@ -3,6 +3,7 @@
 import unittest
 from tempfile import mkdtemp
 from shutil import rmtree
+from os import listdir, environ
 from os.path import join, isfile
 from hashlib import md5
 from glob import glob
@@ -91,10 +92,14 @@ class TestOleObj(unittest.TestCase):
         elif self.temp_dir:
             rmtree(self.temp_dir)
 
+    @unittest.skipIf('OLETOOLS_TEST_SKIP_SLOW' in environ and environ['OLETOOLS_TEST_SKIP_SLOW'] == '1',
+                     "Skip slower tests")
     def test_md5(self):
         """ test all files in oleobj test dir """
         self.do_test_md5(['-d', self.temp_dir])
 
+    @unittest.skipIf('OLETOOLS_TEST_SKIP_SLOW' in environ and environ['OLETOOLS_TEST_SKIP_SLOW'] == '1',
+                     "Skip slower tests")
     def test_md5_args(self):
         """
         test that oleobj can be called with -i and -v
@@ -157,6 +162,19 @@ class TestOleObj(unittest.TestCase):
         """ Ensure old oleobj behaviour still works: pre-read whole file """
         return self.do_test_md5(['-d', self.temp_dir], test_fun=preread_file,
                                 only_run_every=4)
+
+    @unittest.skipIf('OLETOOLS_TEST_SKIP_SLOW' in environ and environ['OLETOOLS_TEST_SKIP_SLOW'] == '1',
+                     "Skip slower tests")
+    def test_nodump(self):
+        """Ensure that with --nodump nothing is ever written to disc."""
+        data_dir = join(DATA_BASE_DIR, 'oleobj')
+        for sample_name, _, _ in SAMPLES:
+            args = ['-d', self.temp_dir, '--nodump', join(data_dir, sample_name)]
+            call_and_capture('oleobj', args,
+                             accept_nonzero_exit=True)
+        temp_dir_contents = listdir(self.temp_dir)
+        if temp_dir_contents:
+            self.fail('Found file in temp dir despite "--nodump": {}'.format(temp_dir_contents))
 
 
 class TestSaneFilenameCreation(unittest.TestCase):
