@@ -1009,7 +1009,7 @@ def main(cmd_line_args=None):
 
     logger.print_str('DDE Links:')
     for link in text.splitlines():
-        logger.print_str(text, type='dde-link')
+        logger.print_str(link, type='dde-link')
 
     log_helper.end_logging()
 
