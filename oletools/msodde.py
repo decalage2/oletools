@@ -760,7 +760,7 @@ CSV_SMALL_THRESH = 1024
 
 # format of dde link: program-name | arguments ! unimportant
 # can be enclosed in "", prefixed with + or = or - or cmds like @SUM(...)
-CSV_DDE_FORMAT = re.compile(r'\s*"?[=+-@](.+)\|(.+)!(.*)\s*')
+CSV_DDE_FORMAT = re.compile(r'\s*"?[=+-@](.{1,200})\|(.{1,200})!(.*)\s*')
 
 # allowed delimiters (python sniffer would use nearly any char). Taken from
 # https://data-gov.tw.rpi.edu/wiki/CSV_files_use_delimiters_other_than_commas
