@@ -720,7 +720,7 @@ class RtfObjParser(RtfParser):
                         rtfobj.clsid = ole.root.clsid
                         rtfobj.clsid_desc = clsid.KNOWN_CLSIDS.get(rtfobj.clsid.upper(),
                             'unknown CLSID (please report at https://github.com/decalage2/oletools/issues)')
-            except:
+            except Exception:
                 pass
                 log.debug('*** Not an OLE 1.0 Object')
 
@@ -960,7 +960,7 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
             try:
                 i = int(save_object)
                 objects = [ rtfp.objects[i] ]
-            except:
+            except ValueError:
                 log.error('The -s option must be followed by an object index or all, such as "-s 2" or "-s all"')
                 return
         for rtfobj in objects:
@@ -977,7 +977,8 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
                     fname = '%s_object_%08X.noname' % (fname_prefix, rtfobj.start)
                 print('  saving to file %s' % fname)
                 print('  md5 %s' % rtfobj.olepkgdata_md5)
-                open(fname, 'wb').write(rtfobj.olepkgdata)
+                with open(fname, 'wb') as f:
+                    f.write(rtfobj.olepkgdata)
             # When format_id=TYPE_LINKED, oledata_size=None
             elif rtfobj.is_ole and rtfobj.oledata_size is not None:
                 print('Saving file embedded in OLE object #%d:' % i)
