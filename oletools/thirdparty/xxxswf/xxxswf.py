@@ -199,21 +199,18 @@ def walk4SWF(path):
         return 
     for root, dirs, files in os.walk(path):
         for name in files:
-            try: 
-                x = open(os.path.join(root, name), 'rb')
-            except:
+            try:
+                with open(os.path.join(root, name), 'rb') as x:
+                    y = findSWF(x)
+            except IOError:
                 pass
                 break
-            y = findSWF(x)
             if len(y) != 0:
-                # Path of file SWF
                 p[0] = os.path.join(root, name)
-                # contains list of the file offset of SWF header
                 p[1] = y
-                r.insert(len(r),p)
-                p = ['',[]]
+                r.insert(len(r), p)
+                p = ['', []]
                 y = ''
-            x.close()
     return r
 
 def tagsInfo(f):
@@ -274,12 +271,11 @@ def disneyland(f,filename, options):
             name = fileExist(hashBuff(swf), 'swf')
             print('\t\t[FILE] Carved SWF MD5: %s' % name)
             try:
-                o = open(name, 'wb+')
+                with open(name, 'wb+') as o:
+                    o.write(swf)
             except IOError as e:
                 print('\t[ERROR] Could Not Create %s ' % e)
-                continue 
-            o.write(swf)
-            o.close()
+                continue
         if options.yara != None:
             yaraScan(swf)
         if options.md5scan != None:
@@ -288,27 +284,25 @@ def disneyland(f,filename, options):
             name = fileExist(hashBuff(swf), 'swf')
             print('\t\t[FILE] Carved SWF MD5: %s' % name)
             try:
-                o = open(name, 'wb+')
+                with open(name, 'wb+') as o:
+                    o.write(swf)
             except IOError as e:
                 print('\t[ERROR] Could Not Create %s ' % e)
                 continue
-            o.write(swf)
-            o.close()
         if options.header != None:
             headerInfo(swf)
         if options.compress != None:
             swf = compressSWF(swf)
             if swf == None:
-                continue 
+                continue
             name = fileExist(hashBuff(swf), 'swf')
             print('\t\t[FILE] Compressed SWF MD5: %s' % name)
             try:
-                o = open(name, 'wb+')
+                with open(name, 'wb+') as o:
+                    o.write(swf)
             except IOError as e:
                 print('\t[ERROR] Could Not Create %s ' % e)
                 continue
-            o.write(swf)
-            o.close()
 
 def main():
     # Scenarios:
