@@ -95,6 +95,7 @@ http://www.decalage.info/python/oletools
 # 2021-05-23 v0.60   PL: - use ftguess to identify file type of OLE Package
 #                        - fixed bug in re_executable_extensions
 # 2021-06-03 v0.60.1 PL: - fixed code to find URLs in OLE2Link objects for Py3 (issue #692)
+# 2026-06-03       - added detection of CVE-2025-21298 malformed StaticDib OLE objects (issue #883)
 
 from __future__ import print_function
 
@@ -112,7 +113,7 @@ __version__ = '0.60.1'
 
 # === IMPORTS =================================================================
 
-import re, os, sys, binascii, logging, optparse, hashlib
+import re, os, sys, struct, binascii, logging, optparse, hashlib
 import os.path
 from time import time
 
@@ -850,6 +851,69 @@ def sanitize_filename(filename, replacement='_', max_length=200):
     return sane_fname
 
 
+# CVE-2025-21298: malformed embedded StaticDib OLE objects in RTF can trigger a
+# double-free in ole32.dll!UtOlePresStmToContentsStm when opened by Word/Outlook.
+# See https://github.com/decalage2/oletools/issues/883
+CVE_2025_21298_MSG = (
+    'Possibly an exploit for CVE-2025-21298 '
+    '(malformed StaticDib OLE object, Windows OLE RCE)\n'
+)
+# Common BITMAPINFOHEADER sizes (bytes) for device-independent bitmaps in StaticDib.
+_KNOWN_DIB_BI_SIZES = frozenset((12, 40, 52, 56, 64, 108, 124))
+_STATICDIB_CLASS = b'staticdib'
+
+
+def _normalized_ole_class_name(class_name):
+    """Normalize OLE class name like package detection (issue #507)."""
+    if class_name is None:
+        return None
+    return class_name.lower().rstrip(b'\0')
+
+
+def _is_staticdib_class(class_name):
+    return _normalized_ole_class_name(class_name) == _STATICDIB_CLASS
+
+
+def _is_plausible_staticdib_payload(data):
+    """
+    Return True if embedded data could be a real StaticDib bitmap payload.
+
+    The CVE-2025-21298 PoC uses a tiny/non-DIB stub (e.g. four null bytes).
+    """
+    if not data:
+        return False
+    if olefile.isOleFile(data=data):
+        return True
+    if len(data) >= 2 and data[:2] == b'BM' and len(data) >= 14:
+        return True
+    if len(data) >= 4:
+        bi_size = struct.unpack('<I', data[:4])[0]
+        if bi_size in _KNOWN_DIB_BI_SIZES and len(data) >= bi_size:
+            return True
+    return False
+
+
+def is_cve_2025_21298_indicator(rtfobj):
+    """
+    Return True if an RTF embedded OLE object matches CVE-2025-21298 indicators.
+
+    The public PoC uses class StaticDib, format embedded, and object data that is
+    not a valid DIB/BMP payload (often only a few null bytes, no CLSID required).
+    """
+    if not rtfobj.is_ole:
+        return False
+    if rtfobj.format_id != oleobj.OleObject.TYPE_EMBEDDED:
+        return False
+    if not _is_staticdib_class(rtfobj.class_name):
+        return False
+    if rtfobj.oledata_size is None:
+        return False
+    data = rtfobj.oledata or b''
+    if _is_plausible_staticdib_payload(data):
+        return False
+    return True
+
+
 def process_file(container, filename, data, output_dir=None, save_object=False):
     if output_dir:
         if not os.path.isdir(output_dir):
@@ -943,6 +1007,9 @@ def process_file(container, filename, data, output_dir=None, save_object=False):
             elif rtfobj.class_name.lower().startswith(b'equation.3'):
                 ole_color = 'red'
                 ole_column += '\nPossibly an exploit for the Equation Editor vulnerability (VU#421280, CVE-2017-11882)'
+            elif is_cve_2025_21298_indicator(rtfobj):
+                ole_color = 'red'
+                ole_column += '\n' + CVE_2025_21298_MSG
         else:
             ole_column = 'Not a well-formed OLE object'
         tstream.write_row((
