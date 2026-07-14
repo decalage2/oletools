@@ -313,7 +313,7 @@ from pyparsing import \
         CaselessKeyword, CaselessLiteral, Combine, Forward, Literal, \
         Optional, QuotedString,Regex, Suppress, Word, WordStart, \
         alphanums, alphas, hexnums,nums, opAssoc, srange, \
-        infixNotation, ParserElement
+        infix_notation, ParserElement
 
 # attempt to import XLMMacroDeobfuscator (optional)
 try:
@@ -917,7 +917,7 @@ re_printable_string = re.compile(b'[\\t\\r\\n\\x20-\\xFF]{5,}')
 
 # Enable PackRat for better performance:
 # (see https://pythonhosted.org/pyparsing/pyparsing.ParserElement-class.html#enablePackrat)
-ParserElement.enablePackrat()
+ParserElement.enable_packrat()
 
 # VBA identifier chars (from MS-VBAL 3.3.5)
 vba_identifier_chars = alphanums + '_'
@@ -954,15 +954,15 @@ class VbaExpressionString(str):
 #       letters or underscore (e.g. "VBT1" or "ABC_34"), when using scanString
 decimal_literal = Combine(Optional('-') + WordStart(vba_identifier_chars) + Word(nums)
                           + Suppress(Optional(Word('%&^', exact=1))))
-decimal_literal.setParseAction(lambda t: int(t[0]))
+decimal_literal.set_parse_action(lambda t: int(t[0]))
 
 octal_literal = Combine(Suppress(Literal('&') + Optional((CaselessLiteral('o')))) + Word(srange('[0-7]'))
                 + Suppress(Optional(Word('%&^', exact=1))))
-octal_literal.setParseAction(lambda t: int(t[0], base=8))
+octal_literal.set_parse_action(lambda t: int(t[0], base=8))
 
 hex_literal = Combine(Suppress(CaselessLiteral('&h')) + Word(srange('[0-9a-fA-F]'))
                 + Suppress(Optional(Word('%&^', exact=1))))
-hex_literal.setParseAction(lambda t: int(t[0], base=16))
+hex_literal.set_parse_action(lambda t: int(t[0], base=16))
 
 integer = decimal_literal | octal_literal | hex_literal
 
@@ -974,8 +974,8 @@ integer = decimal_literal | octal_literal | hex_literal
 # double-quote = %x0022 ; "
 # string-character = NO-LINE-CONTINUATION ((double-quote double-quote) termination-character)
 
-quoted_string = QuotedString('"', escQuote='""')
-quoted_string.setParseAction(lambda t: str(t[0]))
+quoted_string = QuotedString('"', esc_quote='""')
+quoted_string.set_parse_action(lambda t: str(t[0]))
 
 
 #--- VBA Expressions ---------------------------------------------------------
@@ -1056,7 +1056,7 @@ def vba_chr_tostr(t):
         log.exception('ERROR: incorrect parameter value for chr(): %r' % i)
         return VbaExpressionString('Chr(%r)' % i)
 
-vba_chr.setParseAction(vba_chr_tostr)
+vba_chr.set_parse_action(vba_chr_tostr)
 
 
 # --- ASC --------------------------------------------------------------------
@@ -1064,7 +1064,7 @@ vba_chr.setParseAction(vba_chr_tostr)
 # Asc(char) => int
 #TODO: see MS-VBAL 6.1.2.11.1.1 page 240 => AscB, AscW
 vba_asc = Suppress(CaselessKeyword('Asc') + '(') + vba_expr_str + Suppress(')')
-vba_asc.setParseAction(lambda t: ord(t[0]))
+vba_asc.set_parse_action(lambda t: ord(t[0]))
 
 
 # --- VAL --------------------------------------------------------------------
@@ -1072,21 +1072,21 @@ vba_asc.setParseAction(lambda t: ord(t[0]))
 # Val(string) => int
 # TODO: make sure the behavior of VBA's val is fully covered
 vba_val = Suppress(CaselessKeyword('Val') + '(') + vba_expr_str + Suppress(')')
-vba_val.setParseAction(lambda t: int(t[0].strip()))
+vba_val.set_parse_action(lambda t: int(t[0].strip()))
 
 
 # --- StrReverse() --------------------------------------------------------------------
 
 # StrReverse(string) => string
 strReverse = Suppress(CaselessKeyword('StrReverse') + '(') + vba_expr_str + Suppress(')')
-strReverse.setParseAction(lambda t: VbaExpressionString(str(t[0])[::-1]))
+strReverse.set_parse_action(lambda t: VbaExpressionString(str(t[0])[::-1]))
 
 
 # --- ENVIRON() --------------------------------------------------------------------
 
 # Environ("name") => just translated to "%name%", that is enough for malware analysis
 environ = Suppress(CaselessKeyword('Environ') + '(') + vba_expr_str + Suppress(')')
-environ.setParseAction(lambda t: VbaExpressionString('%%%s%%' % t[0]))
+environ.set_parse_action(lambda t: VbaExpressionString('%%%s%%' % t[0]))
 
 
 # --- IDENTIFIER -------------------------------------------------------------
@@ -1096,7 +1096,7 @@ environ.setParseAction(lambda t: VbaExpressionString('%%%s%%' % t[0]))
 # Latin-identifier = first-Latin-identifier-character *subsequent-Latin-identifier-character
 # first-Latin-identifier-character = (%x0041-005A / %x0061-007A) ; A-Z / a-z
 # subsequent-Latin-identifier-character = first-Latin-identifier-character / DIGIT / %x5F ; underscore
-latin_identifier = Word(initChars=alphas, bodyChars=alphanums + '_')
+latin_identifier = Word(init_chars=alphas, body_chars=alphanums + '_')
 
 # --- HEX FUNCTION -----------------------------------------------------------
 
@@ -1105,11 +1105,11 @@ latin_identifier = Word(initChars=alphas, bodyChars=alphanums + '_')
 
 # quoted string of at least two hexadecimal numbers of two digits:
 quoted_hex_string = Suppress('"') + Combine(Word(hexnums, exact=2) * (2, None)) + Suppress('"')
-quoted_hex_string.setParseAction(lambda t: str(t[0]))
+quoted_hex_string.set_parse_action(lambda t: str(t[0]))
 
 hex_function_call = Suppress(latin_identifier) + Suppress('(') + \
                     quoted_hex_string('hex_string') + Suppress(')')
-hex_function_call.setParseAction(lambda t: VbaExpressionString(binascii.a2b_hex(t.hex_string)))
+hex_function_call.set_parse_action(lambda t: VbaExpressionString(binascii.a2b_hex(t.hex_string)))
 
 
 # --- BASE64 FUNCTION -----------------------------------------------------------
@@ -1119,11 +1119,11 @@ hex_function_call.setParseAction(lambda t: VbaExpressionString(binascii.a2b_hex(
 
 # quoted string of at least two hexadecimal numbers of two digits:
 quoted_base64_string = Suppress('"') + Regex(BASE64_RE) + Suppress('"')
-quoted_base64_string.setParseAction(lambda t: str(t[0]))
+quoted_base64_string.set_parse_action(lambda t: str(t[0]))
 
 base64_function_call = Suppress(latin_identifier) + Suppress('(') + \
                     quoted_base64_string('base64_string') + Suppress(')')
-base64_function_call.setParseAction(lambda t: VbaExpressionString(binascii.a2b_base64(t.base64_string)))
+base64_function_call.set_parse_action(lambda t: VbaExpressionString(binascii.a2b_base64(t.base64_string)))
 
 
 # ---STRING EXPRESSION -------------------------------------------------------
@@ -1140,7 +1140,7 @@ def concat_strings_list(tokens):
 
 vba_expr_str_item = (vba_chr | strReverse | environ | quoted_string | hex_function_call | base64_function_call)
 
-vba_expr_str <<= infixNotation(vba_expr_str_item,
+vba_expr_str <<= infix_notation(vba_expr_str_item,
     [
         ("+", 2, opAssoc.LEFT, concat_strings_list),
         ("&", 2, opAssoc.LEFT, concat_strings_list),
@@ -1195,7 +1195,7 @@ vba_expr_int_item = (vba_asc | vba_val | integer)
 # operators associativity:
 # https://en.wikipedia.org/wiki/Operator_associativity
 
-vba_expr_int <<= infixNotation(vba_expr_int_item,
+vba_expr_int <<= infix_notation(vba_expr_int_item,
     [
         ("*", 2, opAssoc.LEFT, multiply_ints_list),
         ("/", 2, opAssoc.LEFT, divide_ints_list),
@@ -2393,7 +2393,7 @@ def detect_vba_strings(vba_code):
     vba_code = vba_code.expandtabs()
     # Split the VBA code line by line to avoid MemoryError on large scripts:
     for vba_line in vba_code.splitlines():
-        for tokens, start, end in vba_expr_str.scanString(vba_line):
+        for tokens, start, end in vba_expr_str.scan_string(vba_line):
             encoded = vba_line[start:end]
             decoded = tokens[0]
             if isinstance(decoded, VbaExpressionString):
