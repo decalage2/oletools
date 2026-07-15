@@ -14,9 +14,16 @@ PROJECT_ROOT = dirname(dirname(dirname(abspath(__file__))))
 # Directory with test data, independent of current working directory
 DATA_BASE_DIR = join(PROJECT_ROOT, 'tests', 'test-data')
 
-# Directory with source code
-SOURCE_BASE_DIR = join(PROJECT_ROOT, 'oletools')
-
+# Fall back to the installed oletools location for the directory
+# with the source code if the sibling "oletools" dir doesn't exist
+_source_base_dir = join(PROJECT_ROOT, 'oletools')
+if not os.path.isdir(_source_base_dir):
+    try:
+        import oletools as _oletools
+        _source_base_dir = dirname(abspath(_oletools.__file__))
+    except ImportError:
+        pass
+SOURCE_BASE_DIR = _source_base_dir
 
 def call_and_capture(module, args=None, accept_nonzero_exit=False,
                      exclude_stderr=False):
