@@ -2126,6 +2126,14 @@ def vba_collapse_long_lines(vba_code):
     :param vba_code: str, VBA module code
     :return: str, VBA module code with long lines collapsed
     """
+    # Some obfuscated maldocs and certain VBA-stomping layouts reach this with
+    # bytes rather than str, so the str .replace() calls below raise
+    # 'TypeError: a bytes-like object is required, not str' and abort the scan via
+    # VBA_Scanner / analyze_macros. Decode losslessly first (latin-1 is a total
+    # byte->codepoint map that never raises and preserves the ASCII keywords/IOCs
+    # the scanner keys on); str input is unchanged.
+    if isinstance(vba_code, bytes):
+        vba_code = vba_code.decode('latin-1')
     # TODO: use a regex instead, to allow whitespaces after the underscore?
     try:
         vba_code = vba_code.replace(' _\r\n', ' ')
