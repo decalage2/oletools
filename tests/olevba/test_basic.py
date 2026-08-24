@@ -10,6 +10,7 @@ import json
 
 # Directory with test data, independent of current working directory
 from tests.test_utils import DATA_BASE_DIR, call_and_capture
+from oletools.olevba import detect_patterns
 
 
 class TestOlevbaBasic(unittest.TestCase):
@@ -168,6 +169,18 @@ class TestOlevbaBasic(unittest.TestCase):
 
         # vba contents:
         self.assertIn('Sub Action_Click()\n  MsgBox "The action button clicked!"\nEnd Sub', output)
+
+    def test_detect_email_address(self):
+        """Test that detect_patterns finds e-mail address IOCs.
+
+        Regression test: the 'E-mail address' regex used to be built by
+        concatenating a raw string with a plain string literal containing
+        '\\b', which Python compiles to a literal backspace character
+        instead of a regex word-boundary token. That made the pattern
+        unmatchable against any real text.
+        """
+        results = detect_patterns('x = "attacker@evil.example.com"')
+        self.assertIn(('E-mail address', 'attacker@evil.example.com'), results)
 
 
 # just in case somebody calls this file as a script
