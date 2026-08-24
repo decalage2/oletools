@@ -870,7 +870,7 @@ RE_PATTERNS = (
     ('URL', re.compile(URL_RE)),
     ('IPv4 address', re.compile(IPv4)),
     # TODO: add IPv6
-    ('E-mail address', re.compile(r'(?i)\b[A-Z0-9._%+-]+@' + SERVER + '\b')),
+    ('E-mail address', re.compile(r'(?i)\b[A-Z0-9._%+-]+@' + SERVER + r'\b')),
     # ('Domain name', re.compile(r'(?=^.{1,254}$)(^(?:(?!\d+\.|-)[a-zA-Z0-9_\-]{1,63}(?<!-)\.?)+(?:[a-zA-Z]{2,})$)')),
     # Executable file name with known extensions (except .com which is present in many URLs, and .application):
     ("Executable file name", re.compile(
