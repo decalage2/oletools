@@ -1221,7 +1221,9 @@ def is_mso_file(data):
 
 
 # regex to find zlib block headers, starting with byte 0x78 = 'x'
-re_zlib_header = re.compile(r'x')
+# (bytes pattern: mso_file_extract applies it to bytes data; a str pattern
+#  raises TypeError on Python 3)
+re_zlib_header = re.compile(b'x')
 
 
 def mso_file_extract(data):
