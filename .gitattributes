@@ -1,1 +1,6 @@
 *.rtf -linguist-detectable
+
+# Exclude the malware-sample test corpus from GitHub's auto-generated
+# source archives (the "Download ZIP" button, tags/release tarballs, and
+# `git archive`). See issue #215.
+tests/test-data export-ignore

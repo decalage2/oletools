@@ -12,4 +12,8 @@ recursive-include cheatsheet *.pdf
 global-exclude *.pyc
 
 recursive-include tests *.py
-graft tests/test-data
+
+# tests/test-data contains real (harmless but AV-triggering) malware samples
+# used as regression fixtures. Remove them here so they don't make it to pip
+# packages (see issue #215).
+prune tests/test-data
