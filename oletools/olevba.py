@@ -640,8 +640,13 @@ AUTOEXEC_KEYWORDS_REGEX = {
     'Runs when the file is opened (using InkPicture ActiveX object)':
         # ref:https://twitter.com/joe4security/status/770691099988025345
         (r'\w+_Painted', r'\w+_Painting'),
+    # Interaction-only events. A \w+_Click handler fires when the user clicks an
+    # embedded control, never on document load, so it must not be described as
+    # running when the file is opened. Detection is unchanged (added in #499).
+    'Runs when the user interacts with an embedded ActiveX control (e.g. clicks a button)':
+        (r'\w+_Click',),
     'Runs when the file is opened and ActiveX objects trigger events':
-        (r'\w+_GotFocus', r'\w+_LostFocus', r'\w+_MouseHover', r'\w+_Click',
+        (r'\w+_GotFocus', r'\w+_LostFocus', r'\w+_MouseHover',
          r'\w+_Change', r'\w+_Resize', r'\w+_BeforeNavigate2', r'\w+_BeforeScriptExecute',
          r'\w+_DocumentComplete', r'\w+_DownloadBegin', r'\w+_DownloadComplete',
          r'\w+_FileDownload', r'\w+_NavigateComplete2', r'\w+_NavigateError',
