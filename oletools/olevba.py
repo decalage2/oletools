@@ -837,6 +837,8 @@ SUSPICIOUS_KEYWORDS_REGEX = {
 SUSPICIOUS_KEYWORDS_NOREGEX = {
     'May use special characters such as backspace to obfuscate code when printed on the console':
         ('\b',),
+    'May use ANSI escape codes to manipulate console output, which is unusual in VBA code':
+        ('\x1b[',),
 }
 
 # Regular Expression for a URL:
@@ -2233,9 +2235,12 @@ def detect_suspicious(vba_code, obfuscation=None):
     for description, keywords in SUSPICIOUS_KEYWORDS_NOREGEX.items():
         for keyword in keywords:
             if keyword.lower() in vba_code:
-                # avoid reporting backspace chars out of plain VBA code:
-                if not(keyword=='\b' and obfuscation is not None):
-                    results.append((keyword, description + obf_text))
+                # avoid reporting backspace or ANSI escape chars found only in
+                # deobfuscated content; report them from plain VBA code only:
+                if not (keyword in ('\b', '\x1b[') and obfuscation is not None):
+                    # never emit a raw ESC character into reports or console:
+                    display_keyword = keyword.replace('\x1b', 'ESC')
+                    results.append((display_keyword, description + obf_text))
     return results
 
 
