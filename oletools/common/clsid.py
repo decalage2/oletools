@@ -193,7 +193,8 @@ KNOWN_CLSIDS = {
     'E8CC4CBE-FDFF-11D0-B865-00A0C9081C1D': 'MSDAORA.1 (potential exploit CVE TODO)', # TODO
     'E8CC4CBF-FDFF-11D0-B865-00A0C9081C1D': 'Loads OCI.DLL (Known Related to CVE-2015-6128)',
     # Referenced in https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-21509 :
-    'EAB22AC3-30C1-11CF-A7EB-0000C05BAE0B': 'Shell.Explorer (Known Related to CVE-2026-21509)',
+    'EAB22AC3-30C1-11CF-A7EB-0000C05BAE0B': 'Shell.Explorer.1 (Known Related to CVE-2026-21509)',
+    '8856F961-340A-11D0-A96B-00C04FD705A2': 'Shell.Explorer.2 (Microsoft Web Browser)',
     'ECABAFC6-7F19-11D2-978E-0000F8757E2A': 'New Moniker',
     'ECABAFC9-7F19-11D2-978E-0000F8757E2A': 'Loads MQRT.DLL (Known Related to CVE-2015-6128)',
     'ECABB0C7-7F19-11D2-978E-0000F8757E2A': 'SOAP Moniker (may trigger CVE-2017-8759)',
