@@ -9,7 +9,6 @@
 
 import fnmatch 
 import hashlib
-import imp
 import math
 import os
 import re
@@ -43,7 +42,6 @@ def yaraScan(d):
     # test if yara module is installed
     # if not Yara can be downloaded from http://code.google.com/p/yara-project/
     try:
-        imp.find_module('yara')
         import yara 
     except ImportError:
         print('\t[ERROR] Yara module not installed - aborting scan')

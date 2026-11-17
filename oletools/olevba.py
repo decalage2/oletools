@@ -32,7 +32,7 @@ https://github.com/unixfreak0037/officeparser
 
 # === LICENSE ==================================================================
 
-# olevba is copyright (c) 2014-2022 Philippe Lagadec (http://www.decalage.info)
+# olevba is copyright (c) 2014-2025 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
@@ -234,8 +234,9 @@ from __future__ import print_function
 # 2020-09-28       PL: - added VBA_Parser.get_vba_code_all_modules (partial fix
 #                        for issue #619)
 # 2021-04-14       PL: - added detection of Workbook_BeforeClose (issue #518)
+# 2021-11-09       KJ: - added PROJECTCOMPATVERSION Record on dir Stream
 
-__version__ = '0.60.2dev1'
+__version__ = '0.60.3'
 
 #------------------------------------------------------------------------------
 # TODO:
@@ -1049,6 +1050,7 @@ def vba_chr_tostr(t):
         else:
             # unicode character
             # Note: this distinction is only needed for Python 2
+            # pylint: disable-next=possibly-used-before-assignment
             return VbaExpressionString(unichr(i).encode('utf-8', 'backslashreplace'))
     except ValueError:
         log.exception('ERROR: incorrect parameter value for chr(): %r' % i)
@@ -1164,6 +1166,7 @@ def subtract_ints_list(tokens):
     # extract argument from the tokens:
     # expected to be a tuple containing a list of integers such as [a,'&',b,'&',c,...]
     integers = tokens[0][::2]
+    # pylint: disable-next=possibly-used-before-assignment
     return reduce(lambda x,y:x-y, integers)
 
 
@@ -1406,6 +1409,7 @@ def decompress_stream(compressed_container):
                 # copy tokens (reference to a previous literal token)
                 flag_byte = compressed_container[compressed_current]
                 compressed_current += 1
+                # pylint: disable-next=possibly-used-before-assignment
                 for bit_index in xrange(0, 8):
                     # log.debug('bit_index=%d / compressed_current=%d / compressed_end=%d' % (bit_index, compressed_current, compressed_end))
                     if compressed_current >= compressed_end:
@@ -1701,9 +1705,25 @@ class VBA_Project(object):
         if self.syskind not in SYSKIND_NAME:
             log.error("invalid PROJECTSYSKIND_SysKind {0:04X}".format(self.syskind))
 
-        # PROJECTLCID Record
+        # PROJECTLCID Record or PROJECTCOMPATVERSION Record
+        project_id = struct.unpack("<H", dir_stream.read(2))[0]
+        if project_id == 0x004A:
+            # PROJECTCOMPATVERSION Record
+            # Specifies the VBA project's compat version.
+            projectcompatversion_id = project_id
+            self.check_value('PROJETCOMPATVERSION_Id', 0x004A, projectcompatversion_id)
+            projectcompatversion_size = struct.unpack("<L", dir_stream.read(4))[0]
+            self.check_value('PROJECTCOMPATVERSION_Size', 0x0004, projectcompatversion_size)
+            projectcompatversion_compatversion = struct.unpack("<L", dir_stream.read(4))[0]
+            # compat version: A 32-bit number that identifies the Office Model version used by a VBA project.
+            log.debug("compat version: {compat_version}".format(compat_version=projectcompatversion_compatversion))
+
+            # PROJECTLCID Record
+            project_id = struct.unpack("<H", dir_stream.read(2))[0]
+
+        projectlcid_id = project_id
+
         # Specifies the VBA project's LCID.
-        projectlcid_id = struct.unpack("<H", dir_stream.read(2))[0]
         self.check_value('PROJECTLCID_Id', 0x0002, projectlcid_id)
         projectlcid_size = struct.unpack("<L", dir_stream.read(4))[0]
         self.check_value('PROJECTLCID_Size', 0x0004, projectlcid_size)
@@ -2417,6 +2437,7 @@ def json2ascii(json_obj, encoding='utf8', errors='replace'):
         else:
             # on Python 3, just keep Unicode strings as-is:
             return json_obj
+    # pylint: disable-next=possibly-used-before-assignment
     elif isinstance(json_obj, unicode) and PYTHON2:
         # On Python 2, encode unicode to bytes:
         json_obj_bytes = json_obj.encode(encoding, errors)
@@ -3087,7 +3108,7 @@ class VBA_Parser(object):
         log.info('Check whether OLE file is PPT')
         try:
             ppt = ppt_parser.PptParser(self.ole_file, fast_fail=True)
-            for vba_data in ppt.iter_vba_data():
+            for vba_data in ppt.iter_vba_data():    # pylint: disable=no-value-for-parameter
                 self.append_subfile(None, vba_data, container='PptParser')
             log.info('File is PPT')
             self.ole_file.close()  # just in case
@@ -3456,15 +3477,18 @@ class VBA_Parser(object):
             self.is_encrypted = crypto.is_encrypted(self.ole_file)
         return self.is_encrypted
 
-    def decrypt_file(self, passwords_list=None):
+    def decrypt_file(self, passwords_list=None, decrypted_dir=None):
         decrypted_file = None
+        correct_password = None
         if self.detect_is_encrypted():
             passwords = crypto.DEFAULT_PASSWORDS
             if passwords_list and isinstance(passwords_list, list):
                 passwords.extend(passwords_list)
-            decrypted_file = crypto.decrypt(self.filename, passwords)
+            decrypted_file, correct_password = crypto.decrypt(self.filename, passwords, decrypted_dir)
+            if correct_password:
+                log.info(f"The correct password is: {correct_password}")
 
-        return decrypted_file
+        return decrypted_file, correct_password
 
     def encode_string(self, unicode_str):
         """
@@ -4091,6 +4115,10 @@ class VBA_Parser_CLI(VBA_Parser):
             for kw_type, keyword, description in results:
                 color_type = COLOR_TYPE.get(kw_type, None)
                 if color_type:
+                    # Prevent malicious actors from performing anti-analysis by replacing
+                    # character 27 (ESC) with \e.
+                    # See more: https://www.youtube.com/watch?v=3T2Al3jdY38
+                    vba_code = vba_code.replace("\x1b", "\\e")
                     vba_code = vba_code.replace(keyword, '{auto%s}%s{/%s}' % (color_type, keyword, color_type))
         return vba_code
 
@@ -4353,6 +4381,9 @@ def parse_args(cmd_line_args=None):
                         default=None,
                         help='if the file is a zip archive, open all files '
                              'from it, using the provided password.')
+    parser.add_argument("--decrypted_dir", dest='decrypted_dir', type=str,
+                        default=None,
+                        help='store the decrypted file to this folder.')
     parser.add_argument("-p", "--password", type=str, action='append',
                         default=[],
                         help='if encrypted office files are encountered, try '
@@ -4534,10 +4565,13 @@ def process_file(filename, data, container, options, crypto_nesting=0):
     try:
         log.debug('Checking encryption passwords {}'.format(options.password))
         passwords = options.password + crypto.DEFAULT_PASSWORDS
-        decrypted_file = crypto.decrypt(filename, passwords)
+        log.debug('Checking decrypted filepath {}'.format(options.decrypted_dir))
+
+        decrypted_file, correct_password = crypto.decrypt(filename, passwords, options.decrypted_dir)
         if not decrypted_file:
             log.error('Decrypt failed, run with debug output to get details')
             raise crypto.WrongEncryptionPassword(filename)
+        log.info(f'The correct password is: {correct_password}')
         log.info('Working on decrypted file')
         return process_file(decrypted_file, data, container or filename,
                             options, crypto_nesting+1)

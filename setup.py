@@ -55,12 +55,12 @@ import os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.60.2dev4'
+version      = '0.60.3'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       = "Philippe Lagadec"
 author_email = "nospam@decalage.info"
-url          = "http://www.decalage.info/python/oletools"
+url          = "https://github.com/decalage2/oletools"
 license      = "BSD"
 download_url = "https://github.com/decalage2/oletools/releases"
 
@@ -84,6 +84,9 @@ classifiers=[
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Security",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
@@ -320,7 +323,7 @@ def main():
         test_suite="tests",
         # scripts=scripts,
         install_requires=[
-            "pyparsing>=2.1.0,<3",  # changed from 2.2.0 to 2.1.0 for issue #481
+            "pyparsing>=2.1.0,<4",  # changed from 2.2.0 to 2.1.0 for issue #481
             "olefile>=0.46",
             "easygui",
             'colorclass',

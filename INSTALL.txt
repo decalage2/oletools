@@ -4,7 +4,7 @@ How to Download and Install oletools
 Pre-requisites
 --------------
 
-The recommended Python version to run oletools is the latest **Python 3.x** (3.7 for now).
+The recommended Python version to run oletools is the latest **Python 3.x** (3.12 for now).
 Python 2.7 is still supported, but as it will become end of life in 2020 (see https://pythonclock.org/), it is highly
 recommended to switch to Python 3 now.
 
@@ -24,6 +24,14 @@ sudo -H pip install -U oletools
 ```
 
 Replace `pip` by `pip3` or `pip2` to install on a specific Python version.
+
+On some Linux distributions, it might not be allowed to install system-wide python packages
+with pip. In that case, pipx may be a better alternative to install oletools in a user virtual
+environment, and to install the command-line scripts oleid, olevba, etc:
+
+```text
+pipx install oletools
+```
 
 **Important**: Since version 0.50, pip will automatically create convenient command-line scripts
 in /usr/local/bin to run all the oletools from any directory.

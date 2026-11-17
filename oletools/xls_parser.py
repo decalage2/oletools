@@ -229,46 +229,46 @@ class XlsbStream(record_base.OleRecordStream):
 
 # records that appear often but do not need their own XlsRecord subclass (yet)
 FREQUENT_RECORDS = dict([
-    ( 156, 'BuiltInFnGroupCount'),             # pylint: disable=bad-whitespace
-    (2147, 'BookExt'),                         # pylint: disable=bad-whitespace
-    ( 442, 'CodeName'),                        # pylint: disable=bad-whitespace
-    (  66, 'CodePage'),                        # pylint: disable=bad-whitespace
-    (4195, 'Dat'),                             # pylint: disable=bad-whitespace
-    (2154, 'DataLabExt'),                      # pylint: disable=bad-whitespace
-    (2155, 'DataLabExtContents'),              # pylint: disable=bad-whitespace
-    ( 215, 'DBCell'),                          # pylint: disable=bad-whitespace
-    ( 220, 'DbOrParmQry'),                     # pylint: disable=bad-whitespace
-    (2051, 'DBQueryExt'),                      # pylint: disable=bad-whitespace
-    (2166, 'DConn'),                           # pylint: disable=bad-whitespace
-    (  35, 'ExternName'),                      # pylint: disable=bad-whitespace
-    (  23, 'ExternSheet'),                     # pylint: disable=bad-whitespace
-    ( 255, 'ExtSST'),                          # pylint: disable=bad-whitespace
-    (2052, 'ExtString'),                       # pylint: disable=bad-whitespace
-    (2151, 'FeatHdr'),                         # pylint: disable=bad-whitespace
-    (  91, 'FileSharing'),                     # pylint: disable=bad-whitespace
-    (1054, 'Format'),                          # pylint: disable=bad-whitespace
-    (  49, 'Font'),                            # pylint: disable=bad-whitespace
-    (2199, 'GUIDTypeLib'),                     # pylint: disable=bad-whitespace
-    ( 440, 'HLink'),                           # pylint: disable=bad-whitespace
-    ( 225, 'InterfaceHdr'),                    # pylint: disable=bad-whitespace
-    ( 226, 'InterfaceEnd'),                    # pylint: disable=bad-whitespace
-    ( 523, 'Index'),                           # pylint: disable=bad-whitespace
-    (  24, 'Lbl'),                             # pylint: disable=bad-whitespace
-    ( 193, 'Mms'),                             # pylint: disable=bad-whitespace
-    (  93, 'Obj'),                             # pylint: disable=bad-whitespace
-    (4135, 'ObjectLink'),                      # pylint: disable=bad-whitespace
-    (2058, 'OleDbConn'),                       # pylint: disable=bad-whitespace
-    ( 222, 'OleObjectSize'),                   # pylint: disable=bad-whitespace
-    (2214, 'RichTextStream'),                  # pylint: disable=bad-whitespace
-    (2146, 'SheetExt'),                        # pylint: disable=bad-whitespace
-    (1212, 'ShrFmla'),                         # pylint: disable=bad-whitespace
-    (2060, 'SxViewExt'),                       # pylint: disable=bad-whitespace
-    (2136, 'SxViewLink'),                      # pylint: disable=bad-whitespace
-    (2049, 'WebPub'),                          # pylint: disable=bad-whitespace
-    ( 224, 'XF (formatting)'),                 # pylint: disable=bad-whitespace
-    (2173, 'XFExt (formatting)'),              # pylint: disable=bad-whitespace
-    ( 659, 'Style'),                           # pylint: disable=bad-whitespace
-    (2194, 'StyleExt')                         # pylint: disable=bad-whitespace
+    ( 156, 'BuiltInFnGroupCount'),
+    (2147, 'BookExt'),
+    ( 442, 'CodeName'),
+    (  66, 'CodePage'),
+    (4195, 'Dat'),
+    (2154, 'DataLabExt'),
+    (2155, 'DataLabExtContents'),
+    ( 215, 'DBCell'),
+    ( 220, 'DbOrParmQry'),
+    (2051, 'DBQueryExt'),
+    (2166, 'DConn'),
+    (  35, 'ExternName'),
+    (  23, 'ExternSheet'),
+    ( 255, 'ExtSST'),
+    (2052, 'ExtString'),
+    (2151, 'FeatHdr'),
+    (  91, 'FileSharing'),
+    (1054, 'Format'),
+    (  49, 'Font'),
+    (2199, 'GUIDTypeLib'),
+    ( 440, 'HLink'),
+    ( 225, 'InterfaceHdr'),
+    ( 226, 'InterfaceEnd'),
+    ( 523, 'Index'),
+    (  24, 'Lbl'),
+    ( 193, 'Mms'),
+    (  93, 'Obj'),
+    (4135, 'ObjectLink'),
+    (2058, 'OleDbConn'),
+    ( 222, 'OleObjectSize'),
+    (2214, 'RichTextStream'),
+    (2146, 'SheetExt'),
+    (1212, 'ShrFmla'),
+    (2060, 'SxViewExt'),
+    (2136, 'SxViewLink'),
+    (2049, 'WebPub'),
+    ( 224, 'XF (formatting)'),
+    (2173, 'XFExt (formatting)'),
+    ( 659, 'Style'),
+    (2194, 'StyleExt')
 ])
 
 #: records found in xlsb binary parts

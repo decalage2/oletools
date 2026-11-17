@@ -11,13 +11,13 @@ import json
 import subprocess
 from tests.common.log_helper import log_helper_test_main
 from tests.common.log_helper import log_helper_test_imported
+import os
 from os.path import dirname, join, relpath, abspath
 
 from tests.test_utils import PROJECT_ROOT
 
 # test file we use as "main" module
-TEST_FILE = relpath(join(dirname(abspath(__file__)), 'log_helper_test_main.py'),
-                    PROJECT_ROOT)
+TEST_FILE = join(dirname(abspath(__file__)), 'log_helper_test_main.py')
 
 # test file simulating a third party main module that only imports oletools
 TEST_FILE_3RD_PARTY = relpath(join(dirname(abspath(__file__)),
@@ -25,6 +25,8 @@ TEST_FILE_3RD_PARTY = relpath(join(dirname(abspath(__file__)),
                               PROJECT_ROOT)
 
 PYTHON_EXECUTABLE = sys.executable
+
+PERCENT_FORMAT_OUTPUT = 'The answer is 47.'
 
 
 class TestLogHelper(unittest.TestCase):
@@ -113,7 +115,7 @@ class TestLogHelper(unittest.TestCase):
     def test_percent_autoformat(self):
         """Test that auto-formatting of log strings with `%` works."""
         output = self._run_test(['enable', '%-autoformat', 'info'])
-        self.assertIn('The answer is 47.', output)
+        self.assertIn(PERCENT_FORMAT_OUTPUT, output)
 
     def test_json_correct_on_exceptions(self):
         """
@@ -141,6 +143,93 @@ class TestLogHelper(unittest.TestCase):
         self.assertIn('INFO:test_main:main: info log', output)
         self.assertIn('INFO:test_imported:imported: info log', output)
 
+    def test_json_correct_on_warnings(self):
+        """
+        Test that even on warnings our JSON is always correct
+        """
+        output = self._run_test(['enable', 'as-json', 'warn', 'warning'])
+        expected_messages = [
+            log_helper_test_main.WARNING_MESSAGE,
+            log_helper_test_main.ERROR_MESSAGE,
+            log_helper_test_main.CRITICAL_MESSAGE,
+            log_helper_test_imported.WARNING_MESSAGE,
+            log_helper_test_imported.ERROR_MESSAGE,
+            log_helper_test_imported.CRITICAL_MESSAGE,
+        ]
+
+        for msg in expected_messages:
+            self.assertIn(msg, output)
+
+        # last two entries of output should be warnings
+        jout = json.loads(output)
+        self.assertEqual(jout[-2]['level'], 'WARNING')
+        self.assertEqual(jout[-1]['level'], 'WARNING')
+        self.assertEqual(jout[-2]['type'], 'warning')
+        self.assertEqual(jout[-1]['type'], 'warning')
+        self.assertIn(log_helper_test_main.ACTUAL_WARNING, jout[-2]['msg'])
+        self.assertIn(log_helper_test_imported.ACTUAL_WARNING, jout[-1]['msg'])
+
+    def test_warnings(self):
+        """Check that warnings are captured and printed correctly"""
+        output = self._run_test(['enable', 'warn', 'warning'])
+
+        # find out which line contains the call to warnings.warn:
+        warnings_line = None
+        with open(TEST_FILE, 'rt') as reader:
+            for line_idx, line in enumerate(reader):
+                if 'warnings.warn' in line:
+                    warnings_line = line_idx + 1
+                    break
+        self.assertNotEqual(warnings_line, None)
+
+        imported_file = join(dirname(abspath(__file__)),
+                             'log_helper_test_imported.py')
+        imported_line = None
+        with open(imported_file, 'rt') as reader:
+            for line_idx, line in enumerate(reader):
+                if 'warnings.warn' in line:
+                    imported_line = line_idx + 1
+                    break
+        self.assertNotEqual(imported_line, None)
+
+        expect = '\n'.join([
+            'WARNING  ' + log_helper_test_main.WARNING_MESSAGE,
+            'ERROR    ' + log_helper_test_main.ERROR_MESSAGE,
+            'CRITICAL ' + log_helper_test_main.CRITICAL_MESSAGE,
+            'WARNING  ' + log_helper_test_imported.WARNING_MESSAGE,
+            'ERROR    ' + log_helper_test_imported.ERROR_MESSAGE,
+            'CRITICAL ' + log_helper_test_imported.CRITICAL_MESSAGE,
+            'WARNING  {0}:{1}: UserWarning: {2}'
+                .format(TEST_FILE, warnings_line, log_helper_test_main.ACTUAL_WARNING),
+            '  warnings.warn(ACTUAL_WARNING)',   # warnings include source line
+            '',
+            'WARNING  {0}:{1}: UserWarning: {2}'
+                .format(imported_file, imported_line, log_helper_test_imported.ACTUAL_WARNING),
+            '  warnings.warn(ACTUAL_WARNING)',   # warnings include source line
+        ])
+        self.assertEqual(output.strip(), expect)
+
+    def test_json_percent_formatting(self):
+        """Test that json-output has formatting args included in output."""
+        output = self._run_test(['enable', 'as-json', '%-autoformat', 'info'])
+        json.loads(output)    # check that this does not raise, so json is valid
+        self.assertIn(PERCENT_FORMAT_OUTPUT, output)
+
+    def test_json_exception_formatting(self):
+        """Test that json-output has formatted exception info in output"""
+        output = self._run_test(['enable', 'as-json', 'exc-info', 'info'])
+        json.loads(output)    # check that this does not raise, so json is valid
+        self.assertIn('Caught exception', output)      # actual log message
+        self.assertIn('This is an exception', output)    # message of caught exception
+        self.assertIn('Traceback (most recent call last)', output)    # start of trace
+        self.assertIn(TEST_FILE.replace('\\', '\\\\'), output)        # part of trace
+
+    def test_json_wrong_args(self):
+        """Test that too many or missing args do not raise exceptions inside logger"""
+        output = self._run_test(['enable', 'as-json', 'wrong-log-args', 'info'])
+        json.loads(output)    # check that this does not raise, so json is valid
+        # do not care about actual contents of output
+
     def _assert_json_messages(self, output, messages):
         try:
             json_data = json.loads(output)
@@ -160,8 +249,10 @@ class TestLogHelper(unittest.TestCase):
         we might get errors or false positives between sequential tests runs)
 
         When arg `run_third_party` is `True`, we do not run the `TEST_FILE` as
-        main moduel but the `TEST_FILE_3RD_PARTY` and return contents of
+        main module but the `TEST_FILE_3RD_PARTY` and return contents of
         `stderr` instead of `stdout`.
+
+        TODO: use tests.utils.call_and_capture
         """
         all_args = [PYTHON_EXECUTABLE, ]
         if run_third_party:
@@ -169,10 +260,12 @@ class TestLogHelper(unittest.TestCase):
         else:
             all_args.append(TEST_FILE)
         all_args.extend(args)
+        env = os.environ.copy()
+        env['PYTHONPATH'] = PROJECT_ROOT
         child = subprocess.Popen(
             all_args,
             shell=False,
-            env={'PYTHONPATH': PROJECT_ROOT},
+            env=env,
             universal_newlines=True,
             cwd=PROJECT_ROOT,
             stdin=None,

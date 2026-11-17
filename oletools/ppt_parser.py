@@ -1377,7 +1377,7 @@ class PptParser(object):
         # first identified in step 3 of Part 1, that is, the UserEditAtom
         # record closest to the end of the stream.
         if self.persist_object_directory is None:
-            self.parse_persist_object_directory()
+            self.parse_persist_object_directory()    # pylint: disable=no-value-for-parameter
 
         # Step 2: Lookup the value of the docPersistIdRef field in the persist
         # object directory constructed in step 8 of Part 1 to find the stream
@@ -1462,7 +1462,7 @@ class PptParser(object):
                                 rec_len=VBAInfoAtom.RECORD_LENGTH)
 
         # try parse
-        for idx in self.search_pattern(pattern):
+        for idx in self.search_pattern(pattern):    # pylint: disable=no-value-for-parameter
             # assume that in stream at idx there is a VBAInfoContainer
             stream.seek(idx)
             log.debug('extracting at idx {0}'.format(idx))
@@ -1515,7 +1515,7 @@ class PptParser(object):
             pattern = obj_type.generate_pattern()
 
             # try parse
-            for idx in self.search_pattern(pattern):
+            for idx in self.search_pattern(pattern):    # pylint: disable=no-value-for-parameter
                 # assume a ExternalObjectStorage in stream at idx
                 stream.seek(idx)
                 log.debug('extracting at idx {0}'.format(idx))
@@ -1589,7 +1589,7 @@ class PptParser(object):
 
         n_infos = 0
         n_macros = 0
-        for info in self.search_vba_info():
+        for info in self.search_vba_info():    # pylint: disable=no-value-for-parameter
             n_infos += 1
             if info.vba_info_atom.f_has_macros > 0:
                 n_macros += 1
@@ -1597,13 +1597,13 @@ class PptParser(object):
         #       --> no vba-info, so all storages probably ActiveX or other OLE
         n_storages = 0
         n_compressed = 0
-        for storage in self.search_vba_storage():
+        for storage in self.search_vba_storage():    # pylint: disable=no-value-for-parameter
             n_storages += 1
             if storage.is_compressed:
                 n_compressed += 1
-                yield self.decompress_vba_storage(storage)
+                yield self.decompress_vba_storage(storage)    # pylint: disable=no-value-for-parameter
             else:
-                yield self.read_vba_storage_data(storage)
+                yield self.read_vba_storage_data(storage)    # pylint: disable=no-value-for-parameter
 
         log.info('found {0} infos ({1} with macros) and {2} storages '
                  '({3} compressed)'

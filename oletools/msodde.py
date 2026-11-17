@@ -103,7 +103,7 @@ from oletools.common.log_helper import log_helper
 # 2019-07-17 v0.55 CH: - fixed issue #267, unicode error on Python 2
 
 
-__version__ = '0.55'
+__version__ = '0.60.2'
 
 # -----------------------------------------------------------------------------
 # TODO: field codes can be in headers/footers/comments - parse these
@@ -149,69 +149,69 @@ LOCATIONS = ('word/document.xml', 'word/endnotes.xml', 'word/footnotes.xml',
 #          switches_with_args, switches_without_args, format_switches)
 FIELD_BLACKLIST = (
     # date and time:
-    ('CREATEDATE', 0, 0, '', 'hs',  'datetime'),                 # pylint: disable=bad-whitespace
-    ('DATE',       0, 0, '', 'hls', 'datetime'),                 # pylint: disable=bad-whitespace
-    ('EDITTIME',   0, 0, '', '',    'numeric'),                  # pylint: disable=bad-whitespace
-    ('PRINTDATE',  0, 0, '', 'hs',  'datetime'),                 # pylint: disable=bad-whitespace
-    ('SAVEDATE',   0, 0, '', 'hs',  'datetime'),                 # pylint: disable=bad-whitespace
-    ('TIME',       0, 0, '', '',    'datetime'),                 # pylint: disable=bad-whitespace
+    ('CREATEDATE', 0, 0, '', 'hs',  'datetime'),
+    ('DATE',       0, 0, '', 'hls', 'datetime'),
+    ('EDITTIME',   0, 0, '', '',    'numeric'),
+    ('PRINTDATE',  0, 0, '', 'hs',  'datetime'),
+    ('SAVEDATE',   0, 0, '', 'hs',  'datetime'),
+    ('TIME',       0, 0, '', '',    'datetime'),
     # exclude document automation (we hate the "auto" in "automation")
     # (COMPARE, DOCVARIABLE, GOTOBUTTON, IF, MACROBUTTON, PRINT)
     # document information
-    ('AUTHOR',      0, 1, '', '',   'string'),                   # pylint: disable=bad-whitespace
-    ('COMMENTS',    0, 1, '', '',   'string'),                   # pylint: disable=bad-whitespace
-    ('DOCPROPERTY', 1, 0, '', '',   'string/numeric/datetime'),  # pylint: disable=bad-whitespace
-    ('FILENAME',    0, 0, '', 'p',  'string'),                   # pylint: disable=bad-whitespace
-    ('FILESIZE',    0, 0, '', 'km', 'numeric'),                  # pylint: disable=bad-whitespace
-    ('KEYWORDS',    0, 1, '', '',   'string'),                   # pylint: disable=bad-whitespace
-    ('LASTSAVEDBY', 0, 0, '', '',   'string'),                   # pylint: disable=bad-whitespace
-    ('NUMCHARS',    0, 0, '', '',   'numeric'),                  # pylint: disable=bad-whitespace
-    ('NUMPAGES',    0, 0, '', '',   'numeric'),                  # pylint: disable=bad-whitespace
-    ('NUMWORDS',    0, 0, '', '',   'numeric'),                  # pylint: disable=bad-whitespace
-    ('SUBJECT',     0, 1, '', '',   'string'),                   # pylint: disable=bad-whitespace
-    ('TEMPLATE',    0, 0, '', 'p',  'string'),                   # pylint: disable=bad-whitespace
-    ('TITLE',       0, 1, '', '',   'string'),                   # pylint: disable=bad-whitespace
+    ('AUTHOR',      0, 1, '', '',   'string'),
+    ('COMMENTS',    0, 1, '', '',   'string'),
+    ('DOCPROPERTY', 1, 0, '', '',   'string/numeric/datetime'),
+    ('FILENAME',    0, 0, '', 'p',  'string'),
+    ('FILESIZE',    0, 0, '', 'km', 'numeric'),
+    ('KEYWORDS',    0, 1, '', '',   'string'),
+    ('LASTSAVEDBY', 0, 0, '', '',   'string'),
+    ('NUMCHARS',    0, 0, '', '',   'numeric'),
+    ('NUMPAGES',    0, 0, '', '',   'numeric'),
+    ('NUMWORDS',    0, 0, '', '',   'numeric'),
+    ('SUBJECT',     0, 1, '', '',   'string'),
+    ('TEMPLATE',    0, 0, '', 'p',  'string'),
+    ('TITLE',       0, 1, '', '',   'string'),
     # equations and formulas
     # exlude '=' formulae because they have different syntax (and can be bad)
-    ('ADVANCE', 0, 0, 'dlruxy', '', ''),                         # pylint: disable=bad-whitespace
-    ('SYMBOL',  1, 0, 'fs', 'ahju', ''),                         # pylint: disable=bad-whitespace
+    ('ADVANCE', 0, 0, 'dlruxy', '', ''),
+    ('SYMBOL',  1, 0, 'fs', 'ahju', ''),
     # form fields
-    ('FORMCHECKBOX', 0, 0, '', '', ''),                          # pylint: disable=bad-whitespace
-    ('FORMDROPDOWN', 0, 0, '', '', ''),                          # pylint: disable=bad-whitespace
-    ('FORMTEXT', 0, 0, '', '', ''),                              # pylint: disable=bad-whitespace
+    ('FORMCHECKBOX', 0, 0, '', '', ''),
+    ('FORMDROPDOWN', 0, 0, '', '', ''),
+    ('FORMTEXT', 0, 0, '', '', ''),
     # index and tables
-    ('INDEX', 0, 0, 'bcdefghklpsz', 'ry', ''),                   # pylint: disable=bad-whitespace
+    ('INDEX', 0, 0, 'bcdefghklpsz', 'ry', ''),
     # exlude RD since that imports data from other files
-    ('TA',  0, 0, 'clrs', 'bi', ''),                             # pylint: disable=bad-whitespace
-    ('TC',  1, 0, 'fl', 'n', ''),                                # pylint: disable=bad-whitespace
-    ('TOA', 0, 0, 'bcdegls', 'fhp', ''),                         # pylint: disable=bad-whitespace
-    ('TOC', 0, 0, 'abcdflnopst', 'huwxz', ''),                   # pylint: disable=bad-whitespace
-    ('XE',  1, 0, 'frty', 'bi', ''),                             # pylint: disable=bad-whitespace
+    ('TA',  0, 0, 'clrs', 'bi', ''),
+    ('TC',  1, 0, 'fl', 'n', ''),
+    ('TOA', 0, 0, 'bcdegls', 'fhp', ''),
+    ('TOC', 0, 0, 'abcdflnopst', 'huwxz', ''),
+    ('XE',  1, 0, 'frty', 'bi', ''),
     # links and references
     # exclude AUTOTEXT and AUTOTEXTLIST since we do not like stuff with 'AUTO'
-    ('BIBLIOGRAPHY', 0, 0, 'lfm', '', ''),                       # pylint: disable=bad-whitespace
-    ('CITATION', 1, 0, 'lfspvm', 'nty', ''),                     # pylint: disable=bad-whitespace
+    ('BIBLIOGRAPHY', 0, 0, 'lfm', '', ''),
+    ('CITATION', 1, 0, 'lfspvm', 'nty', ''),
     # exclude HYPERLINK since we are allergic to URLs
     # exclude INCLUDEPICTURE and INCLUDETEXT (other file or maybe even URL?)
     # exclude LINK and REF (could reference other files)
-    ('NOTEREF', 1, 0, '', 'fhp', ''),                            # pylint: disable=bad-whitespace
-    ('PAGEREF', 1, 0, '', 'hp', ''),                             # pylint: disable=bad-whitespace
-    ('QUOTE', 1, 0, '', '', 'datetime'),                         # pylint: disable=bad-whitespace
-    ('STYLEREF', 1, 0, '', 'lnprtw', ''),                        # pylint: disable=bad-whitespace
+    ('NOTEREF', 1, 0, '', 'fhp', ''),
+    ('PAGEREF', 1, 0, '', 'hp', ''),
+    ('QUOTE', 1, 0, '', '', 'datetime'),
+    ('STYLEREF', 1, 0, '', 'lnprtw', ''),
     # exclude all Mail Merge commands since they import data from other files
     # (ADDRESSBLOCK, ASK, COMPARE, DATABASE, FILLIN, GREETINGLINE, IF,
     #  MERGEFIELD, MERGEREC, MERGESEQ, NEXT, NEXTIF, SET, SKIPIF)
     # Numbering
-    ('LISTNUM',      0, 1, 'ls', '', ''),                        # pylint: disable=bad-whitespace
-    ('PAGE',         0, 0, '', '', 'numeric'),                   # pylint: disable=bad-whitespace
-    ('REVNUM',       0, 0, '', '', ''),                          # pylint: disable=bad-whitespace
-    ('SECTION',      0, 0, '', '', 'numeric'),                   # pylint: disable=bad-whitespace
-    ('SECTIONPAGES', 0, 0, '', '', 'numeric'),                   # pylint: disable=bad-whitespace
-    ('SEQ',          1, 1, 'rs', 'chn', 'numeric'),              # pylint: disable=bad-whitespace
-    # user information                                           # pylint: disable=bad-whitespace
-    ('USERADDRESS', 0, 1, '', '', 'string'),                     # pylint: disable=bad-whitespace
-    ('USERINITIALS', 0, 1, '', '', 'string'),                    # pylint: disable=bad-whitespace
-    ('USERNAME', 0, 1, '', '', 'string'),                        # pylint: disable=bad-whitespace
+    ('LISTNUM',      0, 1, 'ls', '', ''),
+    ('PAGE',         0, 0, '', '', 'numeric'),
+    ('REVNUM',       0, 0, '', '', ''),
+    ('SECTION',      0, 0, '', '', 'numeric'),
+    ('SECTIONPAGES', 0, 0, '', '', 'numeric'),
+    ('SEQ',          1, 1, 'rs', 'chn', 'numeric'),
+    # user information
+    ('USERADDRESS', 0, 1, '', '', 'string'),
+    ('USERINITIALS', 0, 1, '', '', 'string'),
+    ('USERNAME', 0, 1, '', '', 'string'),
 )
 
 FIELD_DDE_REGEX = re.compile(r'^\s*dde(auto)?\s+', re.I)
@@ -271,6 +271,9 @@ def process_args(cmd_line_args=None):
     parser.add_argument("-p", "--password", type=str, action='append',
                         help='if encrypted office files are encountered, try '
                              'decryption with this password. May be repeated.')
+    parser.add_argument("--decrypted_dir", dest='decrypted_dir', type=str,
+                        default=None,
+                        help='store the decrypted file to this folder.')
     filter_group = parser.add_argument_group(
         title='Filter which OpenXML field commands are returned',
         description='Only applies to OpenXML (e.g. docx) and rtf, not to OLE '
@@ -388,6 +391,7 @@ def process_doc_stream(stream):
             # appending a raw byte to a unicode string here. Not clean but
             # all we do later is check for the ascii-sequence 'DDE' later...
             elif char == 0:        # may be a high-byte of a 2-byte codec
+                # pylint: disable-next=possibly-used-before-assignment
                 field_contents += unichr(char)
             elif char in (10, 13):
                 field_contents += u'\n'
@@ -434,6 +438,8 @@ def process_doc(ole):
         if is_stream:
             new_parts = process_doc_stream(
                 ole._open(direntry.isectStart, direntry.size))
+            if new_parts:
+                logger.debug("stream %r: %r" % (direntry.name, new_parts))
             links.extend(new_parts)
 
     # mimic behaviour of process_docx: combine links to single text string
@@ -645,7 +651,7 @@ def process_xlsx(filepath):
     """ process an OOXML excel file (e.g. .xlsx or .xlsb or .xlsm) """
     dde_links = []
     parser = ooxml.XmlParser(filepath)
-    for _, elem, _ in parser.iter_xml():
+    for subfilename, elem, _ in parser.iter_xml():
         tag = elem.tag.lower()
         if tag == 'ddelink' or tag.endswith('}ddelink'):
             # we have found a dde link. Try to get more info about it
@@ -655,6 +661,7 @@ def process_xlsx(filepath):
             if 'ddeTopic' in elem.attrib:
                 link_info.append(elem.attrib['ddeTopic'])
             dde_links.append(u' '.join(link_info))
+            logger.debug('Found tag "%s" in file %s: %s' % (tag, subfilename, repr(link_info)))
 
     # binary parts, e.g. contained in .xlsb
     for subfile, content_type, handle in parser.iter_non_xml():
@@ -910,7 +917,7 @@ def process_file(filepath, field_filter_mode=None):
 # === MAIN =================================================================
 
 
-def process_maybe_encrypted(filepath, passwords=None, crypto_nesting=0,
+def process_maybe_encrypted(filepath, passwords=None, decrypted_dir=None, crypto_nesting=0,
                             **kwargs):
     """
     Process a file that might be encrypted.
@@ -921,6 +928,8 @@ def process_maybe_encrypted(filepath, passwords=None, crypto_nesting=0,
 
     :param str filepath: path to file on disc.
     :param passwords: list of passwords (str) to try for decryption or None
+    :param decrypted_dir: folder to store the decrypted file in case you want
+                               to preserve it
     :param int crypto_nesting: How many decryption layers were already used to
                                get the given file.
     :param kwargs: same as :py:func:`process_file`
@@ -949,12 +958,14 @@ def process_maybe_encrypted(filepath, passwords=None, crypto_nesting=0,
         passwords = list(passwords) + crypto.DEFAULT_PASSWORDS
     try:
         logger.debug('Trying to decrypt file')
-        decrypted_file = crypto.decrypt(filepath, passwords)
+        decrypted_file, correct_password = crypto.decrypt(filepath, passwords, decrypted_dir)
+        if correct_password:
+            logger.info(f"The correct password is: {correct_password}")
         if not decrypted_file:
             logger.error('Decrypt failed, run with debug output to get details')
             raise crypto.WrongEncryptionPassword(filepath)
         logger.info('Analyze decrypted file')
-        result = process_maybe_encrypted(decrypted_file, passwords,
+        result = process_maybe_encrypted(decrypted_file, passwords, decrypted_dir,
                                          crypto_nesting+1, **kwargs)
     finally:     # clean up
         try:     # (maybe file was not yet created)
@@ -990,7 +1001,7 @@ def main(cmd_line_args=None):
     return_code = 1
     try:
         text = process_maybe_encrypted(
-            args.filepath, args.password,
+            args.filepath, args.password, args.decrypted_dir,
             field_filter_mode=args.field_filter_mode)
         return_code = 0
     except Exception as exc:

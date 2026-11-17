@@ -1,15 +1,22 @@
-python-oletools v0.56 documentation
-===================================
+python-oletools documentation
+=============================
 
 This is the home page of the documentation for python-oletools. The latest version can be found 
 [online](https://github.com/decalage2/oletools/wiki), otherwise a copy is provided in the doc subfolder of the package.
 
-[python-oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze 
-[Microsoft OLE2 files](http://en.wikipedia.org/wiki/Compound_File_Binary_Format)
+[oletools](http://www.decalage.info/python/oletools) is a package of python tools to analyze
+[Microsoft OLE2 files](http://en.wikipedia.org/wiki/Compound_File_Binary_Format) 
 (also called Structured Storage, Compound File Binary Format or Compound Document File Format), 
-such as Microsoft Office documents or Outlook messages, mainly for malware analysis, forensics and debugging. 
+such as Microsoft Office 97-2003 documents, MSI files or Outlook messages, mainly for malware analysis, 
+forensics and debugging. 
 It is based on the [olefile](http://www.decalage.info/olefile) parser. 
-See [http://www.decalage.info/python/oletools](http://www.decalage.info/python/oletools) for more info.  
+
+It also provides tools to analyze RTF files and files based on the [OpenXML format](https://en.wikipedia.org/wiki/Office_Open_XML) 
+(aka OOXML) such as MS Office 2007+ documents, XPS or MSIX files.
+
+For example, oletools can detect, extract and analyse VBA macros, OLE objects, Excel 4 macros (XLM) and DDE links.
+
+See [http://www.decalage.info/python/oletools](http://www.decalage.info/python/oletools) for more info.
 
 **Quick links:**
 [Home page](http://www.decalage.info/python/oletools) -

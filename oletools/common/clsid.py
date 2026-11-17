@@ -68,6 +68,7 @@ KNOWN_CLSIDS = {
     '00000309-0000-0000-C000-000000000046': 'Composite Moniker (may trigger CVE-2017-8570)',
     '0000031A-0000-0000-C000-000000000046': 'Class Moniker',
     '00000535-0000-0010-8000-00AA006D2EA4': 'ADODB.RecordSet (may trigger CVE-2015-0097)',
+    '00000FE0-8804-4CA8-8868-36F59DEFD14D': 'ZED! encrypted container',
     '0002034C-0000-0000-C000-000000000046': 'OutlookAttachMoniker',
     '0002034E-0000-0000-C000-000000000046': 'OutlookMessageMoniker',
     '00020810-0000-0000-C000-000000000046': 'Microsoft Excel.Sheet.5',
@@ -88,6 +89,7 @@ KNOWN_CLSIDS = {
     '00022603-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
     '0002CE02-0000-0000-C000-000000000046': 'Microsoft Equation 3.0 (Known Related to CVE-2017-11882 or CVE-2018-0802)',
     '0002CE03-0000-0000-C000-000000000046': 'MathType Equation Object',
+    '0003000A-0000-0000-C000-000000000046': 'Bitmap Image',
     '0003000B-0000-0000-C000-000000000046': 'Microsoft Equation (Known Related to CVE-2017-11882 or CVE-2018-0802)',
     '0003000C-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
     '0003000D-0000-0000-C000-000000000046': 'OLE Package Object (may contain and run any file)',
@@ -190,6 +192,8 @@ KNOWN_CLSIDS = {
     'E5CA59F5-57C4-4DD8-9BD6-1DEEEDD27AF4': 'InkEd.InkEdit',
     'E8CC4CBE-FDFF-11D0-B865-00A0C9081C1D': 'MSDAORA.1 (potential exploit CVE TODO)', # TODO
     'E8CC4CBF-FDFF-11D0-B865-00A0C9081C1D': 'Loads OCI.DLL (Known Related to CVE-2015-6128)',
+    # Referenced in https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-21509 :
+    'EAB22AC3-30C1-11CF-A7EB-0000C05BAE0B': 'Shell.Explorer (Known Related to CVE-2026-21509)',
     'ECABAFC6-7F19-11D2-978E-0000F8757E2A': 'New Moniker',
     'ECABAFC9-7F19-11D2-978E-0000F8757E2A': 'Loads MQRT.DLL (Known Related to CVE-2015-6128)',
     'ECABB0C7-7F19-11D2-978E-0000F8757E2A': 'SOAP Moniker (may trigger CVE-2017-8759)',

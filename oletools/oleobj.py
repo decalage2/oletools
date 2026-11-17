@@ -180,7 +180,7 @@ if sys.version_info[0] <= 2:
     NULL_CHAR = '\x00'
 else:
     # Python 3.x
-    NULL_CHAR = 0     # pylint: disable=redefined-variable-type
+    NULL_CHAR = 0
     xrange = range    # pylint: disable=redefined-builtin, invalid-name
 
 OOXML_RELATIONSHIP_TAG = '{http://schemas.openxmlformats.org/package/2006/relationships}Relationship'
@@ -332,6 +332,7 @@ def read_zero_terminated_string(data, index):
     """
     if index is None:
         result = bytearray()
+        # pylint: disable-next=possibly-used-before-assignment
         for _ in xrange(STR_MAX_LEN):
             char = ord(data.read(1))    # need ord() for py3
             if char == 0:
@@ -534,7 +535,7 @@ def sanitize_filename(filename, replacement='_',
     Might return empty string
     """
     basepath = os.path.basename(filename).strip()
-    sane_fname = re.sub(u'[^a-zA-Z0-9.\-_ ]', replacement, basepath)
+    sane_fname = re.sub(u'[^a-zA-Z0-9._ -]', replacement, basepath)
     sane_fname = str(sane_fname)    # py3: does nothing;   py2: unicode --> str
 
     while ".." in sane_fname:

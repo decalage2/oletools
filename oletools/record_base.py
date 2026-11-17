@@ -10,7 +10,7 @@ ppt_record_parser.py .
 
 # === LICENSE ==================================================================
 
-# record_base is copyright (c) 2014-2021 Philippe Lagadec (http://www.decalage.info)
+# record_base is copyright (c) 2014-2024 Philippe Lagadec (http://www.decalage.info)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -44,7 +44,7 @@ from __future__ import print_function
 #                        and dev version
 # 2019-05-24       CH: - use log_helper
 
-__version__ = '0.60.dev1'
+__version__ = '0.60.2'
 
 # -----------------------------------------------------------------------------
 # TODO:

@@ -1,8 +1,7 @@
 """Test ftguess"""
-
 import unittest
 import os
-from os.path import splitext
+from os.path import splitext, join
 from oletools import ftguess
 
 # Directory with test data, independent of current working directory
@@ -47,7 +46,7 @@ class TestFTGuess(unittest.TestCase):
             before_dot, extension = splitext(filename)
             if extension == '.zip':
                 extension = splitext(before_dot)[1]
-            elif filename in ('basic/empty', 'basic/text'):
+            elif filename in (join('basic', 'empty'), join('basic', 'text')):
                 extension = '.csv'    # have just like that
             elif not extension:
                 self.fail('Could not find extension for test sample {0}'
@@ -55,7 +54,7 @@ class TestFTGuess(unittest.TestCase):
             extension = extension[1:]      # remove the leading '.'
 
             # encrypted files are mostly not recognized (yet?), except .xls
-            if filename.startswith('encrypted/'):
+            if filename.startswith('encrypted' + os.sep):
                 if extension == 'xls':
                     expect = ftguess.FType_Excel97
                 else:
@@ -69,7 +68,7 @@ class TestFTGuess(unittest.TestCase):
                 # not implemented yet
                 expect = ftguess.FType_Unknown
 
-            elif filename == 'basic/encrypted.docx':
+            elif filename == join('basic', 'encrypted.docx'):
                 expect = ftguess.FType_Generic_OLE
 
             elif 'excel5' in filename:

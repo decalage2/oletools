@@ -120,10 +120,14 @@ class TestOlevbaBasic(unittest.TestCase):
                                                  args=[full_name, ] + ADD_ARGS,
                                                  accept_nonzero_exit=True)
             output = json.loads(out_str)
-            self.assertEqual(len(output), 2)
+            self.assertGreaterEqual(len(output), 2)
             self.assertEqual(output[0]['type'], 'MetaInformation')
             self.assertEqual(output[0]['script_name'], 'olevba')
-            result = output[1]
+            for entry in output[1:]:
+                if entry['type'] in ('msg', 'warning'):
+                    continue    # ignore messages
+                result = entry
+                break
             self.assertTrue(result['json_conversion_successful'])
             if suffix in ('.xlsb', '.xltm', '.xlsm'):
                 # TODO: cannot extract xlm macros for these types yet
@@ -146,6 +150,24 @@ class TestOlevbaBasic(unittest.TestCase):
                 self.assertIn('XLM macro', keywords)
                 self.assertIn('AutoExec', types)
                 self.assertIn('Suspicious', types)
+
+    def test_dir_stream_record_project_compat_version(self):
+        """Test PROJECTCOMPATVERSION record on dir stream with a ppt file."""
+        input_file = join(DATA_BASE_DIR, 'olevba', 'sample_with_vba.ppt')
+        output, ret_code = call_and_capture('olevba', args=(input_file, "--loglevel", "debug"))
+
+        # check return code
+        self.assertEqual(ret_code, 0)
+
+        # not expected string:
+        self.assertNotIn('invalid value for PROJECTLCID_Id expected 0002 got', output)
+        self.assertNotIn('Error in _extract_vba', output)
+
+        # compat version in debug mode:
+        self.assertIn('compat version: 2', output)
+
+        # vba contents:
+        self.assertIn('Sub Action_Click()\n  MsgBox "The action button clicked!"\nEnd Sub', output)
 
 
 # just in case somebody calls this file as a script

@@ -1,0 +1,37 @@
+name: Python package
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  check:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
+        python-version: ["3.x", "pypy-3.9"]
+        include:
+          - python-version: 3.x
+            runlint: 1
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -c "import sys; import platform; print(sys.version); print(sys.platform); print(platform.python_implementation()); print(platform.system())"
+          cat requirements.txt
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pylint
+      - name: Run pylint
+        if: ${{ matrix.runlint }}
+        run: pylint -E --ignore=thirdparty oletools tests
+      - name: Run unittests
+        run: python -m unittest discover -f
