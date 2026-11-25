@@ -78,6 +78,7 @@ if not _parent_dir in sys.path:
 
 import olefile
 from oletools.thirdparty import xglob
+from oletools.thirdparty.xglob import PathNotFoundException
 from oletools.thirdparty.tablestream import tablestream
 from oletools.common.io_encoding import ensure_stdout_handles_unicode
 
@@ -156,9 +157,18 @@ def main():
         parser.print_help()
         sys.exit()
 
+    error_count = 0
     for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
                                                       zip_password=options.zip_password, zip_fname=options.zip_fname):
-        # TODO: handle xglob errors
+        # handle errors coming from xglob: data is an exception instance, not
+        # file content, so it must not be handed over to olefile
+        if isinstance(data, Exception):
+            if isinstance(data, PathNotFoundException):
+                sys.stderr.write('ERROR: Given path %r does not exist!\n' % filename)
+            else:
+                sys.stderr.write('ERROR: Exception opening/reading %r: %s\n' % (filename, data))
+            error_count += 1
+            continue
         # ignore directory names stored in zip files:
         if container and filename.endswith('/'):
             continue
@@ -173,6 +183,9 @@ def main():
             ole = olefile.OleFileIO(filename)
         process_ole(ole)
         ole.close()
+
+    if error_count:
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
