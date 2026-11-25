@@ -93,7 +93,7 @@ if _parent_dir not in sys.path:
     sys.path.insert(0, _parent_dir)
 
 from oletools.common import clsid
-from oletools.thirdparty.xglob import xglob
+from oletools.thirdparty.xglob import xglob, PathNotFoundException
 
 # === LOGGING =================================================================
 
@@ -915,6 +915,15 @@ def ftype_guess(filepath=None, data=None):
 
 def process_file(container, filename, data):
     print('File       : %s' % filename)
+    # xglob reports a file it could not read by yielding the exception instance
+    # instead of the file content, so it must not be handed over to the guesser
+    if isinstance(data, Exception):
+        if isinstance(data, PathNotFoundException):
+            print('ERROR: Given path %r does not exist!' % filename, file=sys.stderr)
+        else:
+            print('ERROR: Exception opening/reading %r: %s' % (filename, data),
+                  file=sys.stderr)
+        return False
     ftg = ftype_guess(filepath=filename, data=data)
     print('File Type  : %s' % ftg.ftype.name)
     print('Description: %s' % ftg.ftype.longname)
@@ -925,6 +934,7 @@ def process_file(container, filename, data):
     print('Content-type(s) : %s' % ','.join(ftg.ftype.content_types))
     print('PUID       : %s' % ftg.ftype.PUID)
     print()
+    return True
 
 
 #=== MAIN =================================================================
@@ -976,12 +986,17 @@ def main():
     # enable logging in the modules:
     enable_logging()
 
+    error_count = 0
     for container, filename, data in xglob.iter_files(args, recursive=options.recursive,
         zip_password=options.zip_password, zip_fname=options.zip_fname):
         # ignore directory names stored in zip files:
         if container and filename.endswith('/'):
             continue
-        process_file(container, filename, data)
+        if not process_file(container, filename, data):
+            error_count += 1
+
+    if error_count:
+        sys.exit(1)
 
 
 if __name__ == '__main__':
